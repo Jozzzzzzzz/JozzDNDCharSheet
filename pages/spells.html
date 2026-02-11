@@ -1,0 +1,188 @@
+﻿
+  <div class="page" id="page3">
+    <div class="spells-page">
+      <!-- Spellcasting Overview -->
+      <div class="section">
+        <div class="spell-panel-header">
+          <h2>Spellcasting</h2>
+        </div>
+        <div class="spells-grid">
+          <!-- Spellcasting Info -->
+          <div class="spell-slots-container">
+            <div class="spell-panel-header">
+              <h3>Spellcasting Info</h3>
+            </div>
+            <div class="spell-info-grid">
+              <div class="spell-info-row">
+                <label class="spell-info-label" for="spellcasting_ability">Spellcasting Ability</label>
+                <select id="spellcasting_ability" onchange="autosave()">
+                  <option value="int">Intelligence</option>
+                  <option value="wis">Wisdom</option>
+                  <option value="cha">Charisma</option>
+                </select>
+              </div>
+              <div class="spell-info-row">
+                <label class="spell-info-label" for="spell_save_dc">Spell Save DC</label>
+                <input type="number" id="spell_save_dc" min="0" max="30" value="8" onchange="autosave()">
+              </div>
+              <div class="spell-info-row">
+                <label class="spell-info-label" for="spell_attack_bonus">Spell Attack Bonus</label>
+                <input type="number" id="spell_attack_bonus" min="0" max="20" value="0" onchange="autosave()">
+              </div>
+              <div class="spell-info-row">
+                <label class="spell-info-label" for="caster_type">Caster Type</label>
+                <select id="caster_type" onchange="autosave()">
+                  <option value="prepared">Prepared Caster</option>
+                  <option value="known">Spells Known</option>
+                  <option value="spellbook">Spellbook</option>
+                </select>
+              </div>
+              <div class="spell-info-row">
+                <label class="spell-info-label" for="spells_prepared">Spells Prepared</label>
+                <input type="number" id="spells_prepared" min="0" max="50" value="0" onchange="autosave()">
+              </div>
+            </div>
+          </div>
+          
+          <div class="spell-slots-container">
+            <div class="spell-panel-header">
+              <h3>Spell Slots</h3>
+            </div>
+            <div id="spell_slots_container">
+              <!-- Spell slots will be added here dynamically -->
+            </div>
+            <button class="spell-panel-primary" onclick="showAddSpellSlotPopup()">+ Add Spell Slot Type</button>
+            <div class="spell-panel-actions">
+              <button onclick="resetSpellSlots('short')">Short Rest</button>
+              <button onclick="resetSpellSlots('long')">Long Rest</button>
+              <button onclick="resetSpellSlots()">Reset All</button>
+            </div>
+          </div>
+          
+          <!-- Custom Resources -->
+          <div class="spell-slots-container">
+            <div class="spell-panel-header">
+              <h3>Custom Resources</h3>
+            </div>
+            <div id="custom_resources_container">
+              <!-- Custom resources will be added here dynamically -->
+            </div>
+            <button class="spell-panel-primary" onclick="showAddCustomResourcePopup()">+ Add Custom Resource</button>
+            <div class="spell-panel-actions">
+              <button onclick="resetCustomResources('short')">Short Rest</button>
+              <button onclick="resetCustomResources('long')">Long Rest</button>
+              <button onclick="resetCustomResources()">Reset All</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Prepared Spells & Cantrips Section -->
+      <div class="section">
+        <h2>Prepared Spells & Cantrips</h2>
+        <div class="spells-list-container" id="prepared_spells_list">
+          <!-- Prepared spells/cantrips grouped by level will be populated here -->
+        </div>
+      </div>
+
+      <!-- Favorites Section -->
+      <div class="section">
+        <h2>Favorites</h2>
+        <div class="favorites-grid">
+          <div class="favorites-cantrips">
+            <h3>Favorite Cantrips</h3>
+            <div class="spells-list-container" id="favorites_cantrips_list">
+              <!-- Favorite cantrips will be populated here -->
+            </div>
+          </div>
+          <div class="favorites-spells">
+            <h3>Favorite Spells</h3>
+            <div class="spells-list-container" id="favorites_spells_list">
+              <!-- Favorite spells will be populated here -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="spells-lists-grid">
+        <!-- Cantrips Section -->
+        <div class="section">
+          <h2>Cantrips</h2>
+          <div class="spells-controls">
+            <div class="spells-controls-left">
+              <button onclick="showSpellForm('cantrip')">+ Add Cantrip</button>
+              <button onclick="showImportPopup('cantrip')">Import Cantrips</button>
+              <button onclick="clearAllSpells('cantrip')" class="clear-all-btn">Clear All Cantrips</button>
+            </div>
+            <div class="spell-filter">
+              <select id="cantrip_filter" onchange="filterSpells('cantrip')">
+                <option value="all">All Cantrips</option>
+                <option value="prepared">Prepared</option>
+                <option value="known">Known</option>
+                <option value="favorites">Favorites</option>
+              </select>
+            </div>
+          </div>
+          <div class="spells-list-container" id="cantrips_list">
+            <!-- Cantrips will be populated here -->
+          </div>
+        </div>
+
+        <!-- Spells Section -->
+        <div class="section">
+          <h2>Spells</h2>
+          <div class="spells-controls">
+            <div class="spells-controls-left">
+              <button onclick="showSpellForm('spell')">+ Add Spell</button>
+              <button onclick="showImportPopup('spell')">Import Spells</button>
+              <button onclick="clearAllSpells('spell')" class="clear-all-btn">Clear All Spells</button>
+            </div>
+            <div class="spell-filter">
+              <select id="spell_level_filter" onchange="filterSpells('spell')">
+                <option value="all">All Levels</option>
+                <option value="1">1st Level</option>
+                <option value="2">2nd Level</option>
+                <option value="3">3rd Level</option>
+                <option value="4">4th Level</option>
+                <option value="5">5th Level</option>
+                <option value="6">6th Level</option>
+                <option value="7">7th Level</option>
+                <option value="8">8th Level</option>
+                <option value="9">9th Level</option>
+              </select>
+              <select id="spell_school_filter" onchange="filterSpells('spell')">
+                <option value="all">All Schools</option>
+                <option value="Abjuration">Abjuration</option>
+                <option value="Conjuration">Conjuration</option>
+                <option value="Divination">Divination</option>
+                <option value="Enchantment">Enchantment</option>
+                <option value="Evocation">Evocation</option>
+                <option value="Illusion">Illusion</option>
+                <option value="Necromancy">Necromancy</option>
+                <option value="Transmutation">Transmutation</option>
+              </select>
+              <select id="spell_status_filter" onchange="filterSpells('spell')">
+                <option value="all">All Spells</option>
+                <option value="prepared">Prepared</option>
+                <option value="known">Known</option>
+                <option value="ritual">Ritual</option>
+                <option value="favorites">Favorites</option>
+              </select>
+            </div>
+          </div>
+          <div class="spells-list-container" id="spells_list">
+            <!-- Spells will be populated here -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Spell Notes -->
+      <div class="section">
+        <h2>Spell Notes</h2>
+        <textarea id="spell_notes" class="basic-textarea" 
+                  oninput="autosave()" placeholder="Enter additional spell notes, homebrew rules, or spell modifications here..."></textarea>
+      </div>
+    </div>
+  </div>
+  
+  

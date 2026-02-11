@@ -1,0 +1,60 @@
+﻿
+  <div class="page" id="page2">
+    <div class="background-grid">
+<div class="section resizable">
+  <h2>Portrait</h2>
+  <div class="portrait-container" id="portraitPreview">
+    <span style="color: #666;">No image</span>
+  </div>
+  <input type="file" id="portraitUpload" accept="image/*" style="width: 100%; margin-bottom: 10px;"/>
+  <button onclick="removePortrait()" style="width: 100%;">Remove Portrait</button>
+</div>
+
+      <!-- Updated Background Sections with Direct Textareas -->
+      <div class="section">
+        <h2>Backstory</h2>
+        <textarea id="char_backstory" class="basic-textarea" 
+                  oninput="autosave()" placeholder="Enter your character's backstory here..."></textarea>
+      </div>
+    </div>
+    
+    <div class="background-textareas">
+      <div class="section">
+        <h3>Personality Traits</h3>
+        <textarea id="personality_traits" class="basic-textarea" 
+                  oninput="autosave()" placeholder="Describe your character's personality traits..."></textarea>
+      </div>
+      
+      <div class="section">
+        <h3>Ideals</h3>
+        <textarea id="traits_ideals" class="basic-textarea" 
+                  oninput="autosave()" placeholder="What ideals drive your character?"></textarea>
+      </div>
+      
+      <div class="section">
+        <h3>Bonds</h3>
+        <textarea id="traits_bonds" class="basic-textarea" 
+                  oninput="autosave()" placeholder="What bonds tie your character to people, places, or events?"></textarea>
+      </div>
+      
+      <div class="section">
+        <h3>Flaws</h3>
+        <textarea id="traits_flaws" class="basic-textarea" 
+                  oninput="autosave()" placeholder="What flaws or weaknesses does your character have?"></textarea>
+      </div>
+      
+      <div class="section">
+        <h3>Allies & Organizations</h3>
+        <textarea id="traits_allies" class="basic-textarea" 
+                  oninput="autosave()" placeholder="List your character's allies and organizations they belong to..."></textarea>
+      </div>
+      
+      <div class="section">
+        <h3>Appearance</h3>
+        <textarea id="traits_appearance" class="basic-textarea" 
+                  oninput="autosave()" placeholder="Describe your character's physical appearance..."></textarea>
+      </div>
+    </div>
+  </div>
+  
+  

@@ -1,0 +1,533 @@
+﻿
+<div class="popup-backdrop" id="popupBackdrop"></div>
+
+
+<!-- Custom HP Adjustment Popup -->
+<div class="popup" id="customHPPopup">
+  <h3>Custom HP Adjustment</h3>
+  <label>Amount:</label>
+  <input type="number" id="custom_hp_amount" value="1" placeholder="Enter amount"/>
+  <div style="margin-top: 15px; display: flex; justify-content: space-between; gap: 10px;">
+    <button onclick="customAdjustHP('add')" style="background: var(--accent); color: var(--accent-contrast);">Add HP</button>
+    <button onclick="customAdjustHP('remove')" style="background: var(--accent); color: var(--accent-contrast);">Remove HP</button>
+    <button onclick="closeCustomHPPopup()" style="background: var(--accent); color: var(--accent-contrast);">Cancel</button>
+  </div>
+</div>
+
+<!-- Condition Popup -->
+<div class="popup" id="conditionPopup">
+  <h3>Add Condition</h3>
+  <label>Condition Name:</label>
+  <input type="text" id="condition_name" placeholder="e.g. Poisoned"/>
+  
+  <label>Duration (turns):</label>
+  <input type="number" id="condition_turns" placeholder="Leave blank for indefinite"/>
+  
+  <label>Effect:</label>
+  <textarea id="condition_effect" placeholder="Describe the effect"></textarea>
+  
+  <label>Color:</label>
+  <select id="condition_color">
+    <option value="red">Red</option>
+    <option value="blue">Blue</option>
+    <option value="green">Green</option>
+  </select>
+  
+  <div style="margin-top: 15px; display: flex; justify-content: space-between;">
+    <button onclick="addCondition()">Add Condition</button>
+    <button onclick="closePopup('conditionPopup')">Cancel</button>
+  </div>
+</div>
+
+<!-- Legacy Notes Popup (kept for backward compatibility, no longer used by notes page) -->
+<div class="popup" id="notesLegacyPopup">
+  <h3 id="notesPopupTitle">Edit Notes</h3>
+  <textarea id="notesPopupTextarea" rows="12"></textarea>
+  <input type="hidden" id="notesPopupTargetId"/>
+  <div style="margin-top: 15px; display: flex; justify-content: space-between;">
+    <button onclick="saveNotesEditor()">Save</button>
+    <button onclick="closePopup('notesLegacyPopup')">Cancel</button>
+  </div>
+</div>
+
+<!-- Add Item Popup -->
+<div class="popup" id="addItemPopup">
+  <h3>Add Inventory Item</h3>
+  <label>Item Name:</label>
+  <input type="text" id="old_item_name" placeholder="e.g. Health Potion"/>
+  
+  <label>Description:</label>
+  <input type="text" id="old_item_description" placeholder="Brief description"/>
+  
+  <label>Notes:</label>
+  <textarea id="old_item_notes" placeholder="Any special notes" style="min-height: 100px;"></textarea>
+  
+  <label>Weight (lbs):</label>
+  <input type="number" id="old_item_weight" step="0.1" placeholder="0.1"/>
+  
+  <label>Container:</label>
+  <select id="old_item_container">
+    <option value="main">Main Inventory</option>
+    <!-- Additional containers will be added here dynamically -->
+  </select>
+  
+  <div style="margin-top: 15px; display: flex; justify-content: space-between;">
+    <button onclick="addInventoryItem()">Add Item</button>
+    <button onclick="closePopup('addItemPopup')">Cancel</button>
+  </div>
+</div>
+
+<!-- Add Custom Resource Popup -->
+<div class="popup" id="addCustomResourcePopup">
+  <h3>Add Custom Resource</h3>
+  <label>Resource Name:</label>
+  <input type="text" id="custom_resource_name" placeholder="e.g. Warlock Spell Slots, Ki Points, Bardic Inspiration"/>
+  
+  <label>Maximum Value:</label>
+  <input type="number" id="custom_resource_max" min="1" max="15" value="1" placeholder="Maximum uses"/>
+  
+  <label>Reset Type:</label>
+  <select id="custom_resource_reset_type">
+    <option value="long">Long Rest</option>
+    <option value="short">Short Rest</option>
+    <option value="manual">Manual Only</option>
+  </select>
+  
+  <div style="margin-top: 15px; display: flex; justify-content: space-between;">
+    <button onclick="addCustomResource()">Add Resource</button>
+    <button onclick="closePopup('addCustomResourcePopup')">Cancel</button>
+  </div>
+</div>
+
+<!-- Add Spell Slot Type Popup -->
+<div class="popup" id="addSpellSlotPopup">
+  <h3>Add Spell Slot Type</h3>
+  <label>Slot Name:</label>
+  <input type="text" id="spell_slot_name" placeholder="e.g. 1st Level, 2nd Level, Cantrips, Pact Magic"/>
+  
+  <label>Maximum Slots:</label>
+  <input type="number" id="spell_slot_max" min="1" max="15" value="1" placeholder="Maximum slots"/>
+  
+  <label>Reset Type:</label>
+  <select id="spell_slot_reset_type">
+    <option value="long">Long Rest</option>
+    <option value="short">Short Rest</option>
+    <option value="manual">Manual Only</option>
+  </select>
+  
+  <div style="margin-top: 15px; display: flex; justify-content: space-between;">
+    <button onclick="addSpellSlot()">Add Spell Slot</button>
+    <button onclick="closePopup('addSpellSlotPopup')">Cancel</button>
+  </div>
+</div>
+
+<!-- Edit Spell Slot Popup -->
+<div class="popup" id="editSpellSlotPopup">
+  <h3>Edit Spell Slot</h3>
+  <label>Slot Name:</label>
+  <input type="text" id="edit_spell_slot_name" placeholder="e.g. 1st Level, 2nd Level, Cantrips, Pact Magic"/>
+  
+  <label>Maximum Slots:</label>
+  <input type="number" id="edit_spell_slot_max" min="1" max="15" value="1" placeholder="Maximum slots"/>
+  
+  <label>Reset Type:</label>
+  <select id="edit_spell_slot_reset_type">
+    <option value="long">Long Rest</option>
+    <option value="short">Short Rest</option>
+    <option value="manual">Manual Only</option>
+  </select>
+  
+  <div style="margin-top: 15px; display: flex; justify-content: space-between;">
+    <button onclick="saveSpellSlotEdit()">Save Changes</button>
+    <button onclick="closePopup('editSpellSlotPopup')">Cancel</button>
+  </div>
+</div>
+
+<!-- Weapons Editor Popup -->
+<div class="popup" id="weaponsPopup">
+  <h3>Edit Weapons</h3>
+  <table id="weapons_table_popup" style="width: 100%;">
+    <thead>
+      <tr>
+        <th>Weapon</th>
+        <th>To Hit</th>
+        <th>Dmg</th>
+        <th>Bonus Dmg</th>
+        <th>Notes</th>
+        <th>Properties</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Weapons will be added here -->
+    </tbody>
+  </table>
+  <button onclick="addWeapon()" style="margin-top: 10px;">+ Add Weapon</button>
+  <div style="margin-top: 15px; display: flex; justify-content: space-between;">
+    <button onclick="updateWeaponsPreview(); displayWeaponsStats(); autosave(); closePopup('weaponsPopup')">Save</button>
+    <button onclick="closePopup('weaponsPopup')">Cancel</button>
+  </div>
+</div>
+
+<!-- Equipment Editor Popup -->
+<div class="popup" id="equipmentPopup">
+  <h3>Edit Equipment</h3>
+  <table id="equipment_table_popup" style="width: 100%;">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Bonus</th>
+        <th>Weight</th>
+        <th>Notes</th>
+        <th></th> <!-- For remove button -->
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Equipment will be added here -->
+    </tbody>
+  </table>
+  <button onclick="addEquipment()" style="margin-top: 10px;">+ Add Equipment</button>
+  <div style="margin-top: 15px; display: flex; justify-content: space-between;">
+    <button onclick="updateEquipmentPreviews(); closePopup('equipmentPopup')">Save</button>
+    <button onclick="closePopup('equipmentPopup')">Cancel</button>
+  </div>
+</div>
+
+<!-- Item Details Popup -->
+<div class="popup" id="itemDetailsPopup">
+  <h3 id="itemDetailsTitle">Item Details</h3>
+  <div id="itemDetailsContent"></div>
+  <div style="margin-top: 15px;">
+    <button onclick="closePopup('itemDetailsPopup')">Close</button>
+  </div>
+</div>
+
+<!-- Notes Popup -->
+<div class="popup" id="notesPopup">
+  <h3 id="notesTitle">Notes</h3>
+  <div id="notesContent" style="max-height: 400px; overflow-y: auto; padding: 15px; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border);">
+    <!-- Notes content will be populated here -->
+  </div>
+  <div style="margin-top: 15px; display: flex; justify-content: space-between;">
+    <button onclick="closePopup('notesPopup')">Close</button>
+  </div>
+</div>
+
+<!-- Notes Editor Popup -->
+<div class="popup" id="notesEditorPopup">
+  <h3 id="notesEditorTitle">Edit Notes</h3>
+  <textarea id="notesEditorTextarea" style="width: 100%; min-height: 400px; padding: 15px; background: var(--input-bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 14px; line-height: 1.5; resize: vertical; overflow: auto;"></textarea>
+  <div style="margin-top: 15px; display: flex; justify-content: space-between;">
+    <button onclick="saveNotesEditor()" style="background: var(--accent); color: var(--accent-contrast);">Save</button>
+    <button onclick="closePopup('notesEditorPopup')">Cancel</button>
+  </div>
+</div>
+
+<!-- Spell Details Popup -->
+<div class="popup" id="spellDetailsPopup">
+  <h3 id="spellDetailsTitle">Spell Details</h3>
+  <div id="spellDetailsContent">
+    <div class="spell-detail-row">
+      <span class="spell-detail-label">Name:</span>
+      <span class="spell-detail-value" id="spellDetailName"></span>
+    </div>
+    <div class="spell-detail-row">
+      <span class="spell-detail-label">Level:</span>
+      <span class="spell-detail-value" id="spellDetailLevel"></span>
+    </div>
+    <div class="spell-detail-row">
+      <span class="spell-detail-label">School:</span>
+      <span class="spell-detail-value" id="spellDetailSchool"></span>
+    </div>
+    <div class="spell-detail-row">
+      <span class="spell-detail-label">Casting Time:</span>
+      <span class="spell-detail-value" id="spellDetailCastingTime"></span>
+    </div>
+    <div class="spell-detail-row">
+      <span class="spell-detail-label">Range:</span>
+      <span class="spell-detail-value" id="spellDetailRange"></span>
+    </div>
+    <div class="spell-detail-row">
+      <span class="spell-detail-label">Components:</span>
+      <span class="spell-detail-value" id="spellDetailComponents"></span>
+    </div>
+    <div class="spell-detail-row">
+      <span class="spell-detail-label">Duration:</span>
+      <span class="spell-detail-value" id="spellDetailDuration"></span>
+    </div>
+    <div class="spell-detail-row">
+      <span class="spell-detail-label">Damage:</span>
+      <span class="spell-detail-value" id="spellDetailDamage"></span>
+    </div>
+    <div class="spell-detail-row">
+      <span class="spell-detail-label">Save:</span>
+      <span class="spell-detail-value" id="spellDetailSave"></span>
+    </div>
+    <div class="spell-detail-row">
+      <span class="spell-detail-label">Attack:</span>
+      <span class="spell-detail-value" id="spellDetailAttack"></span>
+    </div>
+    <div class="spell-detail-row">
+      <span class="spell-detail-label">Ritual:</span>
+      <span class="spell-detail-value" id="spellDetailRitual"></span>
+    </div>
+    <div class="spell-detail-row">
+      <span class="spell-detail-label">Concentration:</span>
+      <span class="spell-detail-value" id="spellDetailConcentration"></span>
+    </div>
+    <div class="spell-description" id="spellDetailDescription"></div>
+    <div class="spell-detail-row" id="spellDetailWikiLink" style="display: none;">
+      <span class="spell-detail-label">D&D Wiki:</span>
+      <span class="spell-detail-value">
+        <a id="spellWikiLink" href="#" target="_blank" style="color: #4CAF50; text-decoration: underline;">View on D&D 5e Wiki</a>
+      </span>
+    </div>
+  </div>
+  <div style="margin-top: 15px;">
+    <button onclick="closePopup('spellDetailsPopup')">Close</button>
+  </div>
+</div>
+
+<!-- Add/Edit Spell Popup -->
+<div class="popup" id="spellFormPopup">
+  <h3 id="spellFormTitle">Add Spell</h3>
+  <form id="spellForm" onsubmit="saveSpell(event)">
+    <div class="spell-form-grid">
+      <div>
+        <label>Name:</label>
+        <input type="text" id="spellName" required>
+      </div>
+      <div>
+        <label>Level:</label>
+        <select id="spellLevel" required>
+          <option value="0">Cantrip</option>
+          <option value="1">1st Level</option>
+          <option value="2">2nd Level</option>
+          <option value="3">3rd Level</option>
+          <option value="4">4th Level</option>
+          <option value="5">5th Level</option>
+          <option value="6">6th Level</option>
+          <option value="7">7th Level</option>
+          <option value="8">8th Level</option>
+          <option value="9">9th Level</option>
+        </select>
+      </div>
+      <div>
+        <label>School:</label>
+        <select id="spellSchool" required>
+          <option value="Abjuration">Abjuration</option>
+          <option value="Conjuration">Conjuration</option>
+          <option value="Divination">Divination</option>
+          <option value="Enchantment">Enchantment</option>
+          <option value="Evocation">Evocation</option>
+          <option value="Illusion">Illusion</option>
+          <option value="Necromancy">Necromancy</option>
+          <option value="Transmutation">Transmutation</option>
+        </select>
+      </div>
+      <div>
+        <label>Casting Time:</label>
+        <input type="text" id="spellCastingTime" placeholder="e.g., 1 action">
+      </div>
+      <div>
+        <label>Range:</label>
+        <input type="text" id="spellRange" placeholder="e.g., 60 feet">
+      </div>
+      <div>
+        <label>Components:</label>
+        <input type="text" id="spellComponents" placeholder="V, S, M">
+      </div>
+      <div>
+        <label>Duration:</label>
+        <input type="text" id="spellDuration" placeholder="e.g., Instantaneous">
+      </div>
+      <div>
+        <label>Damage:</label>
+        <input type="text" id="spellDamage" placeholder="e.g., 1d10 fire damage">
+      </div>
+      <div>
+        <label>Save:</label>
+        <input type="text" id="spellSave" placeholder="e.g., Dex save">
+      </div>
+      <div>
+        <label>Attack:</label>
+        <input type="text" id="spellAttack" placeholder="e.g., Ranged spell attack">
+      </div>
+      <div class="spell-form-full">
+        <label>
+          <input type="checkbox" id="spellRitual"> Ritual
+        </label>
+        <label>
+          <input type="checkbox" id="spellConcentration"> Concentration
+        </label>
+        <label>
+          <input type="checkbox" id="spellPrepared"> Prepared
+        </label>
+      </div>
+      <div class="spell-form-full">
+        <label>Description:</label>
+        <textarea id="spellDescription" rows="6" placeholder="Enter the full spell description..."></textarea>
+      </div>
+      <div class="spell-form-full">
+        <label>D&D Wiki Link (optional):</label>
+        <input type="url" id="spellWikiLink" placeholder="https://dnd5e.wikidot.com/spell:spell-name">
+      </div>
+      <div class="spell-form-actions">
+        <button type="button" onclick="closePopup('spellFormPopup')">Cancel</button>
+        <button type="submit">Save Spell</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Import Spells Popup -->
+<div class="popup" id="importSpellsPopup">
+  <h3 id="importSpellsTitle">Import Spells</h3>
+  <div class="import-content">
+    <div class="class-selection">
+      <h4>Select Classes and Levels:</h4>
+      <div id="classLevelContainer">
+        <!-- Class/level selections will be added here -->
+      </div>
+      <button onclick="addClassLevel()" style="margin-top: 10px;">+ Add Another Class</button>
+    </div>
+    <div class="import-preview">
+      <h4>Spells to Import:</h4>
+      <div id="importPreview" style="max-height: 200px; overflow-y: auto; background: #2a2a2a; padding: 10px; border-radius: 4px;">
+        <!-- Preview will be shown here -->
+      </div>
+    </div>
+  </div>
+  <div style="margin-top: 15px;">
+    <button onclick="executeImport()">Import Selected Spells</button>
+    <button onclick="closePopup('importSpellsPopup')">Cancel</button>
+  </div>
+</div>
+
+<!-- Add Action Popup -->
+<div class="popup" id="actionFormPopup">
+  <h3 id="actionFormTitle">Add Action</h3>
+  
+  <label>Name:</label>
+  <input type="text" id="action_name" placeholder="e.g. Fireball, Sword Strike, Sneak Attack"/>
+  
+  <label>Category:</label>
+  <select id="action_category">
+    <option value="melee">Melee</option>
+    <option value="ranged">Ranged</option>
+    <option value="spell">Spell</option>
+    <option value="other">Other</option>
+  </select>
+  
+  <div id="action_stats_section">
+    <label>Damage/Effect:</label>
+    <input type="text" id="action_damage" placeholder="e.g. 1d8+3 slashing, 2d6 fire, Heal 1d8+2"/>
+    
+    <label>Range/Area:</label>
+    <input type="text" id="action_range" placeholder="e.g. 5ft, 60ft, 20ft radius"/>
+    
+    <label>Uses/Cooldown:</label>
+    <input type="text" id="action_uses" placeholder="e.g. 3/day, 1/short rest, At will"/>
+    
+    <label>Attack Bonus/Save DC:</label>
+    <input type="text" id="action_attack" placeholder="e.g. +5, DC 15, Advantage"/>
+  </div>
+  
+  <label>Description:</label>
+  <textarea id="action_description" placeholder="Describe the action in detail..."></textarea>
+  
+  <div style="margin-top: 15px; display: flex; justify-content: space-between;">
+    <button onclick="saveAction()" id="saveActionBtn">Add Action</button>
+    <button onclick="closePopup('actionFormPopup')">Cancel</button>
+  </div>
+</div>
+
+<!-- Add Equipment Popup -->
+<div class="popup" id="equipmentFormPopup">
+  <h3 id="equipmentFormTitle">Add Equipment</h3>
+  
+  <label>Name:</label>
+  <input type="text" id="equipment_name" placeholder="e.g. Longsword, Leather Armor, Ring of Protection"/>
+  
+  <label>Type:</label>
+  <select id="equipment_type">
+    <option value="weapon">Weapon</option>
+    <option value="armor">Armor</option>
+    <option value="shield">Shield</option>
+    <option value="accessory">Accessory</option>
+    <option value="tool">Tool</option>
+    <option value="other">Other</option>
+  </select>
+  
+  <label>Bonus/AC:</label>
+  <input type="text" id="equipment_bonus" placeholder="e.g. +1, AC 13, +2 to hit"/>
+  
+  <label>Weight (lbs):</label>
+  <input type="number" id="equipment_weight" min="0" step="0.1" placeholder="Enter weight in pounds"/>
+  
+  <label>Description/Notes:</label>
+  <textarea id="equipment_description" placeholder="Describe the equipment and any special properties..."></textarea>
+  
+  <div style="margin-top: 15px; display: flex; justify-content: space-between;">
+    <button onclick="saveEquipment()" id="saveEquipmentBtn">Add Equipment</button>
+    <button onclick="closePopup('equipmentFormPopup')">Cancel</button>
+  </div>
+</div>
+
+<!-- Add Item Popup -->
+<div class="popup" id="itemFormPopup">
+  <h3 id="itemFormTitle">Add Item</h3>
+  
+  <label>Name:</label>
+  <input type="text" id="item_name" placeholder="e.g. Rope, Potion of Healing, Rations"/>
+  
+  <label>Type:</label>
+  <select id="item_type">
+    <option value="consumable">Consumable</option>
+    <option value="tool">Tool</option>
+    <option value="treasure">Treasure</option>
+    <option value="misc">Miscellaneous</option>
+    <option value="other">Other</option>
+  </select>
+  
+  <label>Weight (lbs):</label>
+  <input type="number" id="item_weight" min="0" step="0.1" placeholder="Enter weight in pounds"/>
+  
+  <label>Description/Notes:</label>
+  <textarea id="item_description" placeholder="Describe the item and any special properties..."></textarea>
+  
+  <div style="margin-top: 15px; display: flex; justify-content: space-between;">
+    <button onclick="saveItem()" id="saveItemBtn">Add Item</button>
+    <button onclick="closePopup('itemFormPopup')">Cancel</button>
+  </div>
+</div>
+
+
+<!-- Weight Warning Popup -->
+<div class="popup" id="weightWarningPopup">
+  <h3>⚠️ Item Too Heavy!</h3>
+  <p id="weightWarningMessage">Sorry, that item won't fit into your bag.</p>
+  <p style="font-size: 0.8em; color: var(--text); opacity: 0.7; font-style: italic;">"Wish I had a bag of holding"</p>
+  <div style="margin-top: 15px; display: flex; justify-content: center;">
+    <button onclick="closePopup('weightWarningPopup')">OK</button>
+  </div>
+</div>
+
+<!-- Add Storage Container Popup -->
+<div class="popup" id="addStoragePopup">
+  <h3>Add Additional Storage</h3>
+  
+  <label>Container Name:</label>
+  <input type="text" id="storage_container_name" placeholder="e.g. Backpack, Bag of Holding, Chest"/>
+  
+  <label>Max Weight (lbs):</label>
+  <input type="number" id="storage_container_weight" min="0" placeholder="0 for unlimited"/>
+  
+  <div style="margin-top: 15px; display: flex; justify-content: space-between;">
+    <button onclick="addStorageContainer()">Add Storage Container</button>
+    <button onclick="closePopup('addStoragePopup')">Cancel</button>
+  </div>
+</div>
+
+

@@ -1,0 +1,136 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=0.85, maximum-scale=0.85, user-scalable=no">
+<title>Joz's Homebrew DND Sheet (Modular)</title>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<link rel="stylesheet" href="assets/styles.css">
+
+<script>
+(function() {
+  const savedAccentColor = localStorage.getItem('dndAccentColor');
+  if (savedAccentColor) {
+    document.documentElement.style.setProperty('--accent', savedAccentColor);
+    const hex = savedAccentColor.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    const borderColor = `rgba(${r}, ${g}, ${b}, 0.6)`;
+    const softColor = `rgba(${r}, ${g}, ${b}, 0.18)`;
+    const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+    const contrast = yiq >= 140 ? '#111111' : '#f7f7f7';
+    const lighten = (value, amount) => Math.min(255, Math.round(value + (255 - value) * amount));
+    const accentText = yiq < 120
+      ? `rgb(${lighten(r, 0.65)}, ${lighten(g, 0.65)}, ${lighten(b, 0.65)})`
+      : savedAccentColor;
+    document.documentElement.style.setProperty('--accent-border', borderColor);
+    document.documentElement.style.setProperty('--accent-soft', softColor);
+    document.documentElement.style.setProperty('--accent-contrast', contrast);
+    document.documentElement.style.setProperty('--accent-text', accentText);
+  }
+})();
+</script>
+</head>
+<body>
+<div id="chrome-root"></div>
+<div id="pages"></div>
+<div id="popups-root"></div>
+
+<script>
+async function loadText(path) {
+  const res = await fetch(path, { cache: 'no-cache' });
+  if (!res.ok) throw new Error(`Failed to load ${path}: ${res.status}`);
+  return res.text();
+}
+
+function resolveRouteToPage() {
+  const raw = (location.hash || '').replace('#', '').trim().toLowerCase();
+  const map = {
+    home: 'home',
+    stats: 'page1',
+    background: 'page2',
+    spells: 'page3',
+    inventory: 'page4',
+    notes: 'page6',
+    page1: 'page1',
+    page2: 'page2',
+    page3: 'page3',
+    page4: 'page4',
+    page6: 'page6'
+  };
+  return map[raw] || null;
+}
+
+function activateRoute() {
+  const target = resolveRouteToPage();
+  if (!target) return;
+
+  if (target === 'home') {
+    if (typeof window.showHomePage === 'function') {
+      window.showHomePage();
+    }
+    return;
+  }
+
+  const tabBtn = document.querySelector(`.tab[data-tab="${target}"]`);
+  if (tabBtn && typeof window.switchTab === 'function') {
+    window.switchTab(tabBtn);
+  }
+}
+
+async function bootstrapModularApp() {
+  const [chrome, home, stats, background, spells, inventory, notes, popups] = await Promise.all([
+    loadText('partials/chrome.html'),
+    loadText('pages/home.html'),
+    loadText('pages/stats.html'),
+    loadText('pages/background.html'),
+    loadText('pages/spells.html'),
+    loadText('pages/inventory.html'),
+    loadText('pages/notes.html'),
+    loadText('partials/popups.html')
+  ]);
+
+  document.getElementById('chrome-root').innerHTML = chrome;
+  const pagesRoot = document.getElementById('pages');
+  pagesRoot.innerHTML = [home, stats, background, spells, inventory, notes].join('\n');
+  document.getElementById('popups-root').innerHTML = popups;
+
+  const scriptOrder = [
+    'assets/modules/core.js',
+    'assets/modules/actions.js',
+    'assets/modules/inventory.js',
+    'assets/modules/spells.js',
+    'assets/modules/cloud-skills.js'
+  ];
+
+  for (const src of scriptOrder) {
+    await new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = src;
+      script.onload = resolve;
+      script.onerror = reject;
+      document.body.appendChild(script);
+    });
+  }
+
+  if (typeof window.initializeApp === 'function') {
+    window.initializeApp();
+  }
+
+  activateRoute();
+  window.addEventListener('hashchange', activateRoute);
+}
+
+bootstrapModularApp().catch(err => {
+  console.error(err);
+  document.body.innerHTML = `<pre style="padding:16px;color:#fff;background:#111;">Failed to bootstrap app:\n${String(err)}</pre>`;
+});
+</script>
+</body>
+</html>
+

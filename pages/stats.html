@@ -1,0 +1,507 @@
+﻿
+  <div class="page" id="page1">
+<!-- Character Basic Info -->
+<div class="section character-info-section" style="margin-bottom: 15px;">
+  <h2>Character Info</h2>
+  <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;">
+    <div>
+      <label>Name</label>
+      <input id="char_name" oninput="autosave()" placeholder="Character Name"/>
+    </div>
+    <div>
+      <label>Race</label>
+      <input id="char_race" oninput="autosave()" placeholder="Race"/>
+    </div>
+    <div>
+      <label>Class</label>
+      <input id="char_class" oninput="autosave()" placeholder="Class"/>
+    </div>
+    <div>
+      <label>Subclass</label>
+      <input id="char_subclass" oninput="autosave()" placeholder="Subclass"/>
+    </div>
+    <div>
+      <label>Level</label>
+              <input id="char_level" oninput="updateProficiencyBonus(); autosave()" type="number" min="1" placeholder="Level"/>
+    </div>
+  </div>
+</div>
+    <div class="flex-wrap" data-min-height="1120">
+      
+      <!-- Ability Scores -->
+      <div class="section">
+        <h2>Ability Scores</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="ability-row">
+            <div class="ability-col">
+              <label>STR</label>
+              <input id="str" oninput="calculateAbilityBonus('str'); autosave()" maxlength="2"/>
+            </div>
+            <div class="ability-col">
+              <label>Bonus</label>
+              <input id="str_bonus" readonly value="+0"/>
+            </div>
+          </div>
+          <div class="ability-row">
+            <div class="ability-col">
+              <label>DEX</label>
+              <input id="dex" oninput="calculateAbilityBonus('dex'); autosave()" maxlength="2"/>
+            </div>
+            <div class="ability-col">
+              <label>Bonus</label>
+              <input id="dex_bonus" readonly value="+0"/>
+            </div>
+          </div>
+          <div class="ability-row">
+            <div class="ability-col">
+              <label>CON</label>
+              <input id="con" oninput="calculateAbilityBonus('con'); autosave()" maxlength="2"/>
+            </div>
+            <div class="ability-col">
+              <label>Bonus</label>
+              <input id="con_bonus" readonly value="+0"/>
+            </div>
+          </div>
+          <div class="ability-row">
+            <div class="ability-col">
+              <label>INT</label>
+              <input id="int" oninput="calculateAbilityBonus('int'); autosave()" maxlength="2"/>
+            </div>
+            <div class="ability-col">
+              <label>Bonus</label>
+              <input id="int_bonus" readonly value="+0"/>
+            </div>
+          </div>
+          <div class="ability-row">
+            <div class="ability-col">
+              <label>WIS</label>
+              <input id="wis" oninput="calculateAbilityBonus('wis'); autosave()" maxlength="2"/>
+            </div>
+            <div class="ability-col">
+              <label>Bonus</label>
+              <input id="wis_bonus" readonly value="+0"/>
+            </div>
+          </div>
+          <div class="ability-row">
+            <div class="ability-col">
+              <label>CHA</label>
+              <input id="cha" oninput="calculateAbilityBonus('cha'); autosave()" maxlength="2"/>
+            </div>
+            <div class="ability-col">
+              <label>Bonus</label>
+              <input id="cha_bonus" readonly value="+0"/>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Combat Stats -->
+        <h3 style="margin-top: 15px;">Combat Stats</h3>
+        <div class="combat-stats-grid">
+          <div class="combat-stat-item">
+            <label>AC</label>
+            <input id="ac" oninput="autosave()"/>
+          </div>
+          <div class="combat-stat-item">
+            <label>Speed</label>
+            <input id="speed" oninput="autosave()"/>
+          </div>
+          <div class="combat-stat-item">
+            <label>Initiative</label>
+            <input id="initiative" oninput="autosave()"/>
+          </div>
+          <div class="combat-stat-item">
+            <label>Prof. Bonus</label>
+            <input id="prof_bonus" readonly maxlength="3" style="background: #2a2a2a; color: var(--accent-text); font-weight: bold; text-align: center;"/>
+          </div>
+        </div>
+        <!-- Saving Throws - Remastered -->
+        <h3 style="margin-top: 15px;">Saving Throws</h3>
+        <div class="saving-throws-grid">
+          <div class="saving-throw-item">
+            <label>STR Save</label>
+            <div class="save-input-group">
+              <input id="str_save" oninput="formatSaveInput('str_save'); autosave()" maxlength="4" value="+0"/>
+              <label class="proficiency-checkbox">
+                <input type="checkbox" id="str_save_prof" onchange="calculateSavingThrow('str'); autosave()"/>
+                <span>Proficient?</span>
+              </label>
+            </div>
+          </div>
+          <div class="saving-throw-item">
+            <label>DEX Save</label>
+            <div class="save-input-group">
+              <input id="dex_save" oninput="formatSaveInput('dex_save'); autosave()" maxlength="4" value="+0"/>
+              <label class="proficiency-checkbox">
+                <input type="checkbox" id="dex_save_prof" onchange="calculateSavingThrow('dex'); autosave()"/>
+                <span>Proficient?</span>
+              </label>
+            </div>
+          </div>
+          <div class="saving-throw-item">
+            <label>CON Save</label>
+            <div class="save-input-group">
+              <input id="con_save" oninput="formatSaveInput('con_save'); autosave()" maxlength="4" value="+0"/>
+              <label class="proficiency-checkbox">
+                <input type="checkbox" id="con_save_prof" onchange="calculateSavingThrow('con'); autosave()"/>
+                <span>Proficient?</span>
+              </label>
+            </div>
+          </div>
+          <div class="saving-throw-item">
+            <label>INT Save</label>
+            <div class="save-input-group">
+              <input id="int_save" oninput="formatSaveInput('int_save'); autosave()" maxlength="4" value="+0"/>
+              <label class="proficiency-checkbox">
+                <input type="checkbox" id="int_save_prof" onchange="calculateSavingThrow('int'); autosave()"/>
+                <span>Proficient?</span>
+              </label>
+            </div>
+          </div>
+          <div class="saving-throw-item">
+            <label>WIS Save</label>
+            <div class="save-input-group">
+              <input id="wis_save" oninput="formatSaveInput('wis_save'); autosave()" maxlength="4" value="+0"/>
+              <label class="proficiency-checkbox">
+                <input type="checkbox" id="wis_save_prof" onchange="calculateSavingThrow('wis'); autosave()"/>
+                <span>Proficient?</span>
+              </label>
+            </div>
+          </div>
+          <div class="saving-throw-item">
+            <label>CHA Save</label>
+            <div class="save-input-group">
+              <input id="cha_save" oninput="formatSaveInput('cha_save'); autosave()" maxlength="4" value="+0"/>
+              <label class="proficiency-checkbox">
+                <input type="checkbox" id="cha_save_prof" onchange="calculateSavingThrow('cha'); autosave()"/>
+                <span>Proficient?</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Skills -->
+      <div class="section">
+        <h2>Skills</h2>
+        <div class="skills-container">
+          <div class="skill-row">
+            <input id="prof_acrobatics" oninput="autosave()" type="checkbox"/>
+            <label for="prof_acrobatics">Acrobatics (Dex)</label>
+            <input id="bonus_acrobatics" oninput="autosave()" type="text" placeholder="+0"/>
+          </div>
+          <div class="skill-row">
+            <input id="prof_animal_handling" oninput="autosave()" type="checkbox"/>
+            <label for="prof_animal_handling">Animal Handling (Wis)</label>
+            <input id="bonus_animal_handling" oninput="autosave()" type="text" placeholder="+0"/>
+          </div>
+          <div class="skill-row">
+            <input id="prof_arcana" oninput="autosave()" type="checkbox"/>
+            <label for="prof_arcana">Arcana (Int)</label>
+            <input id="bonus_arcana" oninput="autosave()" type="text" placeholder="+0"/>
+          </div>
+          <div class="skill-row">
+            <input id="prof_athletics" oninput="autosave()" type="checkbox"/>
+            <label for="prof_athletics">Athletics (Str)</label>
+            <input id="bonus_athletics" oninput="autosave()" type="text" placeholder="+0"/>
+          </div>
+          <div class="skill-row">
+            <input id="prof_deception" oninput="autosave()" type="checkbox"/>
+            <label for="prof_deception">Deception (Cha)</label>
+            <input id="bonus_deception" oninput="autosave()" type="text" placeholder="+0"/>
+          </div>
+          <div class="skill-row">
+            <input id="prof_history" oninput="autosave()" type="checkbox"/>
+            <label for="prof_history">History (Int)</label>
+            <input id="bonus_history" oninput="autosave()" type="text" placeholder="+0"/>
+          </div>
+          <div class="skill-row">
+            <input id="prof_insight" oninput="autosave()" type="checkbox"/>
+            <label for="prof_insight">Insight (Wis)</label>
+            <input id="bonus_insight" oninput="autosave()" type="text" placeholder="+0"/>
+          </div>
+          <div class="skill-row">
+            <input id="prof_intimidation" oninput="autosave()" type="checkbox"/>
+            <label for="prof_intimidation">Intimidation (Cha)</label>
+            <input id="bonus_intimidation" oninput="autosave()" type="text" placeholder="+0"/>
+          </div>
+          <div class="skill-row">
+            <input id="prof_investigation" oninput="autosave()" type="checkbox"/>
+            <label for="prof_investigation">Investigation (Int)</label>
+            <input id="bonus_investigation" oninput="autosave()" type="text" placeholder="+0"/>
+          </div>
+          <div class="skill-row">
+            <input id="prof_medicine" oninput="autosave()" type="checkbox"/>
+            <label for="prof_medicine">Medicine (Wis)</label>
+            <input id="bonus_medicine" oninput="autosave()" type="text" placeholder="+0"/>
+          </div>
+          <div class="skill-row">
+            <input id="prof_nature" oninput="autosave()" type="checkbox"/>
+            <label for="prof_nature">Nature (Int)</label>
+            <input id="bonus_nature" oninput="autosave()" type="text" placeholder="+0"/>
+          </div>
+          <div class="skill-row">
+            <input id="prof_perception" oninput="autosave()" type="checkbox"/>
+            <label for="prof_perception">Perception (Wis)</label>
+            <input id="bonus_perception" oninput="autosave()" type="text" placeholder="+0"/>
+          </div>
+          <div class="skill-row">
+            <input id="prof_performance" oninput="autosave()" type="checkbox"/>
+            <label for="prof_performance">Performance (Cha)</label>
+            <input id="bonus_performance" oninput="autosave()" type="text" placeholder="+0"/>
+          </div>
+          <div class="skill-row">
+            <input id="prof_persuasion" oninput="autosave()" type="checkbox"/>
+            <label for="prof_persuasion">Persuasion (Cha)</label>
+            <input id="bonus_persuasion" oninput="autosave()" type="text" placeholder="+0"/>
+          </div>
+          <div class="skill-row">
+            <input id="prof_religion" oninput="autosave()" type="checkbox"/>
+            <label for="prof_religion">Religion (Int)</label>
+            <input id="bonus_religion" oninput="autosave()" type="text" placeholder="+0"/>
+          </div>
+          <div class="skill-row">
+            <input id="prof_sleight_of_hand" oninput="autosave()" type="checkbox"/>
+            <label for="prof_sleight_of_hand">Sleight of Hand (Dex)</label>
+            <input id="bonus_sleight_of_hand" oninput="autosave()" type="text" placeholder="+0"/>
+          </div>
+          <div class="skill-row">
+            <input id="prof_stealth" oninput="autosave()" type="checkbox"/>
+            <label for="prof_stealth">Stealth (Dex)</label>
+            <input id="bonus_stealth" oninput="autosave()" type="text" placeholder="+0"/>
+          </div>
+          <div class="skill-row">
+            <input id="prof_survival" oninput="autosave()" type="checkbox"/>
+            <label for="prof_survival">Survival (Wis)</label>
+            <input id="bonus_survival" oninput="autosave()" type="text" placeholder="+0"/>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Health -->
+      <div class="section health-section">
+        <h2>Health</h2>
+        
+        <div class="health-container">
+          <!-- HP Display -->
+          <div class="hp-display">
+            <h3>Hit Points</h3>
+            <div class="hp-inputs">
+              <div class="hp-input-group">
+                <label>Max HP:</label>
+                <input id="max_hp" oninput="updateHPDisplay(); autosave();" type="number" min="0"/>
+              </div>
+              <div class="hp-input-group">
+                <label>Current HP:</label>
+                <input id="curr_hp" oninput="updateHPDisplay(); autosave();" type="number" min="0"/>
+              </div>
+            </div>
+            
+            <div class="hp-controls">
+          <button onclick="adjustHP(1)">+1</button>
+          <button onclick="adjustHP(-1)">-1</button>
+              <button onclick="showCustomHPPopup()" class="custom-hp-btn">Custom</button>
+        </div>
+        
+            <div id="temp_hp_display" class="temp-hp-display">
+              <span id="temp_hp_text">Temporary HP: 0</span>
+            </div>
+        </div>
+        
+        <!-- Death Saves -->
+        <div class="death-saves-container">
+            <h3>Death Saves</h3>
+            <div class="death-save-groups">
+          <div class="death-save-group">
+            <label>Success</label>
+            <div class="death-save-checks">
+                  <div class="death-save-check success" id="death_save_success_1" onclick="toggleDeathSave('success', 1)"></div>
+                  <div class="death-save-check success" id="death_save_success_2" onclick="toggleDeathSave('success', 2)"></div>
+                  <div class="death-save-check success" id="death_save_success_3" onclick="toggleDeathSave('success', 3)"></div>
+            </div>
+                <!-- Hidden checkboxes for data persistence -->
+                <input type="checkbox" id="death_save_success_1_checkbox" style="display: none;" oninput="autosave()"/>
+                <input type="checkbox" id="death_save_success_2_checkbox" style="display: none;" oninput="autosave()"/>
+                <input type="checkbox" id="death_save_success_3_checkbox" style="display: none;" oninput="autosave()"/>
+          </div>
+          <div class="death-save-group">
+            <label>Failure</label>
+            <div class="death-save-checks">
+                  <div class="death-save-check failure" id="death_save_failure_1" onclick="toggleDeathSave('failure', 1)"></div>
+                  <div class="death-save-check failure" id="death_save_failure_2" onclick="toggleDeathSave('failure', 2)"></div>
+                  <div class="death-save-check failure" id="death_save_failure_3" onclick="toggleDeathSave('failure', 3)"></div>
+            </div>
+                <!-- Hidden checkboxes for data persistence -->
+                <input type="checkbox" id="death_save_failure_1_checkbox" style="display: none;" oninput="autosave()"/>
+                <input type="checkbox" id="death_save_failure_2_checkbox" style="display: none;" oninput="autosave()"/>
+                <input type="checkbox" id="death_save_failure_3_checkbox" style="display: none;" oninput="autosave()"/>
+            </div>
+          </div>
+          </div>
+        </div>
+        
+        <div class="rest-buttons">
+          <button onclick="shortRest()" class="rest-button short-rest-btn">Short Rest</button>
+          <button onclick="longRest()" class="rest-button long-rest-btn">Long Rest</button>
+        </div>
+        
+        <!-- Hit Dice Section -->
+        <div class="hit-dice-section">
+          <h4>Hit Dice Recovery</h4>
+          <div class="hit-dice-inputs">
+            <div class="hit-dice-group">
+              <label>Hit Dice to Spend:</label>
+              <input type="number" id="hit_dice_spend" min="0" max="20" value="1" oninput="calculateHitDiceRecovery(); autosave()"/>
+            </div>
+            <div class="hit-dice-group">
+              <label>Constitution Modifier:</label>
+              <input type="number" id="con_modifier" value="0" oninput="calculateHitDiceRecovery(); autosave()"/>
+            </div>
+            <div class="hit-dice-group">
+              <label>Hit Die Size:</label>
+              <select id="hit_die_size" onchange="calculateHitDiceRecovery(); autosave()">
+                <option value="6">d6</option>
+                <option value="8" selected>d8</option>
+                <option value="10">d10</option>
+                <option value="12">d12</option>
+              </select>
+            </div>
+          </div>
+          <div class="hit-dice-recovery">
+            <span id="hit_dice_recovery_text">Potential Recovery: 1d8 + 0 = 1-8 HP</span>
+          </div>
+        </div>
+        
+        <!-- Health Potion Section -->
+        <div class="health-potion-section">
+          <h4>Health Potions</h4>
+          <div class="potion-controls">
+            <div class="potion-group">
+              <label>Potion Type:</label>
+              <select id="potion_type" onchange="updatePotionInfo(); autosave()">
+                <option value="minor">Minor Healing Potion (2d4+2)</option>
+                <option value="lesser">Lesser Healing Potion (2d4+2)</option>
+                <option value="healing">Healing Potion (4d4+4)</option>
+                <option value="greater">Greater Healing Potion (4d4+4)</option>
+                <option value="superior">Superior Healing Potion (8d4+8)</option>
+                <option value="supreme">Supreme Healing Potion (10d4+20)</option>
+              </select>
+            </div>
+            <div class="potion-info">
+              <span id="potion_info_text">Heals: 2d4+2 = 4-10 HP</span>
+            </div>
+            <button onclick="useHealthPotion()" class="rest-button potion-btn" id="use_potion_btn">Use Potion</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Proficiencies & Training (swapped with Conditions) -->
+      <div class="section">
+        <h2>Proficiencies & Training</h2>
+        <textarea id="proficiencies_training" class="basic-textarea" 
+                  oninput="autosave()" placeholder="List your proficiencies, tools, languages, and special training..."
+                  style="min-height: 100px;"></textarea>
+      </div>
+    </div>
+    
+    <!-- Actions & Features -->
+    <div class="section actions-features-section">
+      <h2>Actions & Features</h2>
+      
+      <!-- Favorites Section -->
+      <div class="favorites-section">
+        <h3>Favorite Actions</h3>
+        <div class="actions-list-container" id="favorites_actions_list">
+          <!-- Favorites will be populated here -->
+        </div>
+      </div>
+      
+      <!-- Actions List -->
+      <div class="actions-section">
+        <h3>All Actions</h3>
+        <div class="actions-controls">
+          <button onclick="showActionForm()">+ Add Action</button>
+          <button onclick="showFeatureForm()">+ Add Feature</button>
+        </div>
+        <div class="actions-list-container" id="actions_list">
+          <!-- Actions will be populated here -->
+        </div>
+      </div>
+      
+      <!-- Actions Notes Section -->
+      <div class="actions-section actions-notes-section">
+        <h3>Actions Notes</h3>
+        <textarea id="actions_notes" class="basic-textarea" 
+                  oninput="autosave()" placeholder="Enter any additional notes about your actions here..."></textarea>
+      </div>
+    </div>
+
+    <!-- Weapons and Equipment at bottom -->
+    <div class="horizontal-sections">
+        <!-- Weapons -->
+         <div class="section">
+           <h2>Weapons</h2>
+           <div class="weapons-controls">
+             <button onclick="showWeaponsForm()">+ Add Weapon</button>
+           </div>
+           <div class="weapons-list-container" id="weapons_stats_list">
+             <!-- Weapons will be populated here -->
+           </div>
+        </div>
+            
+         <!-- Equipment -->
+         <div class="section">
+           <h2>Equipment (synced to inventory page)</h2>
+           <div class="equipment-controls">
+             <button onclick="showEquipmentForm()">+ Add Equipment</button>
+           </div>
+           <div class="equipment-list-container" id="equipment_stats_list">
+             <!-- Equipment will be populated here -->
+           </div>
+           <div class="weight-display" id="equipment_stats_weight_total">Equipment Weight: 0 lbs / 0 kg</div>
+         </div>
+    </div>
+
+      <!-- Action Tracker -->
+      <div class="action-tracker">
+        <div class="action-group">
+          <span class="action-label">Actions</span>
+          <input class="action-input" id="action_counter" type="number" min="0" oninput="autosave()" value="0">
+          <div class="usage-toggle">
+            <input type="checkbox" id="action_tick" oninput="autosave()" title="Mark if used this round">
+            <label for="action_tick">Used</label>
+          </div>
+        </div>
+
+        <div class="action-group">
+          <span class="action-label">Bonus</span>
+          <input class="action-input" id="bonus_action_counter" type="number" min="0" oninput="autosave()" value="0">
+          <div class="usage-toggle">
+            <input type="checkbox" id="bonus_action_tick" oninput="autosave()" title="Mark if used this round">
+            <label for="bonus_action_tick">Used</label>
+          </div>
+        </div>
+
+        <button class="new-round-btn" onclick="resetRoundActions()">New Round</button>
+      </div>
+
+
+      <!-- Conditions (swapped with Proficiencies & Training) -->
+      <div class="section">
+        <h2>Long Term Conditions 
+          <button onclick="showConditionPopup()" style="float: right; padding: 2px 6px; font-size: 0.8rem;">+ Add</button>
+        </h2>
+        <div id="conditions_container">
+          <!-- itions will be added here dynamically -->
+        </div>
+      </div>
+
+      <!-- Quick Notes -->
+      <div class="section quick-notes-section">
+        <h2>Quick Notes</h2>
+        <textarea id="stats_quick_notes" class="basic-textarea" 
+                  oninput="autosave()" placeholder="Jot down quick notes here..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  

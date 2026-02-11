@@ -1,0 +1,226 @@
+﻿
+<div class="page active" id="home">
+  <!-- Hero Section -->
+  <div class="hero-section">
+    <div class="hero-content">
+      <h1>Welcome to Joz's Homebrew D&D Sheet</h1>
+      <p class="hero-subtitle">The ultimate digital character sheet for D&D 5e. Create, manage, and track your characters with style!</p>
+      <div class="hero-features">
+        <span class="feature-badge">Auto-Save</span>
+        <span class="feature-badge">Mobile Ready</span>
+        <span class="feature-badge">Homebrew Friendly</span>
+        <span class="feature-badge">Cloud Sync</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content Grid -->
+  <div class="home-grid">
+    <!-- Character Manager -->
+    <div class="home-card character-manager-card">
+      <div class="card-header">
+        <h3>🎭 Character Manager</h3>
+        <p>Create, load, and manage your D&D characters</p>
+      </div>
+      <div class="character-manager-grid">
+        <div class="manager-option">
+          <h4>New Character</h4>
+          <input type="text" id="newCharName" placeholder="Character Name">
+          <button onclick="createNewCharacter()" class="create-btn">Create</button>
+          <div id="createStatus" class="status-message"></div>
+        </div>
+        <div class="manager-option">
+          <h4>Load Character</h4>
+          <select id="characterList"></select>
+          <button onclick="loadSelectedCharacter()" class="load-btn">Load</button>
+        </div>
+        <div class="manager-option">
+          <h4>Delete Character</h4>
+          <div class="delete-flow">
+            <button id="deleteBtn" onclick="initiateDelete()" class="delete-btn">Delete</button>
+            <input type="text" id="deleteConfirmInput" placeholder="Type 'DELETE'" style="display: none;">
+            <span id="deleteCharCount" style="display: none;">0/6</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Start Guide -->
+    <div class="home-card quick-start-card">
+      <div class="card-header">
+        <h3>🚀 Quick Start Guide</h3>
+        <p>Get up and running in minutes</p>
+      </div>
+      <div class="quick-steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h4>Create Character</h4>
+            <p>Use the Character Manager to create your first character</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h4>Fill Stats</h4>
+            <p>Enter your character's basic information on the Stats page</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <h4>Explore Features</h4>
+            <p>Navigate through tabs to discover all the amazing features</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">4</div>
+          <div class="step-content">
+            <h4>Export & Backup</h4>
+            <p>Always export your characters for safekeeping</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Key Features -->
+    <div class="home-card features-card">
+      <div class="card-header">
+        <h3>⭐ Key Features</h3>
+        <p>Everything you need for D&D character management</p>
+      </div>
+      <div class="features-grid">
+        <div class="feature-item">
+          <div class="feature-icon">💾</div>
+          <h4>Auto-Save</h4>
+          <p>Everything saves automatically - no lost progress!</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">👥</div>
+          <h4>Multiple Characters</h4>
+          <p>Manage unlimited characters for different campaigns</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">📱</div>
+          <h4>Mobile Friendly</h4>
+          <p>Perfect for phones, tablets, and desktop</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🎲</div>
+          <h4>Homebrew Ready</h4>
+          <p>Customize for any homebrew content or rules</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">⚔️</div>
+          <h4>Combat Tracker</h4>
+          <p>Track HP, spell slots, and combat actions</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🎒</div>
+          <h4>Smart Inventory</h4>
+          <p>Weight tracking and organized item management</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tips & Tricks -->
+    <div class="home-card tips-card">
+      <div class="card-header">
+        <h3>💡 Pro Tips & Tricks</h3>
+        <p>Master your character sheet like a pro</p>
+      </div>
+      <div class="tips-grid">
+        <div class="tip-category">
+          <h4>🎯 Getting Started</h4>
+          <ul>
+            <li><strong>First Time?</strong> Start with basic character info</li>
+            <li><strong>Auto-Save:</strong> No need to click save buttons!</li>
+            <li><strong>Multiple Characters:</strong> One for each campaign</li>
+            <li><strong>Export Data:</strong> Always backup your characters</li>
+          </ul>
+        </div>
+        
+        <div class="tip-category">
+          <h4>📱 Mobile Mastery</h4>
+          <ul>
+            <li><strong>Portrait Mode:</strong> Single column for easy reading</li>
+            <li><strong>Landscape Mode:</strong> Wider layout for tablets</li>
+            <li><strong>Touch Friendly:</strong> All buttons optimized for touch</li>
+            <li><strong>Responsive:</strong> Adapts to any screen size</li>
+          </ul>
+        </div>
+        
+        <div class="tip-category">
+          <h4>⚔️ Combat Features</h4>
+          <ul>
+            <li><strong>Action Tracker:</strong> Track all action types</li>
+            <li><strong>Hit Points:</strong> Auto-calculates temp HP</li>
+            <li><strong>Short Rest:</strong> Hit dice + CON modifier</li>
+            <li><strong>Death Saves:</strong> Visual success/failure tracking</li>
+          </ul>
+        </div>
+        
+        <div class="tip-category">
+          <h4>🎒 Inventory Tips</h4>
+          <ul>
+            <li><strong>Equipment vs Items:</strong> Different sections for different uses</li>
+            <li><strong>Weight Tracking:</strong> Automatic capacity calculations</li>
+            <li><strong>Storage Containers:</strong> Create bags and chests</li>
+            <li><strong>Easy Management:</strong> Drag and drop items</li>
+          </ul>
+        </div>
+        
+        <div class="tip-category">
+          <h4>🔮 Magic & Spells</h4>
+          <ul>
+            <li><strong>Spell Slots:</strong> Automatic tracking</li>
+            <li><strong>Custom Resources:</strong> Ki points, sorcery points, etc.</li>
+            <li><strong>Spell Search:</strong> Find spells quickly</li>
+            <li><strong>Favorites:</strong> Mark frequently used spells</li>
+          </ul>
+        </div>
+        
+        <div class="tip-category">
+          <h4>⚙️ Customization</h4>
+          <ul>
+            <li><strong>Theme Toggle:</strong> Light and dark modes</li>
+            <li><strong>Portrait Upload:</strong> Add character images</li>
+            <li><strong>Notes Sections:</strong> Campaign and world info</li>
+            <li><strong>Resizable:</strong> Drag to resize sections</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Suggestion Form -->
+    <div class="home-card suggestion-card">
+      <div class="card-header">
+        <h3>💬 Share Your Ideas</h3>
+        <p>Help us improve the character sheet</p>
+      </div>
+      <form id="suggestionForm" class="suggestion-form">
+        <div class="form-group">
+          <label for="suggestionType">What kind of suggestion?</label>
+          <select id="suggestionType" required>
+            <option value="">Choose a category...</option>
+            <option value="Make it Look Better">Make it Look Better</option>
+            <option value="Add New Feature">Add New Feature</option>
+            <option value="Fix a Problem">Fix a Problem</option>
+            <option value="Make it Easier to Use">Make it Easier to Use</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="suggestionText">Your suggestion:</label>
+          <textarea id="suggestionText" placeholder="Tell us what you'd like to see improved or added..." required></textarea>
+        </div>
+        
+        <button type="submit" class="submit-btn">Send Suggestion</button>
+        <div id="suggestionStatus" class="status-message"></div>
+      </form>
+    </div>
+  </div>
+</div>
+
+  
