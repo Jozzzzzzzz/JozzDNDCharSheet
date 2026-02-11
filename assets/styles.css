@@ -662,8 +662,7 @@ button[onclick*="home"] {
 
   input:focus, textarea:focus, select:focus {
     outline: none;
-    border-color: var(--accent-text);
-    box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.2);
+    border-color: var(--accent);
     transform: translateY(-1px);
   }
 
@@ -732,7 +731,6 @@ button[onclick*="home"] {
   }
 
   button:hover {
-    background: #555;
     filter: brightness(1.2);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
@@ -912,7 +910,7 @@ button[onclick*="home"] {
   }
 
   tr:hover {
-    background-color: rgba(255, 215, 0, 0.05);
+    background-color: rgba(var(--accent-rgb, 255, 215, 0), 0.05);
   }
 
   th {
@@ -1385,7 +1383,7 @@ button[onclick*="home"] {
   .hit-dice-group select:focus {
     outline: none;
     border-color: var(--accent-border);
-    box-shadow: 0 0 5px rgba(255, 215, 0, 0.3);
+    box-shadow: 0 0 5px rgba(var(--accent-rgb, 255, 215, 0), 0.3);
   }
 
   /* Style the dropdown options to match the image */
@@ -2631,7 +2629,6 @@ button[onclick*="home"] {
 }
 
 .create-btn:hover, .load-btn:hover {
-  background: #ffed4e;
   transform: translateY(-2px);
 }
 
@@ -2814,7 +2811,6 @@ button[onclick*="home"] {
 }
 
 .submit-btn:hover {
-  background: #ffed4e;
   transform: translateY(-2px);
 }
 
@@ -3664,7 +3660,7 @@ button[onclick*="home"] {
 
   .action-card.favorite {
     border-color: var(--accent-border);
-    background: linear-gradient(135deg, var(--card-bg), rgba(255, 215, 0, 0.1));
+    background: linear-gradient(135deg, var(--card-bg), rgba(var(--accent-rgb, 255, 215, 0), 0.1));
   }
 
   .action-header {
@@ -3743,23 +3739,20 @@ button[onclick*="home"] {
     color: var(--accent-contrast);
   }
 
-  .favorite-btn:hover {
-    background: #ffed4e;
-  }
-
   .favorite-btn.favorited {
     background: #ff6b6b;
     color: #fff;
   }
 
   .edit-btn {
-    background: var(--border);
-    color: var(--text);
+    background: var(--accent);
+    color: var(--accent-contrast);
   }
 
   .edit-btn:hover {
     background: var(--accent);
     color: var(--accent-contrast);
+    filter: brightness(1.1);
   }
 
   .delete-btn {
@@ -3988,13 +3981,14 @@ button[onclick*="home"] {
   }
 
   .edit-btn {
-    background: var(--border);
-    color: var(--text);
+    background: var(--accent);
+    color: var(--accent-contrast);
   }
 
   .edit-btn:hover {
     background: var(--accent);
     color: var(--accent-contrast);
+    filter: brightness(1.1);
   }
 
   .delete-btn {

@@ -10,28 +10,27 @@
 </h1>
 
 <!-- Data Controls -->
-<div style="display: flex; justify-content: center; align-items: center; gap: 8px; margin: 10px auto; width: 100%;">
+<div style="display: flex; justify-content: center; align-items: center; gap: 16px; margin: 10px auto; width: 100%;">
 
   <!-- Home Button -->
   <button onclick="
-    document.getElementById('home').classList.add('active'); 
+    document.getElementById('home').classList.add('active');
     document.querySelectorAll('.page').forEach(p => { if(p.id !== 'home') p.classList.remove('active'); });
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  " class="accent-contrast-bg" style="background: var(--accent);" title="Home">🏠</button>
+  " class="accent-contrast-bg" style="background: var(--accent); width: 200px;" title="Home">Home</button>
 
   <!-- Reset Layout -->
-  <button id="resetLayoutBtn" class="accent-contrast-bg" style="background: var(--accent);">Reset Layout</button>
+  <button id="resetLayoutBtn" class="accent-contrast-bg" style="background: var(--accent); width: 200px;">Reset Layout</button>
 
   <!-- Save Layout -->
-  <button id="saveLayoutBtn" class="accent-contrast-bg" style="background: var(--accent);">Save Layout</button>
+  <button id="saveLayoutBtn" class="accent-contrast-bg" style="background: var(--accent); width: 200px;">Save Layout</button>
 
   <!-- Save Data -->
-  <button id="saveDataBtn" onclick="manualSave();" class="accent-contrast-bg" style="background: var(--accent);">Save Data</button>
-  <span id="saveStatus" style="margin-left: 10px; color: var(--accent-text); font-size: 0.9rem;"></span>
+  <button id="saveDataBtn" onclick="manualSave();" class="accent-contrast-bg" style="background: var(--accent); width: 200px;">Save Data</button>
 
   <!-- Settings Dropdown -->
   <div style="position: relative; display: inline-block;">
-    <button id="settingsBtn" class="accent-contrast-bg" style="background: var(--accent);" title="Settings">⚙️</button>
+    <button id="settingsBtn" class="accent-contrast-bg" style="background: var(--accent); width: 200px;" title="Settings">Settings</button>
     <div id="settingsDropdown" style="display: none; position: absolute; right: 0; border-radius: 6px; z-index: 1000;">
       
       <!-- Theme Toggle -->
