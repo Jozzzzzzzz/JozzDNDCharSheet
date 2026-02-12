@@ -18,8 +18,9 @@ function initializeFirebase() {
   try {
     firebaseApp = firebase.initializeApp(firebaseConfig);
     auth = firebase.auth();
+    window.auth = auth; // Make auth globally available for button check
     db = firebase.firestore();
-    
+
     // Listen for auth state changes
     auth.onAuthStateChanged((user) => {
       currentUser = user;
@@ -30,11 +31,15 @@ function initializeFirebase() {
         setTimeout(() => syncFromCloud(true), 1000);
       }
     });
-    
+
     console.log('Firebase initialized successfully');
+    // Update UI to enable sign-in button
+    updateAuthUI();
   } catch (error) {
     console.error('Firebase initialization error:', error);
     setSyncStatus('Cloud sync unavailable');
+    // Update UI to show error state
+    updateAuthUI();
   }
 }
 
@@ -42,7 +47,8 @@ function updateAuthUI() {
   const signedInView = document.getElementById('signedInView');
   const signedOutView = document.getElementById('signedOutView');
   const userEmail = document.getElementById('userEmail');
-  
+  const signInBtn = document.getElementById('signInBtn');
+
   if (currentUser) {
     signedInView.style.display = 'block';
     signedOutView.style.display = 'none';
@@ -50,6 +56,11 @@ function updateAuthUI() {
   } else {
     signedInView.style.display = 'none';
     signedOutView.style.display = 'block';
+    // Enable/disable sign-in button based on Firebase availability
+    if (signInBtn) {
+      signInBtn.disabled = !auth;
+      signInBtn.textContent = auth ? 'Sign In with Google' : 'Loading...';
+    }
   }
 }
 
@@ -67,6 +78,28 @@ function setSyncStatus(message) {
 // Authentication Functions
 async function signInWithGoogle() {
   try {
+    // Comprehensive checks for Firebase availability
+    if (typeof firebase === 'undefined') {
+      console.error('Firebase library not loaded');
+      setSyncStatus('Firebase not loaded yet');
+      alert('Firebase is still loading. Please wait a moment and try again.');
+      return;
+    }
+
+    if (!firebase.auth) {
+      console.error('Firebase auth module not available');
+      setSyncStatus('Firebase auth not available');
+      alert('Firebase authentication is not available. Please refresh the page.');
+      return;
+    }
+
+    if (!window.auth) {
+      console.error('Firebase auth instance not initialized');
+      setSyncStatus('Authentication not ready');
+      alert('Authentication is not ready yet. Please wait a moment and try again.');
+      return;
+    }
+
     console.log('Attempting Google sign-in...');
     setSyncStatus('Opening sign-in popup...');
 
@@ -75,7 +108,7 @@ async function signInWithGoogle() {
     provider.addScope('email');
     provider.addScope('profile');
 
-    const result = await auth.signInWithPopup(provider);
+    const result = await window.auth.signInWithPopup(provider);
     console.log('Sign-in successful:', result.user.email);
     setSyncStatus('Signed in successfully');
   } catch (error) {
@@ -89,8 +122,10 @@ async function signInWithGoogle() {
       errorMessage = 'Sign-in cancelled';
     } else if (error.code === 'auth/unauthorized-domain') {
       errorMessage = 'This domain is not authorized for sign-in. Please add it to Firebase Console.';
+    } else if (error.message && error.message.includes('signInWithPopup')) {
+      errorMessage = 'Authentication system is not ready. Please refresh the page and try again.';
     } else {
-      errorMessage = error.message;
+      errorMessage = error.message || 'Unknown sign-in error';
     }
 
     setSyncStatus(errorMessage);
