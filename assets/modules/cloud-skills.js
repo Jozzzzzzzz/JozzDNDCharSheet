@@ -67,12 +67,34 @@ function setSyncStatus(message) {
 // Authentication Functions
 async function signInWithGoogle() {
   try {
+    console.log('Attempting Google sign-in...');
+    setSyncStatus('Opening sign-in popup...');
+
     const provider = new firebase.auth.GoogleAuthProvider();
-    await auth.signInWithPopup(provider);
-    setSyncStatus('Signing in...');
+    // Add scopes if needed
+    provider.addScope('email');
+    provider.addScope('profile');
+
+    const result = await auth.signInWithPopup(provider);
+    console.log('Sign-in successful:', result.user.email);
+    setSyncStatus('Signed in successfully');
   } catch (error) {
     console.error('Sign-in error:', error);
-    setSyncStatus('Sign-in failed: ' + error.message);
+
+    // Handle specific error cases
+    let errorMessage = 'Sign-in failed';
+    if (error.code === 'auth/popup-blocked') {
+      errorMessage = 'Popup was blocked by browser. Please allow popups and try again.';
+    } else if (error.code === 'auth/popup-closed-by-user') {
+      errorMessage = 'Sign-in cancelled';
+    } else if (error.code === 'auth/unauthorized-domain') {
+      errorMessage = 'This domain is not authorized for sign-in. Please add it to Firebase Console.';
+    } else {
+      errorMessage = error.message;
+    }
+
+    setSyncStatus(errorMessage);
+    alert(errorMessage);
   }
 }
 

@@ -903,7 +903,7 @@ function showHomePage() {
 function createNewCharacter() {
   const charName = document.getElementById('newCharName').value.trim();
   const createStatus = document.getElementById('createStatus');
-  
+
   if (!charName) {
     if (createStatus) {
       createStatus.textContent = 'Please enter a character name';
@@ -915,7 +915,7 @@ function createNewCharacter() {
     }
     return;
   }
-  
+
   try {
     const newChar = {
       id: Date.now().toString(),
@@ -931,11 +931,11 @@ function createNewCharacter() {
         equipment: []
       }
     };
-    
+
     let characters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
     characters.push(newChar);
     localStorage.setItem('dndCharacters', JSON.stringify(characters));
-    
+
     currentCharacter = newChar.id;
     loadCharacterList();
     loadData();
@@ -943,7 +943,7 @@ function createNewCharacter() {
     enforceAutoMathNumericInputs();
     document.querySelector('.tab[data-tab="page1"]').click();
     document.getElementById('newCharName').value = '';
-    
+
     if (createStatus) {
       createStatus.textContent = `Character "${charName}" created successfully!`;
       createStatus.className = 'status-message success';
@@ -1798,6 +1798,203 @@ function loadData() {
   setTimeout(() => {
     applyFlexWrapSizing();
   }, 0);
+}
+
+function clearAllFormFields() {
+  // Clear character info fields
+  const charInfoFields = ['char_name', 'char_race', 'char_class', 'char_subclass', 'char_level'];
+  charInfoFields.forEach(id => {
+    const element = document.getElementById(id);
+    if (element) element.value = '';
+  });
+
+  // Clear ability scores and bonuses
+  const abilityFields = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+  abilityFields.forEach(ability => {
+    const scoreElement = document.getElementById(ability);
+    const bonusElement = document.getElementById(`${ability}_bonus`);
+    const saveElement = document.getElementById(`${ability}_save`);
+    const profElement = document.getElementById(`${ability}_save_prof`);
+
+    if (scoreElement) scoreElement.value = '';
+    if (bonusElement) bonusElement.value = '';
+    if (saveElement) saveElement.value = '';
+    if (profElement) profElement.checked = false;
+  });
+
+  // Clear combat stats
+  const combatFields = ['ac', 'initiative', 'speed', 'prof_bonus'];
+  combatFields.forEach(id => {
+    const element = document.getElementById(id);
+    if (element) element.value = '';
+  });
+
+  // Clear health fields
+  const healthFields = ['max_hp', 'curr_hp', 'hit_dice_spend', 'con_modifier', 'hit_die_size', 'potion_type'];
+  healthFields.forEach(id => {
+    const element = document.getElementById(id);
+    if (element) element.value = '';
+  });
+
+  // Clear temp HP display
+  const tempHPDisplay = document.getElementById('temp_hp_display');
+  if (tempHPDisplay) {
+    tempHPDisplay.classList.remove('show');
+    const tempHPText = document.getElementById('temp_hp_text');
+    if (tempHPText) tempHPText.textContent = '';
+  }
+
+  // Clear skills
+  const skillNames = ['acrobatics', 'animal_handling', 'arcana', 'athletics', 'deception', 'history',
+                     'insight', 'intimidation', 'investigation', 'medicine', 'nature', 'perception',
+                     'performance', 'persuasion', 'religion', 'sleight_of_hand', 'stealth', 'survival'];
+
+  skillNames.forEach(skill => {
+    const profElement = document.getElementById(`prof_${skill}`);
+    const adjElement = document.getElementById(`adj_${skill}`);
+    const bonusElement = document.getElementById(`bonus_${skill}`);
+
+    if (profElement) profElement.checked = false;
+    if (adjElement) adjElement.value = '+0';
+    if (bonusElement) bonusElement.value = '';
+  });
+
+  // Clear death saves
+  for (let i = 1; i <= 3; i++) {
+    const successElement = document.getElementById(`death_save_success_${i}`);
+    const failureElement = document.getElementById(`death_save_failure_${i}`);
+    const successCheckbox = document.getElementById(`death_save_success_${i}_checkbox`);
+    const failureCheckbox = document.getElementById(`death_save_failure_${i}_checkbox`);
+
+    if (successElement) successElement.classList.remove('checked');
+    if (failureElement) failureElement.classList.remove('checked');
+    if (successCheckbox) successCheckbox.checked = false;
+    if (failureCheckbox) failureCheckbox.checked = false;
+  }
+
+  // Clear action tracker
+  const actionFields = ['action_counter', 'bonus_action_counter'];
+  actionFields.forEach(id => {
+    const element = document.getElementById(id);
+    if (element) element.value = '';
+  });
+
+  const actionTicks = ['action_tick', 'bonus_action_tick'];
+  actionTicks.forEach(id => {
+    const element = document.getElementById(id);
+    if (element) element.checked = false;
+  });
+
+  // Clear background fields
+  const backgroundFields = ['char_backstory', 'personality_traits', 'traits_ideals', 'traits_bonds',
+                           'traits_flaws', 'traits_allies', 'traits_appearance'];
+  backgroundFields.forEach(id => {
+    const element = document.getElementById(id);
+    if (element) element.value = '';
+  });
+
+  // Clear portrait
+  const portraitPreview = document.getElementById('portraitPreview');
+  if (portraitPreview) {
+    portraitPreview.innerHTML = '<span style="color: #666;">No image</span>';
+  }
+
+  // Clear spell fields
+  const spellFields = ['spell_notes', 'spellcasting_ability', 'spell_save_dc', 'spell_attack_bonus',
+                      'caster_type', 'spells_prepared'];
+  spellFields.forEach(id => {
+    const element = document.getElementById(id);
+    if (element) element.value = '';
+  });
+
+  // Clear inventory fields
+  const inventoryFields = ['gold_field', 'max_weight_capacity'];
+  inventoryFields.forEach(id => {
+    const element = document.getElementById(id);
+    if (element) element.value = '';
+  });
+
+  // Clear notes fields
+  const notesFields = ['active_quests', 'completed_quests', 'quest_leads', 'mission_objectives',
+                      'important_locations', 'travel_routes', 'world_events', 'places_to_visit',
+                      'key_npcs', 'allies_contacts', 'enemies_threats', 'npc_relationships',
+                      'npc_information', 'session_notes', 'campaign_timeline', 'party_decisions',
+                      'campaign_goals', 'combat_notes', 'enemy_information', 'equipment_items',
+                      'spell_ability_notes', 'rules_mechanics', 'ideas_plans', 'miscellaneous_notes'];
+  notesFields.forEach(id => {
+    const element = document.getElementById(id);
+    if (element) element.value = '';
+  });
+
+  // Clear actions and features
+  const actionsNotes = document.getElementById('actions_notes');
+  if (actionsNotes) actionsNotes.value = '';
+
+  // Clear inventory data
+  const proficienciesTraining = document.getElementById('proficiencies_training');
+  if (proficienciesTraining) proficienciesTraining.value = '';
+
+  const statsQuickNotes = document.getElementById('stats_quick_notes');
+  if (statsQuickNotes) statsQuickNotes.value = '';
+
+  // Clear weapons and equipment data
+  weaponsData = [];
+  equipmentData = [];
+  updateWeaponsPreview();
+  updateEquipmentPreviews();
+
+  // Clear conditions
+  const conditionsContainer = document.getElementById('conditions_container');
+  if (conditionsContainer) {
+    conditionsContainer.innerHTML = '';
+  }
+
+  // Clear inventory containers
+  const extraContainers = document.getElementById('extra_containers');
+  if (extraContainers) {
+    extraContainers.innerHTML = '';
+  }
+
+  // Clear main inventory table
+  const inventoryTable = document.getElementById('inventory_table');
+  if (inventoryTable) {
+    const tbody = inventoryTable.querySelector('tbody');
+    if (tbody) tbody.innerHTML = '';
+  }
+
+  // Reset inventory data
+  inventoryData = {
+    equipment: [],
+    mainInventory: [],
+    storageContainers: [],
+    maxWeightCapacity: 0
+  };
+
+  // Clear actions data
+  actionsData = {
+    actions: []
+  };
+  displayActions('action');
+  updateFavorites();
+
+  // Clear spells data
+  spellsData = {
+    cantrips: [],
+    spells: []
+  };
+  favoritesData = {
+    cantrips: [],
+    spells: []
+  };
+  manualSpellSlots = [];
+  manualSpellSlotsUsed = {};
+  customResources = [];
+  customResourcesUsed = {};
+
+  // Update spell system
+  updateSpellSlots();
+  updateCustomResources();
+  renderSpells();
 }
 
 // ========== EXISTING FUNCTIONS (UPDATED) ==========
