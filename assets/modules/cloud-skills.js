@@ -16,6 +16,19 @@ let currentUser = null;
 
 function initializeFirebase() {
   try {
+    // Verify Firebase libraries are loaded
+    if (typeof firebase === 'undefined') {
+      console.error('Firebase library not loaded');
+      setSyncStatus('Firebase library not available');
+      return;
+    }
+    
+    // Prevent multiple initialization attempts
+    if (firebaseApp) {
+      console.log('Firebase already initialized');
+      return;
+    }
+    
     firebaseApp = firebase.initializeApp(firebaseConfig);
     auth = firebase.auth();
     window.auth = auth; // Make auth globally available for button check
@@ -226,8 +239,8 @@ async function syncFromCloud(silent = false) {
         if (cloudCharacters.length > 0) {
           currentCharacter = cloudCharacters[0].id;
           loadData();
-    setupSkillCalculationFields();
-    enforceAutoMathNumericInputs();
+          setupSkillCalculationFields();
+          enforceAutoMathNumericInputs();
         }
       }
     }
@@ -248,20 +261,26 @@ function enableAutoSync() {
 }
 
 // Enhanced autosave to include cloud sync
-const originalAutosave = autosave;
-autosave = function() {
-  // Call original autosave
-  originalAutosave();
-  
-  // If user is signed in, schedule a cloud sync
-  if (currentUser) {
-    // Debounce cloud sync to avoid too many uploads
-    clearTimeout(window.cloudSyncTimeout);
-    window.cloudSyncTimeout = setTimeout(() => {
-      syncToCloud();
-    }, 10000); // Sync 10 seconds after last change
+// Defer wrapping autosave since core.js might still be loading
+setTimeout(() => {
+  if (typeof autosave === 'function' && !autosave.__cloudSyncWrapped) {
+    const originalAutosave = autosave;
+    autosave = function() {
+      // Call original autosave
+      originalAutosave();
+      
+      // If user is signed in, schedule a cloud sync
+      if (currentUser) {
+        // Debounce cloud sync to avoid too many uploads
+        clearTimeout(window.cloudSyncTimeout);
+        window.cloudSyncTimeout = setTimeout(() => {
+          syncToCloud();
+        }, 10000); // Sync 10 seconds after last change
+      }
+    };
+    autosave.__cloudSyncWrapped = true;
   }
-};
+}, 100);
 
 // Skill calculation + numeric input helpers
 const SKILL_ABILITY_MAP = {
@@ -624,8 +643,8 @@ function updateProficiencyBonusIfNotOverridden() {
 }
 
 
-// Initialize Firebase when page loads
-document.addEventListener('DOMContentLoaded', function() {
+// Initialize Firebase when page loads or immediately if already loaded
+function initCloudFirebase() {
   initializeFirebase();
   enableAutoSync();
   
@@ -648,7 +667,13 @@ document.addEventListener('DOMContentLoaded', function() {
       console.log('Service Worker registration failed:', error);
     });
   }
-  
-});
+}
+
+// Initialize immediately if DOM is ready, otherwise wait for the event
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initCloudFirebase);
+} else {
+  initCloudFirebase();
+}
 
 

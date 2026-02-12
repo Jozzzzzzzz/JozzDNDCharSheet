@@ -988,6 +988,103 @@ function loadCharacterList() {
   });
 }
 
+// Clear all form fields to prevent old character data from persisting
+function clearAllFormFields() {
+  // Clear all input fields
+  document.querySelectorAll('input[type="text"], input[type="number"], input[type="email"], input[type="password"], input[type="url"]').forEach(input => {
+    if (!input.id.includes('deleteConfirmInput') && !input.id.includes('newCharName')) {
+      input.value = '';
+    }
+  });
+  
+  // Clear all textareas
+  document.querySelectorAll('textarea').forEach(textarea => {
+    textarea.value = '';
+  });
+  
+  // Clear all checkboxes and radio buttons
+  document.querySelectorAll('input[type="checkbox"], input[type="radio"]').forEach(input => {
+    input.checked = false;
+  });
+  
+  // Clear select dropdowns (except character list)
+  document.querySelectorAll('select').forEach(select => {
+    if (select.id !== 'characterList') {
+      select.selectedIndex = 0;
+    }
+  });
+  
+  // Clear portrait preview
+  const portraitPreview = document.getElementById('portraitPreview');
+  if (portraitPreview) {
+    portraitPreview.innerHTML = '';
+  }
+  
+  // Clear inventory table
+  const inventoryTable = document.getElementById('inventory_table');
+  if (inventoryTable) {
+    const tbody = inventoryTable.querySelector('tbody');
+    if (tbody) tbody.innerHTML = '';
+  }
+  
+  // Clear extra containers
+  const extraContainers = document.getElementById('extra_containers');
+  if (extraContainers) {
+    extraContainers.innerHTML = '';
+  }
+  
+  // Clear conditions
+  const conditionsContainer = document.getElementById('conditions_container');
+  if (conditionsContainer) {
+    conditionsContainer.innerHTML = '';
+  }
+  
+  // Reset global data variables to clean states
+  weaponsData = [];
+  equipmentData = [];
+  
+  // Reset inventory data if available
+  if (typeof inventoryData !== 'undefined') {
+    inventoryData = {
+      equipment: [],
+      mainInventory: [],
+      storageContainers: [],
+      maxWeightCapacity: 0
+    };
+  }
+  
+  // Reset spell data if available
+  if (typeof spellsData !== 'undefined') {
+    spellsData = {
+      spells: [],
+      spellcastingInfo: {}
+    };
+  }
+  if (typeof manualSpellSlots !== 'undefined') {
+    manualSpellSlots = [];
+  }
+  if (typeof manualSpellSlotsUsed !== 'undefined') {
+    manualSpellSlotsUsed = {};
+  }
+  if (typeof customResources !== 'undefined') {
+    customResources = [];
+  }
+  if (typeof customResourcesUsed !== 'undefined') {
+    customResourcesUsed = {};
+  }
+  if (typeof favoritesData !== 'undefined') {
+    favoritesData = {};
+  }
+  
+  // Reset actions data if available
+  if (typeof actionsData !== 'undefined') {
+    actionsData = {
+      actions: [],
+      features: []
+    };
+  }
+}
+
 function loadSelectedCharacter() {
   const select = document.getElementById('characterList');
   const charId = select.value;
@@ -1298,6 +1395,9 @@ function autosave() {
 
 function loadData() {
   if (!currentCharacter) return;
+  
+  // Clear all old form fields first to prevent data from previous character from persisting
+  clearAllFormFields();
   
   const characters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
   const character = characters.find(char => char.id === currentCharacter);
