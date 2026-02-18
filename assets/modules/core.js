@@ -1056,6 +1056,7 @@ function clearAllFormFields() {
   // Reset spell data if available
   if (typeof spellsData !== 'undefined') {
     spellsData = {
+      cantrips: [],
       spells: [],
       spellcastingInfo: {}
     };
