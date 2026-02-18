@@ -13055,32 +13055,24 @@ function updateProficiencyBonusIfNotOverridden() {
   }
 }
 
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) {
+    return;
+  }
+
+  navigator.serviceWorker.register('/sw.js')
+    .then(function(registration) {
+      console.log('Service Worker registered:', registration);
+    })
+    .catch(function(error) {
+      console.warn('Service Worker registration failed:', error);
+    });
+}
 
 // Initialize Firebase when page loads
 document.addEventListener('DOMContentLoaded', function() {
   initializeFirebase();
   enableAutoSync();
-  
-  // Register service worker for PWA functionality
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('data:text/javascript;base64,' + btoa(`
-      self.addEventListener('install', function(event) {
-        event.waitUntil(self.skipWaiting());
-      });
-      
-      self.addEventListener('activate', function(event) {
-        event.waitUntil(self.clients.claim());
-      });
-      
-      self.addEventListener('fetch', function(event) {
-        // Let the browser handle all requests normally
-        return;
-      });
-    `)).catch(function(error) {
-      console.log('Service Worker registration failed:', error);
-    });
-  }
-  
+  registerServiceWorker();
 });
-
 

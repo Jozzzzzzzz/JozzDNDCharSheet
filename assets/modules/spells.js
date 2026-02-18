@@ -6164,7 +6164,8 @@ function renderFavoritesList(containerId, favorites) {
 function filterSpells(type) {
   // Map type to list container keys used in DOM ids
   const listKey = type === 'cantrip' ? 'cantrips' : 'spells';
-  const spells = type === 'cantrip' ? spellsData.cantrips : spellsData.spells;
+  const spellArray = type === 'cantrip' ? spellsData.cantrips : spellsData.spells;
+  const spells = Array.isArray(spellArray) ? spellArray : [];
   const container = document.getElementById(`${listKey}_list`);
   if (!container) return;
   
@@ -6182,7 +6183,7 @@ function filterSpells(type) {
   }
   
   // Filter spells
-  let filteredSpells = spells.filter(spell => {
+  let filteredSpells = (spells || []).filter(spell => {
     // Level filter
     if (levelFilter !== 'all' && spell.level.toString() !== levelFilter) {
       return false;

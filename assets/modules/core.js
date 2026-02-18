@@ -1085,11 +1085,7 @@ function clearAllFormFields() {
   
   // Reset spell data if available
   if (typeof spellsData !== 'undefined') {
-    spellsData = {
-      cantrips: [],
-      spells: [],
-      spellcastingInfo: {}
-    };
+    spellsData = getDefaultSpellData();
   }
   if (typeof manualSpellSlots !== 'undefined') {
     manualSpellSlots = [];
@@ -1104,7 +1100,7 @@ function clearAllFormFields() {
     customResourcesUsed = {};
   }
   if (typeof favoritesData !== 'undefined') {
-    favoritesData = {};
+    favoritesData = getDefaultFavoritesData();
   }
   
   // Reset actions data if available
@@ -1668,48 +1664,45 @@ function loadData() {
   
   // Page 3: Spells
   if (data.page3) {
-    if (data.page3.spellNotes) {
-    document.getElementById('spell_notes').value = data.page3.spellNotes;
+    const page3Data = data.page3;
+    if (page3Data.spellNotes) {
+      document.getElementById('spell_notes').value = page3Data.spellNotes;
     }
     
     // Load spellcasting info
-    if (data.page3.spellcastingInfo) {
-      document.getElementById('spellcasting_ability').value = data.page3.spellcastingInfo.ability || 'int';
-      document.getElementById('spell_save_dc').value = data.page3.spellcastingInfo.saveDC || '8';
-      document.getElementById('spell_attack_bonus').value = data.page3.spellcastingInfo.attackBonus || '0';
-      document.getElementById('caster_type').value = data.page3.spellcastingInfo.casterType || 'prepared';
-      document.getElementById('spells_prepared').value = data.page3.spellcastingInfo.spellsPrepared || '0';
+    if (page3Data.spellcastingInfo) {
+      document.getElementById('spellcasting_ability').value = page3Data.spellcastingInfo.ability || 'int';
+      document.getElementById('spell_save_dc').value = page3Data.spellcastingInfo.saveDC || '8';
+      document.getElementById('spell_attack_bonus').value = page3Data.spellcastingInfo.attackBonus || '0';
+      document.getElementById('caster_type').value = page3Data.spellcastingInfo.casterType || 'prepared';
+      document.getElementById('spells_prepared').value = page3Data.spellcastingInfo.spellsPrepared || '0';
     }
     
     // Load manual spell slots
-    if (data.page3.manualSpellSlots) {
-      manualSpellSlots = data.page3.manualSpellSlots;
+    if (page3Data.manualSpellSlots) {
+      manualSpellSlots = page3Data.manualSpellSlots;
     }
     
     // Load manual spell slots used
-    if (data.page3.manualSpellSlotsUsed) {
-      manualSpellSlotsUsed = data.page3.manualSpellSlotsUsed;
+    if (page3Data.manualSpellSlotsUsed) {
+      manualSpellSlotsUsed = page3Data.manualSpellSlotsUsed;
     }
     
     // Load custom resources
-    if (data.page3.customResources) {
-      customResources = data.page3.customResources;
+    if (page3Data.customResources) {
+      customResources = page3Data.customResources;
     }
     
     // Load custom resources used
-    if (data.page3.customResourcesUsed) {
-      customResourcesUsed = data.page3.customResourcesUsed;
+    if (page3Data.customResourcesUsed) {
+      customResourcesUsed = page3Data.customResourcesUsed;
     }
     
     // Load spells data
-    if (data.page3.spellsData) {
-      spellsData = data.page3.spellsData;
-    }
+    spellsData = normalizeSpellData(page3Data.spellsData);
     
     // Load favorites data
-    if (data.page3.favoritesData) {
-      favoritesData = data.page3.favoritesData;
-    }
+    favoritesData = normalizeFavoritesData(page3Data.favoritesData);
     
     // Update spell system
     updateSpellSlots();

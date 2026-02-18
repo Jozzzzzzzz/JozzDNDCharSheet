@@ -722,32 +722,27 @@ function updateProficiencyBonusIfNotOverridden() {
 
 
 // Initialize Firebase when page loads or immediately if already loaded
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) {
+    return;
+  }
+
+  navigator.serviceWorker.register('/sw.js')
+    .then(function(registration) {
+      console.log('Service Worker registered:', registration);
+    })
+    .catch(function(error) {
+      console.warn('Service Worker registration failed:', error);
+    });
+}
+
 function initCloudFirebase() {
   console.log('=== initCloudFirebase called ===');
   console.log('document.readyState:', document.readyState);
   
   initializeFirebase();
   enableAutoSync();
-  
-  // Register service worker for PWA functionality
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('data:text/javascript;base64,' + btoa(`
-      self.addEventListener('install', function(event) {
-        event.waitUntil(self.skipWaiting());
-      });
-      
-      self.addEventListener('activate', function(event) {
-        event.waitUntil(self.clients.claim());
-      });
-      
-      self.addEventListener('fetch', function(event) {
-        // Let the browser handle all requests normally
-        return;
-      });
-    `)).catch(function(error) {
-      console.log('Service Worker registration failed:', error);
-    });
-  }
+  registerServiceWorker();
 }
 
 // Initialize immediately if DOM is ready, otherwise wait for the event
