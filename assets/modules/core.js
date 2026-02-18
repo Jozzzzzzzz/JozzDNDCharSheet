@@ -84,6 +84,36 @@ function applyFlexWrapSizing() {
   });
 }
 
+function getDefaultSpellData() {
+  return {
+    cantrips: [],
+    spells: [],
+    spellcastingInfo: {}
+  };
+}
+
+function normalizeSpellData(raw = {}) {
+  return {
+    cantrips: Array.isArray(raw.cantrips) ? raw.cantrips : [],
+    spells: Array.isArray(raw.spells) ? raw.spells : [],
+    spellcastingInfo: raw.spellcastingInfo || {}
+  };
+}
+
+function getDefaultFavoritesData() {
+  return {
+    cantrips: [],
+    spells: []
+  };
+}
+
+function normalizeFavoritesData(raw = {}) {
+  return {
+    cantrips: Array.isArray(raw.cantrips) ? raw.cantrips : [],
+    spells: Array.isArray(raw.spells) ? raw.spells : []
+  };
+}
+
 // Notes tab + global notes: unified sizing/word-limit logic hooks into all note textareas.
 const NOTE_BOX_SELECTOR = 'textarea.basic-textarea, textarea.notes-textarea, textarea.table-notes';
 const NOTE_BOX_MAX_CHARS = Number.MAX_SAFE_INTEGER;
