@@ -20,70 +20,6 @@ if (typeof window !== 'undefined') {
   };
 }
 
-function isDesktopLayout() {
-  return window.innerWidth >= 1024;
-}
-
-function clampSectionToContent(section) {
-  if (!section) return;
-  const contentHeight = section.scrollHeight;
-  const existing = parseInt(section.dataset.contentMinHeight || '0', 10);
-  const next = Math.max(existing, contentHeight);
-  section.dataset.contentMinHeight = `${next}`;
-  section.style.minHeight = `${next}px`;
-  if (section.getBoundingClientRect().height < next) {
-    section.style.height = `${next}px`;
-  }
-}
-
-function recalcFlexWrapBase(container) {
-  if (!isDesktopLayout()) return 0;
-  const sections = Array.from(container.querySelectorAll('.section'));
-  if (sections.length === 0) return 0;
-  const contentHeight = Math.max(...sections.map(section => section.scrollHeight));
-  const minHeight = parseInt(container.dataset.minHeight || '0', 10);
-  const baseHeight = Math.max(contentHeight, minHeight);
-  container.dataset.baseHeight = `${baseHeight}`;
-  sections.forEach(section => {
-    section.style.minHeight = `${baseHeight}px`;
-    if (!section.style.height || parseInt(section.style.height, 10) < baseHeight) {
-      section.style.height = `${baseHeight}px`;
-    }
-  });
-  return baseHeight;
-}
-
-function syncFlexWrapHeights(container) {
-  if (!isDesktopLayout()) return;
-  const sections = Array.from(container.querySelectorAll('.section'));
-  if (sections.length === 0) return;
-  const baseHeight = parseInt(container.dataset.baseHeight || '0', 10);
-  const manualHeight = parseInt(container.dataset.manualHeight || '0', 10);
-  let desiredHeight = baseHeight;
-  if (manualHeight) {
-    desiredHeight = Math.max(baseHeight, manualHeight);
-  } else if (window.activeResizeSection && container.contains(window.activeResizeSection)) {
-    desiredHeight = Math.max(baseHeight, window.activeResizeSection.getBoundingClientRect().height);
-  } else {
-    const currentMax = Math.max(...sections.map(section => section.getBoundingClientRect().height));
-    desiredHeight = Math.max(baseHeight, currentMax);
-  }
-  const currentHeight = Math.round(sections[0].getBoundingClientRect().height);
-  if (Math.abs(currentHeight - desiredHeight) < 1) return;
-  sections.forEach(section => {
-    section.style.minHeight = `${baseHeight}px`;
-    section.style.height = `${desiredHeight}px`;
-  });
-}
-
-function applyFlexWrapSizing() {
-  if (!isDesktopLayout()) return;
-  document.querySelectorAll('.flex-wrap').forEach(container => {
-    recalcFlexWrapBase(container);
-    syncFlexWrapHeights(container);
-  });
-}
-
 function getDefaultSpellData() {
   return {
     cantrips: [],
@@ -128,16 +64,20 @@ function getCharCount(text) {
 }
 
 function getNoteBoxDefaultHeight(textarea) {
+  const forced = parseFloat(textarea.dataset.noteBaseHeight);
+  if (!Number.isNaN(forced) && forced > 0) {
+    return forced;
+  }
+
   const style = window.getComputedStyle(textarea);
   const minHeight = parseFloat(style.minHeight) || 0;
   const rootStyle = window.getComputedStyle(document.documentElement);
-  const cssDefault = parseFloat(rootStyle.getPropertyValue('--note-default-height')) || 0;
-
-  let fallback = cssDefault || 120;
+  let fallback = parseFloat(rootStyle.getPropertyValue('--note-default-height')) || 0;
   if (textarea.classList.contains('notes-textarea')) fallback = Math.max(fallback, 160);
   if (textarea.classList.contains('table-notes')) fallback = Math.max(fallback, 100);
+  if (!fallback) fallback = 120;
 
-  return Math.max(minHeight, fallback);
+  return minHeight > 0 ? minHeight : fallback;
 }
 
 function getNoteBoxTitle(textarea) {
@@ -163,8 +103,7 @@ function getContainerDefaultHeight(container) {
 }
 
 function updateNoteBoxContainerHeight(textarea, textareaHeight) {
-  // Prefer the nearest notes container so the actions notes panel grows with its textarea.
-  const container = textarea.closest('.notes-subsection, .actions-notes-section') || textarea.closest('.section');
+  const container = textarea.closest('.notes-subsection, .actions-notes-section, .quick-notes-section') || textarea.closest('.section');
   if (!container) return;
   const style = window.getComputedStyle(container);
   const padding = (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0);
@@ -174,9 +113,12 @@ function updateNoteBoxContainerHeight(textarea, textareaHeight) {
   const defaultHeight = getContainerDefaultHeight(container);
   const nextHeight = Math.max(defaultHeight, targetHeight);
   container.style.minHeight = `${nextHeight}px`;
-
-  // Keep notes sections flexible so grid scaling stays smooth on mobile/tablet.
-  if (container.classList.contains('notes-subsection') || container.closest('#page6') || container.closest('#page2')) {
+  const flexibleContainer = container.classList.contains('notes-subsection')
+    || container.classList.contains('actions-notes-section')
+    || container.classList.contains('quick-notes-section')
+    || container.closest('#page6')
+    || container.closest('#page2');
+  if (flexibleContainer) {
     container.style.height = 'auto';
   } else {
     container.style.height = `${nextHeight}px`;
@@ -188,17 +130,17 @@ function updateNoteBoxSizing(textarea) {
   const charCount = getCharCount(textarea.value);
   textarea.dataset.charCount = `${charCount}`;
 
-  // Always grow with content; never keep notes inside an internal scroll area.
   textarea.style.height = 'auto';
-  const desired = Math.max(defaultHeight, textarea.scrollHeight + 12);
-  textarea.style.height = `${desired}px`;
+  textarea.style.overflowY = 'hidden';
+  const targetHeight = Math.max(defaultHeight, Math.ceil(textarea.scrollHeight));
+  textarea.style.height = `${targetHeight}px`;
+  textarea.dataset.lastHeight = `${targetHeight}`;
 
-  // Prevent stale partial first-line clipping when browser keeps old scroll offset.
   if (document.activeElement !== textarea || (textarea.selectionStart === 0 && textarea.selectionEnd === 0)) {
     textarea.scrollTop = 0;
   }
 
-  updateNoteBoxContainerHeight(textarea, desired);
+  updateNoteBoxContainerHeight(textarea, targetHeight);
 }
 
 function scheduleNoteBoxSizing(textarea) {
@@ -281,29 +223,19 @@ function closeNotesEditorPopup() {
 }
 
 // Auto-resize containers when textareas change
-function setupAutoResize() {
-  document.querySelectorAll('.section textarea:not(.note-box)').forEach(textarea => {
-    textarea.addEventListener('input', function() {
-      const section = this.closest('.section');
-      const neededHeight = Math.max(section.scrollHeight, this.scrollHeight + 30);
-      if (neededHeight > section.clientHeight) {
-        section.style.height = `${neededHeight}px`;
-      }
-      const container = section.closest('.flex-wrap');
-      if (container) {
-        recalcFlexWrapBase(container);
-        syncFlexWrapHeights(container);
-      }
-    });
-  });
-}
-
 function setupNoteBoxHandlers() {
   // Notes are rendered/initialized in HTML and dynamic builders; call this after inserting any new note textareas.
   document.querySelectorAll(NOTE_BOX_SELECTOR).forEach(textarea => {
-    if (textarea.dataset.noteBoxReady === '1') return;
-    textarea.dataset.noteBoxReady = '1';
+    if (textarea.__noteBoxReady) return;
+    textarea.__noteBoxReady = true;
     textarea.classList.add('note-box');
+
+    if (!textarea.dataset.noteBaseHeight) {
+      const computed = window.getComputedStyle(textarea);
+      const measured = textarea.offsetHeight || parseFloat(computed.height) || parseFloat(computed.minHeight) || 0;
+      const fallbackBase = Math.max(measured, parseFloat(computed.minHeight) || 0, 160);
+      textarea.dataset.noteBaseHeight = `${Math.max(fallbackBase, 0)}`;
+    }
 
     const onclick = textarea.getAttribute('onclick') || '';
     const match = onclick.match(/showNotesPopup\('([^']+)',\s*'([^']+)'\)/);
@@ -313,9 +245,15 @@ function setupNoteBoxHandlers() {
       textarea.removeAttribute('onclick');
     }
 
+    const refreshSizing = () => {
+      scheduleNoteBoxSizing(textarea);
+    };
+
     textarea.addEventListener('blur', () => {
       textarea.dataset.suppressPopup = '';
+      refreshSizing();
     });
+    textarea.addEventListener('focus', refreshSizing);
 
         const handleNoteInput = () => {
       // Autosize on every edit, including per-character changes and deleted wraps.
@@ -372,167 +310,6 @@ function setupMobileTextareaAutoGrow() {
 
 function loadLayout() {
   // Add layout loading logic here if needed
-}
-
-// Enable resizable containers
-function makeContainersResizable() {
-  if (window.activeResizeSection === undefined) {
-    window.activeResizeSection = null;
-    window.resizeSyncLoop = null;
-    window.groupResizeState = null;
-    document.addEventListener('mouseup', () => {
-      window.activeResizeSection = null;
-    });
-    document.addEventListener('touchend', () => {
-      window.activeResizeSection = null;
-    });
-    document.addEventListener('pointerup', () => {
-      window.activeResizeSection = null;
-      if (window.groupResizeState) {
-        window.groupResizeState = null;
-        document.body.style.cursor = '';
-      }
-    });
-    document.addEventListener('pointermove', event => {
-      if (!window.groupResizeState) return;
-      const { container, startY, startHeight } = window.groupResizeState;
-      const delta = event.clientY - startY;
-      const baseHeight = parseInt(container.dataset.baseHeight || '0', 10);
-      const nextHeight = Math.max(baseHeight, startHeight + delta);
-      container.dataset.manualHeight = `${nextHeight}`;
-      syncFlexWrapHeights(container);
-      event.preventDefault();
-    });
-    document.addEventListener('mousemove', () => {
-      if (!window.activeResizeSection) return;
-      const container = window.activeResizeSection.closest('.flex-wrap');
-      if (container) syncFlexWrapHeights(container);
-    });
-    document.addEventListener('touchmove', () => {
-      if (!window.activeResizeSection) return;
-      const container = window.activeResizeSection.closest('.flex-wrap');
-      if (container) syncFlexWrapHeights(container);
-    }, { passive: true });
-    document.addEventListener('pointermove', () => {
-      if (!window.activeResizeSection) return;
-      const container = window.activeResizeSection.closest('.flex-wrap');
-      if (container) syncFlexWrapHeights(container);
-    });
-  }
-
-  document.querySelectorAll('.section').forEach(section => {
-    // Skip Character Info section - make it non-resizable
-    if (section.classList.contains('character-info-section')) {
-      return;
-    }
-    
-    section.classList.add('resizable-container');
-    
-    // Store initial size for reset functionality
-    if (!section.dataset.originalWidth) {
-      section.dataset.originalWidth = section.style.width || 'auto';
-      section.dataset.originalHeight = section.style.height || 'auto';
-    }
-    if (section.classList.contains('actions-notes-section')) {
-      clampSectionToContent(section);
-    }
-
-    section.addEventListener('mousedown', () => {
-      window.activeResizeSection = section;
-      if (!window.resizeSyncLoop) {
-        const loop = () => {
-          if (!window.activeResizeSection) {
-            window.resizeSyncLoop = null;
-            return;
-          }
-          const container = window.activeResizeSection.closest('.flex-wrap');
-          if (container) {
-            syncFlexWrapHeights(container);
-          }
-          window.resizeSyncLoop = requestAnimationFrame(loop);
-        };
-        window.resizeSyncLoop = requestAnimationFrame(loop);
-      }
-    });
-    section.addEventListener('touchstart', () => {
-      window.activeResizeSection = section;
-      if (!window.resizeSyncLoop) {
-        const loop = () => {
-          if (!window.activeResizeSection) {
-            window.resizeSyncLoop = null;
-            return;
-          }
-          const container = window.activeResizeSection.closest('.flex-wrap');
-          if (container) {
-            syncFlexWrapHeights(container);
-          }
-          window.resizeSyncLoop = requestAnimationFrame(loop);
-        };
-        window.resizeSyncLoop = requestAnimationFrame(loop);
-      }
-    });
-    section.addEventListener('pointerdown', () => {
-      window.activeResizeSection = section;
-      if (!window.resizeSyncLoop) {
-        const loop = () => {
-          if (!window.activeResizeSection) {
-            window.resizeSyncLoop = null;
-            return;
-          }
-          const container = window.activeResizeSection.closest('.flex-wrap');
-          if (container) {
-            syncFlexWrapHeights(container);
-          }
-          window.resizeSyncLoop = requestAnimationFrame(loop);
-        };
-        window.resizeSyncLoop = requestAnimationFrame(loop);
-      }
-    });
-    section.addEventListener('pointerdown', event => {
-      if (!isDesktopLayout()) return;
-      const container = section.closest('.flex-wrap');
-      if (!container) return;
-      const rect = section.getBoundingClientRect();
-      if (rect.bottom - event.clientY > 14) return;
-      recalcFlexWrapBase(container);
-      const baseHeight = parseInt(container.dataset.baseHeight || '0', 10);
-      const startHeight = Math.max(baseHeight, container.getBoundingClientRect().height);
-      container.dataset.manualHeight = `${startHeight}`;
-      window.groupResizeState = { container, startY: event.clientY, startHeight };
-      document.body.style.cursor = 'ns-resize';
-      event.preventDefault();
-    });
-  });
-
-  document.querySelectorAll('.flex-wrap').forEach(container => {
-    container.style.resize = 'vertical';
-    container.style.overflow = 'auto';
-    recalcFlexWrapBase(container);
-    syncFlexWrapHeights(container);
-    const baseHeight = parseInt(container.dataset.baseHeight || '0', 10);
-    if (baseHeight) {
-      container.style.minHeight = `${baseHeight}px`;
-    }
-  });
-
-  if (window.ResizeObserver) {
-    document.querySelectorAll('.flex-wrap').forEach(container => {
-      const observer = new ResizeObserver(() => {
-        recalcFlexWrapBase(container);
-        syncFlexWrapHeights(container);
-      });
-      observer.observe(container);
-      container.querySelectorAll('.section').forEach(section => observer.observe(section));
-    });
-  }
-
-  window.addEventListener('resize', () => {
-    if (!isDesktopLayout()) return;
-    document.querySelectorAll('.flex-wrap').forEach(container => {
-      recalcFlexWrapBase(container);
-      syncFlexWrapHeights(container);
-    });
-  });
 }
 
 // ========== GLOBAL VARIABLES ==========
@@ -910,24 +687,36 @@ window.initializeApp = function() {
     updateContainerWeight(container.id);
   });
 
- // Enable resizing
-makeContainersResizable();
-setupNoteBoxHandlers();
-setupNoteBoxObserver();
-setupAutoResize();
+  setupNoteBoxHandlers();
+  setupNoteBoxObserver();
 setupMobileTextareaAutoGrow();
 loadLayout(); // This should come after all elements are created
 setTimeout(() => {
-  applyFlexWrapSizing();
   syncSpellPanels();
 }, 0);
 };
 
 // ========== CHARACTER MANAGEMENT ==========
 function showHomePage() {
-  document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
-  document.getElementById('home').classList.add('active');
+  const homePage = document.getElementById('home');
+  document.querySelectorAll('.page').forEach(page => {
+    page.classList.remove('active');
+    page.style.display = 'none';
+    page.style.opacity = '0';
+    page.style.transform = 'translateY(10px)';
+  });
+
+  if (homePage) {
+    homePage.style.display = 'block';
+    requestAnimationFrame(() => {
+      homePage.classList.add('active');
+      homePage.style.opacity = '1';
+      homePage.style.transform = 'translateY(0)';
+    });
+  }
+
   document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+  window.scrollTo({ top: 0, left: 0 });
 }
 
 function createNewCharacter() {
@@ -1937,10 +1726,8 @@ function loadData() {
 
   // Re-sync note sizing after data is loaded into textareas.
   setupNoteBoxHandlers();
+  refreshAllNoteBoxes();
 
-  setTimeout(() => {
-    applyFlexWrapSizing();
-  }, 0);
 }
 
 // ========== EXISTING FUNCTIONS (UPDATED) ==========

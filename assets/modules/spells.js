@@ -5839,16 +5839,17 @@ function renderSpellList(type, spells) {
   const container = document.getElementById(`${type}_list`);
   if (!container) return;
   
+  const safeSpells = Array.isArray(spells) ? spells : [];
   container.innerHTML = '';
   
-  if (spells.length === 0) {
+  if (safeSpells.length === 0) {
     container.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">No spells added yet. Click the + button to add your first spell!</p>';
     return;
   }
   
   // Group spells by level
   const groupedSpells = {};
-  spells.forEach(spell => {
+  safeSpells.forEach(spell => {
     const level = spell.level;
     if (!groupedSpells[level]) {
       groupedSpells[level] = [];

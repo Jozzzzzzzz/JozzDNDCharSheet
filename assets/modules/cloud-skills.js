@@ -724,12 +724,13 @@ function updateProficiencyBonusIfNotOverridden() {
 // Initialize Firebase when page loads or immediately if already loaded
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) {
-    return;
+    return Promise.resolve();
   }
 
-  navigator.serviceWorker.register('/sw.js')
+  return navigator.serviceWorker.register('/sw.js')
     .then(function(registration) {
       console.log('Service Worker registered:', registration);
+      return registration;
     })
     .catch(function(error) {
       console.warn('Service Worker registration failed:', error);

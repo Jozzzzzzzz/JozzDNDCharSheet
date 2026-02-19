@@ -6,8 +6,8 @@
   /* Container Styles */
   .section {
     position: relative;
-    resize: vertical;
-    overflow: auto;
+    resize: none !important;
+    overflow: visible;
     min-height: 150px;
     min-width: 0;
     max-width: 100%;
@@ -19,18 +19,14 @@
 
   /* Textarea Styles */
   textarea {
-    resize: vertical;
+    resize: none !important;
     min-height: 100px;
     min-width: 0;
     max-width: 100%;
-    overflow: auto;
-    flex-grow: 1; /* New - makes textarea grow to fill container */
+    overflow: hidden;
+    flex: none;
     margin-bottom: 10px; /* Space between textarea and other content */
-    height: 100%;
-  }
-
-  .basic-textarea {
-    flex: 1 1 auto;
+    height: auto !important;
   }
 
   #stats_quick_notes,
@@ -40,15 +36,15 @@
     /* Ensure quick notes doesn't become a scroll container under the limit. */
     height: auto !important;
     max-height: none !important;
-    overflow: visible !important;
+    overflow: hidden !important;
   }
 
   /* Special case for basic-textareas */
   .basic-textarea {
-    resize: vertical;
+    resize: none !important;
     min-height: var(--note-default-height);
     width: 100% !important; /* Full width of container */
-    flex-grow: 1;
+    flex: none;
   }
 
   /* Unified note box sizing/behavior */
@@ -61,8 +57,7 @@
     overflow-y: hidden !important;
     resize: none !important;
     line-height: 1.45;
-    padding-top: 10px !important;
-    padding-bottom: 10px !important;
+    padding: 14px 12px !important;
   }
 
   .note-box:not(.note-box-capped) {
@@ -223,16 +218,6 @@ button[onclick*="home"] {
       color: var(--accent-contrast) !important;
     }
     
-    [data-theme="light"] #saveLayoutBtn {
-      color: var(--accent-contrast) !important;
-      background: #e0e0e0 !important;
-    }
-
-    [data-theme="light"] #saveLayoutBtn:hover {
-      color: var(--accent-contrast) !important;
-      background: #d0d0d0 !important;
-    }
-    
     /* Fix for settings dropdown buttons */
     [data-theme="light"] #settingsDropdown button {
       color: var(--accent-contrast) !important;
@@ -344,14 +329,12 @@ button[onclick*="home"] {
     color: inherit;
   }
 
-  [data-theme="light"] #saveDataBtn,
-  [data-theme="light"] #saveLayoutBtn {
+  [data-theme="light"] #saveDataBtn {
     color: #333333 !important;
     background: #e0e0e0 !important;
   }
 
-  [data-theme="light"] #saveDataBtn:hover,
-  [data-theme="light"] #saveLayoutBtn:hover {
+  [data-theme="light"] #saveDataBtn:hover {
     color: #000000 !important;
     background: #d0d0d0 !important;
   }
@@ -393,6 +376,49 @@ button[onclick*="home"] {
     color: var(--accent-text);
     margin-top: 0;
   }
+
+.header-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  width: 100%;
+  margin: 10px auto;
+  padding: 12px 0;
+  box-sizing: border-box;
+}
+
+.header-bar .header-btn {
+  width: 200px;
+  min-width: 150px;
+  padding: 10px 20px;
+  border: 2px solid var(--accent-border);
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-contrast) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  font-weight: 600;
+  text-transform: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.header-bar .header-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.header-settings {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.header-settings .header-btn {
+  width: 200px;
+}
 
 .tabs {
   display: flex;
@@ -610,25 +636,11 @@ button[onclick*="home"] {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   }
 
-  .resizable {
-    resize: vertical;
-    overflow: auto;
-    min-height: 50px;
-    min-width: 0;
-    max-width: 100%;
-  }
-
   .flex-wrap {
     display: flex;
     flex-wrap: wrap;
     gap: 1rem;
     align-items: stretch;
-  }
-
-  @media (min-width: 1024px) {
-    .flex-wrap .section {
-      resize: vertical;
-    }
   }
 
   .flex-wrap .section {
@@ -711,10 +723,10 @@ button[onclick*="home"] {
     appearance: none !important;
   }
 
-  textarea {
-    resize: vertical;
-    min-height: 60px;
-  }
+    textarea {
+      resize: none !important;
+      min-height: 60px;
+    }
 
   button {
     background: var(--accent);
@@ -996,22 +1008,17 @@ button[onclick*="home"] {
     border: 1px solid var(--accent-border);
     padding: 10px;
     box-sizing: border-box;
-    resize: vertical;
+    height: auto !important;
+    max-height: none;
+    overflow-x: hidden;
+    overflow-y: hidden;
+    resize: none;
     display: block !important;
   }
 
   .basic-textarea::placeholder {
     color: #888;
     font-style: italic;
-  }
-
-  /* Make all sections resizable */
-  .section {
-    resize: vertical;
-    overflow: auto;
-    min-height: 150px;
-    min-width: 0;
-    max-width: 100%;
   }
 
   /* Adjust notes container */
@@ -1166,7 +1173,7 @@ button[onclick*="home"] {
     height: auto;
     max-height: none;
     min-height: auto;
-    overflow: visible;
+    overflow: hidden;
   }
 
   .hp-inputs {
@@ -1470,7 +1477,8 @@ button[onclick*="home"] {
 }
 
   .potion-group select {
-    width: 300px;
+    width: 100%;
+    max-width: 320px;
     text-align: center;
     padding: 8px;
     border: 2px solid var(--accent-border);
@@ -1479,6 +1487,7 @@ button[onclick*="home"] {
     color: #fff;
     font-weight: bold;
     cursor: pointer;
+    box-sizing: border-box;
   }
 
   .potion-group select:hover {
@@ -2345,6 +2354,15 @@ button[onclick*="home"] {
       flex-direction: column;
     }
     
+    .flex-wrap {
+      flex-direction: column;
+    }
+
+    .character-info-section > div {
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)) !important;
+      gap: 10px;
+    }
+
     .portrait-container {
       width: 150px;
       height: 150px;
@@ -2370,13 +2388,13 @@ button[onclick*="home"] {
     display: block;
   }
 
-  #saveDataBtn, #saveLayoutBtn {
+  #saveDataBtn {
     background: #333;
     color: var(--accent-text);
     margin-left: 5px;
   }
 
-  #saveDataBtn:hover, #saveLayoutBtn:hover {
+  #saveDataBtn:hover {
     background: #444;
   }
 
@@ -2465,36 +2483,29 @@ button[onclick*="home"] {
       color: var(--accent-contrast) !important;
     }
 
-  /* Fix for button alignment */
-  #resetLayoutBtn {
-    vertical-align: middle;
-  }
-
-  /* Ensure all top buttons have consistent styling */
-  #saveDataBtn, #saveLayoutBtn, #resetLayoutBtn, #settingsBtn {
+  /* Ensure top buttons share styling */
+  #saveDataBtn,
+  #settingsBtn {
     vertical-align: middle;
     background: var(--accent) !important;
     color: var(--accent-contrast) !important;
   }
   
-  #saveDataBtn:hover, #saveLayoutBtn:hover, #resetLayoutBtn:hover, #settingsBtn:hover {
+  #saveDataBtn:hover,
+  #settingsBtn:hover {
     background: var(--accent) !important;
     color: var(--accent-contrast) !important;
     filter: brightness(1.1);
   }
 
-  /* Fix for save buttons in light mode */
+  /* Ensure buttons stay accented when light mode is active */
   [data-theme="light"] #saveDataBtn,
-  [data-theme="light"] #saveLayoutBtn,
-  [data-theme="light"] #resetLayoutBtn,
   [data-theme="light"] #settingsBtn {
     background: var(--accent) !important;
     color: var(--accent-contrast) !important;
   }
 
   [data-theme="light"] #saveDataBtn:hover,
-  [data-theme="light"] #saveLayoutBtn:hover,
-  [data-theme="light"] #resetLayoutBtn:hover,
   [data-theme="light"] #settingsBtn:hover {
     background: var(--accent) !important;
     color: var(--accent-contrast) !important;
@@ -2793,10 +2804,10 @@ button[onclick*="home"] {
   font-family: inherit;
 }
 
-.form-group textarea {
-  min-height: 100px;
-  resize: vertical;
-}
+  .form-group textarea {
+    min-height: 100px;
+    resize: none;
+  }
 
   .submit-btn {
     background: var(--accent);
@@ -4281,15 +4292,47 @@ button[onclick*="home"] {
     .potion-controls {
       gap: 12px;
     }
-    
+
     .potion-group label {
       font-size: 0.9em;
     }
-    
+
     .potion-info {
       font-size: 0.9em;
       padding: 8px 10px;
       min-height: 18px;
+    }
+
+    .header-bar {
+      width: 100%;
+      justify-content: center;
+      gap: 10px;
+      padding: 10px 12px 6px;
+    }
+
+    .header-bar .header-btn,
+    .header-settings .header-btn {
+      flex: 1 1 140px;
+      min-width: 120px;
+      max-width: 210px;
+    }
+
+    .header-settings {
+      flex: 1 1 140px;
+      min-width: 0;
+      justify-content: center;
+    }
+
+    .tabs {
+      gap: 8px;
+      padding: 8px 12px;
+      justify-content: center;
+    }
+
+    .tabs button {
+      flex: 1 1 130px;
+      min-width: 110px;
+      max-width: 170px;
     }
   }
   
