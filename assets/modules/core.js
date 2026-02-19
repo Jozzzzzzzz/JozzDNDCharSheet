@@ -117,7 +117,8 @@ function updateNoteBoxContainerHeight(textarea, textareaHeight) {
     || container.classList.contains('actions-notes-section')
     || container.classList.contains('quick-notes-section')
     || container.closest('#page6')
-    || container.closest('#page2');
+    || container.closest('#page2')
+    || textarea.id === 'proficiencies_training';
   if (flexibleContainer) {
     container.style.height = 'auto';
   } else {
@@ -132,7 +133,36 @@ function updateNoteBoxSizing(textarea) {
 
   textarea.style.height = 'auto';
   textarea.style.overflowY = 'hidden';
-  const targetHeight = Math.max(defaultHeight, Math.ceil(textarea.scrollHeight));
+  let targetHeight = Math.max(defaultHeight, Math.ceil(textarea.scrollHeight));
+  if (textarea.id === 'proficiencies_training') {
+    const section = textarea.closest('.section');
+    if (section) {
+      // Only stretch to match sibling panel heights when this card shares a row
+      // (the wide 4-column layout). If it wraps to its own row, keep normal note sizing.
+      const parent = section.parentElement;
+      const sectionTop = section.getBoundingClientRect().top;
+      const sameRowSiblings = parent
+        ? Array.from(parent.children).filter((child) => {
+            if (child === section || !child.classList || !child.classList.contains('section')) return false;
+            return Math.abs(child.getBoundingClientRect().top - sectionTop) < 8;
+          })
+        : [];
+
+      if (sameRowSiblings.length > 0) {
+        const rowTargetHeight = sameRowSiblings.reduce((maxHeight, sibling) => {
+          const siblingHeight = Math.ceil(sibling.getBoundingClientRect().height);
+          return Math.max(maxHeight, siblingHeight);
+        }, 0);
+
+        const sectionStyle = window.getComputedStyle(section);
+        const sectionPadding = (parseFloat(sectionStyle.paddingTop) || 0) + (parseFloat(sectionStyle.paddingBottom) || 0);
+        const header = section.querySelector('h3, h2, label');
+        const headerHeight = header ? header.getBoundingClientRect().height : 0;
+        const availableHeight = Math.max(0, Math.floor(rowTargetHeight - sectionPadding - headerHeight - 12));
+        targetHeight = Math.max(targetHeight, availableHeight);
+      }
+    }
+  }
   textarea.style.height = `${targetHeight}px`;
   textarea.dataset.lastHeight = `${targetHeight}`;
 
@@ -284,8 +314,20 @@ function setupNoteBoxObserver() {
 }
 
 function refreshAllNoteBoxes() {
-  document.querySelectorAll(NOTE_BOX_SELECTOR).forEach(textarea => {
+  const textareas = Array.from(document.querySelectorAll(NOTE_BOX_SELECTOR));
+  textareas.forEach(textarea => {
     updateNoteBoxSizing(textarea);
+  });
+
+  // Second pass after layout settles (media-query reflow, zoom, DevTools drag).
+  if (window.__noteResizeRefreshRaf) {
+    cancelAnimationFrame(window.__noteResizeRefreshRaf);
+  }
+  window.__noteResizeRefreshRaf = requestAnimationFrame(() => {
+    textareas.forEach(textarea => {
+      updateNoteBoxSizing(textarea);
+    });
+    window.__noteResizeRefreshRaf = null;
   });
 }
 function setupMobileTextareaAutoGrow() {
@@ -319,11 +361,37 @@ let currentCharacter = null;
 let deleteState = 0;
 
 // ========== THEME MANAGEMENT ==========
+function showDarkModeOnlyPopup() {
+  const themeToggle = document.getElementById('themeToggle');
+  if (themeToggle) themeToggle.checked = false;
+
+  const settingsDropdown = document.getElementById('settingsDropdown');
+  if (settingsDropdown) settingsDropdown.style.display = 'none';
+
+  document.documentElement.removeAttribute('data-theme');
+  localStorage.setItem('dndTheme', 'dark');
+  document.body.classList.add('modal-open');
+  document.body.classList.add('dark-mode-only-open');
+
+  const popup = document.getElementById('darkModeOnlyPopup');
+  const backdrop = document.getElementById('popupBackdrop');
+  if (!popup || !backdrop) return;
+
+  backdrop.style.display = 'block';
+  backdrop.style.zIndex = '2000';
+  popup.style.display = 'flex';
+  popup.style.zIndex = '2001';
+
+  requestAnimationFrame(() => {
+    backdrop.classList.add('show');
+    popup.classList.add('show');
+  });
+}
+
 function toggleTheme() {
   const themeToggle = document.getElementById('themeToggle');
   if (themeToggle.checked) {
-    document.documentElement.setAttribute('data-theme', 'light');
-    localStorage.setItem('dndTheme', 'light');
+    showDarkModeOnlyPopup();
   } else {
     document.documentElement.removeAttribute('data-theme');
     localStorage.setItem('dndTheme', 'dark');
@@ -356,17 +424,12 @@ function updateAccentColor(color) {
 }
 
 function loadThemeSettings() {
-  // Load theme preference
-  const savedTheme = localStorage.getItem('dndTheme');
   const themeToggle = document.getElementById('themeToggle');
-  
-  if (savedTheme === 'light') {
-    document.documentElement.setAttribute('data-theme', 'light');
-    if (themeToggle) themeToggle.checked = true;
-  } else {
-    document.documentElement.removeAttribute('data-theme');
-    if (themeToggle) themeToggle.checked = false;
-  }
+
+  // Force dark mode regardless of saved preference.
+  document.documentElement.removeAttribute('data-theme');
+  localStorage.setItem('dndTheme', 'dark');
+  if (themeToggle) themeToggle.checked = false;
   
   // Load accent color
   const savedAccentColor = localStorage.getItem('dndAccentColor');
@@ -2375,15 +2438,27 @@ function showPopup(id) {
   }
   
   console.log('Popup and backdrop found, showing popup');
-  
-  // Reset positioning
-  popup.style.top = '50%';
-  popup.style.left = '50%';
-  popup.style.transform = 'translate(-50%, -50%) scale(0.8)';
-  popup.style.opacity = '0';
+
+  if (id === 'darkModeOnlyPopup') {
+    popup.style.top = '0';
+    popup.style.left = '0';
+    popup.style.width = '100vw';
+    popup.style.maxWidth = 'none';
+    popup.style.height = '100vh';
+    popup.style.maxHeight = 'none';
+    popup.style.position = 'fixed';
+    popup.style.transform = 'none';
+    popup.style.opacity = '0';
+  } else {
+    // Reset positioning
+    popup.style.top = '50%';
+    popup.style.left = '50%';
+    popup.style.transform = 'translate(-50%, -50%) scale(0.8)';
+    popup.style.opacity = '0';
+  }
   
   // Mobile adjustments
-  if (window.innerWidth <= 768) {
+  if (window.innerWidth <= 768 && id !== 'darkModeOnlyPopup') {
     popup.style.width = '95vw';
     popup.style.maxWidth = '95vw';
     popup.style.maxHeight = '85vh';
@@ -2399,7 +2474,7 @@ function showPopup(id) {
   
   // Force immediate visibility
   popup.style.opacity = '1';
-  popup.style.transform = 'translate(-50%, -50%) scale(1)';
+  popup.style.transform = id === 'darkModeOnlyPopup' ? 'none' : 'translate(-50%, -50%) scale(1)';
   popup.style.pointerEvents = 'auto';
   
   // Trigger animations
@@ -2421,7 +2496,13 @@ function closePopup(id) {
   setTimeout(() => {
     popup.style.display = 'none';
     backdrop.style.display = 'none';
+    backdrop.style.zIndex = '';
   }, 300); // Match the CSS transition duration
+
+  if (id === 'darkModeOnlyPopup') {
+    document.body.classList.remove('modal-open');
+    document.body.classList.remove('dark-mode-only-open');
+  }
 
   if (id === 'notesEditorPopup') {
     document.body.classList.remove('notes-editor-open');
@@ -2443,11 +2524,14 @@ function closeAllPopups() {
       popup.style.display = 'none';
     });
     backdrop.style.display = 'none';
+    backdrop.style.zIndex = '';
   }, 300);
 
   currentNotesElement = null;
   currentNotesField = null;
   document.body.classList.remove('notes-editor-open');
+  document.body.classList.remove('modal-open');
+  document.body.classList.remove('dark-mode-only-open');
 }
 
 // Initialize backdrop click handler
