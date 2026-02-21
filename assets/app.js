@@ -97,17 +97,28 @@ function getCharCount(text) {
   return text ? text.length : 0;
 }
 
-function getNoteBoxDefaultHeight(textarea) {
+function getNoteBoxBaselineFromCSS(textarea) {
   const style = window.getComputedStyle(textarea);
   const minHeight = parseFloat(style.minHeight) || 0;
   const rootStyle = window.getComputedStyle(document.documentElement);
   const cssDefault = parseFloat(rootStyle.getPropertyValue('--note-default-height')) || 0;
-
   let fallback = cssDefault || 120;
   if (textarea.classList.contains('notes-textarea')) fallback = Math.max(fallback, 160);
   if (textarea.classList.contains('table-notes')) fallback = Math.max(fallback, 100);
-
   return Math.max(minHeight, fallback);
+}
+
+function getNoteBoxDefaultHeight(textarea) {
+  const baseline = getNoteBoxBaselineFromCSS(textarea);
+  const forced = parseFloat(textarea.dataset.noteBaseHeight);
+  if (!Number.isNaN(forced) && forced > 0) {
+    if (forced > baseline * 2.5) {
+      textarea.dataset.noteBaseHeight = `${baseline}`;
+      return baseline;
+    }
+    return forced;
+  }
+  return baseline;
 }
 
 function getNoteBoxTitle(textarea) {
@@ -181,6 +192,13 @@ function scheduleNoteBoxSizing(textarea) {
     updateNoteBoxSizing(textarea);
     textarea.__noteResizeRaf = null;
   });
+
+  // Third pass after DOM/input pipelines settle (Ctrl+A/delete and large cuts).
+  if (textarea.__noteResizeTimeout) clearTimeout(textarea.__noteResizeTimeout);
+  textarea.__noteResizeTimeout = setTimeout(() => {
+    updateNoteBoxSizing(textarea);
+    textarea.__noteResizeTimeout = null;
+  }, 30);
 }
 
 function trapNoteBoxPopupFocus(popupId, initialFocus) {
@@ -287,12 +305,13 @@ function setupNoteBoxHandlers() {
       textarea.dataset.suppressPopup = '';
     });
 
-        const handleNoteInput = () => {
+    const handleNoteInput = () => {
       // Autosize on every edit, including per-character changes and deleted wraps.
-      updateNoteBoxSizing(textarea);
+      scheduleNoteBoxSizing(textarea);
     };
 
     textarea.addEventListener('input', handleNoteInput);
+    textarea.addEventListener('beforeinput', handleNoteInput);
     textarea.addEventListener('paste', handleNoteInput);
     textarea.addEventListener('cut', handleNoteInput);
     textarea.addEventListener('keyup', handleNoteInput);

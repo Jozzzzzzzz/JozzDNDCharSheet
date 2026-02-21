@@ -1124,8 +1124,8 @@ button[onclick*="home"] {
   #page2 .basic-textarea,
   #page6 .note-box,
   #page6 .notes-textarea {
-    padding-top: 12px !important;
-    padding-bottom: 10px !important;
+    padding-top: 16px !important;
+    padding-bottom: 16px !important;
     line-height: 1.55 !important;
     font-size: 16px;
   }

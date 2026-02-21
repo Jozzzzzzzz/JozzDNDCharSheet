@@ -63,12 +63,7 @@ function getCharCount(text) {
   return text ? text.length : 0;
 }
 
-function getNoteBoxDefaultHeight(textarea) {
-  const forced = parseFloat(textarea.dataset.noteBaseHeight);
-  if (!Number.isNaN(forced) && forced > 0) {
-    return forced;
-  }
-
+function getNoteBoxBaselineFromCSS(textarea) {
   const style = window.getComputedStyle(textarea);
   const minHeight = parseFloat(style.minHeight) || 0;
   const rootStyle = window.getComputedStyle(document.documentElement);
@@ -76,8 +71,21 @@ function getNoteBoxDefaultHeight(textarea) {
   if (textarea.classList.contains('notes-textarea')) fallback = Math.max(fallback, 160);
   if (textarea.classList.contains('table-notes')) fallback = Math.max(fallback, 100);
   if (!fallback) fallback = 120;
-
   return minHeight > 0 ? minHeight : fallback;
+}
+
+function getNoteBoxDefaultHeight(textarea) {
+  const baseline = getNoteBoxBaselineFromCSS(textarea);
+  const forced = parseFloat(textarea.dataset.noteBaseHeight);
+  if (!Number.isNaN(forced) && forced > 0) {
+    // Guard against stale/incorrect oversized baselines that block shrinking.
+    if (forced > baseline * 2.5) {
+      textarea.dataset.noteBaseHeight = `${baseline}`;
+      return baseline;
+    }
+    return forced;
+  }
+  return baseline;
 }
 
 function getNoteBoxTitle(textarea) {
@@ -183,6 +191,13 @@ function scheduleNoteBoxSizing(textarea) {
     updateNoteBoxSizing(textarea);
     textarea.__noteResizeRaf = null;
   });
+
+  // Third pass after DOM/input pipelines settle (Ctrl+A/delete and large cuts).
+  if (textarea.__noteResizeTimeout) clearTimeout(textarea.__noteResizeTimeout);
+  textarea.__noteResizeTimeout = setTimeout(() => {
+    updateNoteBoxSizing(textarea);
+    textarea.__noteResizeTimeout = null;
+  }, 30);
 }
 
 function trapNoteBoxPopupFocus(popupId, initialFocus) {
@@ -262,9 +277,12 @@ function setupNoteBoxHandlers() {
 
     if (!textarea.dataset.noteBaseHeight) {
       const computed = window.getComputedStyle(textarea);
-      const measured = textarea.offsetHeight || parseFloat(computed.height) || parseFloat(computed.minHeight) || 0;
-      const fallbackBase = Math.max(measured, parseFloat(computed.minHeight) || 0, 160);
-      textarea.dataset.noteBaseHeight = `${Math.max(fallbackBase, 0)}`;
+      const rootStyle = window.getComputedStyle(document.documentElement);
+      let fallbackBase = parseFloat(rootStyle.getPropertyValue('--note-default-height')) || 120;
+      if (textarea.classList.contains('notes-textarea')) fallbackBase = Math.max(fallbackBase, 160);
+      if (textarea.classList.contains('table-notes')) fallbackBase = Math.max(fallbackBase, 100);
+      const minHeight = parseFloat(computed.minHeight) || 0;
+      textarea.dataset.noteBaseHeight = `${Math.max(minHeight, fallbackBase)}`;
     }
 
     const onclick = textarea.getAttribute('onclick') || '';
@@ -285,12 +303,13 @@ function setupNoteBoxHandlers() {
     });
     textarea.addEventListener('focus', refreshSizing);
 
-        const handleNoteInput = () => {
+    const handleNoteInput = () => {
       // Autosize on every edit, including per-character changes and deleted wraps.
-      updateNoteBoxSizing(textarea);
+      scheduleNoteBoxSizing(textarea);
     };
 
     textarea.addEventListener('input', handleNoteInput);
+    textarea.addEventListener('beforeinput', handleNoteInput);
     textarea.addEventListener('paste', handleNoteInput);
     textarea.addEventListener('cut', handleNoteInput);
     textarea.addEventListener('keyup', handleNoteInput);
