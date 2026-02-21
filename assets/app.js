@@ -842,6 +842,7 @@ window.initializeApp = function() {
     const defaultChar = {
       id: Date.now().toString(),
       name: 'New Character',
+      createdAt: new Date().toISOString(),
       data: { characterInfo: { name: 'New Character' }, page1: {}, page2: {}, page3: {}, page4: {}, page6: {}, weapons: [], equipment: [] }
     };
     localStorage.setItem('dndCharacters', JSON.stringify([defaultChar]));
@@ -920,6 +921,7 @@ function createNewCharacter() {
     const newChar = {
       id: Date.now().toString(),
       name: charName,
+      createdAt: new Date().toISOString(),
       data: {
         characterInfo: { name: charName },
         page1: {},
@@ -1098,6 +1100,7 @@ function autosave() {
       const defaultChar = {
         id: Date.now().toString(),
         name: 'New Character',
+        createdAt: new Date().toISOString(),
         data: { characterInfo: { name: 'New Character' }, page1: {}, page2: {}, page3: {}, page4: {}, page6: {}, weapons: [], equipment: [] }
       };
       characters = [defaultChar];
@@ -1998,6 +2001,33 @@ function clearAllFormFields() {
 }
 
 // ========== EXISTING FUNCTIONS (UPDATED) ==========
+function sanitizeFilePart(value, fallback = 'unknown') {
+  const cleaned = String(value || '')
+    .trim()
+    .replace(/[<>:"/\\|?*\x00-\x1F]/g, '')
+    .replace(/\s+/g, '_')
+    .replace(/\.+$/g, '');
+  return cleaned || fallback;
+}
+
+function formatDatePart(dateInput) {
+  const date = new Date(dateInput);
+  if (Number.isNaN(date.getTime())) return 'unknown-date';
+  return date.toISOString().split('T')[0];
+}
+
+function inferCharacterCreatedAt(character) {
+  if (character?.createdAt) return character.createdAt;
+  const idNum = Number(character?.id);
+  if (Number.isFinite(idNum)) {
+    const dateFromId = new Date(idNum);
+    if (!Number.isNaN(dateFromId.getTime())) {
+      return dateFromId.toISOString();
+    }
+  }
+  return null;
+}
+
 function exportData() {
   if (!currentCharacter) {
     alert("No character loaded to export");
@@ -2015,13 +2045,48 @@ function exportData() {
   try {
     // Ensure data is up to date before exporting
     autosave();
+
+    const nowIso = new Date().toISOString();
+    const characterData = character.data || {};
+    const createdAt = inferCharacterCreatedAt(character) || nowIso;
+
+    // Backfill createdAt for older characters so future exports are stable.
+    if (!character.createdAt) {
+      character.createdAt = createdAt;
+      localStorage.setItem('dndCharacters', JSON.stringify(characters));
+    }
+
+    const displayName = characterData?.characterInfo?.name || character.name || 'dnd_character';
+    const level = characterData?.characterInfo?.level;
+    const levelPart = level ? `lvl${String(level).trim()}` : 'lvl-unknown';
+    const createdDatePart = formatDatePart(createdAt);
     
     // Create export data with metadata
     const exportData = {
-      version: "2.0",
-      exportDate: new Date().toISOString(),
-      character: character.data,
-      characterInfo: character
+      version: "2.1",
+      exportDate: nowIso,
+      createdAt: createdAt,
+      character: characterData,
+      characterInfo: {
+        id: character.id,
+        name: character.name,
+        createdAt: createdAt
+      },
+      aiGuide: {
+        canonicalDataPath: "character",
+        keyFields: {
+          name: "character.characterInfo.name",
+          level: "character.characterInfo.level",
+          class: "character.characterInfo.class",
+          race: "character.characterInfo.race"
+        },
+        importHints: [
+          "Use root.character as the full canonical sheet payload for this app.",
+          "When creating a new character from another person's file, copy root.character directly.",
+          "If root.character is missing, treat root.data as fallback payload."
+        ],
+        codeExample: "const file = JSON.parse(text); const payload = file.character || file.data || file; const name = payload?.characterInfo?.name;"
+      }
     };
     
     const blob = new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json'});
@@ -2029,7 +2094,7 @@ function exportData() {
     
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${character.name || 'dnd_character'}_backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `${sanitizeFilePart(displayName, 'dnd_character')}_${sanitizeFilePart(levelPart, 'lvl-unknown')}_created-${createdDatePart}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -2058,12 +2123,31 @@ function importData(event) {
   reader.onload = function(e) {
     try {
       const importedData = JSON.parse(e.target.result);
-      const charName = importedData.characterInfo?.name || 'Imported Character';
+      // Support multiple import formats:
+      // 1) Current export wrapper: { version, exportDate, character, characterInfo }
+      // 2) Raw character payload: { characterInfo, page1, ... }
+      // 3) Full character record: { id, name, data }
+      const characterData = importedData?.character || importedData?.data || importedData;
+      const charName =
+        importedData?.characterInfo?.name ||
+        importedData?.name ||
+        characterData?.characterInfo?.name ||
+        'Imported Character';
+
+      if (!characterData || typeof characterData !== 'object') {
+        throw new Error('Unsupported character file format');
+      }
+
+      const importedCreatedAt =
+        importedData?.createdAt ||
+        importedData?.characterInfo?.createdAt ||
+        new Date().toISOString();
       
       const newChar = {
         id: Date.now().toString(),
         name: charName,
-        data: importedData
+        createdAt: importedCreatedAt,
+        data: characterData
       };
       
       let characters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
@@ -13075,4 +13159,3 @@ document.addEventListener('DOMContentLoaded', function() {
   enableAutoSync();
   registerServiceWorker();
 });
-
