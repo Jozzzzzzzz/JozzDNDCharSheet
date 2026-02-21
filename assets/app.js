@@ -159,9 +159,9 @@ function updateNoteBoxSizing(textarea) {
   textarea.dataset.charCount = `${charCount}`;
 
   // Always grow with content; never keep notes inside an internal scroll area.
-  textarea.style.height = 'auto';
+  textarea.style.setProperty('height', 'auto', 'important');
   const desired = Math.max(defaultHeight, textarea.scrollHeight + 12);
-  textarea.style.height = `${desired}px`;
+  textarea.style.setProperty('height', `${desired}px`, 'important');
 
   // Prevent stale partial first-line clipping when browser keeps old scroll offset.
   if (document.activeElement !== textarea || (textarea.selectionStart === 0 && textarea.selectionEnd === 0)) {
@@ -510,6 +510,11 @@ let weaponsData = [];
 let equipmentData = [];
 let currentCharacter = null;
 let deleteState = 0;
+let deleteTargetCharacterId = null;
+
+function generateCharacterId() {
+  return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
 
 // ========== THEME MANAGEMENT ==========
 function toggleTheme() {
@@ -840,7 +845,7 @@ window.initializeApp = function() {
   } else {
     // Auto-create a default character so autosave works immediately
     const defaultChar = {
-      id: Date.now().toString(),
+      id: generateCharacterId(),
       name: 'New Character',
       createdAt: new Date().toISOString(),
       data: { characterInfo: { name: 'New Character' }, page1: {}, page2: {}, page3: {}, page4: {}, page6: {}, weapons: [], equipment: [] }
@@ -919,7 +924,7 @@ function createNewCharacter() {
 
   try {
     const newChar = {
-      id: Date.now().toString(),
+      id: generateCharacterId(),
       name: charName,
       createdAt: new Date().toISOString(),
       data: {
@@ -970,6 +975,7 @@ function createNewCharacter() {
 function loadCharacterList() {
   const characters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
   const select = document.getElementById('characterList');
+  if (!select) return;
   select.innerHTML = '';
   
   if (characters.length === 0) {
@@ -980,22 +986,44 @@ function loadCharacterList() {
     return;
   }
   
+  // Keep current selection valid; fallback to first available character.
+  if (!characters.some(char => char.id === currentCharacter)) {
+    currentCharacter = characters[0].id;
+  }
+
   select.disabled = false;
   characters.forEach(char => {
     const option = document.createElement('option');
     option.value = char.id;
     option.textContent = char.name;
-    if (char.id === currentCharacter) option.selected = true;
     select.appendChild(option);
   });
+  select.value = currentCharacter;
+}
+
+function getDeleteTarget(characters) {
+  const select = document.getElementById('characterList');
+  const selectedId = select ? select.value : null;
+  const targetId =
+    deleteTargetCharacterId ||
+    (selectedId && characters.some(char => char.id === selectedId) ? selectedId : null) ||
+    (characters.some(char => char.id === currentCharacter) ? currentCharacter : null) ||
+    (characters[0]?.id || null);
+
+  return {
+    targetId,
+    target: targetId ? characters.find(char => char.id === targetId) : null
+  };
 }
 
 function loadSelectedCharacter() {
   const select = document.getElementById('characterList');
+  if (!select) return;
   const charId = select.value;
   if (!charId) return;
   
   currentCharacter = charId;
+  resetDeleteUI();
   loadData();
   document.querySelector('.tab[data-tab="page1"]').click();
 }
@@ -1004,12 +1032,19 @@ function initiateDelete() {
   const btn = document.getElementById('deleteBtn');
   const input = document.getElementById('deleteConfirmInput');
   const count = document.getElementById('deleteCharCount');
+  const characters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
+  const { targetId, target } = getDeleteTarget(characters);
+  if (!targetId || !target) {
+    alert('No character selected to delete');
+    resetDeleteUI();
+    return;
+  }
   
   deleteState++;
   
   if (deleteState === 1) {
-    const charName = document.getElementById('char_name').value || 'Character';
-    btn.textContent = `Delete ${charName}?`;
+    deleteTargetCharacterId = targetId;
+    btn.textContent = `Delete ${target.name || 'Character'}?`;
     btn.classList.add('warning');
   } else if (deleteState === 2) {
     btn.textContent = 'CONFIRM DELETE!';
@@ -1026,23 +1061,26 @@ function initiateDelete() {
       btn.disabled = input.value !== 'DELETE';
     };
   } else if (deleteState === 4 && input.value === 'DELETE') {
-    const charName = document.getElementById('char_name').value || 'character';
-    const characters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
-    const updatedChars = characters.filter(char => char.id !== currentCharacter);
+    const finalTargetId = deleteTargetCharacterId || targetId;
+    const finalTarget = characters.find(char => char.id === finalTargetId);
+    const charName = finalTarget?.name || 'character';
+    const updatedChars = characters.filter(char => char.id !== finalTargetId);
     
     localStorage.setItem('dndCharacters', JSON.stringify(updatedChars));
-    resetDeleteUI();
-    loadCharacterList();
     alert(`${charName} deleted permanently`);
     
     if (updatedChars.length > 0) {
       currentCharacter = updatedChars[0].id;
+      resetDeleteUI();
+      loadCharacterList();
       loadData();
     setupSkillCalculationFields();
     enforceAutoMathNumericInputs();
       document.querySelector('.tab[data-tab="page1"]').click();
     } else {
       currentCharacter = null;
+      resetDeleteUI();
+      loadCharacterList();
       showHomePage();
     }
   }
@@ -1054,6 +1092,7 @@ function resetDeleteUI() {
   const count = document.getElementById('deleteCharCount');
   
   deleteState = 0;
+  deleteTargetCharacterId = null;
   btn.textContent = 'Delete Character';
   btn.classList.remove('warning', 'danger');
   btn.disabled = false;
@@ -1098,7 +1137,7 @@ function autosave() {
     let characters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
     if (characters.length === 0) {
       const defaultChar = {
-        id: Date.now().toString(),
+        id: generateCharacterId(),
         name: 'New Character',
         createdAt: new Date().toISOString(),
         data: { characterInfo: { name: 'New Character' }, page1: {}, page2: {}, page3: {}, page4: {}, page6: {}, weapons: [], equipment: [] }
@@ -2144,7 +2183,7 @@ function importData(event) {
         new Date().toISOString();
       
       const newChar = {
-        id: Date.now().toString(),
+        id: generateCharacterId(),
         name: charName,
         createdAt: importedCreatedAt,
         data: characterData
