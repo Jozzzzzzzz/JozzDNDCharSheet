@@ -564,6 +564,135 @@ button[onclick*="home"] {
     margin-bottom: 8px;
   }
 
+  .character-list {
+    width: 100%;
+    min-width: 0;
+    max-height: 420px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 6px;
+    border: 1px solid var(--accent-border);
+    border-radius: 6px;
+    background: var(--input-bg);
+    text-align: left;
+    box-sizing: border-box;
+  }
+
+  .favorite-character-list {
+    max-height: 210px;
+  }
+
+  .load-character-list {
+    max-height: 420px;
+  }
+
+  .character-list-empty {
+    padding: 10px;
+    color: var(--text-light);
+    opacity: 0.8;
+  }
+
+  .character-list-divider {
+    height: 1px;
+    margin: 8px 4px;
+    background: var(--border);
+  }
+
+  .character-list-item {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text);
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin: 0 0 4px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  .character-list-item:last-child {
+    margin-bottom: 0;
+  }
+
+  .character-list-item:hover,
+  .character-list-item:focus-visible {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--accent-border);
+    outline: none;
+  }
+
+  .character-list-item.selected {
+    background: rgba(255, 215, 0, 0.12);
+    border-color: var(--accent-border);
+  }
+
+  .character-list-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .character-favorite-btn {
+    flex: 0 0 auto;
+    border: none;
+    background: transparent;
+    color: var(--text-light);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: color 0.2s ease, background 0.2s ease;
+  }
+
+  .character-favorite-btn.is-favorite {
+    color: var(--accent-text);
+  }
+
+  .character-favorite-btn:hover,
+  .character-favorite-btn:focus-visible {
+    background: rgba(255, 255, 255, 0.08);
+    outline: none;
+  }
+
+  .character-item-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex: 0 0 auto;
+  }
+
+  .character-delete-btn {
+    border: 1px solid rgba(255, 68, 68, 0.45);
+    background: rgba(255, 68, 68, 0.16);
+    color: #ffb3b3;
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1;
+    padding: 4px 6px;
+    border-radius: 4px;
+    margin: 0;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  }
+
+  .character-delete-btn:hover,
+  .character-delete-btn:focus-visible {
+    background: rgba(255, 68, 68, 0.28);
+    color: #fff;
+    border-color: rgba(255, 68, 68, 0.7);
+    outline: none;
+  }
+
   .delete-flow {
     position: relative;
   }
@@ -831,6 +960,12 @@ button[onclick*="home"] {
     z-index: 1001 !important;
   }
 
+  #deleteCharacterPopup {
+    width: min(88vw, 460px);
+    max-width: 88vw;
+    box-sizing: border-box;
+  }
+
   .popup-backdrop {
     display: none;
     position: fixed;
@@ -857,6 +992,25 @@ button[onclick*="home"] {
 
   body.modal-open {
     overflow: hidden;
+  }
+
+  @media (max-width: 768px) {
+    #deleteCharacterPopup {
+      width: calc(100vw - 72px);
+      max-width: calc(100vw - 72px);
+      padding: 10px;
+    }
+
+    #deleteCharacterActions {
+      display: flex !important;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    #deleteCharacterActions button {
+      width: 100%;
+      margin: 0;
+    }
   }
 
   .dark-mode-only-popup {
@@ -2691,7 +2845,137 @@ button[onclick*="home"] {
   color: var(--text);
 }
 
-  .create-btn, .load-btn, .delete-btn {
+.character-list {
+  width: 100%;
+  min-width: 0;
+  max-height: 420px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin-bottom: 0.5rem;
+  padding: 6px;
+  border: 1px solid var(--accent-border);
+  border-radius: 6px;
+  background: var(--input-bg);
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.favorite-character-list {
+  max-height: 210px;
+}
+
+.load-character-list {
+  max-height: 420px;
+}
+
+.character-list-empty {
+  padding: 10px;
+  color: var(--text-light);
+  opacity: 0.8;
+}
+
+.character-list-divider {
+  height: 1px;
+  margin: 8px 4px;
+  background: var(--border);
+}
+
+.character-list-item {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin: 0 0 4px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.character-list-item:last-child {
+  margin-bottom: 0;
+}
+
+.character-list-item:hover,
+.character-list-item:focus-visible {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--accent-border);
+  outline: none;
+}
+
+.character-list-item.selected {
+  background: rgba(255, 215, 0, 0.12);
+  border-color: var(--accent-border);
+}
+
+.character-list-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.character-favorite-btn {
+  flex: 0 0 auto;
+  border: none;
+  background: transparent;
+  color: var(--text-light);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.character-favorite-btn.is-favorite {
+  color: var(--accent-text);
+}
+
+.character-favorite-btn:hover,
+.character-favorite-btn:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+  outline: none;
+}
+
+.character-item-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.character-delete-btn {
+  border: 1px solid rgba(255, 68, 68, 0.45);
+  background: rgba(255, 68, 68, 0.16);
+  color: #ffb3b3;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 4px;
+  margin: 0;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.character-delete-btn:hover,
+.character-delete-btn:focus-visible {
+  background: rgba(255, 68, 68, 0.28);
+  color: #fff;
+  border-color: rgba(255, 68, 68, 0.7);
+  outline: none;
+}
+
+  .create-btn, .delete-btn {
     background: var(--accent);
     color: var(--accent-contrast);
     border: none;
@@ -2702,7 +2986,7 @@ button[onclick*="home"] {
   transition: all 0.3s ease;
 }
 
-.create-btn:hover, .load-btn:hover {
+.create-btn:hover {
   transform: translateY(-2px);
 }
 

@@ -30,17 +30,12 @@
           <div id="createStatus" class="status-message"></div>
         </div>
         <div class="manager-option">
-          <h4>Load Character</h4>
-          <select id="characterList"></select>
-          <button onclick="loadSelectedCharacter()" class="load-btn">Load</button>
+          <h4>Favourite Characters</h4>
+          <div id="favoriteCharacterList" class="character-list favorite-character-list" role="listbox" aria-label="Favourite character list"></div>
         </div>
         <div class="manager-option">
-          <h4>Delete Character</h4>
-          <div class="delete-flow">
-            <button id="deleteBtn" onclick="initiateDelete()" class="delete-btn">Delete</button>
-            <input type="text" id="deleteConfirmInput" placeholder="Type 'DELETE'" style="display: none;">
-            <span id="deleteCharCount" style="display: none;">0/6</span>
-          </div>
+          <h4>Load Character</h4>
+          <div id="characterList" class="character-list load-character-list" role="listbox" aria-label="Character list"></div>
         </div>
       </div>
     </div>

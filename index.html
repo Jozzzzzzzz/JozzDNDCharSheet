@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=0.85, maximum-scale=0.85, user-scalable=no">
+<meta id="appViewport" name="viewport" content="width=device-width, initial-scale=1.02, maximum-scale=1.02, user-scalable=no">
 <title>Joz's Homebrew DND Sheet (Modular)</title>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -12,6 +12,18 @@
 <link rel="stylesheet" href="assets/styles.css">
 
 <script>
+(function() {
+  // Mobile-only zoom test: keep 1.02 on mobile, downscale non-mobile to 0.85.
+  const meta = document.getElementById('appViewport');
+  if (!meta) return;
+  const isMobileViewport = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+  const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  const isMobile = isMobileViewport || isTouchDevice;
+  if (!isMobile) {
+    meta.setAttribute('content', 'width=device-width, initial-scale=0.85, maximum-scale=0.85, user-scalable=no');
+  }
+})();
+
 (function() {
   const savedAccentColor = localStorage.getItem('dndAccentColor');
   if (savedAccentColor) {

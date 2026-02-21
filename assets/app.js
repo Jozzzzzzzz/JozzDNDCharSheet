@@ -530,9 +530,87 @@ let equipmentData = [];
 let currentCharacter = null;
 let deleteState = 0;
 let deleteTargetCharacterId = null;
+const LAST_SELECTED_CHARACTER_KEY = 'dndLastSelectedCharacter';
+const LAST_SELECTED_CHARACTER_AT_KEY = 'dndLastSelectedCharacterAt';
+const CHARACTER_FAVORITES_KEY = 'dndFavoriteCharacters';
+const LAST_SELECTION_MAX_AGE_MS = 12 * 60 * 60 * 1000;
+const MAX_FAVORITE_CHARACTERS = 5;
 
 function generateCharacterId() {
   return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function getFavoriteCharacterIds() {
+  const raw = JSON.parse(localStorage.getItem(CHARACTER_FAVORITES_KEY) || '[]');
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(id => typeof id === 'string');
+}
+
+function setFavoriteCharacterIds(ids) {
+  localStorage.setItem(CHARACTER_FAVORITES_KEY, JSON.stringify(ids));
+}
+
+function isFavoriteCharacter(characterId) {
+  return getFavoriteCharacterIds().includes(characterId);
+}
+
+function toggleFavoriteCharacter(characterId) {
+  const favs = new Set(getFavoriteCharacterIds());
+  if (favs.has(characterId)) {
+    favs.delete(characterId);
+  } else {
+    if (favs.size >= MAX_FAVORITE_CHARACTERS) {
+      showPopup('favoritesLimitPopup');
+      return;
+    }
+    favs.add(characterId);
+  }
+  setFavoriteCharacterIds(Array.from(favs));
+  loadCharacterList();
+}
+
+function rememberSelectedCharacter(characterId) {
+  if (!characterId) return;
+  localStorage.setItem(LAST_SELECTED_CHARACTER_KEY, characterId);
+  localStorage.setItem(LAST_SELECTED_CHARACTER_AT_KEY, `${Date.now()}`);
+}
+
+function clearRememberedSelectedCharacter() {
+  localStorage.removeItem(LAST_SELECTED_CHARACTER_KEY);
+  localStorage.removeItem(LAST_SELECTED_CHARACTER_AT_KEY);
+}
+
+function getRecentSelectedCharacterId(characters) {
+  const storedId = localStorage.getItem(LAST_SELECTED_CHARACTER_KEY);
+  const storedAt = Number(localStorage.getItem(LAST_SELECTED_CHARACTER_AT_KEY) || '');
+  if (!storedId || !Number.isFinite(storedAt)) {
+    clearRememberedSelectedCharacter();
+    return null;
+  }
+
+  const ageMs = Date.now() - storedAt;
+  const exists = characters.some(char => char.id === storedId);
+  if (ageMs > LAST_SELECTION_MAX_AGE_MS || ageMs < 0 || !exists) {
+    clearRememberedSelectedCharacter();
+    return null;
+  }
+  return storedId;
+}
+
+function sortCharactersForDisplay(characters) {
+  const byName = (a, b) => (a.name || '').localeCompare((b.name || ''), undefined, { sensitivity: 'base' });
+  const favorites = [];
+  const others = [];
+  characters.forEach(char => {
+    if (isFavoriteCharacter(char.id)) {
+      favorites.push(char);
+    } else {
+      others.push(char);
+    }
+  });
+  favorites.sort(byName);
+  others.sort(byName);
+  return { favorites, others };
 }
 
 // ========== THEME MANAGEMENT ==========
@@ -853,29 +931,20 @@ window.initializeApp = function() {
     window.equipmentData = [];
   }
 
-  // Try to load last used character or first in list; if none, auto-create one
+  // Load character list and restore recent selection only if selected within 12 hours.
   const characters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
-  if (characters.length > 0) {
-    currentCharacter = characters[0].id;
+  const recentCharacterId = getRecentSelectedCharacterId(characters);
+  currentCharacter = recentCharacterId || null;
+  loadCharacterList();
+
+  if (recentCharacterId) {
     loadData();
     setupSkillCalculationFields();
     enforceAutoMathNumericInputs();
-    // Don't trigger click - let the page show naturally
+    const page1Tab = document.querySelector('.tab[data-tab="page1"]');
+    if (page1Tab) page1Tab.click();
   } else {
-    // Auto-create a default character so autosave works immediately
-    const defaultChar = {
-      id: generateCharacterId(),
-      name: 'New Character',
-      createdAt: new Date().toISOString(),
-      data: { characterInfo: { name: 'New Character' }, page1: {}, page2: {}, page3: {}, page4: {}, page6: {}, weapons: [], equipment: [] }
-    };
-    localStorage.setItem('dndCharacters', JSON.stringify([defaultChar]));
-    currentCharacter = defaultChar.id;
-    loadCharacterList();
-    loadData();
-    setupSkillCalculationFields();
-    enforceAutoMathNumericInputs();
-    document.querySelector('.tab[data-tab="page1"]').click();
+    showHomePage();
   }
   
   // Initialize portrait functionality (guard if elements absent)
@@ -962,12 +1031,8 @@ function createNewCharacter() {
     characters.push(newChar);
     localStorage.setItem('dndCharacters', JSON.stringify(characters));
 
-    currentCharacter = newChar.id;
     loadCharacterList();
-    loadData();
-    setupSkillCalculationFields();
-    enforceAutoMathNumericInputs();
-    document.querySelector('.tab[data-tab="page1"]').click();
+    loadSelectedCharacter(newChar.id);
     document.getElementById('newCharName').value = '';
 
     if (createStatus) {
@@ -993,131 +1058,214 @@ function createNewCharacter() {
 
 function loadCharacterList() {
   const characters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
-  const select = document.getElementById('characterList');
-  if (!select) return;
-  select.innerHTML = '';
-  
+  const favoritesList = document.getElementById('favoriteCharacterList');
+  const loadList = document.getElementById('characterList');
+  if (!loadList) return;
+  if (favoritesList) favoritesList.innerHTML = '';
+  loadList.innerHTML = '';
+
+  if (!characters.some(char => char.id === currentCharacter)) {
+    currentCharacter = null;
+  }
+
+  const renderEmpty = (container, message) => {
+    if (!container) return;
+    const empty = document.createElement('div');
+    empty.className = 'character-list-empty';
+    empty.textContent = message;
+    container.appendChild(empty);
+    container.setAttribute('aria-disabled', 'true');
+  };
+
   if (characters.length === 0) {
-    const option = document.createElement('option');
-    option.textContent = "No characters found";
-    select.appendChild(option);
-    select.disabled = true;
+    renderEmpty(favoritesList, 'No favourite characters');
+    renderEmpty(loadList, 'No characters found');
     return;
   }
-  
-  // Keep current selection valid; fallback to first available character.
-  if (!characters.some(char => char.id === currentCharacter)) {
-    currentCharacter = characters[0].id;
+
+  if (favoritesList) favoritesList.removeAttribute('aria-disabled');
+  loadList.removeAttribute('aria-disabled');
+  const { favorites, others } = sortCharactersForDisplay(characters);
+  const renderItem = (container, char) => {
+    if (!container) return;
+    const item = document.createElement('div');
+    item.className = `character-list-item${char.id === currentCharacter ? ' selected' : ''}`;
+    item.dataset.characterId = char.id;
+    item.tabIndex = 0;
+    item.setAttribute('role', 'option');
+    item.setAttribute('aria-selected', char.id === currentCharacter ? 'true' : 'false');
+    item.addEventListener('click', () => loadSelectedCharacter(char.id));
+    item.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        loadSelectedCharacter(char.id);
+      }
+    });
+
+    const name = document.createElement('span');
+    name.className = 'character-list-name';
+    name.textContent = char.name || 'Unnamed';
+    item.appendChild(name);
+
+    const actions = document.createElement('div');
+    actions.className = 'character-item-actions';
+
+    const star = document.createElement('button');
+    star.type = 'button';
+    star.className = `character-favorite-btn${isFavoriteCharacter(char.id) ? ' is-favorite' : ''}`;
+    star.textContent = isFavoriteCharacter(char.id) ? '★' : '☆';
+    star.title = isFavoriteCharacter(char.id) ? 'Remove from favourites' : 'Add to favourites';
+    star.setAttribute('aria-label', star.title);
+    star.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleFavoriteCharacter(char.id);
+    });
+    actions.appendChild(star);
+
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'character-delete-btn';
+    del.textContent = 'Delete';
+    del.title = `Delete ${char.name || 'character'}`;
+    del.setAttribute('aria-label', del.title);
+    del.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      initiateDelete(char.id);
+    });
+    actions.appendChild(del);
+
+    item.appendChild(actions);
+
+    container.appendChild(item);
+  };
+
+  if (favorites.length === 0) {
+    renderEmpty(favoritesList, 'No favourite characters');
+  } else {
+    favorites.forEach(char => renderItem(favoritesList, char));
   }
 
-  select.disabled = false;
-  characters.forEach(char => {
-    const option = document.createElement('option');
-    option.value = char.id;
-    option.textContent = char.name;
-    select.appendChild(option);
-  });
-  select.value = currentCharacter;
+  if (others.length === 0) {
+    renderEmpty(loadList, 'All characters are in favourites');
+  } else {
+    others.forEach(char => renderItem(loadList, char));
+  }
 }
 
-function getDeleteTarget(characters) {
-  const select = document.getElementById('characterList');
-  const selectedId = select ? select.value : null;
-  const targetId =
-    deleteTargetCharacterId ||
-    (selectedId && characters.some(char => char.id === selectedId) ? selectedId : null) ||
-    (characters.some(char => char.id === currentCharacter) ? currentCharacter : null) ||
-    (characters[0]?.id || null);
-
-  return {
-    targetId,
-    target: targetId ? characters.find(char => char.id === targetId) : null
-  };
-}
-
-function loadSelectedCharacter() {
-  const select = document.getElementById('characterList');
-  if (!select) return;
-  const charId = select.value;
+function loadSelectedCharacter(charId) {
   if (!charId) return;
-  
+  const characters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
+  if (!characters.some(char => char.id === charId)) return;
+
+  rememberSelectedCharacter(charId);
+  deleteTargetCharacterId = null;
   currentCharacter = charId;
+  loadCharacterList();
+
   resetDeleteUI();
   loadData();
   document.querySelector('.tab[data-tab="page1"]').click();
 }
 
-function initiateDelete() {
-  const btn = document.getElementById('deleteBtn');
-  const input = document.getElementById('deleteConfirmInput');
-  const count = document.getElementById('deleteCharCount');
+function initiateDelete(charId) {
+  const btn = document.getElementById('deleteCharacterActionBtn');
+  const input = document.getElementById('deleteCharacterConfirmInput');
+  const count = document.getElementById('deleteCharacterCount');
+  const inputWrap = document.getElementById('deleteCharacterInputWrap');
+  const message = document.getElementById('deleteCharacterMessage');
   const characters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
-  const { targetId, target } = getDeleteTarget(characters);
+  const targetId =
+    charId ||
+    deleteTargetCharacterId ||
+    (characters.some(char => char.id === currentCharacter) ? currentCharacter : null);
+  const target = targetId ? characters.find(char => char.id === targetId) : null;
+
+  if (!btn || !input || !count || !inputWrap || !message) return;
   if (!targetId || !target) {
     alert('No character selected to delete');
     resetDeleteUI();
     return;
   }
-  
+
+  if (deleteTargetCharacterId && deleteTargetCharacterId !== targetId) {
+    resetDeleteUI();
+  }
+  deleteTargetCharacterId = targetId;
+  showPopup('deleteCharacterPopup');
   deleteState++;
   
   if (deleteState === 1) {
-    deleteTargetCharacterId = targetId;
+    message.textContent = `Delete "${target.name || 'Character'}"?`;
     btn.textContent = `Delete ${target.name || 'Character'}?`;
     btn.classList.add('warning');
+    btn.classList.remove('danger');
+    inputWrap.style.display = 'none';
+    btn.disabled = false;
   } else if (deleteState === 2) {
+    message.textContent = 'This action cannot be undone.';
     btn.textContent = 'CONFIRM DELETE!';
     btn.classList.remove('warning');
     btn.classList.add('danger');
+    btn.disabled = false;
   } else if (deleteState === 3) {
+    message.textContent = 'Type "DELETE" to permanently remove this character.';
     btn.textContent = 'DELETE FOREVER';
-    input.style.display = 'block';
-    count.style.display = 'inline';
+    inputWrap.style.display = 'block';
     input.focus();
-    
     input.oninput = function() {
       count.textContent = `${input.value.length}/6`;
       btn.disabled = input.value !== 'DELETE';
     };
+    btn.disabled = input.value !== 'DELETE';
   } else if (deleteState === 4 && input.value === 'DELETE') {
     const finalTargetId = deleteTargetCharacterId || targetId;
     const finalTarget = characters.find(char => char.id === finalTargetId);
     const charName = finalTarget?.name || 'character';
     const updatedChars = characters.filter(char => char.id !== finalTargetId);
-    
+
     localStorage.setItem('dndCharacters', JSON.stringify(updatedChars));
+    setFavoriteCharacterIds(getFavoriteCharacterIds().filter(id => id !== finalTargetId));
     alert(`${charName} deleted permanently`);
     
     if (updatedChars.length > 0) {
       currentCharacter = updatedChars[0].id;
+      rememberSelectedCharacter(currentCharacter);
       resetDeleteUI();
       loadCharacterList();
       loadData();
-    setupSkillCalculationFields();
-    enforceAutoMathNumericInputs();
+      setupSkillCalculationFields();
+      enforceAutoMathNumericInputs();
       document.querySelector('.tab[data-tab="page1"]').click();
     } else {
       currentCharacter = null;
+      clearRememberedSelectedCharacter();
       resetDeleteUI();
       loadCharacterList();
       showHomePage();
     }
+    closePopup('deleteCharacterPopup');
   }
 }
 
 function resetDeleteUI() {
-  const btn = document.getElementById('deleteBtn');
-  const input = document.getElementById('deleteConfirmInput');
-  const count = document.getElementById('deleteCharCount');
-  
+  const btn = document.getElementById('deleteCharacterActionBtn');
+  const input = document.getElementById('deleteCharacterConfirmInput');
+  const count = document.getElementById('deleteCharacterCount');
+  const inputWrap = document.getElementById('deleteCharacterInputWrap');
+  const message = document.getElementById('deleteCharacterMessage');
+
   deleteState = 0;
   deleteTargetCharacterId = null;
+  if (!btn || !input || !count || !inputWrap || !message) return;
+  message.textContent = 'Are you sure you want to delete this character?';
   btn.textContent = 'Delete Character';
   btn.classList.remove('warning', 'danger');
   btn.disabled = false;
-  input.style.display = 'none';
+  inputWrap.style.display = 'none';
   input.value = '';
-  count.style.display = 'none';
+  count.textContent = '0/6';
 }
 
 // ========== EXISTING FUNCTIONALITY (UPDATED FOR CHARACTER SYSTEM) ==========
@@ -2212,14 +2360,12 @@ function importData(event) {
       characters.push(newChar);
       localStorage.setItem('dndCharacters', JSON.stringify(characters));
       
-      currentCharacter = newChar.id;
       loadCharacterList();
-      loadData();
-    setupSkillCalculationFields();
-    enforceAutoMathNumericInputs();
+      loadSelectedCharacter(newChar.id);
+      setupSkillCalculationFields();
+      enforceAutoMathNumericInputs();
       
       alert(`Character "${charName}" imported successfully!`);
-      document.querySelector('.tab[data-tab="page1"]').click();
     } catch (err) {
       alert("Error importing file: " + err.message);
     }

@@ -11,6 +11,33 @@
   />
 </div>
 
+<!-- Favourite Limit Popup -->
+<div class="popup" id="favoritesLimitPopup">
+  <h3>Favourite Character Limit</h3>
+  <p style="margin: 12px 0 16px 0;">
+    Well, that is a bit greedy. You can only have 5 favourite characters for now, so you may need to bring that number down first.
+  </p>
+  <div style="display: flex; justify-content: center;">
+    <button onclick="closePopup('favoritesLimitPopup')">OK</button>
+  </div>
+</div>
+
+<!-- Character Delete Confirmation Popup -->
+<div class="popup" id="deleteCharacterPopup">
+  <h3 id="deleteCharacterTitle">Delete Character</h3>
+  <p id="deleteCharacterMessage" style="margin: 12px 0 14px 0;">
+    Are you sure you want to delete this character?
+  </p>
+  <div id="deleteCharacterInputWrap" style="display: none;">
+    <input type="text" id="deleteCharacterConfirmInput" placeholder="Type 'DELETE'"/>
+    <span id="deleteCharacterCount" style="font-size: 0.8rem; color: #aaa;">0/6</span>
+  </div>
+  <div id="deleteCharacterActions" style="margin-top: 12px; display: flex; justify-content: space-between; gap: 10px;">
+    <button id="deleteCharacterActionBtn" onclick="initiateDelete()">Delete Character</button>
+    <button onclick="resetDeleteUI(); closePopup('deleteCharacterPopup')">Cancel</button>
+  </div>
+</div>
+
 
 <!-- Custom HP Adjustment Popup -->
 <div class="popup" id="customHPPopup">
