@@ -313,6 +313,10 @@
       <span class="spell-detail-label">Concentration:</span>
       <span class="spell-detail-value" id="spellDetailConcentration"></span>
     </div>
+    <div class="spell-detail-row">
+      <span class="spell-detail-label">Source Book:</span>
+      <span class="spell-detail-value" id="spellDetailSourceBook"></span>
+    </div>
     <div class="spell-description" id="spellDetailDescription"></div>
     <div class="spell-detail-row" id="spellDetailWikiLink" style="display: none;">
       <span class="spell-detail-label">D&D Wiki:</span>
@@ -409,6 +413,10 @@
       <div class="spell-form-full">
         <label>D&D Wiki Link (optional):</label>
         <input type="url" id="spellWikiLink" placeholder="https://dnd5e.wikidot.com/spell:spell-name">
+      </div>
+      <div class="spell-form-full">
+        <label>Source Book (optional):</label>
+        <input type="text" id="spellSourceBook" placeholder="e.g., PHB, XGE, TCE, SCAG">
       </div>
       <div class="spell-form-actions">
         <button type="button" onclick="closePopup('spellFormPopup')">Cancel</button>

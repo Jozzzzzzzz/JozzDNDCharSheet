@@ -12,7 +12,8 @@ function initializeActions() {
 
 // Show action form
 function showActionForm(type) {
-  document.getElementById('actionFormTitle').textContent = 'Add Action';
+  const actionKind = type === 'feature' ? 'feature' : 'action';
+  document.getElementById('actionFormTitle').textContent = actionKind === 'feature' ? 'Add Feature' : 'Add Action';
   document.getElementById('action_name').value = '';
   document.getElementById('action_category').value = 'melee';
   document.getElementById('action_damage').value = '';
@@ -20,8 +21,18 @@ function showActionForm(type) {
   document.getElementById('action_uses').value = '';
   document.getElementById('action_attack').value = '';
   document.getElementById('action_description').value = '';
-  document.getElementById('saveActionBtn').textContent = 'Add Action';
+  const saveBtn = document.getElementById('saveActionBtn');
+  saveBtn.textContent = actionKind === 'feature' ? 'Add Feature' : 'Add Action';
+  saveBtn.setAttribute('data-action-kind', actionKind);
+  saveBtn.removeAttribute('data-edit-id');
+  if (actionKind === 'feature') {
+    document.getElementById('action_category').value = 'other';
+  }
   showPopup('actionFormPopup');
+}
+
+function showFeatureForm() {
+  showActionForm('feature');
 }
 
 // Update action form based on type
@@ -55,6 +66,7 @@ function saveAction() {
   const attack = document.getElementById('action_attack').value.trim();
   const description = document.getElementById('action_description').value.trim();
   const editId = document.getElementById('saveActionBtn').getAttribute('data-edit-id');
+  const actionKind = document.getElementById('saveActionBtn').getAttribute('data-action-kind') || 'action';
   
   if (!name) {
     alert('Please enter a name for the action.');
@@ -64,7 +76,7 @@ function saveAction() {
   const actionData = {
     id: editId || Date.now().toString(),
     name: name,
-    type: 'action',
+    type: actionKind,
     category: category,
     damage: damage,
     range: range,
@@ -132,7 +144,7 @@ function createActionCard(action, type) {
     </div>
     ${action.description ? `<div class="action-description">${action.description}</div>` : ''}
     <div class="action-actions">
-      <button class="action-btn favorite-btn ${action.favorite ? 'favorited' : ''}" onclick="toggleFavorite('${action.id}', '${type}')">
+      <button class="action-btn favorite-btn ${action.favorite ? 'favorited' : ''}" onclick="toggleActionFavorite('${action.id}', '${type}')">
         ${action.favorite ? '❤️' : '🤍'}
       </button>
       <button class="action-btn edit-btn" onclick="editAction('${action.id}', '${type}')">✏️</button>
@@ -143,7 +155,7 @@ function createActionCard(action, type) {
 }
 
 // Toggle favorite
-function toggleFavorite(id, type) {
+function toggleActionFavorite(id, type) {
   const action = actionsData.actions.find(a => a.id === id);
   if (action) {
     action.favorite = !action.favorite;
@@ -158,8 +170,8 @@ function toggleFavorite(id, type) {
 function editAction(id, type) {
   const action = actionsData.actions.find(a => a.id === id);
   if (action) {
-    document.getElementById('actionFormTitle').textContent = 'Edit Action';
-    document.getElementById('action_type').value = 'action';
+    const actionKind = action.type === 'feature' ? 'feature' : 'action';
+    document.getElementById('actionFormTitle').textContent = actionKind === 'feature' ? 'Edit Feature' : 'Edit Action';
     document.getElementById('action_name').value = action.name;
     document.getElementById('action_category').value = action.category;
     document.getElementById('action_damage').value = action.damage;
@@ -167,8 +179,10 @@ function editAction(id, type) {
     document.getElementById('action_uses').value = action.uses;
     document.getElementById('action_attack').value = action.attack;
     document.getElementById('action_description').value = action.description;
-    document.getElementById('saveActionBtn').textContent = 'Update Action';
-    document.getElementById('saveActionBtn').setAttribute('data-edit-id', id);
+    const saveBtn = document.getElementById('saveActionBtn');
+    saveBtn.textContent = actionKind === 'feature' ? 'Update Feature' : 'Update Action';
+    saveBtn.setAttribute('data-edit-id', id);
+    saveBtn.setAttribute('data-action-kind', actionKind);
     showPopup('actionFormPopup');
   }
 }
