@@ -1525,6 +1525,18 @@ function loadData() {
   if (profElement) profElement.checked = data.page1.abilities[`${ability}_save_prof`] || false;
 
     }
+
+    // Restore saved proficiency bonus before running derived calculations.
+    if (data.page1.combatStats && Object.prototype.hasOwnProperty.call(data.page1.combatStats, 'prof_bonus')) {
+      const profBonusInput = document.getElementById('prof_bonus');
+      if (profBonusInput && data.page1.combatStats.prof_bonus !== null && data.page1.combatStats.prof_bonus !== undefined) {
+        profBonusInput.value = data.page1.combatStats.prof_bonus;
+      }
+    }
+
+    if (typeof syncAutoMathOverridesFromCurrentValues === 'function') {
+      syncAutoMathOverridesFromCurrentValues();
+    }
     
     // Calculate ability bonuses after loading
     ['str', 'dex', 'con', 'int', 'wis', 'cha'].forEach(ability => {

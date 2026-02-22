@@ -1546,6 +1546,18 @@ function loadData() {
   if (profElement) profElement.checked = data.page1.abilities[`${ability}_save_prof`] || false;
 
     }
+
+    // Restore saved proficiency bonus before running derived calculations.
+    if (data.page1.combatStats && Object.prototype.hasOwnProperty.call(data.page1.combatStats, 'prof_bonus')) {
+      const profBonusInput = document.getElementById('prof_bonus');
+      if (profBonusInput && data.page1.combatStats.prof_bonus !== null && data.page1.combatStats.prof_bonus !== undefined) {
+        profBonusInput.value = data.page1.combatStats.prof_bonus;
+      }
+    }
+
+    if (typeof syncAutoMathOverridesFromCurrentValues === 'function') {
+      syncAutoMathOverridesFromCurrentValues();
+    }
     
     // Calculate ability bonuses after loading
     ['str', 'dex', 'con', 'int', 'wis', 'cha'].forEach(ability => {
@@ -13039,6 +13051,14 @@ const SKILL_ABILITY_MAP = {
 };
 
 const SKILL_LIST = Object.keys(SKILL_ABILITY_MAP);
+const ABILITY_LIST = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+const autoMathOverrideState = {
+  profBonus: false,
+  abilityBonus: ABILITY_LIST.reduce((acc, ability) => {
+    acc[ability] = false;
+    return acc;
+  }, {})
+};
 
 function formatSignedNumber(value) {
   const n = parseInt(value, 10) || 0;
@@ -13064,6 +13084,124 @@ function sanitizeSignedValue(value) {
   const digits = trimmed.replace(/\D/g, '');
   const numeric = digits ? parseInt(digits, 10) : 0;
   return sign === '-' ? `-${numeric}` : `+${numeric}`;
+}
+
+function getCalculatedAbilityBonus(ability) {
+  const scoreInput = document.getElementById(ability);
+  if (!scoreInput) return '+0';
+  const score = parseInt(scoreInput.value, 10) || 0;
+  return formatSignedNumber(Math.floor((score - 10) / 2));
+}
+
+function setAbilityBonusOverride(ability, isOverridden) {
+  if (!Object.prototype.hasOwnProperty.call(autoMathOverrideState.abilityBonus, ability)) return;
+  autoMathOverrideState.abilityBonus[ability] = !!isOverridden;
+}
+
+function setProficiencyBonusOverride(isOverridden) {
+  autoMathOverrideState.profBonus = !!isOverridden;
+}
+
+function syncAutoMathOverridesFromCurrentValues() {
+  ABILITY_LIST.forEach(ability => {
+    const bonusInput = document.getElementById(`${ability}_bonus`);
+    if (!bonusInput) return;
+    const rawValue = String(bonusInput.value || '').trim();
+    if (!rawValue) {
+      setAbilityBonusOverride(ability, false);
+      bonusInput.value = getCalculatedAbilityBonus(ability);
+      return;
+    }
+    const current = sanitizeSignedValue(bonusInput.value);
+    const calculated = getCalculatedAbilityBonus(ability);
+    setAbilityBonusOverride(ability, current !== calculated);
+    bonusInput.value = current;
+  });
+
+  const profBonusInput = document.getElementById('prof_bonus');
+  if (profBonusInput) {
+    const rawValue = String(profBonusInput.value || '').trim();
+    if (!rawValue) {
+      setProficiencyBonusOverride(false);
+      profBonusInput.value = calculateProficiencyBonus();
+      return;
+    }
+    const current = sanitizeSignedValue(profBonusInput.value);
+    const calculated = calculateProficiencyBonus();
+    setProficiencyBonusOverride(current !== calculated);
+    profBonusInput.value = current;
+  }
+}
+
+function bindAutoMathOverrideInputs() {
+  ABILITY_LIST.forEach(ability => {
+    const bonusInput = document.getElementById(`${ability}_bonus`);
+    if (!bonusInput || bonusInput.dataset.bonusOverrideBound === '1') return;
+    bonusInput.dataset.bonusOverrideBound = '1';
+    bonusInput.readOnly = false;
+    bonusInput.removeAttribute('readonly');
+    bonusInput.inputMode = 'numeric';
+
+    bonusInput.addEventListener('input', () => {
+      const cleaned = String(bonusInput.value || '').replace(/[^0-9-]/g, '');
+      const normalized = cleaned.startsWith('-')
+        ? '-' + cleaned.slice(1).replace(/-/g, '')
+        : cleaned.replace(/-/g, '');
+      bonusInput.value = normalized;
+      setAbilityBonusOverride(ability, true);
+      calculateSavingThrow(ability);
+      updateAllSkillBonuses();
+      if (typeof autosave === 'function') autosave();
+    });
+
+    bonusInput.addEventListener('blur', () => {
+      const trimmed = String(bonusInput.value || '').trim();
+      if (!trimmed) {
+        setAbilityBonusOverride(ability, false);
+        calculateAbilityBonus(ability);
+      } else {
+        bonusInput.value = sanitizeSignedValue(trimmed);
+        setAbilityBonusOverride(ability, bonusInput.value !== getCalculatedAbilityBonus(ability));
+        calculateSavingThrow(ability);
+        updateAllSkillBonuses();
+      }
+      if (typeof autosave === 'function') autosave();
+    });
+  });
+
+  const profBonusInput = document.getElementById('prof_bonus');
+  if (profBonusInput && profBonusInput.dataset.profOverrideBound !== '1') {
+    profBonusInput.dataset.profOverrideBound = '1';
+    profBonusInput.readOnly = false;
+    profBonusInput.removeAttribute('readonly');
+    profBonusInput.inputMode = 'numeric';
+
+    profBonusInput.addEventListener('input', () => {
+      const cleaned = String(profBonusInput.value || '').replace(/[^0-9-]/g, '');
+      const normalized = cleaned.startsWith('-')
+        ? '-' + cleaned.slice(1).replace(/-/g, '')
+        : cleaned.replace(/-/g, '');
+      profBonusInput.value = normalized;
+      setProficiencyBonusOverride(true);
+      ABILITY_LIST.forEach(ability => calculateSavingThrow(ability));
+      updateAllSkillBonuses();
+      if (typeof autosave === 'function') autosave();
+    });
+
+    profBonusInput.addEventListener('blur', () => {
+      const trimmed = String(profBonusInput.value || '').trim();
+      if (!trimmed) {
+        setProficiencyBonusOverride(false);
+        updateProficiencyBonus();
+      } else {
+        profBonusInput.value = sanitizeSignedValue(trimmed);
+        setProficiencyBonusOverride(profBonusInput.value !== calculateProficiencyBonus());
+        ABILITY_LIST.forEach(ability => calculateSavingThrow(ability));
+        updateAllSkillBonuses();
+      }
+      if (typeof autosave === 'function') autosave();
+    });
+  }
 }
 
 function enforceAutoMathNumericInputs() {
@@ -13095,13 +13233,14 @@ function enforceAutoMathNumericInputs() {
     });
   });
 
-  // Derived auto-math outputs should not be manually edited.
-  ['str_bonus','dex_bonus','con_bonus','int_bonus','wis_bonus','cha_bonus',
-   'str_save','dex_save','con_save','int_save','wis_save','cha_save','prof_bonus']
+  // Saving throws are derived from ability/proficiency values.
+  ['str_save','dex_save','con_save','int_save','wis_save','cha_save']
     .forEach(id => {
       const field = document.getElementById(id);
       if (field) field.readOnly = true;
     });
+
+  bindAutoMathOverrideInputs();
 }
 
 function calculateSkillBonus(skill) {
@@ -13189,8 +13328,10 @@ function calculateAbilityBonus(ability) {
   // Calculate modifier: (score - 10) / 2, rounded down
   const modifier = Math.floor((score - 10) / 2);
 
-  // Format with + prefix for positive numbers
-  bonusInput.value = formatSignedNumber(modifier);
+  // Keep auto-math unless user intentionally overrides this bonus input.
+  if (!autoMathOverrideState.abilityBonus[ability]) {
+    bonusInput.value = formatSignedNumber(modifier);
+  }
 
   calculateSavingThrow(ability);
   updateAllSkillBonuses();
@@ -13277,10 +13418,12 @@ function updateProficiencyBonus() {
   if (!profBonusInput) return;
 
   const newProfBonus = calculateProficiencyBonus();
-  profBonusInput.value = newProfBonus;
+  if (!autoMathOverrideState.profBonus) {
+    profBonusInput.value = newProfBonus;
+  }
 
   // Recalculate all saving throws
-  ['str', 'dex', 'con', 'int', 'wis', 'cha'].forEach(ability => {
+  ABILITY_LIST.forEach(ability => {
     calculateSavingThrow(ability);
   });
 
@@ -13291,29 +13434,14 @@ function handleProfBonusInput() {
   const profBonusInput = document.getElementById('prof_bonus');
   if (!profBonusInput) return;
   
-  let value = profBonusInput.value;
-  
-  // Ensure it always starts with + or -
-  if (value && !value.startsWith('+') && !value.startsWith('-')) {
-    value = '+' + value;
-  }
-  
-  // Remove any extra + signs at the start
-  if (value.startsWith('++')) {
-    value = '+' + value.substring(2);
-  }
-  
-  // Limit to 3 characters total (e.g., +99, -9)
-  if (value.length > 3) {
-    value = value.substring(0, 3);
-  }
-  
-  profBonusInput.value = value;
-  
-  // Recalculate all saving throws with the new proficiency bonus
-  ['str', 'dex', 'con', 'int', 'wis', 'cha'].forEach(ability => {
+  profBonusInput.value = sanitizeSignedValue(profBonusInput.value);
+  setProficiencyBonusOverride(profBonusInput.value !== calculateProficiencyBonus());
+
+  // Recalculate all saving throws with the current proficiency bonus
+  ABILITY_LIST.forEach(ability => {
     calculateSavingThrow(ability);
   });
+  updateAllSkillBonuses();
 }
 
 function resetProfBonusIfEmpty() {
@@ -13322,13 +13450,8 @@ function resetProfBonusIfEmpty() {
   
   // If the input is empty or just whitespace, reset to calculated value
   if (!profBonusInput.value.trim()) {
-    const calculatedProfBonus = calculateProficiencyBonus();
-    profBonusInput.value = calculatedProfBonus;
-    
-    // Recalculate all saving throws
-    ['str', 'dex', 'con', 'int', 'wis', 'cha'].forEach(ability => {
-      calculateSavingThrow(ability);
-    });
+    setProficiencyBonusOverride(false);
+    updateProficiencyBonus();
   }
 }
 
@@ -13336,18 +13459,9 @@ function updateProficiencyBonusIfNotOverridden() {
   const profBonusInput = document.getElementById('prof_bonus');
   if (!profBonusInput) return;
   
-  // Only update if the current value matches the calculated value (not manually overridden)
-  const currentValue = profBonusInput.value;
-  const calculatedValue = calculateProficiencyBonus();
-  
-  if (currentValue === calculatedValue || !currentValue.trim()) {
-    // Update to new calculated value
-    profBonusInput.value = calculatedValue;
-    
-    // Recalculate all saving throws
-    ['str', 'dex', 'con', 'int', 'wis', 'cha'].forEach(ability => {
-      calculateSavingThrow(ability);
-    });
+  if (!autoMathOverrideState.profBonus || !profBonusInput.value.trim()) {
+    setProficiencyBonusOverride(false);
+    updateProficiencyBonus();
   }
 }
 
