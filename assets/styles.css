@@ -365,12 +365,27 @@ button[onclick*="home"] {
   [data-theme="light"] .top-right-reset {
     color: #333333 !important;
   }
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
+    touch-action: pan-y;
+  }
+
   body {
     margin: 0;
     font-family: 'Segoe UI', sans-serif;
     background: var(--dark-bg);
     color: var(--text-light);
     transition: all 1s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow-x: hidden;
+  }
+
+  #chrome-root,
+  #pages,
+  #popups-root {
+    max-width: 100%;
     overflow-x: hidden;
   }
 
