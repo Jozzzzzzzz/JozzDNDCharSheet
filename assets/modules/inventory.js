@@ -1119,16 +1119,24 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Settings dropdown functionality
+function setSettingsModalLock(locked) {
+  document.body.classList.toggle('settings-open', locked);
+  document.documentElement.classList.toggle('settings-open', locked);
+}
+
 document.getElementById('settingsBtn').addEventListener('click', function(e) {
   e.stopPropagation();
   const dropdown = document.getElementById('settingsDropdown');
-  dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+  const shouldOpen = dropdown.style.display === 'none';
+  dropdown.style.display = shouldOpen ? 'block' : 'none';
+  setSettingsModalLock(shouldOpen);
 });
 
 // Close dropdown when clicking elsewhere
 document.addEventListener('click', function(e) {
   if (!e.target.closest('#settingsDropdown') && !e.target.closest('#settingsBtn')) {
     document.getElementById('settingsDropdown').style.display = 'none';
+    setSettingsModalLock(false);
   }
 });
 

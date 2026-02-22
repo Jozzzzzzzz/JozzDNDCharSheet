@@ -371,6 +371,7 @@ button[onclick*="home"] {
     overflow-x: hidden;
     overscroll-behavior-x: none;
     touch-action: pan-y;
+    scrollbar-gutter: stable;
   }
 
   body {
@@ -1005,8 +1006,18 @@ button[onclick*="home"] {
     background: rgba(0, 0, 0, 0.82);
   }
 
+  html.modal-open,
   body.modal-open {
-    overflow: hidden;
+    overflow: hidden !important;
+    touch-action: none !important;
+    overscroll-behavior: none !important;
+    height: 100% !important;
+  }
+
+  html.settings-open,
+  body.settings-open {
+    overflow: hidden !important;
+    overscroll-behavior: none !important;
   }
 
   @media (max-width: 768px) {
@@ -1164,11 +1175,35 @@ button[onclick*="home"] {
     background: var(--settings-bg) !important;
     border: 1px solid var(--settings-border) !important;
     color: var(--settings-text);
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translate(-50%, -50%) !important;
+    width: min(92vw, 420px);
     min-width: 240px;
-    top: calc(100% + 8px);
-    right: 0;
+    max-width: 92vw;
+    max-height: none;
+    overflow: hidden !important;
     padding: 12px;
     box-shadow: 0 8px 18px rgba(0,0,0,0.2);
+    z-index: 3000 !important;
+  }
+
+  @media (min-width: 768px) {
+    #settingsDropdown {
+      width: min(92vw, 630px);
+      max-width: 92vw;
+    }
+  }
+
+  @media (max-width: 767px) {
+    #settingsDropdown {
+      width: calc(100vw - 32px);
+      max-width: calc(100vw - 32px);
+      min-width: 0;
+      padding: 10px;
+    }
   }
 
   [data-theme="light"] #settingsDropdown {
