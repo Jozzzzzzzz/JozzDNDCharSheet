@@ -3360,13 +3360,105 @@ button[onclick*="home"] {
     flex: 1;
   }
 
-  @media (max-width: 1100px) {
+@media (max-width: 1100px) {
     .spells-grid {
       grid-template-columns: 1fr;
     }
 
     .spells-lists-grid {
       grid-template-columns: 1fr;
+    }
+  }
+
+  /* Mobile responsive fixes for spells grid - prevent squishing */
+  @media (max-width: 768px) {
+    .spells-grid {
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+    }
+
+    .spell-slots-container {
+      padding: 0.75rem;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .spell-info-row {
+      grid-template-columns: 1fr;
+      gap: 0.5rem;
+    }
+
+    .spell-info-label {
+      font-size: 0.9rem;
+    }
+
+    .spell-slot-input {
+      width: 40px !important;
+      font-size: 0.85rem;
+      padding: 4px 2px;
+    }
+
+    .spell-level-row {
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .spell-level-label {
+      min-width: 60px;
+      font-size: 0.85rem;
+    }
+  }
+
+  /* Extra small screens - ensure nothing gets squished */
+  @media (max-width: 480px) {
+    .spells-grid {
+      gap: 0.5rem;
+    }
+
+    .spell-slots-container {
+      padding: 0.5rem;
+    }
+
+    .spell-slot-input {
+      width: 35px !important;
+      font-size: 0.8rem;
+      padding: 3px 1px;
+    }
+
+    .spell-panel-actions {
+      flex-direction: column;
+    }
+
+    .spell-panel-actions button {
+      width: 100%;
+      font-size: 0.75rem;
+      padding: 6px 4px;
+    }
+
+    .spell-info-row {
+      gap: 0.4rem;
+    }
+
+    .spell-info-label {
+      font-size: 0.85rem;
+    }
+  }
+
+  /* Very small screens (360px and below) */
+  @media (max-width: 360px) {
+    .spell-slot-input {
+      width: 30px !important;
+      min-width: 30px;
+      font-size: 0.75rem;
+    }
+
+    .spell-slots-container {
+      padding: 0.4rem;
+    }
+
+    .spell-panel-primary {
+      font-size: 0.8rem;
+      padding: 8px 4px;
     }
   }
 
@@ -4481,7 +4573,7 @@ button[onclick*="home"] {
       padding: 8px 6px;
     }
 
-    .tabs button {
+.tabs button {
       flex: 1 1 0 !important;
       min-width: 0 !important;
       max-width: none !important;
@@ -4492,6 +4584,298 @@ button[onclick*="home"] {
       line-height: 1.1;
       white-space: nowrap !important;
       text-overflow: clip !important;
+    }
+  }
+
+  /* ========== MOBILE FIXES FOR EQUIPMENT, INVENTORY, STORAGE, AND WEAPONS ========== */
+  @media (max-width: 768px) {
+    /* Equipment, Inventory, Storage list containers */
+    .equipment-list-container,
+    .inventory-list-container,
+    .storage-list-container {
+      grid-template-columns: 1fr !important;
+      gap: 12px !important;
+      margin-top: 12px !important;
+    }
+
+    .equipment-card,
+    .item-card,
+    .storage-card {
+      min-width: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      padding: 12px !important;
+      box-sizing: border-box !important;
+    }
+
+    .equipment-stats,
+    .item-stats,
+    .storage-stats {
+      grid-template-columns: 1fr 1fr !important;
+      gap: 8px !important;
+    }
+
+    .equipment-header,
+    .item-header,
+    .storage-header {
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      gap: 8px !important;
+    }
+
+    .equipment-type,
+    .item-type,
+    .storage-type {
+      margin-left: 0 !important;
+      margin-top: 4px !important;
+    }
+
+    .equipment-actions,
+    .item-actions,
+    .storage-actions {
+      flex-wrap: wrap !important;
+      justify-content: flex-start !important;
+    }
+
+    .equipment-btn,
+    .item-btn,
+    .storage-btn {
+      flex: 1 !important;
+      min-width: 60px !important;
+      max-width: 100px !important;
+      font-size: 0.75rem !important;
+      padding: 6px 8px !important;
+    }
+
+    /* Weapons on stats page */
+    .weapons-preview-table {
+      font-size: 0.85rem !important;
+    }
+
+    .weapons-preview-table th,
+    .weapons-preview-table td {
+      padding: 6px 4px !important;
+      min-width: 0 !important;
+      max-width: 100px !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important;
+    }
+
+    /* Weapon cards on mobile */
+    .weapon-card {
+      min-width: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      padding: 12px !important;
+      box-sizing: border-box !important;
+    }
+
+    .weapon-info h4 {
+      font-size: 1rem !important;
+      margin-bottom: 8px !important;
+    }
+
+    .weapon-stats {
+      display: flex !important;
+      flex-wrap: wrap !important;
+      gap: 6px !important;
+    }
+
+    .weapon-stat {
+      flex: 1 1 calc(50% - 6px) !important;
+      min-width: 80px !important;
+      font-size: 0.85rem !important;
+    }
+
+    .weapon-actions {
+      flex-wrap: wrap !important;
+      gap: 6px !important;
+    }
+
+    .weapon-btn {
+      flex: 1 !important;
+      min-width: 50px !important;
+      max-width: 80px !important;
+      font-size: 0.7rem !important;
+      padding: 6px 8px !important;
+    }
+
+    /* Spell slots container mobile fix */
+    .spell-slots-container {
+      padding: 12px !important;
+      margin-bottom: 12px !important;
+    }
+
+    .spell-panel-header {
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      gap: 8px !important;
+    }
+
+    .spell-panel-primary {
+      width: 100% !important;
+      padding: 10px !important;
+      font-size: 0.9rem !important;
+    }
+
+    .spell-info-row {
+      grid-template-columns: 1fr !important;
+      gap: 8px !important;
+    }
+
+    .spell-slot-input {
+      width: 40px !important;
+      font-size: 0.9rem !important;
+    }
+
+    .spell-slots-used {
+      flex-wrap: wrap !important;
+      gap: 4px !important;
+    }
+
+    .spell-slot-dot {
+      width: 18px !important;
+      height: 18px !important;
+    }
+
+    /* Custom resources mobile */
+    .custom-resource-row {
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      gap: 8px !important;
+      padding: 10px !important;
+    }
+
+    .custom-resource-input {
+      width: 100% !important;
+    }
+
+    /* Inventory controls */
+    .inventory-controls,
+    .equipment-controls,
+    .storage-controls {
+      flex-direction: column !important;
+      align-items: stretch !important;
+      gap: 10px !important;
+    }
+
+    .inventory-settings,
+    .gold-section {
+      width: 100% !important;
+      justify-content: flex-start !important;
+      flex-wrap: wrap !important;
+    }
+
+    .gold-section {
+      flex-direction: row !important;
+      gap: 8px !important;
+    }
+
+    /* Weight display */
+    .weight-display {
+      flex-direction: column !important;
+      align-items: center !important;
+      gap: 8px !important;
+      text-align: center !important;
+    }
+
+    /* Add button fix */
+    button[class*="add-"] {
+      width: 100% !important;
+      padding: 12px !important;
+      font-size: 1rem !important;
+    }
+
+    /* Delete button fix */
+    .delete-container-btn {
+      width: 100% !important;
+      padding: 10px !important;
+      font-size: 0.9rem !important;
+    }
+  }
+
+  @media (max-width: 480px) {
+    /* Even smaller screens */
+    .equipment-list-container,
+    .inventory-list-container,
+    .storage-list-container {
+      gap: 10px !important;
+    }
+
+    .equipment-card,
+    .item-card,
+    .storage-card {
+      padding: 10px !important;
+    }
+
+    .equipment-stats,
+    .item-stats,
+    .storage-stats {
+      grid-template-columns: 1fr !important;
+      gap: 6px !important;
+    }
+
+    .equipment-stat,
+    .item-stat,
+    .storage-stat {
+      flex-direction: row !important;
+      justify-content: space-between !important;
+    }
+
+    .equipment-stat-label,
+    .item-stat-label,
+    .storage-stat-label {
+      font-size: 0.8rem !important;
+    }
+
+    .equipment-stat-value,
+    .item-stat-value,
+    .storage-stat-value {
+      font-size: 0.85rem !important;
+    }
+
+    .equipment-actions,
+    .item-actions,
+    .storage-actions {
+      flex-direction: column !important;
+    }
+
+    .equipment-btn,
+    .item-btn,
+    .storage-btn {
+      width: 100% !important;
+      max-width: none !important;
+    }
+
+    /* Weapon stats fix for very small screens */
+    .weapon-stats {
+      flex-direction: column !important;
+    }
+
+    .weapon-stat {
+      flex: 1 1 100% !important;
+      min-width: 0 !important;
+    }
+
+    .weapon-actions {
+      flex-direction: column !important;
+    }
+
+    .weapon-btn {
+      width: 100% !important;
+      max-width: none !important;
+    }
+
+    /* Spell slots smaller */
+    .spell-slot-input {
+      width: 35px !important;
+      font-size: 0.85rem !important;
+    }
+
+    .spell-slot-dot {
+      width: 16px !important;
+      height: 16px !important;
     }
   }
 

@@ -1,15 +1,20 @@
-# D&D Character Sheet Fixes
+# Mobile Layout Fixes TODO
 
-## Issues to Fix
-1. **Google Sign-In Not Working**: No popup appears when clicking "Google Sign In Sync"
-2. **Character Creation Keeps Old Data**: New characters retain data from previous characters
+## Task: Fix mobile layout issues where spell slots and weapons get squeezed
 
-## Tasks
-- [x] Add error handling and logging to Google sign-in function
-- [x] Fix loadData function to clear all form fields before loading new character data
-- [x] Test fixes and provide Firebase Console instructions
+### Issues Identified:
+1. Spell Slots - `.spells-grid` uses 3-column layout that gets squeezed on mobile
+2. Spell Slot Inputs - Fixed 50px width causes squishing on small screens
+3. Weapons - Grid layout doesn't adapt properly on mobile
+4. Inventory items - Similar issues
 
-## Firebase Console Setup (Manual)
-- Go to Firebase Console > Authentication > Sign-in method > Authorized domains
-- Add your new domain (e.g., your GitHub Pages domain)
-- Ensure Google provider is enabled
+### Fixes to Implement:
+
+- [ ] 1. Improve spells-grid mobile behavior at 768px, 480px, 360px breakpoints
+- [ ] 2. Fix spell-slot-input to be flexible on small screens
+- [ ] 3. Fix weapons container grid for mobile
+- [ ] 4. Fix inventory/equipment containers for mobile
+
+### Progress:
+- [ ] Analysis complete - 100%
+- [ ] Implementing CSS fixes - 0%
