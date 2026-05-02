@@ -519,16 +519,14 @@ function updateSpellSlots() {
       <input type="number" class="spell-slot-input" min="0" max="15" value="${slot.maxValue}" 
              onchange="updateSpellSlotMax('${slot.id}', this.value)">
       <div class="spell-slots-used" id="spell_used_${slot.id}"></div>
-      <button onclick="showEditSpellSlotPopup('${slot.id}')" 
-              style="position: absolute; right: 70px; top: 50%; transform: translateY(-50%); 
-                     background: #4CAF50; color: white; border: none; border-radius: 3px; 
-                     padding: 2px 6px; font-size: 10px; cursor: pointer;"
-              title="Edit Spell Slot">Edit</button>
-      <button onclick="removeSpellSlot('${slot.id}')" 
-              style="position: absolute; right: -5px; top: 50%; transform: translateY(-50%); 
-                     background: #ff4444; color: white; border: none; border-radius: 3px; 
-                     padding: 2px 6px; font-size: 10px; cursor: pointer;"
-              title="Remove Spell Slot">Delete</button>
+      <div class="spell-slot-row-actions">
+        <button onclick="showEditSpellSlotPopup('${slot.id}')"
+                class="spell-slot-edit-btn"
+                title="Edit Spell Slot">Edit</button>
+        <button onclick="removeSpellSlot('${slot.id}')"
+                class="spell-slot-delete-btn"
+                title="Remove Spell Slot">Delete</button>
+      </div>
     `;
     
     container.appendChild(slotDiv);
@@ -724,11 +722,11 @@ function updateCustomResources() {
       <input type="number" class="spell-slot-input" min="0" max="15" value="${resource.maxValue}" 
              onchange="updateCustomResourceMax('${resource.id}', this.value)">
       <div class="spell-slots-used" id="custom_used_${resource.id}"></div>
-      <button onclick="removeCustomResource('${resource.id}')" 
-              style="position: absolute; right: -5px; top: 50%; transform: translateY(-50%); 
-                     background: #ff4444; color: white; border: none; border-radius: 3px; 
-                     width: 20px; height: 20px; font-size: 12px; cursor: pointer;"
-              title="Remove Resource">×</button>
+      <div class="spell-custom-row-actions">
+        <button onclick="removeCustomResource('${resource.id}')"
+                class="spell-custom-delete-btn"
+                title="Remove Resource">×</button>
+      </div>
     `;
     
     container.appendChild(resourceDiv);
@@ -2609,8 +2607,3 @@ function clearAllSpells(type) {
 document.addEventListener('DOMContentLoaded', function() {
   initializeSpellSystem();
 });
-
-
-
-
-

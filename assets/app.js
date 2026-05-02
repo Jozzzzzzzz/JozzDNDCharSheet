@@ -2406,7 +2406,7 @@ function showWeaponsPopup() {
       <td><input type="text" value="${weapon.bonusDamage || ''}" oninput="weaponsData[${index}].bonusDamage = this.value; autosave()"></td>
       <td><textarea class="table-notes" oninput="weaponsData[${index}].notes = this.value; autosave()">${weapon.notes || ''}</textarea></td>
       <td><input type="text" value="${weapon.properties || ''}" oninput="weaponsData[${index}].properties = this.value; autosave()"></td>
-      <td><button onclick="weaponsData.splice(${index}, 1); showWeaponsPopup()">Remove</button></td>
+      <td><button class="weapon-remove-btn" type="button" onclick="weaponsData.splice(${index}, 1); showWeaponsPopup()">Remove</button></td>
     `;
   });
   
@@ -8127,7 +8127,3 @@ document.addEventListener('DOMContentLoaded', function() {
   enableAutoSync();
   registerServiceWorker();
 });
-
-
-
-

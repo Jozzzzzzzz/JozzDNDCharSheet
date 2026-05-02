@@ -2196,12 +2196,12 @@ function showWeaponsPopup() {
   weaponsData.forEach((weapon, index) => {
     const row = tbody.insertRow();
     row.innerHTML = `
-      <td><input type="text" value="${weapon.name || ''}" oninput="weaponsData[${index}].name = this.value; autosave()"></td>
-      <td><input type="text" value="${weapon.toHit || ''}" oninput="weaponsData[${index}].toHit = this.value; autosave()"></td>
-      <td><input type="text" value="${weapon.damage || ''}" oninput="weaponsData[${index}].damage = this.value; autosave()"></td>
-      <td><input type="text" value="${weapon.bonusDamage || ''}" oninput="weaponsData[${index}].bonusDamage = this.value; autosave()"></td>
-      <td><textarea class="table-notes" oninput="weaponsData[${index}].notes = this.value; autosave()">${weapon.notes || ''}</textarea></td>
-      <td><input type="text" value="${weapon.properties || ''}" oninput="weaponsData[${index}].properties = this.value; autosave()"></td>
+      <td><input type="text" value="${weapon.name || ''}" data-label="Weapon Name" oninput="weaponsData[${index}].name = this.value; autosave()"></td>
+      <td><input type="text" value="${weapon.toHit || ''}" data-label="To Hit" oninput="weaponsData[${index}].toHit = this.value; autosave()"></td>
+      <td><input type="text" value="${weapon.damage || ''}" data-label="Damage" oninput="weaponsData[${index}].damage = this.value; autosave()"></td>
+      <td><input type="text" value="${weapon.bonusDamage || ''}" data-label="Bonus Damage" oninput="weaponsData[${index}].bonusDamage = this.value; autosave()"></td>
+      <td><textarea class="table-notes" data-label="Notes" oninput="weaponsData[${index}].notes = this.value; autosave()">${weapon.notes || ''}</textarea></td>
+      <td><input type="text" value="${weapon.properties || ''}" data-label="Properties" oninput="weaponsData[${index}].properties = this.value; autosave()"></td>
       <td><button onclick="weaponsData.splice(${index}, 1); showWeaponsPopup()">Remove</button></td>
     `;
   });

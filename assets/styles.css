@@ -3533,6 +3533,61 @@ button[onclick*="home"] {
     color: var(--accent-text);
   }
 
+  /* Spell slot row actions (no absolute positioning) */
+  .spell-slot-row-actions {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .spell-slot-edit-btn,
+  .spell-slot-delete-btn {
+    border-radius: 3px;
+    border: none;
+    padding: 2px 6px;
+    font-size: 10px;
+    cursor: pointer;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .spell-slot-edit-btn {
+    background: #4CAF50;
+    color: white;
+  }
+
+  .spell-slot-delete-btn {
+    background: #ff4444;
+    color: white;
+  }
+
+  /* Custom resource row delete (no absolute positioning) */
+  .spell-custom-row-actions {
+    display: flex;
+    margin-left: auto;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .spell-custom-delete-btn {
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    border: none;
+    background: #ff4444;
+    color: white;
+    font-size: 12px;
+    cursor: pointer;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    white-space: nowrap;
+  }
+
   .spell-slot-input {
     width: 50px !important;
     text-align: center;
@@ -3735,6 +3790,89 @@ button[onclick*="home"] {
     .spell-level-row {
       flex-wrap: wrap;
       gap: 8px;
+    }
+
+    /* Force actions to the next line on mobile */
+    .spell-slot-row-actions {
+      flex: 0 0 100%;
+      width: 100%;
+      justify-content: flex-start;
+      margin-left: 0;
+      margin-top: 2px;
+    }
+
+/* Weapons popup table: stack each row so the Remove button never overlaps inputs/other cells */
+    #weaponsPopup table,
+    #weaponsPopup thead,
+    #weaponsPopup tbody,
+    #weaponsPopup tr {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    /* Hide the table header on mobile since we're stacking cells */
+    #weaponsPopup thead {
+      display: none;
+    }
+
+    #weaponsPopup tr {
+      border: 1px solid var(--accent-border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 16px;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    #weaponsPopup td {
+      border: none;
+      padding: 8px 0;
+      white-space: normal;
+      overflow: visible;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    /* Add field labels for each cell */
+    #weaponsPopup td::before {
+      content: attr(data-label);
+      font-weight: bold;
+      color: var(--accent-text);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    #weaponsPopup td textarea,
+    #weaponsPopup td input {
+      width: 100%;
+      max-width: 100%;
+      min-height: 40px;
+      padding: 10px 12px;
+      font-size: 16px; /* Prevent zoom on iOS */
+    }
+
+    #weaponsPopup td textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+
+    #weaponsPopup .weapon-remove-btn {
+      width: 100%;
+      margin-top: 8px;
+      display: inline-block;
+      white-space: nowrap;
+      padding: 12px 16px;
+      font-size: 16px;
+    }
+
+    .spell-custom-row-actions {
+      flex: 0 0 100%;
+      width: 100%;
+      justify-content: flex-start;
+      margin-left: 0;
+      margin-top: 2px;
     }
 
     .spell-level-label {
@@ -5212,5 +5350,3 @@ button[onclick*="home"] {
       height: 16px !important;
     }
   }
-
-  
