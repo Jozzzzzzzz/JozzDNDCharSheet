@@ -6,6 +6,16 @@ let inventoryData = {
   maxWeightCapacity: 0
 };
 
+function escapeHtml(value) {
+  if (value == null) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // Initialize inventory system
 function initializeInventory() {
   loadInventory();
@@ -53,18 +63,20 @@ function initializeInventory() {
     });
   }
   
-  // Add event delegation for stats page weapons buttons
+  // Add event delegation for stats page weapons (same card/button pattern as equipment)
   const weaponsStatsContainer = document.getElementById('weapons_stats_list');
-  if (weaponsStatsContainer) {
+  if (weaponsStatsContainer && !weaponsStatsContainer.dataset.delegationBound) {
+    weaponsStatsContainer.dataset.delegationBound = '1';
     weaponsStatsContainer.addEventListener('click', function(e) {
-      if (e.target.classList.contains('weapon-btn')) {
-        const weaponIndex = e.target.getAttribute('data-weapon-index');
-        const action = e.target.getAttribute('data-action');
-        
+      const weaponBtn = e.target.closest('.equipment-btn[data-weapon-index]');
+      if (weaponBtn) {
+        const weaponIndex = parseInt(weaponBtn.getAttribute('data-weapon-index'), 10);
+        const action = weaponBtn.getAttribute('data-action');
+
         if (action === 'notes') {
           showWeaponNotes(weaponIndex);
         } else if (action === 'edit') {
-          showWeaponsPopup();
+          editWeapon(weaponIndex);
         } else if (action === 'delete') {
           if (confirm('Are you sure you want to delete this weapon?')) {
             weaponsData.splice(weaponIndex, 1);
@@ -72,6 +84,15 @@ function initializeInventory() {
             updateWeaponsPreview();
             autosave();
           }
+        }
+        return;
+      }
+
+      const weaponCard = e.target.closest('.equipment-card[data-weapon-index]');
+      if (weaponCard && !e.target.closest('.equipment-btn')) {
+        const weaponIndex = parseInt(weaponCard.getAttribute('data-weapon-index'), 10);
+        if (!Number.isNaN(weaponIndex)) {
+          showWeaponDetails(weaponIndex);
         }
       }
     });
@@ -262,7 +283,8 @@ function displayEquipmentStats() {
 // Display weapons on stats page
 function displayWeaponsStats() {
   const container = document.getElementById('weapons_stats_list');
-  
+  if (!container) return;
+
   container.innerHTML = '';
   
   if (weaponsData.length === 0) {
@@ -276,28 +298,54 @@ function displayWeaponsStats() {
   });
 }
 
-// Create weapon card
+// Create weapon card (reuse equipment card markup/classes so it looks identical on the stats page)
 function createWeaponCard(weapon, index) {
   const card = document.createElement('div');
-  card.className = 'weapon-card';
-  
+  card.className = 'equipment-card';
+  card.setAttribute('data-weapon-index', String(index));
+  card.setAttribute('role', 'button');
+  card.setAttribute('tabindex', '0');
+  card.setAttribute('aria-label', `View details for ${weapon.name || 'weapon'}`);
+
+  const typeLabel = weapon.properties
+    ? weapon.properties.split(',')[0].trim()
+    : 'Weapon';
+
+  const notesPreview = weapon.notes && weapon.notes.length > 120
+    ? `${weapon.notes.substring(0, 117)}...`
+    : weapon.notes;
+
+  const name = escapeHtml(weapon.name || 'Unnamed Weapon');
+  const badge = escapeHtml(typeLabel);
+  const toHit = escapeHtml(weapon.toHit || '-');
+  const damage = escapeHtml(weapon.damage || '-');
+
   card.innerHTML = `
-    <div class="weapon-info">
-      <h4>${weapon.name || 'Unnamed Weapon'}</h4>
-      <div class="weapon-stats">
-        <span class="weapon-stat"><strong>To Hit:</strong> ${weapon.toHit || 'N/A'}</span>
-        <span class="weapon-stat"><strong>Damage:</strong> ${weapon.damage || 'N/A'}</span>
-        <span class="weapon-stat"><strong>Bonus:</strong> ${weapon.bonusDamage || 'N/A'}</span>
-        <span class="weapon-stat"><strong>Properties:</strong> ${weapon.properties || 'N/A'}</span>
-      </div>
+    <div class="equipment-header">
+      <h4 class="equipment-name">${name}</h4>
+      <span class="equipment-type">${badge}</span>
     </div>
-    <div class="weapon-actions">
-      <button class="weapon-btn notes-btn" data-weapon-index="${index}" data-action="notes">Notes</button>
-      <button class="weapon-btn edit-btn" data-weapon-index="${index}" data-action="edit">Edit</button>
-      <button class="weapon-btn delete-btn" data-weapon-index="${index}" data-action="delete">Delete</button>
+    <div class="equipment-stats">
+      <div class="equipment-stat"><span class="equipment-stat-label">To Hit:</span><span class="equipment-stat-value">${toHit}</span></div>
+      <div class="equipment-stat"><span class="equipment-stat-label">Damage:</span><span class="equipment-stat-value">${damage}</span></div>
+      ${weapon.bonusDamage ? `<div class="equipment-stat"><span class="equipment-stat-label">Bonus Dmg:</span><span class="equipment-stat-value">${escapeHtml(weapon.bonusDamage)}</span></div>` : ''}
+      ${weapon.properties ? `<div class="equipment-stat"><span class="equipment-stat-label">Properties:</span><span class="equipment-stat-value">${escapeHtml(weapon.properties)}</span></div>` : ''}
+    </div>
+    ${notesPreview ? `<div class="equipment-description">${escapeHtml(notesPreview)}</div>` : ''}
+    <div class="equipment-actions">
+      <button type="button" class="equipment-btn notes-btn" data-weapon-index="${index}" data-action="notes">Notes</button>
+      <button type="button" class="equipment-btn edit-btn" data-weapon-index="${index}" data-action="edit">Edit</button>
+      <button type="button" class="equipment-btn delete-btn" data-weapon-index="${index}" data-action="delete">Delete</button>
     </div>
   `;
-  
+
+  card.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      showWeaponDetails(index);
+    }
+  });
+
   return card;
 }
 
@@ -916,49 +964,55 @@ function showItemDetails(item, type) {
   let content = '';
   if (type === 'weapon') {
     content = `
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-        <div>
-          <p><strong>To Hit:</strong> ${item.toHit || '-'}</p>
-          <p><strong>Damage:</strong> ${item.damage || '-'}</p>
+      <div class="item-details-grid">
+        <div class="item-details-group">
+          <p><strong>To Hit:</strong> ${escapeHtml(item.toHit || '-')}</p>
+          <p><strong>Damage:</strong> ${escapeHtml(item.damage || '-')}</p>
         </div>
-        <div>
-          <p><strong>Bonus Damage:</strong> ${item.bonusDamage || '-'}</p>
-          <p><strong>Properties:</strong> ${item.properties || '-'}</p>
+        <div class="item-details-group">
+          <p><strong>Bonus Damage:</strong> ${escapeHtml(item.bonusDamage || '-')}</p>
+          <p><strong>Properties:</strong> ${escapeHtml(item.properties || '-')}</p>
         </div>
       </div>
-      ${item.notes ? `<div style="margin-top: 15px; padding: 10px; background: #2a2a2a; border-radius: 4px; border-left: 3px solid var(--accent); max-height: 200px; overflow-y: auto;">
-        <h4 style="margin: 0 0 8px 0; color: var(--accent-text);">Special Notes:</h4>
-        <p style="margin: 0; white-space: pre-wrap; line-height: 1.4; word-wrap: break-word; overflow-wrap: break-word;">${item.notes}</p>
+      ${item.notes ? `<div class="item-details-notes">
+        <h4>Special Notes:</h4>
+        <p>${escapeHtml(item.notes)}</p>
       </div>` : ''}
     `;
   } else if (type === 'equipment') {
+    const weightNum = Number(item.weight);
+    const weightSafe = Number.isFinite(weightNum) ? weightNum : 0;
+    const kg = (weightSafe * 0.453592).toFixed(2);
     content = `
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-        <div>
-          <p><strong>Type:</strong> ${item.type || '-'}</p>
-          <p><strong>Bonus:</strong> ${item.bonus || '-'}</p>
+      <div class="item-details-grid">
+        <div class="item-details-group">
+          <p><strong>Type:</strong> ${escapeHtml(item.type || '-')}</p>
+          <p><strong>Bonus:</strong> ${escapeHtml(item.bonus || '-')}</p>
         </div>
-        <div>
-          <p><strong>Weight:</strong> ${item.weight || 0} lbs (${(item.weight * 0.453592).toFixed(2)} kg)</p>
+        <div class="item-details-group">
+          <p><strong>Weight:</strong> ${escapeHtml(String(weightSafe))} lbs (${escapeHtml(kg)} kg)</p>
         </div>
       </div>
-      ${item.notes ? `<div style="margin-top: 15px; padding: 10px; background: #2a2a2a; border-radius: 4px; border-left: 3px solid var(--accent); max-height: 200px; overflow-y: auto;">
-        <h4 style="margin: 0 0 8px 0; color: var(--accent-text);">Notes:</h4>
-        <p style="margin: 0; white-space: pre-wrap; line-height: 1.4; word-wrap: break-word; overflow-wrap: break-word;">${item.notes}</p>
+      ${item.notes ? `<div class="item-details-notes">
+        <h4>Notes:</h4>
+        <p>${escapeHtml(item.notes)}</p>
       </div>` : ''}
     `;
   } else if (type === 'inventory') {
+    const weightNum = Number(item.weight);
+    const weightSafe = Number.isFinite(weightNum) ? weightNum : 0;
+    const kg = (weightSafe * 0.453592).toFixed(2);
     content = `
-      <div style="margin-bottom: 15px;">
-        <p><strong>Weight:</strong> ${item.weight || 0} lbs (${(item.weight * 0.453592).toFixed(2)} kg)</p>
+      <div class="item-details-group">
+        <p><strong>Weight:</strong> ${escapeHtml(String(weightSafe))} lbs (${escapeHtml(kg)} kg)</p>
       </div>
-      ${item.description ? `<div style="margin-top: 15px; padding: 10px; background: #2a2a2a; border-radius: 4px; border-left: 3px solid var(--accent); max-height: 200px; overflow-y: auto;">
-        <h4 style="margin: 0 0 8px 0; color: var(--accent-text);">Description:</h4>
-        <p style="margin: 0; white-space: pre-wrap; line-height: 1.4; word-wrap: break-word; overflow-wrap: break-word;">${item.description}</p>
+      ${item.description ? `<div class="item-details-notes">
+        <h4>Description:</h4>
+        <p>${escapeHtml(item.description)}</p>
       </div>` : ''}
-      ${item.notes ? `<div style="margin-top: 15px; padding: 10px; background: #2a2a2a; border-radius: 4px; border-left: 3px solid var(--accent); max-height: 200px; overflow-y: auto;">
-        <h4 style="margin: 0 0 8px 0; color: var(--accent-text);">Notes:</h4>
-        <p style="margin: 0; white-space: pre-wrap; line-height: 1.4; word-wrap: break-word; overflow-wrap: break-word;">${item.notes}</p>
+      ${item.notes ? `<div class="item-details-notes">
+        <h4>Notes:</h4>
+        <p>${escapeHtml(item.notes)}</p>
       </div>` : ''}
     `;
   }

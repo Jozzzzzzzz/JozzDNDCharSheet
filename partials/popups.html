@@ -180,29 +180,31 @@
   </div>
 </div>
 
-<!-- Weapons Editor Popup -->
-<div class="popup" id="weaponsPopup">
-  <h3>Edit Weapons</h3>
-  <table id="weapons_table_popup" style="width: 100%;">
-    <thead>
-      <tr>
-        <th>Weapon</th>
-        <th>To Hit</th>
-        <th>Dmg</th>
-        <th>Bonus Dmg</th>
-        <th>Notes</th>
-        <th>Properties</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      <!-- Weapons will be added here -->
-    </tbody>
-  </table>
-  <button onclick="addWeapon()" style="margin-top: 10px;">+ Add Weapon</button>
+<!-- Add/Edit Weapon Popup -->
+<div class="popup" id="weaponFormPopup">
+  <h3 id="weaponFormTitle">Add Weapon</h3>
+
+  <label>Name:</label>
+  <input type="text" id="weapon_name" placeholder="e.g. Longsword, Shortbow, Dagger"/>
+
+  <label>To Hit Bonus:</label>
+  <input type="text" id="weapon_to_hit" placeholder="e.g. +5, +7"/>
+
+  <label>Damage:</label>
+  <input type="text" id="weapon_damage" placeholder="e.g. 1d8 slashing, 1d6 piercing"/>
+
+  <label>Bonus Damage:</label>
+  <input type="text" id="weapon_bonus_damage" placeholder="e.g. +3, 1d6 fire"/>
+
+  <label>Properties:</label>
+  <input type="text" id="weapon_properties" placeholder="e.g. Finesse, Versatile, Two-Handed"/>
+
+  <label>Notes:</label>
+  <textarea id="weapon_notes" placeholder="Any special notes about this weapon..."></textarea>
+
   <div style="margin-top: 15px; display: flex; justify-content: space-between;">
-    <button onclick="updateWeaponsPreview(); displayWeaponsStats(); autosave(); closePopup('weaponsPopup')">Save</button>
-    <button onclick="closePopup('weaponsPopup')">Cancel</button>
+    <button onclick="saveWeapon()" id="saveWeaponBtn">Add Weapon</button>
+    <button onclick="closePopup('weaponFormPopup')">Cancel</button>
   </div>
 </div>
 
@@ -574,5 +576,3 @@
     <button onclick="closePopup('addStoragePopup')">Cancel</button>
   </div>
 </div>
-
-

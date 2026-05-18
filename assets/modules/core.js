@@ -827,12 +827,7 @@ window.initializeApp = function() {
     });
   }
   
-  // Initialize weapons and equipment if empty
-  if (weaponsData.length === 0) {
-    weaponsData.push({ name: '', toHit: '', damage: '', bonusDamage: '', notes: '', properties: '' });
-    updateWeaponsPreview();
-  }
-  
+  // Initialize equipment if empty
   if (equipmentData.length === 0) {
     equipmentData.push({ name: '', type: '', bonus: '', weight: 0, notes: '' });
     updateEquipmentPreviews();
@@ -2184,34 +2179,67 @@ function importData(event) {
 
 // ========== WEAPONS SYSTEM ==========
 function showWeaponsForm() {
-  // Add a new weapon and show the popup for editing
-  weaponsData.push({ name: '', toHit: '', damage: '', bonusDamage: '', notes: '', properties: '' });
-  showWeaponsPopup();
+  document.getElementById('weaponFormTitle').textContent = 'Add Weapon';
+  document.getElementById('weapon_name').value = '';
+  document.getElementById('weapon_to_hit').value = '';
+  document.getElementById('weapon_damage').value = '';
+  document.getElementById('weapon_bonus_damage').value = '';
+  document.getElementById('weapon_properties').value = '';
+  document.getElementById('weapon_notes').value = '';
+  document.getElementById('saveWeaponBtn').textContent = 'Add Weapon';
+  document.getElementById('saveWeaponBtn').removeAttribute('data-edit-index');
+  showPopup('weaponFormPopup');
 }
 
-function showWeaponsPopup() {
-  const tbody = document.getElementById('weapons_table_popup').querySelector('tbody');
-  tbody.innerHTML = '';
-  
-  weaponsData.forEach((weapon, index) => {
-    const row = tbody.insertRow();
-    row.innerHTML = `
-      <td><input type="text" value="${weapon.name || ''}" data-label="Weapon Name" oninput="weaponsData[${index}].name = this.value; autosave()"></td>
-      <td><input type="text" value="${weapon.toHit || ''}" data-label="To Hit" oninput="weaponsData[${index}].toHit = this.value; autosave()"></td>
-      <td><input type="text" value="${weapon.damage || ''}" data-label="Damage" oninput="weaponsData[${index}].damage = this.value; autosave()"></td>
-      <td><input type="text" value="${weapon.bonusDamage || ''}" data-label="Bonus Damage" oninput="weaponsData[${index}].bonusDamage = this.value; autosave()"></td>
-      <td><textarea class="table-notes" data-label="Notes" oninput="weaponsData[${index}].notes = this.value; autosave()">${weapon.notes || ''}</textarea></td>
-      <td><input type="text" value="${weapon.properties || ''}" data-label="Properties" oninput="weaponsData[${index}].properties = this.value; autosave()"></td>
-      <td><button onclick="weaponsData.splice(${index}, 1); showWeaponsPopup()">Remove</button></td>
-    `;
-  });
-  
-  showPopup('weaponsPopup');
+function editWeapon(index) {
+  const weapon = weaponsData[index];
+  if (!weapon) return;
+
+  document.getElementById('weaponFormTitle').textContent = 'Edit Weapon';
+  document.getElementById('weapon_name').value = weapon.name || '';
+  document.getElementById('weapon_to_hit').value = weapon.toHit || '';
+  document.getElementById('weapon_damage').value = weapon.damage || '';
+  document.getElementById('weapon_bonus_damage').value = weapon.bonusDamage || '';
+  document.getElementById('weapon_properties').value = weapon.properties || '';
+  document.getElementById('weapon_notes').value = weapon.notes || '';
+  document.getElementById('saveWeaponBtn').textContent = 'Update Weapon';
+  document.getElementById('saveWeaponBtn').setAttribute('data-edit-index', index);
+  showPopup('weaponFormPopup');
 }
 
-function addWeapon() {
-  weaponsData.push({ name: '', toHit: '', damage: '', bonusDamage: '', notes: '', properties: '' });
-  showWeaponsPopup();
+function saveWeapon() {
+  const name = document.getElementById('weapon_name').value.trim();
+  const toHit = document.getElementById('weapon_to_hit').value.trim();
+  const damage = document.getElementById('weapon_damage').value.trim();
+  const bonusDamage = document.getElementById('weapon_bonus_damage').value.trim();
+  const properties = document.getElementById('weapon_properties').value.trim();
+  const notes = document.getElementById('weapon_notes').value.trim();
+  const editIndex = document.getElementById('saveWeaponBtn').getAttribute('data-edit-index');
+
+  if (!name) {
+    alert('Please enter a name for the weapon.');
+    return;
+  }
+
+  const weaponData = {
+    name,
+    toHit,
+    damage,
+    bonusDamage,
+    notes,
+    properties
+  };
+
+  if (editIndex !== null && editIndex !== '') {
+    weaponsData[parseInt(editIndex, 10)] = weaponData;
+  } else {
+    weaponsData.push(weaponData);
+  }
+
+  updateWeaponsPreview();
+  displayWeaponsStats();
+  closePopup('weaponFormPopup');
+  autosave();
 }
 
 function updateWeaponsPreview() {

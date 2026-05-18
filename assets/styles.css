@@ -3801,72 +3801,6 @@ button[onclick*="home"] {
       margin-top: 2px;
     }
 
-/* Weapons popup table: stack each row so the Remove button never overlaps inputs/other cells */
-    #weaponsPopup table,
-    #weaponsPopup thead,
-    #weaponsPopup tbody,
-    #weaponsPopup tr {
-      display: block;
-      width: 100%;
-      box-sizing: border-box;
-    }
-
-    /* Hide the table header on mobile since we're stacking cells */
-    #weaponsPopup thead {
-      display: none;
-    }
-
-    #weaponsPopup tr {
-      border: 1px solid var(--accent-border);
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 16px;
-      background: rgba(255, 255, 255, 0.03);
-    }
-
-    #weaponsPopup td {
-      border: none;
-      padding: 8px 0;
-      white-space: normal;
-      overflow: visible;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    /* Add field labels for each cell */
-    #weaponsPopup td::before {
-      content: attr(data-label);
-      font-weight: bold;
-      color: var(--accent-text);
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    #weaponsPopup td textarea,
-    #weaponsPopup td input {
-      width: 100%;
-      max-width: 100%;
-      min-height: 40px;
-      padding: 10px 12px;
-      font-size: 16px; /* Prevent zoom on iOS */
-    }
-
-    #weaponsPopup td textarea {
-      min-height: 80px;
-      resize: vertical;
-    }
-
-    #weaponsPopup .weapon-remove-btn {
-      width: 100%;
-      margin-top: 8px;
-      display: inline-block;
-      white-space: nowrap;
-      padding: 12px 16px;
-      font-size: 16px;
-    }
-
     .spell-custom-row-actions {
       flex: 0 0 100%;
       width: 100%;
@@ -4513,14 +4447,14 @@ button[onclick*="home"] {
     to { opacity: 0.7; }
   }
 
-  .equipment-list-container, .inventory-list-container, .storage-list-container {
+  .equipment-list-container, .inventory-list-container, .storage-list-container, .weapons-list-container {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 15px;
     margin-top: 15px;
   }
 
-  .equipment-card, .item-card, .storage-card {
+  .equipment-card, .item-card, .storage-card, .weapon-card {
     background: var(--card-bg);
     border: 2px solid var(--border);
     border-radius: 8px;
@@ -4531,30 +4465,40 @@ button[onclick*="home"] {
   }
 
   /* Dark mode card enhancement */
-  .equipment-card, .item-card, .storage-card {
+  .equipment-card, .item-card, .storage-card, .weapon-card {
     background: linear-gradient(135deg, var(--card-bg) 0%, rgba(255,255,255,0.02) 100%);
   }
 
   /* Light mode card enhancement */
   [data-theme="light"] .equipment-card, 
   [data-theme="light"] .item-card, 
-  [data-theme="light"] .storage-card {
+  [data-theme="light"] .storage-card,
+  [data-theme="light"] .weapon-card {
     background: linear-gradient(135deg, var(--card-bg) 0%, rgba(0,0,0,0.02) 100%);
   }
 
-  .equipment-card:hover, .item-card:hover, .storage-card:hover {
+  .equipment-card:hover, .item-card:hover, .storage-card:hover, .weapon-card:hover {
     border-color: var(--accent-border);
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
   }
 
-  .equipment-header, .item-header, .storage-header {
+  /* Stats-page weapons reuse .equipment-card; mark as tappable (mobile-friendly) */
+  .equipment-card[data-weapon-index] {
+    cursor: pointer;
+  }
+
+  .equipment-card[data-weapon-index] .equipment-btn {
+    cursor: pointer;
+  }
+
+  .equipment-header, .item-header, .storage-header, .weapon-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     margin-bottom: 10px;
   }
 
-  .equipment-name, .item-name, .storage-name {
+  .equipment-name, .item-name, .storage-name, .weapon-name {
     font-size: 1.1em;
     font-weight: bold;
     color: var(--text);
@@ -4562,7 +4506,7 @@ button[onclick*="home"] {
     flex: 1;
   }
 
-.equipment-type, .item-type, .storage-type {
+.equipment-type, .item-type, .storage-type, .weapon-type {
   background: var(--accent);
   color: var(--accent-contrast);
   padding: 2px 8px;
@@ -4572,50 +4516,96 @@ button[onclick*="home"] {
     margin-left: 10px;
   }
 
-  .equipment-stats, .item-stats, .storage-stats {
+  .equipment-stats, .item-stats, .storage-stats, .weapon-stats {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
     margin-bottom: 10px;
   }
 
-  .equipment-stat, .item-stat, .storage-stat {
+  .equipment-stat, .item-stat, .storage-stat, .weapon-stat {
     display: flex;
     flex-direction: column;
   }
 
-  .equipment-stat-label, .item-stat-label, .storage-stat-label {
+  .equipment-stat-label, .item-stat-label, .storage-stat-label, .weapon-stat-label {
     font-size: 0.8em;
     color: var(--text);
     opacity: 0.8;
     margin-bottom: 2px;
   }
 
-  .equipment-stat-value, .item-stat-value, .storage-stat-value {
+  .equipment-stat-value, .item-stat-value, .storage-stat-value, .weapon-stat-value {
     font-weight: bold;
     color: var(--accent-text);
   }
 
-  .equipment-description, .item-description, .storage-description {
+  .equipment-description, .item-description, .storage-description, .weapon-description {
     color: var(--text);
     font-size: 0.9em;
     line-height: 1.4;
     margin-bottom: 10px;
   }
 
-  .equipment-actions, .item-actions, .storage-actions {
+  .equipment-actions, .item-actions, .storage-actions, .weapon-actions {
     display: flex;
     gap: 5px;
     justify-content: flex-end;
   }
 
-  .equipment-btn, .item-btn, .storage-btn {
+  .equipment-btn, .item-btn, .storage-btn, .weapon-btn {
     padding: 4px 8px;
     font-size: 0.8em;
     border: none;
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.3s ease;
+  }
+
+  #itemDetailsContent .item-details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 15px;
+  }
+
+  #itemDetailsContent .item-details-group p {
+    margin: 0 0 10px 0;
+    line-height: 1.5;
+    color: var(--text);
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+
+  #itemDetailsContent .item-details-notes {
+    margin-top: 15px;
+    padding: 10px;
+    background: var(--card-bg);
+    border-radius: 4px;
+    border-left: 3px solid var(--accent);
+    max-height: min(50vh, 320px);
+    overflow-y: auto;
+  }
+
+  #itemDetailsContent .item-details-notes h4 {
+    margin: 0 0 8px 0;
+    color: var(--accent-text);
+  }
+
+  #itemDetailsContent .item-details-notes p {
+    margin: 0;
+    white-space: pre-wrap;
+    line-height: 1.4;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    color: var(--text);
+  }
+
+  @media (max-width: 480px) {
+    #itemDetailsContent .item-details-grid {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
   }
 
   .edit-btn {
@@ -5064,7 +5054,8 @@ button[onclick*="home"] {
     /* Equipment, Inventory, Storage list containers */
     .equipment-list-container,
     .inventory-list-container,
-    .storage-list-container {
+    .storage-list-container,
+    .weapons-list-container {
       grid-template-columns: 1fr !important;
       gap: 12px !important;
       margin-top: 12px !important;
@@ -5072,7 +5063,8 @@ button[onclick*="home"] {
 
     .equipment-card,
     .item-card,
-    .storage-card {
+    .storage-card,
+    .weapon-card {
       min-width: 0 !important;
       width: 100% !important;
       max-width: 100% !important;
@@ -5082,14 +5074,16 @@ button[onclick*="home"] {
 
     .equipment-stats,
     .item-stats,
-    .storage-stats {
+    .storage-stats,
+    .weapon-stats {
       grid-template-columns: 1fr 1fr !important;
       gap: 8px !important;
     }
 
     .equipment-header,
     .item-header,
-    .storage-header {
+    .storage-header,
+    .weapon-header {
       flex-direction: column !important;
       align-items: flex-start !important;
       gap: 8px !important;
@@ -5097,21 +5091,24 @@ button[onclick*="home"] {
 
     .equipment-type,
     .item-type,
-    .storage-type {
+    .storage-type,
+    .weapon-type {
       margin-left: 0 !important;
       margin-top: 4px !important;
     }
 
     .equipment-actions,
     .item-actions,
-    .storage-actions {
+    .storage-actions,
+    .weapon-actions {
       flex-wrap: wrap !important;
       justify-content: flex-start !important;
     }
 
     .equipment-btn,
     .item-btn,
-    .storage-btn {
+    .storage-btn,
+    .weapon-btn {
       flex: 1 !important;
       min-width: 60px !important;
       max-width: 100px !important;
@@ -5132,45 +5129,6 @@ button[onclick*="home"] {
       overflow: hidden !important;
       text-overflow: ellipsis !important;
       white-space: nowrap !important;
-    }
-
-    /* Weapon cards on mobile */
-    .weapon-card {
-      min-width: 0 !important;
-      width: 100% !important;
-      max-width: 100% !important;
-      padding: 12px !important;
-      box-sizing: border-box !important;
-    }
-
-    .weapon-info h4 {
-      font-size: 1rem !important;
-      margin-bottom: 8px !important;
-    }
-
-    .weapon-stats {
-      display: flex !important;
-      flex-wrap: wrap !important;
-      gap: 6px !important;
-    }
-
-    .weapon-stat {
-      flex: 1 1 calc(50% - 6px) !important;
-      min-width: 80px !important;
-      font-size: 0.85rem !important;
-    }
-
-    .weapon-actions {
-      flex-wrap: wrap !important;
-      gap: 6px !important;
-    }
-
-    .weapon-btn {
-      flex: 1 !important;
-      min-width: 50px !important;
-      max-width: 80px !important;
-      font-size: 0.7rem !important;
-      padding: 6px 8px !important;
     }
 
     /* Spell slots container mobile fix */
@@ -5271,69 +5229,58 @@ button[onclick*="home"] {
     /* Even smaller screens */
     .equipment-list-container,
     .inventory-list-container,
-    .storage-list-container {
+    .storage-list-container,
+    .weapons-list-container {
       gap: 10px !important;
     }
 
     .equipment-card,
     .item-card,
-    .storage-card {
+    .storage-card,
+    .weapon-card {
       padding: 10px !important;
     }
 
     .equipment-stats,
     .item-stats,
-    .storage-stats {
+    .storage-stats,
+    .weapon-stats {
       grid-template-columns: 1fr !important;
       gap: 6px !important;
     }
 
     .equipment-stat,
     .item-stat,
-    .storage-stat {
+    .storage-stat,
+    .weapon-stat {
       flex-direction: row !important;
       justify-content: space-between !important;
     }
 
     .equipment-stat-label,
     .item-stat-label,
-    .storage-stat-label {
+    .storage-stat-label,
+    .weapon-stat-label {
       font-size: 0.8rem !important;
     }
 
     .equipment-stat-value,
     .item-stat-value,
-    .storage-stat-value {
+    .storage-stat-value,
+    .weapon-stat-value {
       font-size: 0.85rem !important;
     }
 
     .equipment-actions,
     .item-actions,
-    .storage-actions {
+    .storage-actions,
+    .weapon-actions {
       flex-direction: column !important;
     }
 
     .equipment-btn,
     .item-btn,
-    .storage-btn {
-      width: 100% !important;
-      max-width: none !important;
-    }
-
-    /* Weapon stats fix for very small screens */
-    .weapon-stats {
-      flex-direction: column !important;
-    }
-
-    .weapon-stat {
-      flex: 1 1 100% !important;
-      min-width: 0 !important;
-    }
-
-    .weapon-actions {
-      flex-direction: column !important;
-    }
-
+    .storage-btn,
     .weapon-btn {
       width: 100% !important;
       max-width: none !important;
