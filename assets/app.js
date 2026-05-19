@@ -684,32 +684,36 @@ function loadThemeSettings() {
 
   async function handleSuggestionSubmit(event) {
     event.preventDefault();
-    
-    const suggestionType = document.getElementById('suggestionType').value;
-    const suggestionText = document.getElementById('suggestionText').value;
-    
-    if (!suggestionType || !suggestionText.trim()) {
-      showSuggestionStatus('Please fill in all fields', 'error');
+    await handleSuggestionSubmitGeneric('suggestionType', 'suggestionText', 'suggestionStatus');
+  }
+
+  async function handleSettingsSuggestionSubmit(event) {
+    event.preventDefault();
+    await handleSuggestionSubmitGeneric('settingsSuggestionType', 'settingsSuggestionText', 'settingsSuggestionStatus');
+  }
+
+  async function handleSuggestionSubmitGeneric(typeId, textId, statusId) {
+    const suggestionType = document.getElementById(typeId)?.value;
+    const suggestionText = document.getElementById(textId)?.value;
+
+    if (!suggestionType || !suggestionText || !suggestionText.trim()) {
+      showSuggestionStatusFor(statusId, 'Please fill in all fields', 'error');
       return;
     }
-    
-    // Get user's email from Firebase auth
+
     const userEmail = currentUser ? currentUser.email : 'anonymous@example.com';
-    
-    // Show sending status
-    showSuggestionStatus('Sending suggestion...', 'info');
-    
+    showSuggestionStatusFor(statusId, 'Sending suggestion...', 'info');
+
     try {
-      // Send suggestion using a simple method
       await sendSuggestionEmail(userEmail, suggestionType, suggestionText);
-      showSuggestionStatus('Suggestion sent successfully! Thank you for your feedback.', 'success');
-      
-      // Clear form
-      document.getElementById('suggestionType').value = '';
-      document.getElementById('suggestionText').value = '';
+      showSuggestionStatusFor(statusId, 'Suggestion sent successfully! Thank you for your feedback.', 'success');
+      const typeEl = document.getElementById(typeId);
+      const textEl = document.getElementById(textId);
+      if (typeEl) typeEl.value = '';
+      if (textEl) textEl.value = '';
     } catch (error) {
       console.error('Error sending suggestion:', error);
-      showSuggestionStatus('Failed to send suggestion. Please try again later.', 'error');
+      showSuggestionStatusFor(statusId, 'Failed to send suggestion. Please try again later.', 'error');
     }
   }
   
@@ -803,7 +807,11 @@ ${userEmail}`;
   }
 
   function showSuggestionStatus(message, type) {
-    const statusDiv = document.getElementById('suggestionStatus');
+    showSuggestionStatusFor('suggestionStatus', message, type);
+  }
+
+  function showSuggestionStatusFor(elementId, message, type) {
+    const statusDiv = document.getElementById(elementId);
     if (statusDiv) {
       statusDiv.textContent = message;
       statusDiv.className = `status-message ${type}`;
@@ -868,6 +876,35 @@ function initializeWebApp() {
 
 window.addEventListener('resize', refreshAllNoteBoxes);
 window.addEventListener('orientationchange', refreshAllNoteBoxes);
+
+const rollingBannerMessages = [
+  'This sheet autosaves character data to your browser. Use Export to back up your character.',
+  'Tip: Cloud Sync is best for device-to-device play. Export is your emergency backup.',
+  'Fun fact: A mimic can be a chest, a door, or your trust issues.',
+  'News slot: Add your latest project updates here for players.',
+  'Tip: Keep quick notes updated before long rests so nothing gets lost.',
+  'Fun fact: The average party plan survives about six seconds after initiative.'
+];
+let rollingBannerLastIndex = -1;
+
+function rollBannerMessage() {
+  const textEl = document.getElementById('rollingBannerText');
+  if (!textEl || rollingBannerMessages.length === 0) return;
+
+  let nextIndex = Math.floor(Math.random() * rollingBannerMessages.length);
+  if (rollingBannerMessages.length > 1 && nextIndex === rollingBannerLastIndex) {
+    nextIndex = (nextIndex + 1) % rollingBannerMessages.length;
+  }
+  rollingBannerLastIndex = nextIndex;
+  const nextMessage = rollingBannerMessages[nextIndex];
+
+  textEl.classList.add('is-fading');
+  setTimeout(() => {
+    textEl.textContent = nextMessage;
+    textEl.classList.remove('is-fading');
+  }, 140);
+}
+
 window.initializeApp = function() {
   // Initialize web app features first
   initializeWebApp();
@@ -980,8 +1017,10 @@ setupNoteBoxHandlers();
 setupNoteBoxObserver();
 setupAutoResize();
 setupMobileTextareaAutoGrow();
-loadLayout(); // This should come after all elements are created
-setTimeout(() => {
+  loadLayout(); // This should come after all elements are created
+  bindGlobalAutosaveListeners();
+  rollBannerMessage();
+  setTimeout(() => {
   applyFlexWrapSizing();
   syncSpellPanels();
 }, 0);
@@ -992,6 +1031,7 @@ function showHomePage() {
   document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
   document.getElementById('home').classList.add('active');
   document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+  rollBannerMessage();
 }
 
 function createNewCharacter() {
@@ -1497,12 +1537,55 @@ function autosave() {
   
   characters[charIndex].data = data;
   characters[charIndex].name = document.getElementById('char_name').value || 'Unnamed';
+  characters[charIndex].updatedAt = new Date().toISOString();
   localStorage.setItem('dndCharacters', JSON.stringify(characters));
   
   // Auto-sync to cloud if user is signed in
   if (currentUser) {
     syncToCloud();
   }
+}
+
+let autosaveDebounceTimer = null;
+function scheduleAutosave(delayMs = 400) {
+  if (autosaveDebounceTimer) {
+    clearTimeout(autosaveDebounceTimer);
+  }
+  autosaveDebounceTimer = setTimeout(() => {
+    autosaveDebounceTimer = null;
+    autosave();
+  }, delayMs);
+}
+
+function bindGlobalAutosaveListeners() {
+  if (document.body?.dataset?.globalAutosaveBound === '1') return;
+  if (document.body) {
+    document.body.dataset.globalAutosaveBound = '1';
+  }
+
+  const shouldIgnoreTarget = (target) => {
+    if (!(target instanceof Element)) return true;
+    if (target.closest('#importModal, #importPreviewModal, #deleteCharacterPopup, #newCharacterPopup')) return true;
+    return false;
+  };
+
+  document.addEventListener('input', (event) => {
+    if (shouldIgnoreTarget(event.target)) return;
+    scheduleAutosave();
+  });
+
+  document.addEventListener('change', (event) => {
+    if (shouldIgnoreTarget(event.target)) return;
+    scheduleAutosave(150);
+  });
+
+  window.addEventListener('beforeunload', () => {
+    try {
+      autosave();
+    } catch (error) {
+      console.error('Autosave on unload failed:', error);
+    }
+  });
 }
 
 function loadData() {
@@ -2244,6 +2327,37 @@ function inferCharacterCreatedAt(character) {
     }
   }
   return null;
+}
+
+function getCharacterSyncTimestamp(character) {
+  const updated = character?.updatedAt ? Date.parse(character.updatedAt) : NaN;
+  if (Number.isFinite(updated)) return updated;
+  const created = character?.createdAt ? Date.parse(character.createdAt) : NaN;
+  if (Number.isFinite(created)) return created;
+  const idNum = Number(character?.id);
+  if (Number.isFinite(idNum)) return idNum;
+  return 0;
+}
+
+function mergeCharacterLists(localCharacters, cloudCharacters) {
+  const mergedById = new Map();
+  const apply = (char) => {
+    if (!char || !char.id) return;
+    const existing = mergedById.get(char.id);
+    if (!existing) {
+      mergedById.set(char.id, char);
+      return;
+    }
+    const existingTs = getCharacterSyncTimestamp(existing);
+    const incomingTs = getCharacterSyncTimestamp(char);
+    if (incomingTs >= existingTs) {
+      mergedById.set(char.id, char);
+    }
+  };
+
+  (Array.isArray(localCharacters) ? localCharacters : []).forEach(apply);
+  (Array.isArray(cloudCharacters) ? cloudCharacters : []).forEach(apply);
+  return Array.from(mergedById.values());
 }
 
 function exportData() {
@@ -3151,6 +3265,7 @@ function switchTab(button) {
       targetPage.classList.add('active');
       // Recalculate textarea/container heights after tab visibility changes.
       refreshAllNoteBoxes();
+      rollBannerMessage();
     });
   }
 }
@@ -4827,26 +4942,12 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Settings dropdown functionality
-function setSettingsModalLock(locked) {
-  document.body.classList.toggle('settings-open', locked);
-  document.documentElement.classList.toggle('settings-open', locked);
-}
-
-document.getElementById('settingsBtn').addEventListener('click', function(e) {
-  e.stopPropagation();
-  const dropdown = document.getElementById('settingsDropdown');
-  const shouldOpen = dropdown.style.display === 'none';
-  dropdown.style.display = shouldOpen ? 'block' : 'none';
-  setSettingsModalLock(shouldOpen);
-});
-
-// Close dropdown when clicking elsewhere
-document.addEventListener('click', function(e) {
-  if (!e.target.closest('#settingsDropdown') && !e.target.closest('#settingsBtn')) {
-    document.getElementById('settingsDropdown').style.display = 'none';
-    setSettingsModalLock(false);
+function openSettingsPage() {
+  const settingsTab = document.querySelector('.tab[data-tab="settings"]');
+  if (settingsTab) {
+    switchTab(settingsTab);
   }
-});
+}
 
 // ========== SPELL SYSTEM ==========
 
@@ -7490,6 +7591,9 @@ function initializeFirebase() {
       updateAuthUI();
       if (user) {
         setSyncStatus('Signed in successfully');
+        notifyOwnerOnSignup(user).catch((err) => {
+          console.error('Signup notification error:', err);
+        });
         // Auto-sync from cloud when user signs in
         setTimeout(() => syncFromCloud(true), 1000);
       }
@@ -7550,6 +7654,77 @@ async function signOut() {
   }
 }
 
+async function sendOwnerNotification(subject, message, extra = {}) {
+  const fromEmail = currentUser?.email || 'anonymous@example.com';
+  try {
+    const formData = new FormData();
+    formData.append('email', fromEmail);
+    formData.append('subject', subject);
+    formData.append('message', message);
+    formData.append('_replyto', fromEmail);
+    formData.append('_subject', subject);
+    Object.keys(extra).forEach((key) => formData.append(key, String(extra[key] ?? '')));
+
+    const response = await fetch('https://formspree.io/f/xovnrwbd', {
+      method: 'POST',
+      body: formData
+    });
+    return { success: response.ok };
+  } catch (error) {
+    console.error('Owner notification failed:', error);
+    return { success: false };
+  }
+}
+
+function getCharacterOverviewPayload(char) {
+  const info = char?.data?.characterInfo || {};
+  return {
+    id: char?.id || '',
+    name: info.name || char?.name || 'Unnamed',
+    class: info.class || '',
+    subclass: info.subclass || '',
+    level: info.level || '',
+    race: info.race || ''
+  };
+}
+
+async function notifyOwnerOnSignup(user) {
+  if (!user?.uid) return;
+  const key = `owner_signup_notified_${user.uid}`;
+  if (localStorage.getItem(key) === '1') return;
+
+  const subject = 'New User Sign-In';
+  const message = `A user signed in with Google.\n\nEmail: ${user.email || 'unknown'}\nUID: ${user.uid}\nTime: ${new Date().toISOString()}`;
+  const result = await sendOwnerNotification(subject, message, {
+    event_type: 'signup',
+    signed_in_email: user.email || '',
+    signed_in_uid: user.uid
+  });
+  if (result.success) localStorage.setItem(key, '1');
+}
+
+async function notifyOwnerCharacterOverviews(user, characters) {
+  if (!user?.uid) return;
+  const list = Array.isArray(characters) ? characters : [];
+  const overviews = list.map(getCharacterOverviewPayload);
+  const payload = JSON.stringify(overviews);
+  const key = `owner_build_digest_${user.uid}`;
+  if (payload === (localStorage.getItem(key) || '')) return;
+
+  const lines = overviews.length
+    ? overviews.map((c, i) => `${i + 1}. ${c.name} | ${c.race} | ${c.class}${c.subclass ? ` (${c.subclass})` : ''} | Level ${c.level || 'unknown'}`).join('\n')
+    : 'No characters saved.';
+  const subject = `Character Overview (${overviews.length})`;
+  const message = `User: ${user.email || 'unknown'}\nUID: ${user.uid}\nUpdated: ${new Date().toISOString()}\n\nCharacters:\n${lines}`;
+  const result = await sendOwnerNotification(subject, message, {
+    event_type: 'character_overview',
+    signed_in_email: user.email || '',
+    signed_in_uid: user.uid,
+    character_count: overviews.length
+  });
+  if (result.success) localStorage.setItem(key, payload);
+}
+
 // Cloud Sync Functions
 async function syncToCloud() {
   if (!currentUser) {
@@ -7560,21 +7735,34 @@ async function syncToCloud() {
   try {
     setSyncStatus('Uploading to cloud...');
     
-    // Get current character data
-    const characters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
+    // Get current local character data
+    const localCharacters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
     const theme = localStorage.getItem('dndTheme') || 'dark';
     const accentColor = localStorage.getItem('dndAccentColor') || '#ffd700';
+
+    // Merge with latest cloud data first to avoid overwriting newer changes from another device.
+    let cloudCharacters = [];
+    const existingDoc = await db.collection('userData').doc(currentUser.uid).get();
+    if (existingDoc.exists) {
+      const existingData = existingDoc.data() || {};
+      cloudCharacters = existingData.characters || [];
+    }
+    const characters = mergeCharacterLists(localCharacters, cloudCharacters);
+    localStorage.setItem('dndCharacters', JSON.stringify(characters));
     
     const userData = {
       characters: characters,
       theme: theme,
       accentColor: accentColor,
       lastSync: firebase.firestore.FieldValue.serverTimestamp(),
-      version: '1.0'
+      version: '1.1'
     };
     
     // Save to Firestore
     await db.collection('userData').doc(currentUser.uid).set(userData);
+    notifyOwnerCharacterOverviews(currentUser, characters).catch((err) => {
+      console.error('Character overview notification error:', err);
+    });
     
     setSyncStatus(`Uploaded ${characters.length} characters to cloud`);
   } catch (error) {
@@ -7602,41 +7790,31 @@ async function syncFromCloud(silent = false) {
     
     const userData = doc.data();
     
-    // Ask user if they want to replace local data
     const localCharacters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
     const cloudCharacters = userData.characters || [];
-    
-    let shouldReplace = true;
-    if (!silent && localCharacters.length > 0) {
-      shouldReplace = confirm(
-        `Replace ${localCharacters.length} local characters with ${cloudCharacters.length} cloud characters?`
-      );
+
+    // Always two-way merge; no manual replace prompt needed.
+    const mergedCharacters = mergeCharacterLists(localCharacters, cloudCharacters);
+    localStorage.setItem('dndCharacters', JSON.stringify(mergedCharacters));
+    if (userData.theme) localStorage.setItem('dndTheme', userData.theme);
+    if (userData.accentColor) localStorage.setItem('dndAccentColor', userData.accentColor);
+
+    // Refresh in-memory UI without forcing a reload.
+    loadCharacterList();
+    if (!currentCharacter && mergedCharacters.length > 0) {
+      currentCharacter = mergedCharacters[0].id;
     }
-    
-    if (shouldReplace) {
-      // Replace local data with cloud data
-      localStorage.setItem('dndCharacters', JSON.stringify(cloudCharacters));
-      if (userData.theme) localStorage.setItem('dndTheme', userData.theme);
-      if (userData.accentColor) localStorage.setItem('dndAccentColor', userData.accentColor);
-      
-      // Refresh the page to load new data
-      if (!silent) {
-        setSyncStatus(`Downloaded ${cloudCharacters.length} characters`);
-        setTimeout(() => {
-          if (confirm('Reload page to apply synced data?')) {
-            location.reload();
-          }
-        }, 1000);
-      } else {
-        // Silent sync - just reload character list
-        loadCharacterList();
-        if (cloudCharacters.length > 0) {
-          currentCharacter = cloudCharacters[0].id;
-          loadData();
-    setupSkillCalculationFields();
-    enforceAutoMathNumericInputs();
-        }
-      }
+    if (currentCharacter) {
+      loadData();
+      setupSkillCalculationFields();
+      enforceAutoMathNumericInputs();
+    }
+
+    if (!silent) {
+      setSyncStatus(`Synced ${mergedCharacters.length} characters`);
+    } else if (currentUser) {
+      // Push merged result back so other devices can receive it quickly.
+      syncToCloud();
     }
   } catch (error) {
     console.error('Download error:', error);

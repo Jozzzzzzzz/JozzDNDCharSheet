@@ -73,6 +73,7 @@ function resolveRouteToPage() {
   const raw = (location.hash || '').replace('#', '').trim().toLowerCase();
   const map = {
     home: 'home',
+    settings: 'settings',
     stats: 'page1',
     background: 'page2',
     spells: 'page3',
@@ -105,9 +106,10 @@ function activateRoute() {
 }
 
 async function bootstrapModularApp() {
-  const [chrome, home, stats, background, spells, inventory, notes, popups] = await Promise.all([
+  const [chrome, home, settings, stats, background, spells, inventory, notes, popups] = await Promise.all([
     loadText('partials/chrome.html'),
     loadText('pages/home.html'),
+    loadText('pages/settings.html'),
     loadText('pages/stats.html'),
     loadText('pages/background.html'),
     loadText('pages/spells.html'),
@@ -118,10 +120,11 @@ async function bootstrapModularApp() {
 
   document.getElementById('chrome-root').innerHTML = chrome;
   const pagesRoot = document.getElementById('pages');
-  pagesRoot.innerHTML = [home, stats, background, spells, inventory, notes].join('\n');
+  pagesRoot.innerHTML = [home, settings, stats, background, spells, inventory, notes].join('\n');
   document.getElementById('popups-root').innerHTML = popups;
 
   const scriptOrder = [
+    'assets/banner-messages.js',
     'assets/modules/core.js',
     'assets/modules/actions.js',
     'assets/modules/inventory.js',

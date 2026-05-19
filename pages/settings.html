@@ -1,0 +1,93 @@
+<div class="page" id="settings">
+  <div class="hero-section settings-hero">
+    <div class="hero-content">
+      <h1>Settings</h1>
+      <p class="hero-subtitle">Everything for appearance, sync, and backups in one clean place.</p>
+    </div>
+  </div>
+
+  <div class="home-grid settings-grid">
+    <div class="home-card settings-card">
+      <div class="card-header">
+        <h3>Appearance</h3>
+        <p>Theme and accent controls</p>
+      </div>
+      <div class="settings-controls-stack">
+        <div class="theme-toggle-container">
+          <span class="theme-label">Dark</span>
+          <label class="switch">
+            <input type="checkbox" id="themeToggle" onchange="toggleTheme()">
+            <span class="slider round"></span>
+          </label>
+          <span class="theme-label">Light</span>
+        </div>
+        <div class="settings-field">
+          <label for="accentColor">Accent Color</label>
+          <input type="color" id="accentColor" class="accent-input settings-accent-input" onchange="updateAccentColor(this.value)" value="#ffd700">
+        </div>
+      </div>
+    </div>
+
+    <div class="home-card settings-card">
+      <div class="card-header">
+        <h3>Account and Cloud Sync</h3>
+        <p>Automatic cross-device syncing</p>
+      </div>
+      <div id="cloudSyncSection" class="settings-controls-stack">
+        <div id="signedOutView">
+          <button id="signInBtn" onclick="signInWithGoogle()" disabled class="settings-action-btn settings-google-btn">Sign In with Google</button>
+          <p class="settings-note">Sign in to keep character sheets synced across devices.</p>
+        </div>
+        <div id="signedInView" style="display: none;">
+          <p class="settings-note">Signed in as: <span id="userEmail"></span></p>
+          <button onclick="syncToCloud()" class="settings-action-btn settings-sync-up-btn">Sync Up Now</button>
+          <button onclick="syncFromCloud()" class="settings-action-btn settings-sync-down-btn">Sync Down Now</button>
+          <button onclick="signOut()" class="settings-action-btn settings-signout-btn">Sign Out</button>
+          <p id="syncStatus" class="settings-sync-status"></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="home-card settings-card">
+      <div class="card-header">
+        <h3>Data and Backup</h3>
+        <p>Manual backup tools kept as fallback</p>
+      </div>
+      <div class="settings-controls-stack">
+        <p class="settings-note">Auto-sync is default. Export/Import is available for backup and recovery.</p>
+        <button onclick="manualSave()" class="settings-action-btn accent-contrast-bg">Save Data</button>
+        <button onclick="exportData()" class="settings-action-btn accent-contrast-bg">Export Character</button>
+        <label class="import-label accent-contrast-bg settings-action-btn settings-import-label">
+          Import Character
+          <input onchange="importData(event)" style="display: none;" type="file"/>
+        </label>
+      </div>
+    </div>
+
+    <div class="home-card suggestion-card settings-card">
+      <div class="card-header">
+        <h3>Share Your Ideas</h3>
+        <p>Help us improve the character sheet</p>
+      </div>
+      <form id="settingsSuggestionForm" class="suggestion-form" onsubmit="handleSettingsSuggestionSubmit(event)">
+        <div class="form-group">
+          <label for="settingsSuggestionType">What kind of suggestion?</label>
+          <select id="settingsSuggestionType" required>
+            <option value="">Choose a category...</option>
+            <option value="Make it Look Better">Make it Look Better</option>
+            <option value="Add New Feature">Add New Feature</option>
+            <option value="Fix a Problem">Fix a Problem</option>
+            <option value="Make it Easier to Use">Make it Easier to Use</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="settingsSuggestionText">Your suggestion:</label>
+          <textarea id="settingsSuggestionText" placeholder="Tell us what you'd like to see improved or added..." required></textarea>
+        </div>
+        <button type="submit" class="submit-btn">Send Suggestion</button>
+        <div id="settingsSuggestionStatus" class="status-message"></div>
+      </form>
+    </div>
+  </div>
+</div>

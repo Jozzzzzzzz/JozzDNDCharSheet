@@ -738,6 +738,40 @@ function initializeWebApp() {
 
 window.addEventListener('resize', refreshAllNoteBoxes);
 window.addEventListener('orientationchange', refreshAllNoteBoxes);
+
+const defaultRollingBannerMessages = [
+  'This sheet autosaves character data to your browser. Use Export to back up your character.',
+  'Tip: Cloud Sync is best for device-to-device play. Export is your emergency backup.',
+  'Fun fact: A mimic can be a chest, a door, or your trust issues.'
+];
+let rollingBannerLastIndex = -1;
+
+function getRollingBannerMessages() {
+  const external = window.BANNER_MESSAGES;
+  if (Array.isArray(external) && external.length > 0) {
+    return external.filter(msg => typeof msg === 'string' && msg.trim().length > 0);
+  }
+  return defaultRollingBannerMessages;
+}
+
+function rollBannerMessage() {
+  const textEl = document.getElementById('rollingBannerText');
+  const messages = getRollingBannerMessages();
+  if (!textEl || !messages.length) return;
+
+  let nextIndex = Math.floor(Math.random() * messages.length);
+  if (messages.length > 1 && nextIndex === rollingBannerLastIndex) {
+    nextIndex = (nextIndex + 1) % messages.length;
+  }
+  rollingBannerLastIndex = nextIndex;
+
+  textEl.classList.add('is-fading');
+  setTimeout(() => {
+    textEl.textContent = messages[nextIndex];
+    textEl.classList.remove('is-fading');
+  }, 140);
+}
+
 window.initializeApp = function() {
   // Initialize web app features first
   initializeWebApp();
@@ -843,6 +877,7 @@ window.initializeApp = function() {
   setupNoteBoxObserver();
 setupMobileTextareaAutoGrow();
 loadLayout(); // This should come after all elements are created
+rollBannerMessage();
 setTimeout(() => {
   syncSpellPanels();
 }, 0);
@@ -869,6 +904,7 @@ function showHomePage() {
 
   document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
   window.scrollTo({ top: 0, left: 0 });
+  rollBannerMessage();
 }
 
 function createNewCharacter() {
@@ -1250,6 +1286,7 @@ function manualSave() {
   
   try {
     autosave();
+    showSaveToast('Save complete', 'success');
     if (saveStatus) {
       saveStatus.textContent = 'Saved!';
       saveStatus.style.color = '#4CAF50';
@@ -1259,6 +1296,7 @@ function manualSave() {
     }
   } catch (error) {
     console.error('Save error:', error);
+    showSaveToast('Save failed', 'error');
     if (saveStatus) {
       saveStatus.textContent = 'Save failed!';
       saveStatus.style.color = '#f44336';
@@ -2996,8 +3034,54 @@ function switchTab(button) {
       targetPage.classList.add('active');
       // Recalculate textarea/container heights after tab visibility changes.
       refreshAllNoteBoxes();
+      rollBannerMessage();
     });
   }
+}
+
+function showSaveToast(message, type = 'success') {
+  let toast = document.getElementById('saveToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'saveToast';
+    toast.className = 'save-toast';
+    document.body.appendChild(toast);
+  }
+
+  toast.textContent = message;
+  toast.classList.remove('success', 'error', 'show');
+  toast.classList.add(type);
+
+  // Force reflow so repeated saves still animate.
+  void toast.offsetWidth;
+  toast.classList.add('show');
+
+  clearTimeout(window.saveToastTimeout);
+  window.saveToastTimeout = setTimeout(() => {
+    toast.classList.remove('show');
+  }, 1700);
+}
+
+function openSettingsPage() {
+  const settingsPage = document.getElementById('settings');
+  if (!settingsPage) return;
+
+  document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(page => {
+    page.classList.remove('active');
+    page.style.display = 'none';
+    page.style.opacity = '0';
+    page.style.transform = 'translateY(10px)';
+  });
+
+  settingsPage.style.display = 'block';
+  requestAnimationFrame(() => {
+    settingsPage.classList.add('active');
+    settingsPage.style.opacity = '1';
+    settingsPage.style.transform = 'translateY(0)';
+    refreshAllNoteBoxes();
+    rollBannerMessage();
+  });
 }
 
 // ========== HEALTH SYSTEM ==========
