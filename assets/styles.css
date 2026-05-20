@@ -195,6 +195,11 @@
 
     /* Note box sizing */
     --note-default-height: 200px;
+    --text-scale: 1;
+  }
+
+  html {
+    font-size: calc(16px * var(--text-scale));
   }
 
    /* ==========  FIXES ========== */
@@ -473,21 +478,25 @@ button[onclick*="home"] {
   font-size: 0.95rem;
   font-weight: 600;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  width: 120px;
-  height: 44px;
+  overflow: visible;
+  text-overflow: clip;
+  min-width: 7.25rem;
+  width: auto;
+  min-height: 2.75rem;
+  height: auto;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
 }
 
 /* Emoji buttons - smaller size */
 .tabs button[title="Home"],
 .tabs button[title="Settings"] {
-  width: 50px;
-  height: 44px;
+  min-width: 3rem;
+  width: 3rem;
+  min-height: 2.75rem;
+  height: 2.75rem;
   padding: 8px;
   font-size: 1.2rem;
 }
@@ -3391,6 +3400,54 @@ button[onclick*="home"] {
   padding: 0;
 }
 
+.settings-text-slider {
+  width: 100%;
+  max-width: 320px;
+}
+
+.settings-text-preview {
+  margin-top: 6px;
+  padding: 12px;
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  background: var(--panel-bg);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-text-preview h4,
+.settings-text-preview p {
+  margin: 0;
+}
+
+.settings-text-preview-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.settings-preview-btn {
+  width: auto;
+  min-height: 36px;
+  padding: 8px 12px;
+  font-size: 0.92rem;
+}
+
+.settings-preview-tag {
+  padding: 4px 8px;
+  border: 1px solid var(--accent-border);
+  border-radius: 999px;
+  background: var(--card-bg);
+}
+
+.settings-text-preview input {
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 10px;
+}
+
 /* Responsive Top Navigation Buttons */
 @media (max-width: 1200px) {
   .tabs {
@@ -3401,14 +3458,18 @@ button[onclick*="home"] {
   .tabs button {
     font-size: 0.85rem;
     padding: 8px 16px;
-    width: 100px;
-    height: 40px;
+    min-width: 6.75rem;
+    width: auto;
+    min-height: 2.5rem;
+    height: auto;
   }
   
   .tabs button[title="Home"],
   .tabs button[title="Settings"] {
-    width: 45px;
-    height: 40px;
+    min-width: 2.75rem;
+    width: 2.75rem;
+    min-height: 2.5rem;
+    height: 2.5rem;
     padding: 6px;
     font-size: 1.1rem;
   }
@@ -3423,14 +3484,18 @@ button[onclick*="home"] {
   .tabs button {
     font-size: 0.8rem;
     padding: 7px 14px;
-    width: 90px;
-    height: 38px;
+    min-width: 6.25rem;
+    width: auto;
+    min-height: 2.4rem;
+    height: auto;
   }
   
   .tabs button[title="Home"],
   .tabs button[title="Settings"] {
-    width: 40px;
-    height: 38px;
+    min-width: 2.5rem;
+    width: 2.5rem;
+    min-height: 2.4rem;
+    height: 2.4rem;
     padding: 5px;
     font-size: 1rem;
   }
@@ -3445,14 +3510,18 @@ button[onclick*="home"] {
   .tabs button {
     font-size: 0.85rem;
     padding: 8px 16px;
-    width: 100px;
-    height: 40px;
+    min-width: 6.75rem;
+    width: auto;
+    min-height: 2.5rem;
+    height: auto;
   }
   
   .tabs button[title="Home"],
   .tabs button[title="Settings"] {
-    width: 40px;
-    height: 40px;
+    min-width: 2.5rem;
+    width: 2.5rem;
+    min-height: 2.5rem;
+    height: 2.5rem;
     padding: 5px;
     font-size: 1rem;
   }
@@ -3468,15 +3537,19 @@ button[onclick*="home"] {
   .tabs button {
     font-size: 0.8rem;
     padding: 7px 14px;
-    width: 90px;
-    height: 38px;
+    min-width: 6.25rem;
+    width: auto;
+    min-height: 2.4rem;
+    height: auto;
     flex: 0 0 auto;
   }
   
   .tabs button[title="Home"],
   .tabs button[title="Settings"] {
-    width: 35px;
-    height: 38px;
+    min-width: 2.25rem;
+    width: 2.25rem;
+    min-height: 2.4rem;
+    height: 2.4rem;
     padding: 4px;
     font-size: 0.9rem;
   }
@@ -3491,14 +3564,18 @@ button[onclick*="home"] {
   .tabs button {
     font-size: 0.75rem;
     padding: 6px 12px;
-    width: 80px;
-    height: 36px;
+    min-width: 5.75rem;
+    width: auto;
+    min-height: 2.25rem;
+    height: auto;
   }
   
   .tabs button[title="Home"],
   .tabs button[title="Settings"] {
-    width: 32px;
-    height: 36px;
+    min-width: 2.1rem;
+    width: 2.1rem;
+    min-height: 2.25rem;
+    height: 2.25rem;
     padding: 3px;
     font-size: 0.8rem;
   }
@@ -3513,14 +3590,18 @@ button[onclick*="home"] {
   .tabs button {
     font-size: 0.7rem;
     padding: 5px 10px;
-    width: 70px;
-    height: 34px;
+    min-width: 5.25rem;
+    width: auto;
+    min-height: 2.1rem;
+    height: auto;
   }
   
   .tabs button[title="Home"],
   .tabs button[title="Settings"] {
-    width: 30px;
-    height: 34px;
+    min-width: 2rem;
+    width: 2rem;
+    min-height: 2.1rem;
+    height: 2.1rem;
     padding: 3px;
     font-size: 0.75rem;
   }
@@ -3539,15 +3620,19 @@ button[onclick*="home"] {
   .tabs button {
     font-size: 0.65rem;
     padding: 4px 8px;
-    width: 60px;
-    height: 32px;
+    min-width: 5rem;
+    width: auto;
+    min-height: 2rem;
+    height: auto;
     flex: 0 0 auto;
   }
   
   .tabs button[title="Home"],
   .tabs button[title="Settings"] {
-    width: 28px;
-    height: 32px;
+    min-width: 1.9rem;
+    width: 1.9rem;
+    min-height: 2rem;
+    height: 2rem;
     padding: 2px;
     font-size: 0.7rem;
   }
@@ -5176,16 +5261,18 @@ button[onclick*="home"] {
     }
 
 .tabs button {
-      flex: 1 1 0 !important;
-      min-width: 0 !important;
+      flex: 0 0 auto !important;
+      min-width: max-content !important;
       max-width: none !important;
       width: auto !important;
-      height: 36px;
-      padding: 6px 2px;
-      font-size: 0.62rem;
+      min-height: 2.25rem;
+      height: auto;
+      padding: 6px 10px;
+      font-size: 0.72rem;
       line-height: 1.1;
       white-space: nowrap !important;
       text-overflow: clip !important;
+      overflow: visible !important;
     }
   }
 

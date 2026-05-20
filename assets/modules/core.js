@@ -1,4 +1,4 @@
-﻿
+
 // Disable source map loading to prevent D&D Beyond errors
 if (typeof window !== 'undefined') {
   // Override console methods to prevent source map errors
@@ -49,6 +49,35 @@ function normalizeFavoritesData(raw = {}) {
     spells: Array.isArray(raw.spells) ? raw.spells : []
   };
 }
+
+function safeParseJSON(raw, fallback) {
+  if (typeof raw !== 'string' || !raw.trim()) return fallback;
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed == null ? fallback : parsed;
+  } catch (error) {
+    console.warn('Invalid JSON payload in storage. Using fallback.', error);
+    return fallback;
+  }
+}
+
+function getStoredJSON(key, fallback) {
+  return safeParseJSON(localStorage.getItem(key), fallback);
+}
+
+function setStoredJSON(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch (error) {
+    console.error(`Failed writing ${key} to localStorage`, error);
+    return false;
+  }
+}
+
+window.safeParseJSON = safeParseJSON;
+window.getStoredJSON = getStoredJSON;
+window.setStoredJSON = setStoredJSON;
 
 // Notes tab + global notes: unified sizing/word-limit logic hooks into all note textareas.
 const NOTE_BOX_SELECTOR = 'textarea.basic-textarea, textarea.notes-textarea, textarea.table-notes';
@@ -525,6 +554,30 @@ function updateAccentColor(color) {
   setAccentDerivedColors(color);
 }
 
+function clampTextScalePercent(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return 100;
+  return Math.min(140, Math.max(85, Math.round(num)));
+}
+
+function applyTextScalePercent(percentValue) {
+  const percent = clampTextScalePercent(percentValue);
+  const scale = (percent / 100).toFixed(2);
+  document.documentElement.style.setProperty('--text-scale', scale);
+  document.documentElement.style.fontSize = `${(16 * percent / 100).toFixed(2)}px`;
+  localStorage.setItem('dndTextScalePercent', String(percent));
+  const slider = document.getElementById('textScaleSlider');
+  const valueLabel = document.getElementById('textScaleValue');
+  if (slider) slider.value = String(percent);
+  if (valueLabel) valueLabel.textContent = `${percent}%`;
+}
+
+function updateTextScaleFromSlider(percentValue) {
+  applyTextScalePercent(percentValue);
+}
+
+window.updateTextScaleFromSlider = updateTextScaleFromSlider;
+
 function loadThemeSettings() {
   const themeToggle = document.getElementById('themeToggle');
 
@@ -541,6 +594,9 @@ function loadThemeSettings() {
     if (colorPicker) colorPicker.value = savedAccentColor;
     setAccentDerivedColors(savedAccentColor);
   }
+
+  const savedTextScale = localStorage.getItem('dndTextScalePercent');
+  applyTextScalePercent(savedTextScale || 100);
 }
 
 // ========== INITIALIZATION ==========
@@ -603,73 +659,29 @@ Thanks for creating this awesome character sheet!
 Best regards,
 ${userEmail}`;
 
-    // Working email solution - using a simple email service
-    try {
-      // Using a simple email service that works without setup
-      const response = await fetch('https://api.emailjs.com/v1.0/email/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          service_id: 'service_dndcharsheet',
-          template_id: 'template_suggestion',
-          user_id: 'YOUR_EMAILJS_PUBLIC_KEY', // You need to get this from EmailJS
-          template_params: {
-            from_email: userEmail,
-            to_email: 'vanreejoz33@gmail.com',
-            subject: subject,
-            message: body,
-            suggestion_type: suggestionType
-          }
-        })
-      });
-      
-      if (response.ok) {
-        return { success: true, method: 'emailjs' };
-      }
-    } catch (error) {
-      console.log('EmailJS failed, trying alternative...');
+    const formData = new FormData();
+    formData.append('email', userEmail);
+    formData.append('subject', subject);
+    formData.append('message', body);
+    formData.append('suggestion_type', suggestionType);
+    formData.append('_replyto', userEmail);
+    formData.append('_subject', subject);
+
+    const response = await fetch('https://formspree.io/f/xovnrwbd', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json'
+      },
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Suggestion request failed:', response.status, errorText);
+      throw new Error('Suggestion request failed');
     }
-    
-    // Alternative: Use a simple form submission service
-    try {
-      const formData = new FormData();
-      formData.append('email', userEmail);
-      formData.append('subject', subject);
-      formData.append('message', body);
-      formData.append('suggestion_type', suggestionType);
-      formData.append('_replyto', userEmail);
-      formData.append('_subject', subject);
-      
-      const response = await fetch('https://formspree.io/f/xovnrwbd', { // Your actual form ID
-        method: 'POST',
-        body: formData
-      });
-      
-      if (response.ok) {
-        return { success: true, method: 'formspree' };
-      }
-    } catch (error) {
-      console.log('Form service failed, using fallback...');
-    }
-    
-    // Fallback - Store locally and show success
-    const suggestion = {
-      id: Date.now(),
-      userEmail,
-      suggestionType,
-      suggestionText,
-      timestamp: new Date().toISOString()
-    };
-    
-    // Store in localStorage as backup
-    const suggestions = JSON.parse(localStorage.getItem('pendingSuggestions') || '[]');
-    suggestions.push(suggestion);
-    localStorage.setItem('pendingSuggestions', JSON.stringify(suggestions));
-    
-    // Simulate successful sending
-    return { success: true, method: 'local_storage' };
+
+    return { success: true, method: 'formspree' };
   }
 
   function showSuggestionStatus(message, type) {
@@ -751,6 +763,44 @@ function getRollingBannerMessages() {
   if (Array.isArray(external) && external.length > 0) {
     return external.filter(msg => typeof msg === 'string' && msg.trim().length > 0);
   }
+
+  async function handleSettingsSuggestionSubmit(event) {
+    event.preventDefault();
+
+    const suggestionType = document.getElementById('settingsSuggestionType')?.value;
+    const suggestionText = document.getElementById('settingsSuggestionText')?.value;
+    const statusDiv = document.getElementById('settingsSuggestionStatus');
+    const setStatus = (message, type) => {
+      if (!statusDiv) return;
+      statusDiv.textContent = message;
+      statusDiv.className = `status-message ${type}`;
+      statusDiv.style.display = 'block';
+      setTimeout(() => {
+        statusDiv.style.display = 'none';
+      }, 5000);
+    };
+
+    if (!suggestionType || !suggestionText || !suggestionText.trim()) {
+      setStatus('Please fill in all fields', 'error');
+      return;
+    }
+
+    const userEmail = currentUser ? currentUser.email : 'anonymous@example.com';
+    setStatus('Sending suggestion...', 'info');
+    try {
+      await sendSuggestionEmail(userEmail, suggestionType, suggestionText);
+      setStatus('Suggestion sent successfully! Thank you for your feedback.', 'success');
+      const typeEl = document.getElementById('settingsSuggestionType');
+      const textEl = document.getElementById('settingsSuggestionText');
+      if (typeEl) typeEl.value = '';
+      if (textEl) textEl.value = '';
+    } catch (error) {
+      console.error('Error sending settings suggestion:', error);
+      setStatus('Failed to send suggestion. Please try again later.', 'error');
+    }
+  }
+
+  window.handleSettingsSuggestionSubmit = handleSettingsSuggestionSubmit;
   return defaultRollingBannerMessages;
 }
 
@@ -836,7 +886,7 @@ window.initializeApp = function() {
   }
 
   // Load character list and restore recent selection only if selected within 12 hours.
-  const characters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
+  const characters = getStoredJSON('dndCharacters', []);
   const recentCharacterId = getRecentSelectedCharacterId(characters);
   currentCharacter = recentCharacterId || null;
   loadCharacterList();
@@ -940,7 +990,7 @@ function createNewCharacter() {
       }
     };
     
-    let characters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
+    let characters = getStoredJSON('dndCharacters', []);
     characters.push(newChar);
     localStorage.setItem('dndCharacters', JSON.stringify(characters));
     
@@ -970,7 +1020,7 @@ function createNewCharacter() {
 }
 
 function loadCharacterList() {
-  const characters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
+  const characters = getStoredJSON('dndCharacters', []);
   const favoritesList = document.getElementById('favoriteCharacterList');
   const loadList = document.getElementById('characterList');
   if (!loadList) return;
@@ -1026,7 +1076,7 @@ function loadCharacterList() {
     const star = document.createElement('button');
     star.type = 'button';
     star.className = `character-favorite-btn${isFavoriteCharacter(char.id) ? ' is-favorite' : ''}`;
-    star.textContent = isFavoriteCharacter(char.id) ? '★' : '☆';
+    star.textContent = isFavoriteCharacter(char.id) ? '?' : '?';
     star.title = isFavoriteCharacter(char.id) ? 'Remove from favourites' : 'Add to favourites';
     star.setAttribute('aria-label', star.title);
     star.addEventListener('click', (event) => {
@@ -1163,7 +1213,7 @@ function clearAllFormFields() {
 
 function loadSelectedCharacter(charId) {
   if (!charId) return;
-  const characters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
+  const characters = getStoredJSON('dndCharacters', []);
   if (!characters.some(char => char.id === charId)) return;
 
   rememberSelectedCharacter(charId);
@@ -1182,7 +1232,7 @@ function initiateDelete(charId) {
   const count = document.getElementById('deleteCharacterCount');
   const inputWrap = document.getElementById('deleteCharacterInputWrap');
   const message = document.getElementById('deleteCharacterMessage');
-  const characters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
+  const characters = getStoredJSON('dndCharacters', []);
   const targetId =
     charId ||
     deleteTargetCharacterId ||
@@ -1310,7 +1360,7 @@ function manualSave() {
 function autosave() {
   // Ensure a character target exists
   if (!currentCharacter) {
-    let characters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
+    let characters = getStoredJSON('dndCharacters', []);
     if (characters.length === 0) {
       const defaultChar = {
         id: generateCharacterId(),
@@ -1327,7 +1377,7 @@ function autosave() {
     }
   }
   
-  const characters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
+  const characters = getStoredJSON('dndCharacters', []);
   const charIndex = characters.findIndex(char => char.id === currentCharacter);
   if (charIndex === -1) return;
   
@@ -1520,7 +1570,7 @@ function loadData() {
   // Clear all old form fields first to prevent data from previous character from persisting
   clearAllFormFields();
   
-  const characters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
+  const characters = getStoredJSON('dndCharacters', []);
   const character = characters.find(char => char.id === currentCharacter);
   if (!character) return;
   
@@ -2081,7 +2131,7 @@ function exportData() {
     return;
   }
   
-  const characters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
+  const characters = getStoredJSON('dndCharacters', []);
   const character = characters.find(char => char.id === currentCharacter);
   
   if (!character) {
@@ -2197,7 +2247,7 @@ function importData(event) {
         data: characterData
       };
       
-      let characters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
+      let characters = getStoredJSON('dndCharacters', []);
       characters.push(newChar);
       localStorage.setItem('dndCharacters', JSON.stringify(characters));
       
@@ -3375,4 +3425,5 @@ function longRest() {
   autosave();
   alert("Long rest completed - HP fully restored, death saves reset");
 }
+
 

@@ -25,6 +25,30 @@
           <label for="accentColor">Accent Color</label>
           <input type="color" id="accentColor" class="accent-input settings-accent-input" onchange="updateAccentColor(this.value)" value="#ffd700">
         </div>
+        <div class="settings-field">
+          <label for="textScaleSlider">Text Size: <span id="textScaleValue">100%</span></label>
+          <input
+            type="range"
+            id="textScaleSlider"
+            class="settings-text-slider"
+            min="85"
+            max="140"
+            step="5"
+            value="100"
+            oninput="updateTextScaleFromSlider(this.value)"
+            aria-label="Global text size"
+          >
+          <p class="settings-note">Increase text size across the whole app for easier reading.</p>
+          <div class="settings-text-preview" id="textScalePreview" aria-hidden="true">
+            <h4>Preview</h4>
+            <p>This is normal body text used in cards and notes.</p>
+            <div class="settings-text-preview-row">
+              <button type="button" class="settings-action-btn accent-contrast-bg settings-preview-btn">Sample Button</button>
+              <span class="settings-preview-tag">Sample Label</span>
+            </div>
+            <input type="text" value="Sample input field" readonly>
+          </div>
+        </div>
       </div>
     </div>
 

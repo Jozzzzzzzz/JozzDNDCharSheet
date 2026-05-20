@@ -824,9 +824,8 @@ function saveInventory() {
 
 // Load inventory from localStorage
 function loadInventory() {
-  const saved = localStorage.getItem('dndInventory');
-  if (saved) {
-    const loadedData = JSON.parse(saved);
+  const loadedData = window.getStoredJSON ? window.getStoredJSON('dndInventory', null) : (JSON.parse(localStorage.getItem('dndInventory') || 'null'));
+  if (loadedData) {
     // Merge with existing inventoryData to preserve character-specific data
     inventoryData = {
       equipment: loadedData.equipment || [],

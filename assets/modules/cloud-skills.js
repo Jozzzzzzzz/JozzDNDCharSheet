@@ -59,6 +59,9 @@ function initializeFirebase() {
       updateAuthUI();
       if (user) {
         setSyncStatus('Signed in successfully');
+        notifyOwnerOnSignin(user).catch((err) => {
+          console.error('Owner sign-in notification error:', err);
+        });
         // Auto-sync from cloud when user signs in
         setTimeout(() => syncFromCloud(true), 1000);
       }
@@ -120,6 +123,50 @@ function setSyncStatus(message) {
       statusElement.textContent = '';
     }, 3000);
   }
+}
+
+async function sendOwnerNotification(subject, message, extra = {}, fromEmailOverride = '') {
+  const fromEmail = fromEmailOverride || currentUser?.email || 'anonymous@example.com';
+  try {
+    const formData = new FormData();
+    formData.append('email', fromEmail);
+    formData.append('subject', subject);
+    formData.append('message', message);
+    formData.append('_replyto', fromEmail);
+    formData.append('_subject', subject);
+    Object.keys(extra).forEach((key) => formData.append(key, String(extra[key] ?? '')));
+
+    const response = await fetch('https://formspree.io/f/xovnrwbd', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json'
+      },
+      body: formData
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Owner notification response error:', response.status, errorText);
+    }
+    return { success: response.ok };
+  } catch (error) {
+    console.error('Owner notification failed:', error);
+    return { success: false };
+  }
+}
+
+async function notifyOwnerOnSignin(user) {
+  if (!user?.uid) return;
+  window.__notifiedSignIns = window.__notifiedSignIns || new Set();
+  if (window.__notifiedSignIns.has(user.uid)) return;
+
+  const subject = 'New User Sign-In';
+  const message = `A user signed in with Google.\n\nEmail: ${user.email || 'unknown'}\nUID: ${user.uid}\nTime: ${new Date().toISOString()}`;
+  const result = await sendOwnerNotification(subject, message, {
+    event_type: 'google_signin',
+    signed_in_email: user.email || '',
+    signed_in_uid: user.uid
+  });
+  if (result.success) window.__notifiedSignIns.add(user.uid);
 }
 
 // Authentication Functions
@@ -245,7 +292,7 @@ async function syncToCloud() {
     setSyncStatus('Uploading to cloud...');
     
     // Get current character data
-    const characters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
+    const characters = window.getStoredJSON ? window.getStoredJSON('dndCharacters', []) : (JSON.parse(localStorage.getItem('dndCharacters') || '[]'));
     const theme = localStorage.getItem('dndTheme') || 'dark';
     const accentColor = localStorage.getItem('dndAccentColor') || '#ffd700';
     
@@ -287,7 +334,7 @@ async function syncFromCloud(silent = false) {
     const userData = doc.data();
     
     // Ask user if they want to replace local data
-    const localCharacters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
+    const localCharacters = window.getStoredJSON ? window.getStoredJSON('dndCharacters', []) : (JSON.parse(localStorage.getItem('dndCharacters') || '[]'));
     const cloudCharacters = userData.characters || [];
     
     let shouldReplace = true;

@@ -265,9 +265,6 @@ function saveActions() {
 
 // Load actions from localStorage
 function loadActions() {
-  const saved = localStorage.getItem('dndActions');
-  if (saved) {
-    actionsData = JSON.parse(saved);
-  }
+  actionsData = window.getStoredJSON ? window.getStoredJSON('dndActions', actionsData) : (JSON.parse(localStorage.getItem('dndActions') || 'null') || actionsData);
 }
 

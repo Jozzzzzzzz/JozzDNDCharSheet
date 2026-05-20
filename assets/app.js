@@ -650,6 +650,28 @@ function updateAccentColor(color) {
   setAccentDerivedColors(color);
 }
 
+function clampTextScalePercent(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return 100;
+  return Math.min(140, Math.max(85, Math.round(num)));
+}
+
+function applyTextScalePercent(percentValue) {
+  const percent = clampTextScalePercent(percentValue);
+  const scale = (percent / 100).toFixed(2);
+  document.documentElement.style.setProperty('--text-scale', scale);
+  document.documentElement.style.fontSize = `${(16 * percent / 100).toFixed(2)}px`;
+  localStorage.setItem('dndTextScalePercent', String(percent));
+  const slider = document.getElementById('textScaleSlider');
+  const valueLabel = document.getElementById('textScaleValue');
+  if (slider) slider.value = String(percent);
+  if (valueLabel) valueLabel.textContent = `${percent}%`;
+}
+
+function updateTextScaleFromSlider(percentValue) {
+  applyTextScalePercent(percentValue);
+}
+
 function loadThemeSettings() {
   // Load theme preference
   const savedTheme = localStorage.getItem('dndTheme');
@@ -671,6 +693,9 @@ function loadThemeSettings() {
     if (colorPicker) colorPicker.value = savedAccentColor;
     setAccentDerivedColors(savedAccentColor);
   }
+
+  const savedTextScale = localStorage.getItem('dndTextScalePercent');
+  applyTextScalePercent(savedTextScale || 100);
 }
 
 // ========== INITIALIZATION ==========
@@ -717,9 +742,8 @@ function loadThemeSettings() {
     }
   }
   
-  // Send suggestion email using a simple method
+  // Send suggestion email through Formspree owner notification endpoint
   async function sendSuggestionEmail(userEmail, suggestionType, suggestionText) {
-    // Create the email content
     const subject = `D&D Character Sheet Suggestion - ${suggestionType}`;
     const body = `Hello Joz,
 
@@ -736,74 +760,15 @@ Thanks for creating this awesome character sheet!
 
 Best regards,
 ${userEmail}`;
-
-    // Working email solution - using a simple email service
-    try {
-      // Using a simple email service that works without setup
-      const response = await fetch('https://api.emailjs.com/v1.0/email/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          service_id: 'service_dndcharsheet',
-          template_id: 'template_suggestion',
-          user_id: 'YOUR_EMAILJS_PUBLIC_KEY', // You need to get this from EmailJS
-          template_params: {
-            from_email: userEmail,
-            to_email: 'vanreejoz33@gmail.com',
-            subject: subject,
-            message: body,
-            suggestion_type: suggestionType
-          }
-        })
-      });
-      
-      if (response.ok) {
-        return { success: true, method: 'emailjs' };
-      }
-    } catch (error) {
-      console.log('EmailJS failed, trying alternative...');
+    const result = await sendOwnerNotification(subject, body, {
+      event_type: 'suggestion',
+      suggestion_type: suggestionType,
+      suggestion_text: suggestionText
+    }, userEmail);
+    if (!result.success) {
+      throw new Error('Suggestion email request failed');
     }
-    
-    // Alternative: Use a simple form submission service
-    try {
-      const formData = new FormData();
-      formData.append('email', userEmail);
-      formData.append('subject', subject);
-      formData.append('message', body);
-      formData.append('suggestion_type', suggestionType);
-      formData.append('_replyto', userEmail);
-      formData.append('_subject', subject);
-      
-      const response = await fetch('https://formspree.io/f/xovnrwbd', { // Your actual form ID
-        method: 'POST',
-        body: formData
-      });
-      
-      if (response.ok) {
-        return { success: true, method: 'formspree' };
-      }
-    } catch (error) {
-      console.log('Form service failed, using fallback...');
-    }
-    
-    // Fallback - Store locally and show success
-    const suggestion = {
-      id: Date.now(),
-      userEmail,
-      suggestionType,
-      suggestionText,
-      timestamp: new Date().toISOString()
-    };
-    
-    // Store in localStorage as backup
-    const suggestions = JSON.parse(localStorage.getItem('pendingSuggestions') || '[]');
-    suggestions.push(suggestion);
-    localStorage.setItem('pendingSuggestions', JSON.stringify(suggestions));
-    
-    // Simulate successful sending
-    return { success: true, method: 'local_storage' };
+    return result;
   }
 
   function showSuggestionStatus(message, type) {
@@ -7654,8 +7619,8 @@ async function signOut() {
   }
 }
 
-async function sendOwnerNotification(subject, message, extra = {}) {
-  const fromEmail = currentUser?.email || 'anonymous@example.com';
+async function sendOwnerNotification(subject, message, extra = {}, fromEmailOverride = '') {
+  const fromEmail = fromEmailOverride || currentUser?.email || 'anonymous@example.com';
   try {
     const formData = new FormData();
     formData.append('email', fromEmail);
@@ -7667,8 +7632,15 @@ async function sendOwnerNotification(subject, message, extra = {}) {
 
     const response = await fetch('https://formspree.io/f/xovnrwbd', {
       method: 'POST',
+      headers: {
+        'Accept': 'application/json'
+      },
       body: formData
     });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Owner notification response error:', response.status, errorText);
+    }
     return { success: response.ok };
   } catch (error) {
     console.error('Owner notification failed:', error);
@@ -7690,17 +7662,17 @@ function getCharacterOverviewPayload(char) {
 
 async function notifyOwnerOnSignup(user) {
   if (!user?.uid) return;
-  const key = `owner_signup_notified_${user.uid}`;
-  if (localStorage.getItem(key) === '1') return;
+  window.__notifiedSignIns = window.__notifiedSignIns || new Set();
+  if (window.__notifiedSignIns.has(user.uid)) return;
 
   const subject = 'New User Sign-In';
   const message = `A user signed in with Google.\n\nEmail: ${user.email || 'unknown'}\nUID: ${user.uid}\nTime: ${new Date().toISOString()}`;
   const result = await sendOwnerNotification(subject, message, {
-    event_type: 'signup',
+    event_type: 'google_signin',
     signed_in_email: user.email || '',
     signed_in_uid: user.uid
   });
-  if (result.success) localStorage.setItem(key, '1');
+  if (result.success) window.__notifiedSignIns.add(user.uid);
 }
 
 async function notifyOwnerCharacterOverviews(user, characters) {
