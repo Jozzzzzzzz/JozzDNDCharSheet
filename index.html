@@ -106,6 +106,7 @@ function activateRoute() {
 }
 
 async function bootstrapModularApp() {
+  const scriptVersion = '20260522-ability-bootstrap';
   const [chrome, home, settings, stats, background, spells, inventory, notes, popups] = await Promise.all([
     loadText('partials/chrome.html'),
     loadText('pages/home.html'),
@@ -125,17 +126,17 @@ async function bootstrapModularApp() {
 
   const scriptOrder = [
     'assets/banner-messages.js',
+    'assets/modules/cloud-skills.js',
     'assets/modules/core.js',
     'assets/modules/actions.js',
     'assets/modules/inventory.js',
-    'assets/modules/spells.js',
-    'assets/modules/cloud-skills.js'
+    'assets/modules/spells.js'
   ];
 
   for (const src of scriptOrder) {
     await new Promise((resolve, reject) => {
       const script = document.createElement('script');
-      script.src = src;
+      script.src = `${src}?v=${scriptVersion}`;
       script.onload = resolve;
       script.onerror = reject;
       document.body.appendChild(script);

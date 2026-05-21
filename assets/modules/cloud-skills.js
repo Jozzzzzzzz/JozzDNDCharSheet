@@ -1042,6 +1042,26 @@ function updateProficiencyBonusIfNotOverridden() {
   }
 }
 
+Object.assign(window, {
+  formatSignedNumber,
+  parseSignedNumber,
+  sanitizeDigits,
+  sanitizeSignedValue,
+  enforceAutoMathNumericInputs,
+  calculateSkillBonus,
+  updateAllSkillBonuses,
+  setupSkillCalculationFields,
+  calculateAbilityBonus,
+  formatBonusInput,
+  formatSaveInput,
+  calculateSavingThrow,
+  calculateProficiencyBonus,
+  updateProficiencyBonus,
+  handleProfBonusInput,
+  resetProfBonusIfEmpty,
+  updateProficiencyBonusIfNotOverridden
+});
+
 
 // Initialize Firebase when page loads or immediately if already loaded
 function registerServiceWorker() {
