@@ -27,6 +27,10 @@
         </div>
         <div class="settings-field">
           <label for="textScaleSlider">Text Size: <span id="textScaleValue">100%</span></label>
+          <div class="settings-text-controls">
+            <button type="button" class="settings-text-step-btn" onclick="stepTextScale(-5)" aria-label="Decrease text size">A-</button>
+            <button type="button" class="settings-text-step-btn" onclick="stepTextScale(5)" aria-label="Increase text size">A+</button>
+          </div>
           <input
             type="range"
             id="textScaleSlider"
@@ -112,6 +116,37 @@
         <button type="submit" class="submit-btn">Send Suggestion</button>
         <div id="settingsSuggestionStatus" class="status-message"></div>
       </form>
+    </div>
+
+    <div class="home-card settings-card" id="adminPortalCard" style="display: none;">
+      <div class="card-header">
+        <h3>Admin Portal</h3>
+        <p>Owner-only tools</p>
+      </div>
+
+      <div class="settings-controls-stack">
+        <div id="adminLockedView">
+          <p class="settings-note">This section is locked. Enter your PIN to continue.</p>
+          <div class="settings-field">
+            <label for="adminPortalPin">PIN</label>
+            <input id="adminPortalPin" type="password" autocomplete="current-password" placeholder="Enter PIN">
+          </div>
+          <button type="button" class="settings-action-btn accent-contrast-bg" onclick="unlockAdminPortal()">Unlock Admin Portal</button>
+          <div id="adminPortalStatus" class="status-message"></div>
+        </div>
+
+        <div id="adminUnlockedView" style="display:none;">
+          <div class="settings-field">
+            <label for="adminUserSelect">Users</label>
+            <select id="adminUserSelect" onchange="adminSelectUser(this.value)">
+              <option value="">Select a user...</option>
+            </select>
+          </div>
+          <button type="button" class="settings-action-btn accent-contrast-bg" onclick="adminRefreshUsers()">Refresh User List</button>
+          <p id="adminUserMeta" class="settings-note"></p>
+          <div id="adminUserCharacters"></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>

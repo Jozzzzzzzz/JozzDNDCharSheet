@@ -13,6 +13,7 @@ const firebaseConfig = {
 // Initialize Firebase
 let firebaseApp, auth, db;
 let currentUser = null;
+const OWNER_EMAIL = 'vanreejoz33@gmail.com';
 
 function initializeFirebase() {
   try {
@@ -51,6 +52,8 @@ function initializeFirebase() {
     
     db = firebase.firestore();
     console.log('Firestore initialized:', typeof db);
+    window.db = db;
+    console.log('Firestore set to window.db');
 
     // Listen for auth state changes
     auth.onAuthStateChanged((user) => {
@@ -59,11 +62,13 @@ function initializeFirebase() {
       updateAuthUI();
       if (user) {
         setSyncStatus('Signed in successfully');
-        notifyOwnerOnSignin(user).catch((err) => {
-          console.error('Owner sign-in notification error:', err);
+        handleSignedInUser(user).catch((err) => {
+          console.error('Signed-in user handling error:', err);
         });
         // Auto-sync from cloud when user signs in
         setTimeout(() => syncFromCloud(true), 1000);
+      } else {
+        stopPresenceHeartbeat();
       }
     });
 
@@ -123,6 +128,9 @@ function setSyncStatus(message) {
       statusElement.textContent = '';
     }, 3000);
   }
+  if (typeof window.updateAdminPortalVisibility === 'function') {
+    window.updateAdminPortalVisibility();
+  }
 }
 
 async function sendOwnerNotification(subject, message, extra = {}, fromEmailOverride = '') {
@@ -154,19 +162,187 @@ async function sendOwnerNotification(subject, message, extra = {}, fromEmailOver
   }
 }
 
-async function notifyOwnerOnSignin(user) {
-  if (!user?.uid) return;
-  window.__notifiedSignIns = window.__notifiedSignIns || new Set();
-  if (window.__notifiedSignIns.has(user.uid)) return;
+function isOwnerEmail(email) {
+  return String(email || '').toLowerCase() === OWNER_EMAIL.toLowerCase();
+}
 
-  const subject = 'New User Sign-In';
-  const message = `A user signed in with Google.\n\nEmail: ${user.email || 'unknown'}\nUID: ${user.uid}\nTime: ${new Date().toISOString()}`;
-  const result = await sendOwnerNotification(subject, message, {
-    event_type: 'google_signin',
-    signed_in_email: user.email || '',
-    signed_in_uid: user.uid
+function getOrCreateDeviceId() {
+  const key = 'dndDeviceId';
+  let existing = '';
+  try { existing = localStorage.getItem(key) || ''; } catch (_) {}
+  if (existing && typeof existing === 'string' && existing.length >= 12) return existing;
+
+  let bytes;
+  try {
+    bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+  } catch (_) {
+    // Very old browsers fallback
+    return `dev_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  }
+  const id = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+  try { localStorage.setItem(key, id); } catch (_) {}
+  return id;
+}
+
+async function trackSigninAndMaybeNotify(user) {
+  if (!db || !user?.uid) return { firstEver: false, newDevice: false, deviceId: '' };
+  const deviceId = getOrCreateDeviceId();
+  const docRef = db.collection('auth_signins').doc(user.uid);
+  const nowIso = new Date().toISOString();
+
+  const flags = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(docRef);
+    const data = snap.exists ? (snap.data() || {}) : {};
+    const knownDevices = data.knownDevices || {};
+    const firstEver = !snap.exists;
+    const newDevice = !knownDevices || !Object.prototype.hasOwnProperty.call(knownDevices, deviceId);
+
+    let knownDeviceCount = Number(data.knownDeviceCount);
+    if (!Number.isFinite(knownDeviceCount)) {
+      knownDeviceCount = Object.keys(knownDevices || {}).length;
+    }
+    if (newDevice) knownDeviceCount += 1;
+
+    const FieldValue = firebase.firestore.FieldValue;
+    const update = {
+      email: user.email || '',
+      lastSignInAt: FieldValue.serverTimestamp(),
+      lastDeviceId: deviceId,
+      knownDeviceCount: knownDeviceCount,
+      // Presence: updated by heartbeat too, but set once on sign-in.
+      lastSeenAt: FieldValue.serverTimestamp()
+    };
+
+    // Nested device stats (dot-path updates so we don't overwrite other devices).
+    update[`knownDevices.${deviceId}.lastSeenAt`] = FieldValue.serverTimestamp();
+    update[`knownDevices.${deviceId}.lastSignInAt`] = FieldValue.serverTimestamp();
+    update[`knownDevices.${deviceId}.ua`] = (navigator.userAgent || '').slice(0, 180);
+    update[`knownDevices.${deviceId}.lastSignInIso`] = nowIso;
+    if (newDevice) {
+      update[`knownDevices.${deviceId}.firstSeenAt`] = FieldValue.serverTimestamp();
+      update[`knownDevices.${deviceId}.firstSeenIso`] = nowIso;
+    }
+
+    if (firstEver) {
+      update.firstSeenAt = FieldValue.serverTimestamp();
+      update.firstSeenIso = nowIso;
+      update.signInCount = 1;
+    } else {
+      update.signInCount = FieldValue.increment(1);
+    }
+
+    tx.set(docRef, update, { merge: true });
+    return { firstEver, newDevice };
   });
-  if (result.success) window.__notifiedSignIns.add(user.uid);
+
+  if (!isOwnerEmail(user.email) && (flags.firstEver || flags.newDevice)) {
+    const subject = flags.firstEver ? 'New User Sign-In (First Time)' : 'New User Sign-In (New Device)';
+    const message = `A user signed in with Google.\n\nEmail: ${user.email || 'unknown'}\nUID: ${user.uid}\nDevice: ${deviceId}\nEvent: ${flags.firstEver ? 'first_time' : 'new_device'}\nTime: ${nowIso}`;
+    await sendOwnerNotification(subject, message, {
+      event_type: flags.firstEver ? 'google_signin_first' : 'google_signin_new_device',
+      signed_in_email: user.email || '',
+      signed_in_uid: user.uid,
+      device_id: deviceId
+    });
+  }
+
+  return { ...flags, deviceId };
+}
+
+let presenceTimer = null;
+let lastPresenceAt = 0;
+let lastPresenceUid = '';
+let lastPresenceDevice = '';
+let presenceListenersAttached = false;
+function onPresenceVisibilityChange() {
+  if (!document.hidden) sendPresenceHeartbeat();
+}
+
+async function sendPresenceHeartbeat() {
+  if (!db || !currentUser?.uid) return;
+  const now = Date.now();
+  if (now - lastPresenceAt < 45000) return; // throttle
+  lastPresenceAt = now;
+  const uid = currentUser.uid;
+  const deviceId = lastPresenceDevice || getOrCreateDeviceId();
+  lastPresenceUid = uid;
+  lastPresenceDevice = deviceId;
+
+  const docRef = db.collection('auth_signins').doc(uid);
+  const FieldValue = firebase.firestore.FieldValue;
+  const update = {
+    lastSeenAt: FieldValue.serverTimestamp(),
+    lastDeviceId: deviceId
+  };
+  update[`knownDevices.${deviceId}.lastSeenAt`] = FieldValue.serverTimestamp();
+  try {
+    await docRef.set(update, { merge: true });
+  } catch (e) {
+    console.warn('Presence heartbeat failed:', e);
+  }
+}
+
+function startPresenceHeartbeat(deviceId) {
+  lastPresenceDevice = deviceId || getOrCreateDeviceId();
+  if (presenceTimer) clearInterval(presenceTimer);
+  // Timer-based presence
+  presenceTimer = setInterval(sendPresenceHeartbeat, 60000);
+  // Also bump on focus/visibility (attach once)
+  if (!presenceListenersAttached) {
+    presenceListenersAttached = true;
+    window.addEventListener('focus', sendPresenceHeartbeat);
+    document.addEventListener('visibilitychange', onPresenceVisibilityChange);
+  }
+  // Expose for autosave hook
+  window.presenceHeartbeat = sendPresenceHeartbeat;
+  // Kick once immediately
+  sendPresenceHeartbeat();
+}
+
+function stopPresenceHeartbeat() {
+  if (presenceTimer) clearInterval(presenceTimer);
+  presenceTimer = null;
+  lastPresenceAt = 0;
+  lastPresenceUid = '';
+  lastPresenceDevice = '';
+  window.presenceHeartbeat = null;
+}
+
+async function handleSignedInUser(user) {
+  await ensureUserProfile(user);
+  const { deviceId } = await trackSigninAndMaybeNotify(user);
+  startPresenceHeartbeat(deviceId);
+}
+
+async function ensureUserProfile(user) {
+  if (!db || !user?.uid) return;
+  const uid = user.uid;
+  const email = user.email || '';
+  const docRef = db.collection('userProfiles').doc(uid);
+  const snap = await docRef.get();
+  const existing = snap.exists ? (snap.data() || {}) : {};
+
+  const FieldValue = firebase.firestore.FieldValue;
+  const update = {
+    email: email,
+    lastSeenAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp()
+  };
+  if (!snap.exists) update.createdAt = FieldValue.serverTimestamp();
+
+  const hasNickname = typeof existing.nickname === 'string' && existing.nickname.trim().length > 0;
+  const promptKey = `dndNicknamePrompted_${uid}`;
+  const alreadyPrompted = (localStorage.getItem(promptKey) || '') === '1';
+  if (!hasNickname && !alreadyPrompted && !isOwnerEmail(email)) {
+    const nickname = prompt('Pick a name/nickname to show in the app (you can change it later):') || '';
+    localStorage.setItem(promptKey, '1');
+    const clean = nickname.trim().slice(0, 40);
+    if (clean) update.nickname = clean;
+  }
+
+  await docRef.set(update, { merge: true });
+}
 }
 
 // Authentication Functions
