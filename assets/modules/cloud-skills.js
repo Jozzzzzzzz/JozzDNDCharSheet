@@ -13,6 +13,7 @@ const firebaseConfig = {
 // Initialize Firebase
 let firebaseApp, auth, db;
 let currentUser = null;
+window.currentUser = null;
 const OWNER_EMAIL = 'vanreejoz33@gmail.com';
 
 function initializeFirebase() {
@@ -59,6 +60,7 @@ function initializeFirebase() {
     auth.onAuthStateChanged((user) => {
       console.log('Auth state changed. User:', user ? user.email : 'null');
       currentUser = user;
+      window.currentUser = user;
       updateAuthUI();
       if (user) {
         setSyncStatus('Signed in successfully');
@@ -116,6 +118,10 @@ function updateAuthUI() {
       signInBtn.disabled = !auth;
       signInBtn.textContent = auth ? 'Sign In with Google' : 'Loading...';
     }
+  }
+
+  if (typeof window.updateAdminPortalVisibility === 'function') {
+    window.updateAdminPortalVisibility();
   }
 }
 

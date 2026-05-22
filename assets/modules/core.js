@@ -629,7 +629,7 @@ function loadThemeSettings() {
     }
     
     // Get user's email from Firebase auth
-    const userEmail = currentUser ? currentUser.email : 'anonymous@example.com';
+    const userEmail = window.currentUser ? window.currentUser.email : 'anonymous@example.com';
     
     // Show sending status
     showSuggestionStatus('Sending suggestion...', 'info');
@@ -794,7 +794,7 @@ function getRollingBannerMessages() {
       return;
     }
 
-    const userEmail = currentUser ? currentUser.email : 'anonymous@example.com';
+    const userEmail = window.currentUser ? window.currentUser.email : 'anonymous@example.com';
     setStatus('Sending suggestion...', 'info');
     try {
       await sendSuggestionEmail(userEmail, suggestionType, suggestionText);
@@ -855,23 +855,23 @@ window.initializeApp = function() {
   
   // Initialize ability bonuses
   ['str', 'dex', 'con', 'int', 'wis', 'cha'].forEach(ability => {
-    calculateAbilityBonus(ability);
+    window.calculateAbilityBonus(ability);
     // Format bonus input to ensure + prefix
-    formatBonusInput(ability + '_bonus');
+    window.formatBonusInput(ability + '_bonus');
   });
   
   // Initialize proficiency bonus
-  updateProficiencyBonus();
+  window.updateProficiencyBonus();
 
   // Numeric guards + skill auto-math wiring
-  enforceAutoMathNumericInputs();
-  setupSkillCalculationFields();
+  window.enforceAutoMathNumericInputs();
+  window.setupSkillCalculationFields();
   
   // Initialize saving throws
   ['str', 'dex', 'con', 'int', 'wis', 'cha'].forEach(ability => {
-    calculateSavingThrow(ability);
+    window.calculateSavingThrow(ability);
     // Format save input to ensure + prefix
-    formatSaveInput(ability + '_save');
+    window.formatSaveInput(ability + '_save');
   });
   
   // Initialize suggestion form
@@ -902,8 +902,8 @@ window.initializeApp = function() {
 
   if (recentCharacterId) {
     loadData();
-    setupSkillCalculationFields();
-    enforceAutoMathNumericInputs();
+    window.setupSkillCalculationFields();
+    window.enforceAutoMathNumericInputs();
     const page1Tab = document.querySelector('.tab[data-tab="page1"]');
     if (page1Tab) page1Tab.click();
   } else {
@@ -1301,8 +1301,8 @@ function initiateDelete(charId) {
       resetDeleteUI();
       loadCharacterList();
       loadData();
-      setupSkillCalculationFields();
-      enforceAutoMathNumericInputs();
+      window.setupSkillCalculationFields();
+      window.enforceAutoMathNumericInputs();
       document.querySelector('.tab[data-tab="page1"]').click();
     } else {
       currentCharacter = null;
@@ -1571,7 +1571,7 @@ function autosave() {
   localStorage.setItem('dndCharacters', JSON.stringify(characters));
   
   // Auto-sync to cloud if user is signed in
-  if (currentUser && !window.__adminPreviewActive) {
+  if (window.currentUser && !window.__adminPreviewActive) {
     syncToCloud();
   }
 }
@@ -1635,19 +1635,19 @@ function loadData() {
     
     // Calculate ability bonuses after loading
     ['str', 'dex', 'con', 'int', 'wis', 'cha'].forEach(ability => {
-      calculateAbilityBonus(ability);
+      window.calculateAbilityBonus(ability);
       // Format bonus input to ensure + prefix
-      formatBonusInput(ability + '_bonus');
+      window.formatBonusInput(ability + '_bonus');
     });
     
     // Update proficiency bonus after loading
-    updateProficiencyBonus();
+    window.updateProficiencyBonus();
     
     // Calculate saving throws after loading
     ['str', 'dex', 'con', 'int', 'wis', 'cha'].forEach(ability => {
-      calculateSavingThrow(ability);
+      window.calculateSavingThrow(ability);
       // Format save input to ensure + prefix
-      formatSaveInput(ability + '_save');
+      window.formatSaveInput(ability + '_save');
     });
     
     // Combat Stats
@@ -2265,8 +2265,8 @@ function importData(event) {
       
       loadCharacterList();
       loadSelectedCharacter(newChar.id);
-      setupSkillCalculationFields();
-      enforceAutoMathNumericInputs();
+      window.setupSkillCalculationFields();
+      window.enforceAutoMathNumericInputs();
       
       alert(`Character "${charName}" imported successfully!`);
     } catch (err) {
@@ -3157,7 +3157,7 @@ async function sha256Hex(text) {
 }
 
 function isOwnerAdminUser() {
-  const email = String(currentUser?.email || '').toLowerCase();
+  const email = String(window.currentUser?.email || '').toLowerCase();
   return email === 'vanreejoz33@gmail.com';
 }
 

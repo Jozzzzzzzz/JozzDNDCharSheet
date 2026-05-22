@@ -105,8 +105,129 @@ function activateRoute() {
   }
 }
 
+(function installBootstrapStatHelpers() {
+  const abilities = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+  const skillAbilityMap = {
+    acrobatics: 'dex',
+    animal_handling: 'wis',
+    arcana: 'int',
+    athletics: 'str',
+    deception: 'cha',
+    history: 'int',
+    insight: 'wis',
+    intimidation: 'cha',
+    investigation: 'int',
+    medicine: 'wis',
+    nature: 'int',
+    perception: 'wis',
+    performance: 'cha',
+    persuasion: 'cha',
+    religion: 'int',
+    sleight_of_hand: 'dex',
+    stealth: 'dex',
+    survival: 'wis'
+  };
+  const skills = Object.keys(skillAbilityMap);
+
+  function formatSignedNumber(value) {
+    const n = parseInt(value, 10) || 0;
+    return n >= 0 ? `+${n}` : `${n}`;
+  }
+
+  function parseSignedNumber(value) {
+    if (value === null || value === undefined) return 0;
+    return parseInt(String(value).trim().replace(/[^0-9+-]/g, ''), 10) || 0;
+  }
+
+  function sanitizeDigits(value, maxLength = null) {
+    let cleaned = String(value || '').replace(/\D/g, '');
+    if (maxLength) cleaned = cleaned.slice(0, maxLength);
+    return cleaned;
+  }
+
+  function sanitizeSignedValue(value) {
+    const trimmed = String(value || '').trim();
+    if (!trimmed) return '+0';
+    const sign = trimmed.startsWith('-') ? '-' : '+';
+    const numeric = parseInt(trimmed.replace(/\D/g, ''), 10) || 0;
+    return sign === '-' ? `-${numeric}` : `+${numeric}`;
+  }
+
+  function calculateSavingThrow(ability) {
+    const saveInput = document.getElementById(`${ability}_save`);
+    const profCheckbox = document.getElementById(`${ability}_save_prof`);
+    const abilityBonus = document.getElementById(`${ability}_bonus`);
+    const profBonus = document.getElementById('prof_bonus');
+    if (!saveInput || !profCheckbox || !abilityBonus || !profBonus) return;
+    const saveMod = parseSignedNumber(abilityBonus.value) + (profCheckbox.checked ? parseSignedNumber(profBonus.value) : 0);
+    saveInput.value = formatSignedNumber(saveMod);
+  }
+
+  function calculateSkillBonus(skill) {
+    const ability = skillAbilityMap[skill];
+    const totalInput = document.getElementById(`bonus_${skill}`);
+    const profCheckbox = document.getElementById(`prof_${skill}`);
+    const adjInput = document.getElementById(`adj_${skill}`);
+    const abilityBonus = ability ? document.getElementById(`${ability}_bonus`) : null;
+    const profBonus = document.getElementById('prof_bonus');
+    if (!totalInput || !profCheckbox || !abilityBonus || !profBonus) return;
+    const total = parseSignedNumber(abilityBonus.value)
+      + parseSignedNumber(adjInput ? adjInput.value : 0)
+      + (profCheckbox.checked ? parseSignedNumber(profBonus.value) : 0);
+    totalInput.value = formatSignedNumber(total);
+  }
+
+  function updateAllSkillBonuses() {
+    skills.forEach(calculateSkillBonus);
+  }
+
+  Object.assign(window, {
+    formatSignedNumber: window.formatSignedNumber || formatSignedNumber,
+    parseSignedNumber: window.parseSignedNumber || parseSignedNumber,
+    sanitizeDigits: window.sanitizeDigits || sanitizeDigits,
+    sanitizeSignedValue: window.sanitizeSignedValue || sanitizeSignedValue,
+    calculateAbilityBonus: window.calculateAbilityBonus || function(ability) {
+      const scoreInput = document.getElementById(ability);
+      const bonusInput = document.getElementById(`${ability}_bonus`);
+      if (!scoreInput || !bonusInput) return;
+      scoreInput.value = sanitizeDigits(scoreInput.value, 2);
+      bonusInput.value = formatSignedNumber(Math.floor(((parseInt(scoreInput.value, 10) || 0) - 10) / 2));
+      calculateSavingThrow(ability);
+      updateAllSkillBonuses();
+    },
+    formatBonusInput: window.formatBonusInput || function(inputId) {
+      if (!inputId) return;
+      window.calculateAbilityBonus(inputId.replace('_bonus', ''));
+    },
+    formatSaveInput: window.formatSaveInput || function(inputId) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      input.value = sanitizeSignedValue(input.value).slice(0, 4);
+    },
+    calculateSavingThrow: window.calculateSavingThrow || calculateSavingThrow,
+    calculateProficiencyBonus: window.calculateProficiencyBonus || function() {
+      const level = parseInt(document.getElementById('char_level')?.value, 10) || 1;
+      if (level >= 17) return '+6';
+      if (level >= 13) return '+5';
+      if (level >= 9) return '+4';
+      if (level >= 5) return '+3';
+      return '+2';
+    },
+    updateProficiencyBonus: window.updateProficiencyBonus || function() {
+      const profBonusInput = document.getElementById('prof_bonus');
+      if (profBonusInput) profBonusInput.value = window.calculateProficiencyBonus();
+      abilities.forEach(calculateSavingThrow);
+      updateAllSkillBonuses();
+    },
+    enforceAutoMathNumericInputs: window.enforceAutoMathNumericInputs || function() {},
+    setupSkillCalculationFields: window.setupSkillCalculationFields || updateAllSkillBonuses,
+    calculateSkillBonus: window.calculateSkillBonus || calculateSkillBonus,
+    updateAllSkillBonuses: window.updateAllSkillBonuses || updateAllSkillBonuses
+  });
+})();
+
 async function bootstrapModularApp() {
-  const scriptVersion = '20260522-ability-bootstrap';
+  const scriptVersion = '20260522-admin-visibility';
   const [chrome, home, settings, stats, background, spells, inventory, notes, popups] = await Promise.all([
     loadText('partials/chrome.html'),
     loadText('pages/home.html'),
@@ -153,7 +274,15 @@ async function bootstrapModularApp() {
 
 bootstrapModularApp().catch(err => {
   console.error(err);
-  document.body.innerHTML = `<pre style="padding:16px;color:#fff;background:#111;">Failed to bootstrap app:\n${String(err)}</pre>`;
+  const details = [
+    String(err),
+    err && err.stack ? err.stack : '',
+    '',
+    `calculateAbilityBonus: ${typeof window.calculateAbilityBonus}`,
+    `formatBonusInput: ${typeof window.formatBonusInput}`,
+    `core loaded: ${!!window.initializeApp}`
+  ].join('\n');
+  document.body.innerHTML = `<pre style="padding:16px;color:#fff;background:#111;white-space:pre-wrap;">Failed to bootstrap app:\n${details}</pre>`;
 });
 </script>
 </body>
