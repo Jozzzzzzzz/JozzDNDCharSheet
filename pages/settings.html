@@ -63,16 +63,16 @@
       </div>
       <div id="cloudSyncSection" class="settings-controls-stack">
         <div id="signedOutView">
-          <button id="signInBtn" onclick="window.signInWithGoogle()" disabled class="settings-action-btn settings-google-btn">Sign In with Google</button>
+          <button id="signInBtn" class="settings-action-btn settings-google-btn">Sign In with Google</button>
           <p class="settings-note">Sign in to keep character sheets synced across devices.</p>
         </div>
         <div id="signedInView" style="display: none;">
           <p class="settings-note">Signed in as: <span id="userEmail"></span></p>
-          <button onclick="syncToCloud()" class="settings-action-btn settings-sync-up-btn">Sync Up Now</button>
-          <button onclick="syncFromCloud()" class="settings-action-btn settings-sync-down-btn">Sync Down Now</button>
-          <button onclick="signOut()" class="settings-action-btn settings-signout-btn">Sign Out</button>
-          <p id="syncStatus" class="settings-sync-status"></p>
+          <button class="settings-action-btn settings-sync-up-btn">Sync Up Now</button>
+          <button class="settings-action-btn settings-sync-down-btn">Sync Down Now</button>
+          <button class="settings-action-btn settings-signout-btn">Sign Out</button>
         </div>
+        <p id="syncStatus" class="settings-sync-status"></p>
       </div>
     </div>
 

@@ -16,6 +16,52 @@ let currentUser = null;
 window.currentUser = null;
 const OWNER_EMAIL = 'vanreejoz33@gmail.com';
 
+function bindAuthButtons() {
+  const signInBtn = document.getElementById('signInBtn');
+  if (signInBtn && signInBtn.dataset.authBound !== '1') {
+    signInBtn.dataset.authBound = '1';
+    signInBtn.type = 'button';
+    signInBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      window.signInWithGoogle();
+    });
+    signInBtn.addEventListener('touchend', (event) => {
+      event.preventDefault();
+      window.signInWithGoogle();
+    }, { passive: false });
+  }
+
+  const syncUpBtn = document.querySelector('.settings-sync-up-btn');
+  if (syncUpBtn && syncUpBtn.dataset.authBound !== '1') {
+    syncUpBtn.dataset.authBound = '1';
+    syncUpBtn.type = 'button';
+    syncUpBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      window.syncToCloud();
+    });
+  }
+
+  const syncDownBtn = document.querySelector('.settings-sync-down-btn');
+  if (syncDownBtn && syncDownBtn.dataset.authBound !== '1') {
+    syncDownBtn.dataset.authBound = '1';
+    syncDownBtn.type = 'button';
+    syncDownBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      window.syncFromCloud();
+    });
+  }
+
+  const signOutBtn = document.querySelector('.settings-signout-btn');
+  if (signOutBtn && signOutBtn.dataset.authBound !== '1') {
+    signOutBtn.dataset.authBound = '1';
+    signOutBtn.type = 'button';
+    signOutBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      window.signOut();
+    });
+  }
+}
+
 function initializeFirebase() {
   try {
     console.log('=== Firebase Initialization Starting ===');
@@ -33,6 +79,7 @@ function initializeFirebase() {
     // Prevent multiple initialization attempts
     if (firebaseApp) {
       console.log('Firebase already initialized');
+      updateAuthUI();
       return;
     }
     
@@ -77,6 +124,7 @@ function initializeFirebase() {
     });
 
     console.log('Firebase initialized successfully');
+    bindAuthButtons();
     // Update UI to enable sign-in button
     updateAuthUI();
   } catch (error) {
@@ -92,6 +140,7 @@ function initializeFirebase() {
 
 function updateAuthUI() {
   console.log('=== updateAuthUI called ===');
+  bindAuthButtons();
   const signedInView = document.getElementById('signedInView');
   const signedOutView = document.getElementById('signedOutView');
   const userEmail = document.getElementById('userEmail');
@@ -115,10 +164,10 @@ function updateAuthUI() {
     if (signedOutView) signedOutView.style.display = 'block';
     // Enable/disable sign-in button based on Firebase availability
     if (signInBtn) {
-      const shouldEnable = !!auth;
-      console.log('Setting button disabled to:', !shouldEnable, '(auth exists:', shouldEnable, ')');
-      signInBtn.disabled = !auth;
-      signInBtn.textContent = auth ? 'Sign In with Google' : 'Loading...';
+      const firebaseAvailable = typeof firebase !== 'undefined' && !!firebase.auth;
+      console.log('Setting button disabled to false (firebase available:', firebaseAvailable, ', auth exists:', !!auth, ')');
+      signInBtn.disabled = false;
+      signInBtn.textContent = firebaseAvailable ? 'Sign In with Google' : 'Retry Google Sign In';
     }
   }
 
@@ -351,6 +400,11 @@ async function ensureUserProfile(user) {
 
   await docRef.set(update, { merge: true });
 }
+
+function ensureFirebaseReady() {
+  if (window.auth) return true;
+  initializeFirebase();
+  return !!window.auth;
 }
 
 // Authentication Functions
@@ -358,7 +412,7 @@ async function signInWithGoogle() {
   try {
     console.log('=== Sign-in attempt started ===');
     console.log('Firebase defined:', typeof firebase !== 'undefined');
-    console.log('Firebase.auth:', typeof firebase?.auth);
+    console.log('Firebase.auth:', typeof firebase !== 'undefined' ? typeof firebase.auth : 'undefined');
     console.log('window.auth:', typeof window.auth);
     
     // Comprehensive checks for Firebase availability
@@ -376,7 +430,7 @@ async function signInWithGoogle() {
       return;
     }
 
-    if (!window.auth) {
+    if (!window.auth && !ensureFirebaseReady()) {
       console.error('Firebase auth instance not initialized');
       setSyncStatus('Authentication not ready');
       alert('Authentication is not ready yet. Please wait a moment and try again.');
