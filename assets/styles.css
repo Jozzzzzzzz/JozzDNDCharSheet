@@ -3442,7 +3442,7 @@ button[onclick*="home"] {
   width: 100%;
   max-width: 320px;
   height: 36px;
-  touch-action: pan-y;
+  touch-action: none;
 }
 
 .settings-text-controls {

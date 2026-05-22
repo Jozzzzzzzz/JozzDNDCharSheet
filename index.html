@@ -25,6 +25,7 @@
   // Prevent horizontal screen dragging while preserving normal vertical scrolling.
   document.addEventListener('touchmove', function(event) {
     if (!event.touches || event.touches.length !== 1) return;
+    if (event.target && event.target.closest('input[type="range"], input[type="color"], select, button')) return;
     const dx = event.touches[0].clientX - startX;
     const dy = event.touches[0].clientY - startY;
     if (Math.abs(dx) > Math.abs(dy) + 4) {
@@ -227,7 +228,7 @@ function activateRoute() {
 })();
 
 async function bootstrapModularApp() {
-  const scriptVersion = '20260522-admin-visibility';
+  const scriptVersion = '20260522-touch-slider-fix';
   const [chrome, home, settings, stats, background, spells, inventory, notes, popups] = await Promise.all([
     loadText('partials/chrome.html'),
     loadText('pages/home.html'),

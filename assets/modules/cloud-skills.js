@@ -37,7 +37,9 @@ function initializeFirebase() {
     }
     
     console.log('Initializing Firebase with config:', firebaseConfig.projectId);
-    firebaseApp = firebase.initializeApp(firebaseConfig);
+    firebaseApp = firebase.apps && firebase.apps.length
+      ? firebase.app()
+      : firebase.initializeApp(firebaseConfig);
     console.log('Firebase app initialized:', firebaseApp.name);
     
     auth = firebase.auth();
@@ -1049,6 +1051,10 @@ function updateProficiencyBonusIfNotOverridden() {
 }
 
 Object.assign(window, {
+  signInWithGoogle,
+  signOut,
+  syncToCloud,
+  syncFromCloud,
   formatSignedNumber,
   parseSignedNumber,
   sanitizeDigits,
