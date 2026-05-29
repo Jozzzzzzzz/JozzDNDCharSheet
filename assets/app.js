@@ -1016,10 +1016,12 @@ function createNewCharacter() {
   }
 
   try {
+    const nowIso = new Date().toISOString();
     const newChar = {
       id: generateCharacterId(),
       name: charName,
-      createdAt: new Date().toISOString(),
+      createdAt: nowIso,
+      updatedAt: nowIso,
       data: {
         characterInfo: { name: charName },
         page1: {},
@@ -1035,6 +1037,7 @@ function createNewCharacter() {
     let characters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
     characters.push(newChar);
     localStorage.setItem('dndCharacters', JSON.stringify(characters));
+    queueCloudSync(0);
 
     loadCharacterList();
     loadSelectedCharacter(newChar.id);
@@ -1232,6 +1235,8 @@ function initiateDelete(charId) {
 
     localStorage.setItem('dndCharacters', JSON.stringify(updatedChars));
     setFavoriteCharacterIds(getFavoriteCharacterIds().filter(id => id !== finalTargetId));
+    markCharacterDeleted(finalTargetId);
+    queueCloudSync(0);
     alert(`${charName} deleted permanently`);
     
     if (updatedChars.length > 0) {
@@ -1308,10 +1313,12 @@ function autosave() {
   if (!currentCharacter) {
     let characters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
     if (characters.length === 0) {
+      const nowIso = new Date().toISOString();
       const defaultChar = {
         id: generateCharacterId(),
         name: 'New Character',
-        createdAt: new Date().toISOString(),
+        createdAt: nowIso,
+        updatedAt: nowIso,
         data: { characterInfo: { name: 'New Character' }, page1: {}, page2: {}, page3: {}, page4: {}, page6: {}, weapons: [], equipment: [] }
       };
       characters = [defaultChar];
@@ -1500,15 +1507,18 @@ function autosave() {
     }))
   };
   
+  const nextName = document.getElementById('char_name').value || 'Unnamed';
+  const currentData = characters[charIndex].data || {};
+  const dataChanged = JSON.stringify(currentData) !== JSON.stringify(data);
+  const nameChanged = (characters[charIndex].name || 'Unnamed') !== nextName;
+  if (!dataChanged && !nameChanged) {
+    return;
+  }
+
   characters[charIndex].data = data;
-  characters[charIndex].name = document.getElementById('char_name').value || 'Unnamed';
+  characters[charIndex].name = nextName;
   characters[charIndex].updatedAt = new Date().toISOString();
   localStorage.setItem('dndCharacters', JSON.stringify(characters));
-  
-  // Auto-sync to cloud if user is signed in
-  if (currentUser) {
-    syncToCloud();
-  }
 }
 
 let autosaveDebounceTimer = null;
@@ -2304,6 +2314,49 @@ function getCharacterSyncTimestamp(character) {
   return 0;
 }
 
+const DELETED_CHARACTERS_KEY = 'dndDeletedCharacters';
+
+function getDeletedCharacterMap() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(DELETED_CHARACTERS_KEY) || '{}');
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch (error) {
+    return {};
+  }
+}
+
+function setDeletedCharacterMap(deletedCharacters) {
+  localStorage.setItem(DELETED_CHARACTERS_KEY, JSON.stringify(deletedCharacters || {}));
+}
+
+function markCharacterDeleted(characterId) {
+  if (!characterId) return;
+  const deletedCharacters = getDeletedCharacterMap();
+  deletedCharacters[characterId] = new Date().toISOString();
+  setDeletedCharacterMap(deletedCharacters);
+}
+
+function mergeDeletedCharacterMaps(localDeleted, cloudDeleted) {
+  const merged = { ...(cloudDeleted || {}) };
+  Object.entries(localDeleted || {}).forEach(([id, deletedAt]) => {
+    const localTs = Date.parse(deletedAt);
+    const cloudTs = Date.parse(merged[id]);
+    if (!Number.isFinite(cloudTs) || (Number.isFinite(localTs) && localTs >= cloudTs)) {
+      merged[id] = deletedAt;
+    }
+  });
+  return merged;
+}
+
+function pruneDeletedCharacters(characters, deletedCharacters) {
+  return (Array.isArray(characters) ? characters : []).filter((character) => {
+    const deletedAt = deletedCharacters?.[character?.id];
+    if (!deletedAt) return true;
+    const deletedTs = Date.parse(deletedAt);
+    return !Number.isFinite(deletedTs) || getCharacterSyncTimestamp(character) > deletedTs;
+  });
+}
+
 function mergeCharacterLists(localCharacters, cloudCharacters) {
   const mergedById = new Map();
   const apply = (char) => {
@@ -2444,12 +2497,14 @@ function importData(event) {
         id: generateCharacterId(),
         name: charName,
         createdAt: importedCreatedAt,
+        updatedAt: new Date().toISOString(),
         data: characterData
       };
       
       let characters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
       characters.push(newChar);
       localStorage.setItem('dndCharacters', JSON.stringify(characters));
+      queueCloudSync(0);
       
       loadCharacterList();
       loadSelectedCharacter(newChar.id);
@@ -7543,6 +7598,10 @@ const firebaseConfig = {
 // Initialize Firebase
 let firebaseApp, auth, db;
 let currentUser = null;
+let unsubscribeCloudSnapshot = null;
+let isApplyingCloudData = false;
+let isSyncingToCloud = false;
+let pendingCloudSync = false;
 
 function initializeFirebase() {
   try {
@@ -7559,8 +7618,9 @@ function initializeFirebase() {
         notifyOwnerOnSignup(user).catch((err) => {
           console.error('Signup notification error:', err);
         });
-        // Auto-sync from cloud when user signs in
-        setTimeout(() => syncFromCloud(true), 1000);
+        startCloudSnapshotListener();
+      } else {
+        stopCloudSnapshotListener();
       }
     });
     
@@ -7595,6 +7655,81 @@ function setSyncStatus(message) {
       statusElement.textContent = '';
     }, 3000);
   }
+}
+
+function queueCloudSync(delayMs = 10000) {
+  if (!currentUser || isApplyingCloudData) return;
+  clearTimeout(window.cloudSyncTimeout);
+  window.cloudSyncTimeout = setTimeout(() => {
+    syncToCloud();
+  }, delayMs);
+}
+
+function stopCloudSnapshotListener() {
+  if (typeof unsubscribeCloudSnapshot === 'function') {
+    unsubscribeCloudSnapshot();
+  }
+  unsubscribeCloudSnapshot = null;
+}
+
+function applyCloudUserData(userData, silent = true) {
+  if (!userData) return 0;
+
+  const localCharacters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
+  const cloudCharacters = userData.characters || [];
+  const deletedCharacters = mergeDeletedCharacterMaps(getDeletedCharacterMap(), userData.deletedCharacters || {});
+  const mergedCharacters = pruneDeletedCharacters(
+    mergeCharacterLists(localCharacters, cloudCharacters),
+    deletedCharacters
+  );
+
+  localStorage.setItem('dndCharacters', JSON.stringify(mergedCharacters));
+  setDeletedCharacterMap(deletedCharacters);
+  if (userData.theme) localStorage.setItem('dndTheme', userData.theme);
+  if (userData.accentColor) localStorage.setItem('dndAccentColor', userData.accentColor);
+
+  isApplyingCloudData = true;
+  try {
+    loadCharacterList();
+    if (!currentCharacter && mergedCharacters.length > 0) {
+      currentCharacter = mergedCharacters[0].id;
+    }
+    if (currentCharacter) {
+      const selectedExists = mergedCharacters.some(char => char.id === currentCharacter);
+      if (!selectedExists && mergedCharacters.length > 0) {
+        currentCharacter = mergedCharacters[0].id;
+      } else if (!selectedExists) {
+        currentCharacter = null;
+        clearRememberedSelectedCharacter();
+        showHomePage();
+        return;
+      }
+      loadData();
+      setupSkillCalculationFields();
+      enforceAutoMathNumericInputs();
+    }
+  } finally {
+    isApplyingCloudData = false;
+  }
+
+  if (!silent) setSyncStatus(`Synced ${mergedCharacters.length} characters`);
+  return mergedCharacters.length;
+}
+
+function startCloudSnapshotListener() {
+  if (!currentUser || !db) return;
+  stopCloudSnapshotListener();
+
+  unsubscribeCloudSnapshot = db.collection('userData').doc(currentUser.uid).onSnapshot((doc) => {
+    if (!doc.exists) {
+      queueCloudSync(0);
+      return;
+    }
+    applyCloudUserData(doc.data(), true);
+  }, (error) => {
+    console.error('Cloud live sync error:', error);
+    setSyncStatus('Live sync unavailable');
+  });
 }
 
 // Authentication Functions
@@ -7703,27 +7838,55 @@ async function syncToCloud() {
     setSyncStatus('Please sign in first');
     return;
   }
+  if (isApplyingCloudData) return;
+  if (isSyncingToCloud) {
+    pendingCloudSync = true;
+    return;
+  }
   
   try {
+    isSyncingToCloud = true;
+    pendingCloudSync = false;
     setSyncStatus('Uploading to cloud...');
     
     // Get current local character data
     const localCharacters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
     const theme = localStorage.getItem('dndTheme') || 'dark';
     const accentColor = localStorage.getItem('dndAccentColor') || '#ffd700';
+    const localDeletedCharacters = getDeletedCharacterMap();
 
     // Merge with latest cloud data first to avoid overwriting newer changes from another device.
     let cloudCharacters = [];
+    let cloudDeletedCharacters = {};
     const existingDoc = await db.collection('userData').doc(currentUser.uid).get();
     if (existingDoc.exists) {
       const existingData = existingDoc.data() || {};
       cloudCharacters = existingData.characters || [];
+      cloudDeletedCharacters = existingData.deletedCharacters || {};
     }
-    const characters = mergeCharacterLists(localCharacters, cloudCharacters);
+    const deletedCharacters = mergeDeletedCharacterMaps(localDeletedCharacters, cloudDeletedCharacters);
+    const characters = pruneDeletedCharacters(
+      mergeCharacterLists(localCharacters, cloudCharacters),
+      deletedCharacters
+    );
     localStorage.setItem('dndCharacters', JSON.stringify(characters));
+    setDeletedCharacterMap(deletedCharacters);
+    const localSelected = localCharacters.find(char => char.id === currentCharacter);
+    const mergedSelected = characters.find(char => char.id === currentCharacter);
+    if (mergedSelected && getCharacterSyncTimestamp(mergedSelected) > getCharacterSyncTimestamp(localSelected)) {
+      isApplyingCloudData = true;
+      try {
+        loadData();
+        setupSkillCalculationFields();
+        enforceAutoMathNumericInputs();
+      } finally {
+        isApplyingCloudData = false;
+      }
+    }
     
     const userData = {
       characters: characters,
+      deletedCharacters: deletedCharacters,
       theme: theme,
       accentColor: accentColor,
       lastSync: firebase.firestore.FieldValue.serverTimestamp(),
@@ -7740,6 +7903,12 @@ async function syncToCloud() {
   } catch (error) {
     console.error('Upload error:', error);
     setSyncStatus('Upload failed: ' + error.message);
+  } finally {
+    isSyncingToCloud = false;
+    if (pendingCloudSync) {
+      pendingCloudSync = false;
+      queueCloudSync(500);
+    }
   }
 }
 
@@ -7760,33 +7929,13 @@ async function syncFromCloud(silent = false) {
       return;
     }
     
-    const userData = doc.data();
-    
-    const localCharacters = JSON.parse(localStorage.getItem('dndCharacters')) || [];
-    const cloudCharacters = userData.characters || [];
-
-    // Always two-way merge; no manual replace prompt needed.
-    const mergedCharacters = mergeCharacterLists(localCharacters, cloudCharacters);
-    localStorage.setItem('dndCharacters', JSON.stringify(mergedCharacters));
-    if (userData.theme) localStorage.setItem('dndTheme', userData.theme);
-    if (userData.accentColor) localStorage.setItem('dndAccentColor', userData.accentColor);
-
-    // Refresh in-memory UI without forcing a reload.
-    loadCharacterList();
-    if (!currentCharacter && mergedCharacters.length > 0) {
-      currentCharacter = mergedCharacters[0].id;
-    }
-    if (currentCharacter) {
-      loadData();
-      setupSkillCalculationFields();
-      enforceAutoMathNumericInputs();
-    }
+    const mergedCount = applyCloudUserData(doc.data(), silent);
 
     if (!silent) {
-      setSyncStatus(`Synced ${mergedCharacters.length} characters`);
+      setSyncStatus(`Synced ${mergedCount} characters`);
     } else if (currentUser) {
       // Push merged result back so other devices can receive it quickly.
-      syncToCloud();
+      queueCloudSync(0);
     }
   } catch (error) {
     console.error('Download error:', error);
@@ -7812,11 +7961,7 @@ autosave = function() {
   
   // If user is signed in, schedule a cloud sync
   if (currentUser) {
-    // Debounce cloud sync to avoid too many uploads
-    clearTimeout(window.cloudSyncTimeout);
-    window.cloudSyncTimeout = setTimeout(() => {
-      syncToCloud();
-    }, 10000); // Sync 10 seconds after last change
+    queueCloudSync(1500);
   }
 };
 
