@@ -21,9 +21,34 @@
           <input type="number" id="max_weight_capacity" min="0" value="0" onchange="updateMaxWeightCapacity(); autosave()" placeholder="Enter max weight in lbs"/>
           <span>lbs</span>
         </div>
-        <div class="gold-section">
-          <label>Gold:</label>
-          <input id="gold_field" oninput="autosave()" style="width:100px;" type="number" value="0"/>
+        <div class="currency-section">
+          <div class="currency-header">
+            <label>Currency</label>
+            <div class="currency-tooltip">
+              <button type="button" class="currency-help-btn" aria-label="Currency conversion reference">?</button>
+              <div class="currency-tooltip-panel" role="tooltip">
+                <strong>Rough NZD table estimate</strong>
+                <span>1 CP ~= NZ$1</span>
+                <span>1 SP ~= NZ$10</span>
+                <span>1 EP ~= NZ$50</span>
+                <span>1 GP ~= NZ$100</span>
+                <span>1 PP ~= NZ$1,000</span>
+                <small>For flavour only; D&D prices do not map cleanly to real economies.</small>
+              </div>
+            </div>
+            <button type="button" class="currency-add-btn" onclick="addCustomCurrencyRow()">+</button>
+          </div>
+          <div class="currency-grid">
+            <label for="currency_cp">CP</label>
+            <input id="currency_cp" oninput="autosave()" type="number" min="0" value="0"/>
+            <label for="currency_sp">SP</label>
+            <input id="currency_sp" oninput="autosave()" type="number" min="0" value="0"/>
+            <label for="currency_ep">EP</label>
+            <input id="currency_ep" oninput="autosave()" type="number" min="0" value="0"/>
+            <label for="gold_field">GP</label>
+            <input id="gold_field" oninput="autosave()" type="number" min="0" value="0"/>
+          </div>
+          <div id="custom_currency_rows" class="custom-currency-rows"></div>
         </div>
       </div>
       

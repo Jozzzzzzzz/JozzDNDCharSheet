@@ -848,20 +848,100 @@ const rollingBannerMessages = [
   'Fun fact: A mimic can be a chest, a door, or your trust issues.',
   'News slot: Add your latest project updates here for players.',
   'Tip: Keep quick notes updated before long rests so nothing gets lost.',
-  'Fun fact: The average party plan survives about six seconds after initiative.'
+  'Fun fact: The average party plan survives about six seconds after initiative.',
+  'Did you know: For this sheet, 1 GP is roughly NZ$100 as a table-friendly estimate.',
+  'Did you know: A quick rough guide is 1 CP ~= NZ$1, 1 SP ~= NZ$10, and 1 GP ~= NZ$100.',
+  'Did you know: 1 platinum piece is worth 10 GP, about NZ$1,000 using this rough table estimate.',
+  'Did you know: A loose 1 GP comparison is about US$60, NZ$100, or GBP 50 for flavour only.',
+  'Did you know: If a top-1% line was around NZ$5 million, that would be about 50,000 GP.',
+  'Did you know: If a top-1% line was around US$10 million, that would be about 166,667 GP.',
+  'Did you know: If a top-1% line was around GBP 4 million, that would be about 80,000 GP.',
+  'Fun fact: A dragon sitting on 100,000 GP is roughly sitting on NZ$10 million by this sheet estimate.',
+  'Tip: Real-world money comparisons are just table flavour; D&D item prices are not balanced like modern shopping.'
 ];
 let rollingBannerLastIndex = -1;
+
+const wealthComparisonCountries = [
+  { country: 'New Zealand', top1Gp: 50000, top5Gp: 15000, top10Gp: 8000 },
+  { country: 'the United States', top1Gp: 166667, top5Gp: 60000, top10Gp: 30000 },
+  { country: 'the United Kingdom', top1Gp: 80000, top5Gp: 30000, top10Gp: 15000 },
+  { country: 'Australia', top1Gp: 60000, top5Gp: 22000, top10Gp: 12000 },
+  { country: 'Canada', top1Gp: 75000, top5Gp: 28000, top10Gp: 14000 }
+];
+
+function parseCurrencyAmount(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+}
+
+function getCurrentCurrencySummary() {
+  const currency = collectCurrencyData();
+  const standard = [
+    { label: 'CP', amount: parseCurrencyAmount(currency.cp), gpValue: 0.01 },
+    { label: 'SP', amount: parseCurrencyAmount(currency.sp), gpValue: 0.1 },
+    { label: 'EP', amount: parseCurrencyAmount(currency.ep), gpValue: 0.5 },
+    { label: 'GP', amount: parseCurrencyAmount(currency.gp), gpValue: 1 }
+  ];
+
+  const custom = (Array.isArray(currency.custom) ? currency.custom : []).map(item => {
+    const name = String(item.name || '').trim();
+    const amount = parseCurrencyAmount(item.amount);
+    const gpValue = /^(pp|platinum|platinum pieces?)$/i.test(name) ? 10 : 0;
+    return { label: name || 'Custom', amount, gpValue };
+  });
+
+  const allCurrencies = standard.concat(custom);
+  const totalGp = allCurrencies.reduce((total, item) => total + item.amount * item.gpValue, 0);
+  const list = allCurrencies
+    .filter(item => item.amount > 0)
+    .map(item => `${item.amount.toLocaleString()} ${item.label}`)
+    .join(', ');
+
+  return { totalGp, list };
+}
+
+function getWealthBand(totalGp, country) {
+  if (totalGp >= country.top1Gp) return 'top 1%';
+  if (totalGp >= country.top5Gp) return 'top 5%';
+  if (totalGp >= country.top10Gp) return 'top 10%';
+  return 'still working toward the top 10%';
+}
+
+function getCurrentCharacterDisplayName() {
+  const nameFromField = document.getElementById('char_name')?.value?.trim();
+  if (nameFromField) return nameFromField;
+
+  const characters = JSON.parse(localStorage.getItem('dndCharacters') || '[]');
+  const character = characters.find(char => char.id === currentCharacter);
+  return character?.name || 'This character';
+}
+
+function buildCurrencyWealthBannerMessage() {
+  const { totalGp, list } = getCurrentCurrencySummary();
+  if (totalGp <= 0 || !list) return null;
+
+  const country = wealthComparisonCountries[Math.floor(Math.random() * wealthComparisonCountries.length)];
+  const band = getWealthBand(totalGp, country);
+  const characterName = getCurrentCharacterDisplayName();
+  const roundedGp = Math.round(totalGp).toLocaleString();
+  return `Did you know: ${characterName} has ${roundedGp} GP, roughly ${band} rich in ${country.country}.`;
+}
 
 function rollBannerMessage() {
   const textEl = document.getElementById('rollingBannerText');
   if (!textEl || rollingBannerMessages.length === 0) return;
 
-  let nextIndex = Math.floor(Math.random() * rollingBannerMessages.length);
-  if (rollingBannerMessages.length > 1 && nextIndex === rollingBannerLastIndex) {
-    nextIndex = (nextIndex + 1) % rollingBannerMessages.length;
+  const dynamicMessage = Math.random() < 0.35 ? buildCurrencyWealthBannerMessage() : null;
+  let nextMessage = dynamicMessage;
+
+  if (!nextMessage) {
+    let nextIndex = Math.floor(Math.random() * rollingBannerMessages.length);
+    if (rollingBannerMessages.length > 1 && nextIndex === rollingBannerLastIndex) {
+      nextIndex = (nextIndex + 1) % rollingBannerMessages.length;
+    }
+    rollingBannerLastIndex = nextIndex;
+    nextMessage = rollingBannerMessages[nextIndex];
   }
-  rollingBannerLastIndex = nextIndex;
-  const nextMessage = rollingBannerMessages[nextIndex];
 
   textEl.classList.add('is-fading');
   setTimeout(() => {
@@ -1441,6 +1521,7 @@ function autosave() {
     },
     page4: {
       gold: document.getElementById('gold_field').value,
+      currency: collectCurrencyData(),
       equipment: equipmentData,
       inventory: Array.from(document.querySelectorAll('#inventory_table tbody tr')).map(row => ({
         name: row.cells[0].textContent,
@@ -1561,6 +1642,87 @@ function bindGlobalAutosaveListeners() {
       console.error('Autosave on unload failed:', error);
     }
   });
+}
+
+function getCurrencyFieldValue(id) {
+  return document.getElementById(id)?.value || '0';
+}
+
+function collectCurrencyData() {
+  return {
+    cp: getCurrencyFieldValue('currency_cp'),
+    sp: getCurrencyFieldValue('currency_sp'),
+    ep: getCurrencyFieldValue('currency_ep'),
+    gp: getCurrencyFieldValue('gold_field'),
+    custom: Array.from(document.querySelectorAll('#custom_currency_rows .custom-currency-row')).map(row => ({
+      name: row.querySelector('.custom-currency-name')?.value || '',
+      amount: row.querySelector('.custom-currency-amount')?.value || '0'
+    })).filter(currency => currency.name || currency.amount !== '0')
+  };
+}
+
+function setCurrencyInputValue(id, value) {
+  const element = document.getElementById(id);
+  if (element) element.value = value ?? '0';
+}
+
+function addCustomCurrencyRow(currency = {}, shouldAutosave = true) {
+  const container = document.getElementById('custom_currency_rows');
+  if (!container) return;
+
+  const row = document.createElement('div');
+  row.className = 'custom-currency-row';
+
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.className = 'custom-currency-name';
+  nameInput.placeholder = 'Name';
+  nameInput.value = currency.name || '';
+  nameInput.addEventListener('input', autosave);
+
+  const amountInput = document.createElement('input');
+  amountInput.type = 'number';
+  amountInput.min = '0';
+  amountInput.className = 'custom-currency-amount';
+  amountInput.placeholder = '0';
+  amountInput.value = currency.amount ?? '0';
+  amountInput.addEventListener('input', autosave);
+
+  const removeButton = document.createElement('button');
+  removeButton.type = 'button';
+  removeButton.className = 'currency-remove-btn';
+  removeButton.textContent = 'Remove';
+  removeButton.addEventListener('click', () => {
+    row.remove();
+    autosave();
+  });
+
+  row.append(nameInput, amountInput, removeButton);
+  container.appendChild(row);
+  if (shouldAutosave) autosave();
+}
+
+function loadCurrencyData(page4 = {}) {
+  const currency = page4.currency || {
+    cp: '0',
+    sp: '0',
+    ep: '0',
+    gp: page4.gold || '0',
+    custom: []
+  };
+
+  setCurrencyInputValue('currency_cp', currency.cp);
+  setCurrencyInputValue('currency_sp', currency.sp);
+  setCurrencyInputValue('currency_ep', currency.ep);
+  setCurrencyInputValue('gold_field', currency.gp ?? page4.gold ?? '0');
+
+  const customContainer = document.getElementById('custom_currency_rows');
+  if (customContainer) {
+    customContainer.innerHTML = '';
+    (Array.isArray(currency.custom) ? currency.custom : []).forEach(customCurrency => {
+      addCustomCurrencyRow(customCurrency, false);
+    });
+  }
 }
 
 function loadData() {
@@ -1848,10 +2010,7 @@ function loadData() {
   
   // Page 4: Inventory
   if (data.page4) {
-    // Gold
-    if (data.page4.gold) {
-      document.getElementById('gold_field').value = data.page4.gold;
-    }
+    loadCurrencyData(data.page4);
     
     // Equipment
     if (data.page4.equipment) {
@@ -2187,11 +2346,13 @@ function clearAllFormFields() {
   });
 
   // Clear inventory fields
-  const inventoryFields = ['gold_field', 'max_weight_capacity'];
+  const inventoryFields = ['currency_cp', 'currency_sp', 'currency_ep', 'gold_field', 'max_weight_capacity'];
   inventoryFields.forEach(id => {
     const element = document.getElementById(id);
     if (element) element.value = '';
   });
+  const customCurrencyRows = document.getElementById('custom_currency_rows');
+  if (customCurrencyRows) customCurrencyRows.innerHTML = '';
 
   // Clear notes fields
   const notesFields = ['active_quests', 'completed_quests', 'quest_leads', 'mission_objectives',
@@ -3260,7 +3421,7 @@ function switchTab(button) {
     page.classList.remove('active');
     page.style.display = 'none';
     page.style.opacity = '0';
-    page.style.transform = 'translateY(10px)';
+    page.style.transform = 'none';
   });
 
   // Add active class to clicked tab
@@ -5481,25 +5642,26 @@ function updateSpellSlots() {
   manualSpellSlots.forEach(slot => {
     const slotDiv = document.createElement('div');
     slotDiv.className = 'spell-level-row';
-    slotDiv.style.position = 'relative';
     
     const usedValue = manualSpellSlotsUsed[slot.id] || 0;
+    const availableValue = Math.max(0, slot.maxValue - usedValue);
     
     slotDiv.innerHTML = `
       <span class="spell-level-label" title="${slot.resetType === 'long' ? 'Resets on Long Rest' : slot.resetType === 'short' ? 'Resets on Short Rest' : 'Manual Reset Only'}">${slot.name}:</span>
-      <input type="number" class="spell-slot-input" min="0" max="15" value="${slot.maxValue}" 
-             onchange="updateSpellSlotMax('${slot.id}', this.value)">
+      <div class="spell-slot-main-row">
+        <input type="number" class="spell-slot-input" min="0" max="15" value="${slot.maxValue}" 
+               onchange="updateSpellSlotMax('${slot.id}', this.value)">
+        <div class="spell-stepper-controls" aria-label="${slot.name} usage controls">
+          <button type="button" class="spell-stepper-btn" onclick="adjustSpellSlotUsed('${slot.id}', 1)" title="Spend one">-</button>
+          <span class="spell-available-count" title="Available / maximum">${availableValue}/${slot.maxValue}</span>
+          <button type="button" class="spell-stepper-btn" onclick="adjustSpellSlotUsed('${slot.id}', -1)" title="Restore one">+</button>
+        </div>
+      </div>
       <div class="spell-slots-used" id="spell_used_${slot.id}"></div>
-      <button onclick="showEditSpellSlotPopup('${slot.id}')" 
-              style="position: absolute; right: 70px; top: 50%; transform: translateY(-50%); 
-                     background: #4CAF50; color: white; border: none; border-radius: 3px; 
-                     padding: 2px 6px; font-size: 10px; cursor: pointer;"
-              title="Edit Spell Slot">Edit</button>
-      <button onclick="removeSpellSlot('${slot.id}')" 
-              style="position: absolute; right: -5px; top: 50%; transform: translateY(-50%); 
-                     background: #ff4444; color: white; border: none; border-radius: 3px; 
-                     padding: 2px 6px; font-size: 10px; cursor: pointer;"
-              title="Remove Spell Slot">Delete</button>
+      <div class="spell-slot-row-actions">
+        <button type="button" class="spell-slot-edit-btn" onclick="showEditSpellSlotPopup('${slot.id}')" title="Edit Spell Slot">Edit</button>
+        <button type="button" class="spell-slot-delete-btn" onclick="removeSpellSlot('${slot.id}')" title="Remove Spell Slot">Delete</button>
+      </div>
     `;
     
     container.appendChild(slotDiv);
@@ -5542,26 +5704,31 @@ function toggleSpellSlot(slotId, index) {
   autosave();
 }
 
+function adjustSpellSlotUsed(slotId, deltaUsed) {
+  const slot = manualSpellSlots.find(s => s.id === slotId);
+  if (!slot) return;
+  const currentUsed = manualSpellSlotsUsed[slotId] || 0;
+  manualSpellSlotsUsed[slotId] = Math.min(slot.maxValue, Math.max(0, currentUsed + deltaUsed));
+  updateSpellSlots();
+  autosave();
+}
+
+function confirmRestRefill(label) {
+  return confirm(`This will refill all ${label} on this panel to max.\n\nConfirm what this character actually gets back before continuing.`);
+}
+
 // Reset spell slots based on rest type
 function resetSpellSlots(restType = 'all') {
-  if (restType === 'all') {
-    if (confirm('Are you sure you want to reset all spell slots?')) {
-      manualSpellSlots.forEach(slot => {
-        manualSpellSlotsUsed[slot.id] = 0;
-      });
-      updateSpellSlots();
-      autosave();
-    }
-  } else {
-    // Reset based on rest type (short/long)
-    manualSpellSlots.forEach(slot => {
-      if (slot.resetType === restType || (restType === 'long' && slot.resetType === 'short')) {
-        manualSpellSlotsUsed[slot.id] = 0;
-      }
-    });
-    updateSpellSlots();
-    autosave();
-  }
+  if (!confirmRestRefill('spell slots')) return;
+  manualSpellSlots.forEach(slot => {
+    manualSpellSlotsUsed[slot.id] = 0;
+  });
+  updateSpellSlots();
+  autosave();
+}
+
+function restSpellSlots() {
+  resetSpellSlots('all');
 }
 
 // Show edit spell slot popup
@@ -5686,20 +5853,25 @@ function updateCustomResources() {
   customResources.forEach(resource => {
     const resourceDiv = document.createElement('div');
     resourceDiv.className = 'spell-level-row';
-    resourceDiv.style.position = 'relative';
     
     const usedValue = customResourcesUsed[resource.id] || 0;
+    const availableValue = Math.max(0, resource.maxValue - usedValue);
     
     resourceDiv.innerHTML = `
       <span class="spell-level-label" title="${resource.resetType === 'long' ? 'Resets on Long Rest' : resource.resetType === 'short' ? 'Resets on Short Rest' : 'Manual Reset Only'}">${resource.name}:</span>
-      <input type="number" class="spell-slot-input" min="0" max="15" value="${resource.maxValue}" 
-             onchange="updateCustomResourceMax('${resource.id}', this.value)">
+      <div class="spell-slot-main-row">
+        <input type="number" class="spell-slot-input" min="0" max="15" value="${resource.maxValue}" 
+               onchange="updateCustomResourceMax('${resource.id}', this.value)">
+        <div class="spell-stepper-controls" aria-label="${resource.name} usage controls">
+          <button type="button" class="spell-stepper-btn" onclick="adjustCustomResourceUsed('${resource.id}', 1)" title="Spend one">-</button>
+          <span class="spell-available-count" title="Available / maximum">${availableValue}/${resource.maxValue}</span>
+          <button type="button" class="spell-stepper-btn" onclick="adjustCustomResourceUsed('${resource.id}', -1)" title="Restore one">+</button>
+        </div>
+      </div>
       <div class="spell-slots-used" id="custom_used_${resource.id}"></div>
-      <button onclick="removeCustomResource('${resource.id}')" 
-              style="position: absolute; right: -5px; top: 50%; transform: translateY(-50%); 
-                     background: #ff4444; color: white; border: none; border-radius: 3px; 
-                     width: 20px; height: 20px; font-size: 12px; cursor: pointer;"
-              title="Remove Resource">×</button>
+      <div class="spell-custom-row-actions">
+        <button type="button" class="spell-custom-delete-btn" onclick="removeCustomResource('${resource.id}')" title="Remove Resource">x</button>
+      </div>
     `;
     
     container.appendChild(resourceDiv);
@@ -5742,26 +5914,27 @@ function toggleCustomResource(resourceId, index) {
   autosave();
 }
 
+function adjustCustomResourceUsed(resourceId, deltaUsed) {
+  const resource = customResources.find(r => r.id === resourceId);
+  if (!resource) return;
+  const currentUsed = customResourcesUsed[resourceId] || 0;
+  customResourcesUsed[resourceId] = Math.min(resource.maxValue, Math.max(0, currentUsed + deltaUsed));
+  updateCustomResources();
+  autosave();
+}
+
 // Reset custom resources based on rest type
 function resetCustomResources(restType = 'all') {
-  if (restType === 'all') {
-    if (confirm('Are you sure you want to reset all custom resources?')) {
-      customResources.forEach(resource => {
-        customResourcesUsed[resource.id] = 0;
-      });
-      updateCustomResources();
-      autosave();
-    }
-  } else {
-    // Reset based on rest type (short/long)
-    customResources.forEach(resource => {
-      if (resource.resetType === restType || (restType === 'long' && resource.resetType === 'short')) {
-        customResourcesUsed[resource.id] = 0;
-      }
-    });
-    updateCustomResources();
-    autosave();
-  }
+  if (!confirmRestRefill('custom resources')) return;
+  customResources.forEach(resource => {
+    customResourcesUsed[resource.id] = 0;
+  });
+  updateCustomResources();
+  autosave();
+}
+
+function restCustomResources() {
+  resetCustomResources('all');
 }
 
 // Show spell form
