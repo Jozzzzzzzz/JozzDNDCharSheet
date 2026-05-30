@@ -22,14 +22,22 @@ Hash → page mapping is in `resolveRouteToPage()` in `index.html`.
 
 ### JS Module Split
 
-All JS lives in `assets/`. Files are loaded in order via `<script>` tags at the bottom of `index.html`:
+All JS lives in `assets/`. Files are loaded **in this exact order** via dynamic `<script>` tags in `index.html`:
 
-- `assets/modules/core.js` — localStorage helpers (`getStoredJSON`, `setStoredJSON`, `safeParseJSON`), spell/favorites data normalization, shared init logic
-- `assets/modules/cloud-skills.js` — Firebase Auth + Firestore sync (sign-in, syncToCloud, syncFromCloud); exposes functions on `window`
-- `assets/modules/inventory.js` — inventory CRUD, coin tracking
-- `assets/modules/spells.js` — spell list management, favorites, spellcasting info
-- `assets/modules/actions.js` — combat actions/reactions tracking
-- `assets/app.js` — everything else: layout helpers, flex-wrap height sync, character manager (create/load/delete), page routing, banner messages, settings, all remaining page logic
+| File | Owns | Lines |
+|------|------|-------|
+| `assets/banner-messages.js` | Static banner message array | small |
+| `assets/modules/cloud-skills.js` | Firebase Auth + Firestore sync (`syncToCloud`, `syncFromCloud`) | ~1125 |
+| `assets/modules/core.js` | localStorage helpers, note box system, theme/accent, character CRUD (`loadData`, `autosave`, `createNewCharacter`, etc.), popup/tab system, `escapeHtml`, `initializeWebApp` | ~3516 |
+| `assets/modules/layout.js` | Flex-wrap sizing, section resize handles (`makeContainersResizable`, `applyFlexWrapSizing`), `setupAutoResize` | ~241 |
+| `assets/modules/characters.js` | Currency system, banner wealth messages, suggestion form, autosave scheduling, cloud sync helpers, deleted-character tracking | ~389 |
+| `assets/modules/health.js` | HP display, death saves, potion use, short/long rest | ~292 |
+| `assets/modules/actions.js` | Combat actions/reactions tracking | ~270 |
+| `assets/modules/inventory.js` | Inventory CRUD, equipment, storage containers, coin tracking, settings dropdown | ~1152 |
+| `assets/modules/spells.js` | Spell list, spell slots, custom resources, favorites, sync panels | ~2683 |
+| `assets/app.js` | Boot entry point only: `window.initializeApp`, `showWeaponsPopup`, `addWeapon` | ~129 |
+
+**Each function is defined in exactly one file.** All functions are globals (no ES modules). Do not add duplicate definitions — the last-loaded file wins silently.
 
 `app.monolith.backup.js` is an old pre-refactor backup — ignore it.
 
@@ -49,17 +57,18 @@ Single stylesheet: `assets/styles.css`. Theming uses CSS custom properties (`--a
 
 ## Working Efficiently
 
-`assets/app.js` (8,600 lines) and `assets/modules/core.js` (3,800 lines) are large — never read them whole. Use `grep` to find the relevant function first, then read only that section. `assets/styles.css` is 126KB — same rule.
+`assets/modules/core.js` (~3516 lines) and `assets/modules/spells.js` (~2683 lines) are the largest files — never read them whole. Use `grep` to find the relevant function first, then read only that section. `assets/styles.css` is 126KB — same rule.
 
-All functions are globals (no ES modules). To locate any function:
+To locate any function:
 ```
 grep -rn "function targetName" assets/
 ```
 
 ### Key globals to know
-- `currentCharacter` — the active character's ID (string), set in `app.js:530`. Most data reads/writes key off this.
-- `loadData()` (`app.js:1728`) — main entry point that reloads all page data for the active character after switching characters.
-- `initializeWebApp()` (`app.js:793`) / `window.initializeApp` (`app.js:953`) — top-level boot sequence.
+- `currentCharacter` — the active character's ID (string). Most data reads/writes key off this.
+- `loadData()` — in `core.js`. Main entry point that reloads all page data after switching characters.
+- `window.initializeApp` — defined in `app.js`. Called by `index.html` after all modules load. Single definition only.
+- `initializeWebApp()` — in `core.js`. Called by `initializeApp` to set up web features.
 
 ### localStorage key map
 Flat keys (not per-character):

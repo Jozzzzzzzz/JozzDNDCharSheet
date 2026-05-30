@@ -815,132 +815,26 @@ function getRollingBannerMessages() {
 
 function rollBannerMessage() {
   const textEl = document.getElementById('rollingBannerText');
-  const messages = getRollingBannerMessages();
-  if (!textEl || !messages.length) return;
+  if (!textEl || rollingBannerMessages.length === 0) return;
 
-  let nextIndex = Math.floor(Math.random() * messages.length);
-  if (messages.length > 1 && nextIndex === rollingBannerLastIndex) {
-    nextIndex = (nextIndex + 1) % messages.length;
+  const dynamicMessage = Math.random() < 0.35 ? buildCurrencyWealthBannerMessage() : null;
+  let nextMessage = dynamicMessage;
+
+  if (!nextMessage) {
+    let nextIndex = Math.floor(Math.random() * rollingBannerMessages.length);
+    if (rollingBannerMessages.length > 1 && nextIndex === rollingBannerLastIndex) {
+      nextIndex = (nextIndex + 1) % rollingBannerMessages.length;
+    }
+    rollingBannerLastIndex = nextIndex;
+    nextMessage = rollingBannerMessages[nextIndex];
   }
-  rollingBannerLastIndex = nextIndex;
 
   textEl.classList.add('is-fading');
   setTimeout(() => {
-    textEl.textContent = messages[nextIndex];
+    textEl.textContent = nextMessage;
     textEl.classList.remove('is-fading');
   }, 140);
 }
-
-window.initializeApp = function() {
-  // Initialize web app features first
-  initializeWebApp();
-  
-  // Initialize character system
-  loadCharacterList();
-  
-  // Initialize theme system
-  loadThemeSettings();
-  
-  // Initialize HP display
-  updateHPDisplay();
-  
-  // Initialize death save visual states
-  initializeDeathSaves();
-  
-  // Initialize Hit Dice calculation
-  calculateHitDiceRecovery();
-  
-  // Initialize potion info
-  updatePotionInfo();
-  
-  // Initialize ability bonuses
-  ['str', 'dex', 'con', 'int', 'wis', 'cha'].forEach(ability => {
-    window.calculateAbilityBonus(ability);
-    // Format bonus input to ensure + prefix
-    window.formatBonusInput(ability + '_bonus');
-  });
-  
-  // Initialize proficiency bonus
-  window.updateProficiencyBonus();
-
-  // Numeric guards + skill auto-math wiring
-  window.enforceAutoMathNumericInputs();
-  window.setupSkillCalculationFields();
-  
-  // Initialize saving throws
-  ['str', 'dex', 'con', 'int', 'wis', 'cha'].forEach(ability => {
-    window.calculateSavingThrow(ability);
-    // Format save input to ensure + prefix
-    window.formatSaveInput(ability + '_save');
-  });
-  
-  // Initialize suggestion form
-  initializeSuggestionForm();
-  
-  // Remove resizable class from Character Info section
-  const characterInfoSection = document.querySelector('.character-info-section');
-  if (characterInfoSection) {
-    characterInfoSection.classList.remove('resizable-container');
-  }
-
-  // Initialize actions and features
-  initializeActions();
-
-  // Initialize inventory system
-  initializeInventory();
-
-  // Initialize equipment data for stats page
-  if (typeof window.equipmentData === 'undefined') {
-    window.equipmentData = [];
-  }
-
-  // Load character list and restore recent selection only if selected within 12 hours.
-  const characters = getStoredJSON('dndCharacters', []);
-  const recentCharacterId = getRecentSelectedCharacterId(characters);
-  currentCharacter = recentCharacterId || null;
-  loadCharacterList();
-
-  if (recentCharacterId) {
-    loadData();
-    window.setupSkillCalculationFields();
-    window.enforceAutoMathNumericInputs();
-    const page1Tab = document.querySelector('.tab[data-tab="page1"]');
-    if (page1Tab) page1Tab.click();
-  } else {
-    showHomePage();
-  }
-  
-  // Initialize portrait functionality (guard if elements absent)
-  const portraitUpload = document.getElementById('portraitUpload');
-  const portraitPreview = document.getElementById('portraitPreview');
-  if (portraitUpload && portraitPreview) {
-    portraitUpload.addEventListener('change', handlePortraitUpload);
-    portraitPreview.addEventListener('click', function() {
-      portraitUpload.click();
-    });
-  }
-  
-  // Initialize equipment if empty
-  if (equipmentData.length === 0) {
-    equipmentData.push({ name: '', type: '', bonus: '', weight: 0, notes: '' });
-    updateEquipmentPreviews();
-  }
-  
-  // Update weights
-  updateWeight();
-  document.querySelectorAll('#extra_containers .section').forEach(container => {
-    updateContainerWeight(container.id);
-  });
-
-  setupNoteBoxHandlers();
-  setupNoteBoxObserver();
-setupMobileTextareaAutoGrow();
-loadLayout(); // This should come after all elements are created
-rollBannerMessage();
-setTimeout(() => {
-  syncSpellPanels();
-}, 0);
-};
 
 // ========== CHARACTER MANAGEMENT ==========
 function showHomePage() {
@@ -969,7 +863,7 @@ function showHomePage() {
 function createNewCharacter() {
   const charName = document.getElementById('newCharName').value.trim();
   const createStatus = document.getElementById('createStatus');
-  
+
   if (!charName) {
     if (createStatus) {
       createStatus.textContent = 'Please enter a character name';
@@ -981,12 +875,14 @@ function createNewCharacter() {
     }
     return;
   }
-  
+
   try {
+    const nowIso = new Date().toISOString();
     const newChar = {
       id: generateCharacterId(),
       name: charName,
-      createdAt: new Date().toISOString(),
+      createdAt: nowIso,
+      updatedAt: nowIso,
       data: {
         characterInfo: { name: charName },
         page1: {},
@@ -998,15 +894,16 @@ function createNewCharacter() {
         equipment: []
       }
     };
-    
+
     let characters = getStoredJSON('dndCharacters', []);
     characters.push(newChar);
     localStorage.setItem('dndCharacters', JSON.stringify(characters));
-    
+    queueCloudSync(0);
+
     loadCharacterList();
     loadSelectedCharacter(newChar.id);
     document.getElementById('newCharName').value = '';
-    
+
     if (createStatus) {
       createStatus.textContent = `Character "${charName}" created successfully!`;
       createStatus.className = 'status-message success';
@@ -1128,96 +1025,202 @@ function loadCharacterList() {
 
 // Clear all form fields to prevent old character data from persisting
 function clearAllFormFields() {
-  // Clear all input fields
-  document.querySelectorAll('input[type="text"], input[type="number"], input[type="email"], input[type="password"], input[type="url"]').forEach(input => {
-    if (!input.id.includes('deleteConfirmInput') && !input.id.includes('newCharName')) {
-      input.value = '';
-    }
+  // Clear character info fields
+  const charInfoFields = ['char_name', 'char_race', 'char_class', 'char_subclass', 'char_level'];
+  charInfoFields.forEach(id => {
+    const element = document.getElementById(id);
+    if (element) element.value = '';
   });
-  
-  // Clear all textareas
-  document.querySelectorAll('textarea').forEach(textarea => {
-    textarea.value = '';
+
+  // Clear ability scores and bonuses
+  const abilityFields = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+  abilityFields.forEach(ability => {
+    const scoreElement = document.getElementById(ability);
+    const bonusElement = document.getElementById(`${ability}_bonus`);
+    const saveElement = document.getElementById(`${ability}_save`);
+    const profElement = document.getElementById(`${ability}_save_prof`);
+
+    if (scoreElement) scoreElement.value = '';
+    if (bonusElement) bonusElement.value = '';
+    if (saveElement) saveElement.value = '';
+    if (profElement) profElement.checked = false;
   });
-  
-  // Clear all checkboxes and radio buttons
-  document.querySelectorAll('input[type="checkbox"], input[type="radio"]').forEach(input => {
-    input.checked = false;
+
+  // Clear combat stats
+  const combatFields = ['ac', 'initiative', 'speed', 'prof_bonus'];
+  combatFields.forEach(id => {
+    const element = document.getElementById(id);
+    if (element) element.value = '';
   });
-  
-  // Clear select dropdowns (except character list)
-  document.querySelectorAll('select').forEach(select => {
-    if (select.id !== 'characterList') {
-      select.selectedIndex = 0;
-    }
+
+  // Clear health fields
+  const healthFields = ['max_hp', 'curr_hp', 'hit_dice_spend', 'con_modifier', 'hit_die_size', 'potion_type'];
+  healthFields.forEach(id => {
+    const element = document.getElementById(id);
+    if (element) element.value = '';
   });
-  
-  // Clear portrait preview
+
+  // Clear temp HP display
+  const tempHPDisplay = document.getElementById('temp_hp_display');
+  if (tempHPDisplay) {
+    tempHPDisplay.classList.remove('show');
+    const tempHPText = document.getElementById('temp_hp_text');
+    if (tempHPText) tempHPText.textContent = '';
+  }
+
+  // Clear skills
+  const skillNames = ['acrobatics', 'animal_handling', 'arcana', 'athletics', 'deception', 'history',
+                     'insight', 'intimidation', 'investigation', 'medicine', 'nature', 'perception',
+                     'performance', 'persuasion', 'religion', 'sleight_of_hand', 'stealth', 'survival'];
+
+  skillNames.forEach(skill => {
+    const profElement = document.getElementById(`prof_${skill}`);
+    const adjElement = document.getElementById(`adj_${skill}`);
+    const bonusElement = document.getElementById(`bonus_${skill}`);
+
+    if (profElement) profElement.checked = false;
+    if (adjElement) adjElement.value = '+0';
+    if (bonusElement) bonusElement.value = '';
+  });
+
+  // Clear death saves
+  for (let i = 1; i <= 3; i++) {
+    const successElement = document.getElementById(`death_save_success_${i}`);
+    const failureElement = document.getElementById(`death_save_failure_${i}`);
+    const successCheckbox = document.getElementById(`death_save_success_${i}_checkbox`);
+    const failureCheckbox = document.getElementById(`death_save_failure_${i}_checkbox`);
+
+    if (successElement) successElement.classList.remove('checked');
+    if (failureElement) failureElement.classList.remove('checked');
+    if (successCheckbox) successCheckbox.checked = false;
+    if (failureCheckbox) failureCheckbox.checked = false;
+  }
+
+  // Clear action tracker
+  const actionFields = ['action_counter', 'bonus_action_counter'];
+  actionFields.forEach(id => {
+    const element = document.getElementById(id);
+    if (element) element.value = '';
+  });
+
+  const actionTicks = ['action_tick', 'bonus_action_tick'];
+  actionTicks.forEach(id => {
+    const element = document.getElementById(id);
+    if (element) element.checked = false;
+  });
+
+  // Clear background fields
+  const backgroundFields = ['char_backstory', 'personality_traits', 'traits_ideals', 'traits_bonds',
+                           'traits_flaws', 'traits_allies', 'traits_appearance'];
+  backgroundFields.forEach(id => {
+    const element = document.getElementById(id);
+    if (element) element.value = '';
+  });
+
+  // Clear portrait
   const portraitPreview = document.getElementById('portraitPreview');
   if (portraitPreview) {
-    portraitPreview.innerHTML = '';
+    portraitPreview.innerHTML = '<span style="color: #666;">No image</span>';
   }
-  
-  // Clear inventory table
-  const inventoryTable = document.getElementById('inventory_table');
-  if (inventoryTable) {
-    const tbody = inventoryTable.querySelector('tbody');
-    if (tbody) tbody.innerHTML = '';
-  }
-  
-  // Clear extra containers
-  const extraContainers = document.getElementById('extra_containers');
-  if (extraContainers) {
-    extraContainers.innerHTML = '';
-  }
-  
+
+  // Clear spell fields
+  const spellFields = ['spell_notes', 'spellcasting_ability', 'spell_save_dc', 'spell_attack_bonus',
+                      'caster_type', 'spells_prepared'];
+  spellFields.forEach(id => {
+    const element = document.getElementById(id);
+    if (element) element.value = '';
+  });
+
+  // Clear inventory fields
+  const inventoryFields = ['currency_cp', 'currency_sp', 'currency_ep', 'gold_field', 'max_weight_capacity'];
+  inventoryFields.forEach(id => {
+    const element = document.getElementById(id);
+    if (element) element.value = '';
+  });
+  const customCurrencyRows = document.getElementById('custom_currency_rows');
+  if (customCurrencyRows) customCurrencyRows.innerHTML = '';
+
+  // Clear notes fields
+  const notesFields = ['active_quests', 'completed_quests', 'quest_leads', 'mission_objectives',
+                      'important_locations', 'travel_routes', 'world_events', 'places_to_visit',
+                      'key_npcs', 'allies_contacts', 'enemies_threats', 'npc_relationships',
+                      'npc_information', 'session_notes', 'campaign_timeline', 'party_decisions',
+                      'campaign_goals', 'combat_notes', 'enemy_information', 'equipment_items',
+                      'spell_ability_notes', 'rules_mechanics', 'ideas_plans', 'miscellaneous_notes'];
+  notesFields.forEach(id => {
+    const element = document.getElementById(id);
+    if (element) element.value = '';
+  });
+
+  // Clear actions and features
+  const actionsNotes = document.getElementById('actions_notes');
+  if (actionsNotes) actionsNotes.value = '';
+
+  // Clear inventory data
+  const proficienciesTraining = document.getElementById('proficiencies_training');
+  if (proficienciesTraining) proficienciesTraining.value = '';
+
+  const statsQuickNotes = document.getElementById('stats_quick_notes');
+  if (statsQuickNotes) statsQuickNotes.value = '';
+
+  // Clear weapons and equipment data
+  weaponsData = [];
+  equipmentData = [];
+  updateWeaponsPreview();
+  updateEquipmentPreviews();
+
   // Clear conditions
   const conditionsContainer = document.getElementById('conditions_container');
   if (conditionsContainer) {
     conditionsContainer.innerHTML = '';
   }
-  
-  // Reset global data variables to clean states
-  weaponsData = [];
-  equipmentData = [];
-  
-  // Reset inventory data if available
-  if (typeof inventoryData !== 'undefined') {
-    inventoryData = {
-      equipment: [],
-      mainInventory: [],
-      storageContainers: [],
-      maxWeightCapacity: 0
-    };
+
+  // Clear inventory containers
+  const extraContainers = document.getElementById('extra_containers');
+  if (extraContainers) {
+    extraContainers.innerHTML = '';
   }
-  
-  // Reset spell data if available
-  if (typeof spellsData !== 'undefined') {
-    spellsData = getDefaultSpellData();
+
+  // Clear main inventory table
+  const inventoryTable = document.getElementById('inventory_table');
+  if (inventoryTable) {
+    const tbody = inventoryTable.querySelector('tbody');
+    if (tbody) tbody.innerHTML = '';
   }
-  if (typeof manualSpellSlots !== 'undefined') {
-    manualSpellSlots = [];
-  }
-  if (typeof manualSpellSlotsUsed !== 'undefined') {
-    manualSpellSlotsUsed = {};
-  }
-  if (typeof customResources !== 'undefined') {
-    customResources = [];
-  }
-  if (typeof customResourcesUsed !== 'undefined') {
-    customResourcesUsed = {};
-  }
-  if (typeof favoritesData !== 'undefined') {
-    favoritesData = getDefaultFavoritesData();
-  }
-  
-  // Reset actions data if available
-  if (typeof actionsData !== 'undefined') {
-    actionsData = {
-      actions: [],
-      features: []
-    };
-  }
+
+  // Reset inventory data
+  inventoryData = {
+    equipment: [],
+    mainInventory: [],
+    storageContainers: [],
+    maxWeightCapacity: 0
+  };
+
+  // Clear actions data
+  actionsData = {
+    actions: []
+  };
+  displayActions('action');
+  updateFavorites();
+
+  // Clear spells data
+  spellsData = {
+    cantrips: [],
+    spells: []
+  };
+  favoritesData = {
+    cantrips: [],
+    spells: []
+  };
+  manualSpellSlots = [];
+  manualSpellSlotsUsed = {};
+  customResources = [];
+  customResourcesUsed = {};
+
+  // Update spell system
+  updateSpellSlots();
+  updateCustomResources();
+  renderSpells();
 }
 
 function loadSelectedCharacter(charId) {
@@ -3381,13 +3384,14 @@ async function adminSelectUser(uid) {
 
 window.adminSelectUser = adminSelectUser;
 
-function escapeHtml(text) {
-  return String(text || '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
+function escapeHtml(value) {
+  if (value == null) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 async function adminImportCharacter(uid, charIndex) {
@@ -3497,295 +3501,16 @@ function exitAdminPreview() {
 window.exitAdminPreview = exitAdminPreview;
 
 // ========== HEALTH SYSTEM ==========
-function adjustHP(amount) {
-  const currHP = document.getElementById('curr_hp');
-  let newTotalHP = parseInt(currHP.value) + amount;
-  if (isNaN(newTotalHP)) newTotalHP = 0;
-  currHP.value = Math.max(0, newTotalHP);
-  updateHPDisplay();
-  autosave();
-}
-
-function updateHPDisplay() {
-  const currHP = parseInt(document.getElementById('curr_hp').value) || 0;
-  const maxHP = parseInt(document.getElementById('max_hp').value) || 0;
-  const tempHPDisplay = document.getElementById('temp_hp_display');
-  const tempHPText = document.getElementById('temp_hp_text');
-  
-  if (currHP > maxHP && maxHP > 0) {
-    const tempHP = currHP - maxHP;
-    const actualHP = maxHP;
-    tempHPText.textContent = `Current HP: ${actualHP} | Temporary HP: ${tempHP}`;
-    tempHPDisplay.classList.add('show');
-  } else {
-    tempHPDisplay.classList.remove('show');
-  }
-}
 
 // Function to get total HP including temporary HP
-function getTotalHP() {
-  const currHP = parseInt(document.getElementById('curr_hp').value) || 0;
-  const maxHP = parseInt(document.getElementById('max_hp').value) || 0;
-  return Math.max(currHP, maxHP);
-}
 
 // Function to get actual current HP (capped at max)
-function getCurrentHP() {
-  const currHP = parseInt(document.getElementById('curr_hp').value) || 0;
-  const maxHP = parseInt(document.getElementById('max_hp').value) || 0;
-  return Math.min(currHP, maxHP);
-}
 
 // Function to get temporary HP
-function getTempHP() {
-  const currHP = parseInt(document.getElementById('curr_hp').value) || 0;
-  const maxHP = parseInt(document.getElementById('max_hp').value) || 0;
-  return Math.max(0, currHP - maxHP);
-}
-
-function initializeDeathSaves() {
-  // Sync visual death save states with hidden checkboxes
-  for (let i = 1; i <= 3; i++) {
-    const successCheckbox = document.getElementById(`death_save_success_${i}_checkbox`);
-    const failureCheckbox = document.getElementById(`death_save_failure_${i}_checkbox`);
-    const successVisual = document.getElementById(`death_save_success_${i}`);
-    const failureVisual = document.getElementById(`death_save_failure_${i}`);
-    
-    if (successCheckbox && successVisual) {
-      if (successCheckbox.checked) {
-        successVisual.classList.add('checked');
-      } else {
-        successVisual.classList.remove('checked');
-      }
-    }
-    
-    if (failureCheckbox && failureVisual) {
-      if (failureCheckbox.checked) {
-        failureVisual.classList.add('checked');
-      } else {
-        failureVisual.classList.remove('checked');
-      }
-    }
-  }
-}
-
-function toggleDeathSave(type, index) {
-  const element = document.getElementById(`death_save_${type}_${index}`);
-  const isChecked = element.classList.contains('checked');
-  
-  // Toggle the visual state
-  element.classList.toggle('checked');
-  
-  // Update the hidden checkbox for data persistence
-  const checkbox = document.getElementById(`death_save_${type}_${index}_checkbox`);
-  if (checkbox) {
-    checkbox.checked = !isChecked;
-  }
-  
-  autosave();
-}
-
-function showCustomHPPopup() {
-  document.getElementById('custom_hp_amount').value = 1;
-  showPopup('customHPPopup');
-}
-
-function customAdjustHP(action) {
-  const amount = parseInt(document.getElementById('custom_hp_amount').value) || 0;
-  if (amount <= 0) {
-    alert('Please enter a valid amount greater than 0');
-    return;
-  }
-  
-  const adjustment = action === 'add' ? amount : -amount;
-  adjustHP(adjustment);
-  closeCustomHPPopup();
-}
-
-function closeCustomHPPopup() {
-  closePopup('customHPPopup');
-  // Reset the input for next time
-  document.getElementById('custom_hp_amount').value = 1;
-}
-
-function shortRest() {
-  // Get hit dice inputs
-  const hitDiceSpend = parseInt(document.getElementById('hit_dice_spend').value) || 0;
-  const conMod = parseInt(document.getElementById('con_modifier').value) || 0;
-  const hitDieSize = parseInt(document.getElementById('hit_die_size').value) || 6;
-  
-  if (hitDiceSpend <= 0) {
-    alert("Please enter how many Hit Dice you want to spend (minimum 1)");
-    return;
-  }
-  
-  // Roll hit dice
-  let totalRecovery = 0;
-  const rollDetails = [];
-  
-  for (let i = 0; i < hitDiceSpend; i++) {
-    const roll = Math.floor(Math.random() * hitDieSize) + 1;
-    const withConMod = roll + conMod;
-    totalRecovery += withConMod;
-    rollDetails.push(`d${hitDieSize}: ${roll} + ${conMod} = ${withConMod}`);
-  }
-  
-  // Apply recovery to current HP
-  const currHP = document.getElementById('curr_hp');
-  const maxHP = document.getElementById('max_hp');
-  const currentTotalHP = parseInt(currHP.value) || 0;
-  const maxHPValue = parseInt(maxHP.value) || 0;
-  
-  const newTotalHP = currentTotalHP + totalRecovery;
-  
-  currHP.value = newTotalHP;
-  updateHPDisplay();
-  autosave();
-  
-  // Show results
-  const rollSummary = rollDetails.join(', ');
-  const newCurrentHP = getCurrentHP();
-  const newTempHP = getTempHP();
-  const hpDisplay = newTempHP > 0 ? `${newCurrentHP} + ${newTempHP} temp` : `${newCurrentHP}`;
-  alert(`Short Rest Completed!\n\nHit Dice Rolls: ${rollSummary}\nTotal Recovery: ${totalRecovery} HP\n\nNew HP: ${hpDisplay}/${maxHPValue}`);
-  
-  // Reset inputs
-  document.getElementById('hit_dice_spend').value = 1;
-  calculateHitDiceRecovery();
-}
-
-function calculateHitDiceRecovery() {
-  const hitDiceSpend = parseInt(document.getElementById('hit_dice_spend').value) || 0;
-  const conMod = parseInt(document.getElementById('con_modifier').value) || 0;
-  const hitDieSize = parseInt(document.getElementById('hit_die_size').value) || 8;
-  
-  const recoveryText = document.getElementById('hit_dice_recovery_text');
-  
-  if (hitDiceSpend <= 0) {
-    recoveryText.textContent = 'Enter number of Hit Dice to spend';
-    return;
-  }
-  
-  const minRecovery = hitDiceSpend + (conMod * hitDiceSpend);
-  const maxRecovery = (hitDieSize * hitDiceSpend) + (conMod * hitDiceSpend);
-  
-  recoveryText.textContent = `Potential Recovery: ${hitDiceSpend}d${hitDieSize} + ${conMod * hitDiceSpend} = ${minRecovery}-${maxRecovery} HP`;
-}
 
 
 // Health Potion System
-function updatePotionInfo() {
-  const potionType = document.getElementById('potion_type').value;
-  const potionInfo = document.getElementById('potion_info_text');
-  
-  const potionData = {
-    minor: { dice: '2d4', bonus: 2, min: 4, max: 10 },
-    lesser: { dice: '2d4', bonus: 2, min: 4, max: 10 },
-    healing: { dice: '4d4', bonus: 4, min: 8, max: 20 },
-    greater: { dice: '4d4', bonus: 4, min: 8, max: 20 },
-    superior: { dice: '8d4', bonus: 8, min: 16, max: 40 },
-    supreme: { dice: '10d4', bonus: 20, min: 30, max: 60 }
-  };
-  
-  const data = potionData[potionType];
-  potionInfo.textContent = `Heals: ${data.dice}+${data.bonus} = ${data.min}-${data.max} HP`;
-}
 
 let potionConfirmCount = 0;
-
-function useHealthPotion() {
-  potionConfirmCount++;
-  
-  if (potionConfirmCount === 1) {
-    document.getElementById('use_potion_btn').textContent = 'Click Again to Confirm';
-    document.getElementById('use_potion_btn').style.background = '#FF5722';
-    setTimeout(() => {
-      if (potionConfirmCount === 1) {
-        potionConfirmCount = 0;
-        document.getElementById('use_potion_btn').textContent = 'Use Potion';
-        document.getElementById('use_potion_btn').style.background = '#9C27B0';
-      }
-    }, 3000);
-    return;
-  }
-  
-  if (potionConfirmCount === 2) {
-    document.getElementById('use_potion_btn').textContent = 'Final Click to Use!';
-    document.getElementById('use_potion_btn').style.background = '#D32F2F';
-    return;
-  }
-  
-  if (potionConfirmCount >= 3) {
-    // Actually use the potion
-    const potionType = document.getElementById('potion_type').value;
-    const potionData = {
-      minor: { dice: 2, sides: 4, bonus: 2 },
-      lesser: { dice: 2, sides: 4, bonus: 2 },
-      healing: { dice: 4, sides: 4, bonus: 4 },
-      greater: { dice: 4, sides: 4, bonus: 4 },
-      superior: { dice: 8, sides: 4, bonus: 8 },
-      supreme: { dice: 10, sides: 4, bonus: 20 }
-    };
-    
-    const data = potionData[potionType];
-    let totalHealing = 0;
-    let rollDetails = [];
-    
-    // Roll the dice
-    for (let i = 0; i < data.dice; i++) {
-      const roll = Math.floor(Math.random() * data.sides) + 1;
-      totalHealing += roll;
-      rollDetails.push(roll);
-    }
-    
-    totalHealing += data.bonus;
-    
-    // Apply healing to current HP
-    const currHP = document.getElementById('curr_hp');
-    const maxHP = document.getElementById('max_hp');
-    const currentTotalHP = parseInt(currHP.value) || 0;
-    const maxHPValue = parseInt(maxHP.value) || 0;
-    
-    const newTotalHP = currentTotalHP + totalHealing;
-    
-    currHP.value = newTotalHP;
-    updateHPDisplay();
-    autosave();
-    
-    // Show results
-    const rollSummary = rollDetails.join(', ');
-    const newCurrentHP = getCurrentHP();
-    const newTempHP = getTempHP();
-    const hpDisplay = newTempHP > 0 ? `${newCurrentHP} + ${newTempHP} temp` : `${newCurrentHP}`;
-    alert(`Health Potion Used!\n\nRolls: ${rollSummary}\nBonus: +${data.bonus}\nTotal Healing: ${totalHealing} HP\n\nNew HP: ${hpDisplay}/${maxHPValue}`);
-    
-    // Reset button
-    potionConfirmCount = 0;
-    document.getElementById('use_potion_btn').textContent = 'Use Potion';
-    document.getElementById('use_potion_btn').style.background = '#9C27B0';
-  }
-}
-
-function longRest() {
-  const currHP = document.getElementById('curr_hp');
-  const maxHP = document.getElementById('max_hp');
-  currHP.value = maxHP.value; // This sets total HP to max HP (no temp HP)
-  
-  // Reset death saves
-  for (let i = 1; i <= 3; i++) {
-    document.getElementById(`death_save_success_${i}`).classList.remove('checked');
-    document.getElementById(`death_save_failure_${i}`).classList.remove('checked');
-    
-    // Also reset hidden checkboxes
-    const successCheckbox = document.getElementById(`death_save_success_${i}_checkbox`);
-    const failureCheckbox = document.getElementById(`death_save_failure_${i}_checkbox`);
-    if (successCheckbox) successCheckbox.checked = false;
-    if (failureCheckbox) failureCheckbox.checked = false;
-  }
-  
-  updateHPDisplay();
-  autosave();
-  alert("Long rest completed - HP fully restored, death saves reset");
-}
 
 
