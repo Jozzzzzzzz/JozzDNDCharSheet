@@ -171,10 +171,10 @@
     --panel-bg: #1e1e1e;
     --card-bg: #2a2a2a;
     --border: 1px solid #444;
-    --accent: #ffd700;
+    --accent: #b0b8c1;
     --accent-border: var(--accent);
     --accent-contrast: #000000;
-    --accent-soft: rgba(255, 215, 0, 0.18);
+    --accent-soft: rgba(176, 184, 193, 0.18);
     --accent-text: var(--accent);
     --text-light: #f0f0f0;
     --condition-red: #ff6b6b;
@@ -666,7 +666,7 @@ button[onclick*="home"] {
   }
 
   .character-list-item.selected {
-    background: rgba(255, 215, 0, 0.12);
+    background: rgba(176, 184, 193, 0.12);
     border-color: var(--accent-border);
   }
 
@@ -692,7 +692,7 @@ button[onclick*="home"] {
   }
 
   .character-favorite-btn.is-favorite {
-    color: var(--accent-text);
+    color: #ffd700;
   }
 
   .character-favorite-btn:hover,
@@ -1790,7 +1790,7 @@ button[onclick*="home"] {
   .potion-group select:focus {
     outline: none;
     border-color: var(--accent-border);
-    box-shadow: 0 0 5px rgba(255, 215, 0, 0.3);
+    box-shadow: 0 0 5px rgba(176, 184, 193, 0.3);
   }
 
   /* Style the dropdown options to match the image */
@@ -1856,7 +1856,7 @@ button[onclick*="home"] {
 
   [data-theme="light"] .hit-dice-group select:focus {
     border-color: var(--accent-border);
-    box-shadow: 0 0 5px rgba(255, 215, 0, 0.3);
+    box-shadow: 0 0 5px rgba(176, 184, 193, 0.3);
   }
 
   [data-theme="light"] .hit-dice-group select option {
@@ -2543,6 +2543,51 @@ button[onclick*="home"] {
       transform: translate(-50%, -50%) !important;
       position: fixed !important;
     }
+
+    /* Small simple popups — don't let them stretch to full screen */
+    #addSpellSlotPopup,
+    #editSpellSlotPopup,
+    #addCustomResourcePopup {
+      width: min(92vw, 360px) !important;
+      max-width: min(92vw, 360px) !important;
+      max-height: 80vh !important;
+      padding: 16px !important;
+    }
+
+    #addSpellSlotPopup h3,
+    #editSpellSlotPopup h3,
+    #addCustomResourcePopup h3 {
+      font-size: 1rem;
+      margin: 0 0 12px 0;
+    }
+
+    #addSpellSlotPopup label,
+    #editSpellSlotPopup label,
+    #addCustomResourcePopup label {
+      font-size: 0.85rem;
+      margin-bottom: 3px;
+      display: block;
+    }
+
+    #addSpellSlotPopup input,
+    #addSpellSlotPopup select,
+    #editSpellSlotPopup input,
+    #editSpellSlotPopup select,
+    #addCustomResourcePopup input,
+    #addCustomResourcePopup select {
+      width: 100%;
+      box-sizing: border-box;
+      margin-bottom: 10px;
+      font-size: 0.9rem;
+    }
+
+    #addSpellSlotPopup button,
+    #editSpellSlotPopup button,
+    #addCustomResourcePopup button {
+      padding: 10px 14px;
+      font-size: 0.9rem;
+      flex: 1;
+    }
     
     .popup table {
       display: block;
@@ -2996,7 +3041,7 @@ button[onclick*="home"] {
 }
 
 .character-list-item.selected {
-  background: rgba(255, 215, 0, 0.12);
+  background: rgba(176, 184, 193, 0.12);
   border-color: var(--accent-border);
 }
 
@@ -3023,7 +3068,7 @@ button[onclick*="home"] {
 }
 
 .character-favorite-btn.is-favorite {
-  color: var(--accent-text);
+  color: #ffd700;
 }
 
 .character-favorite-btn:hover,
@@ -3869,16 +3914,26 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 
   .spell-level-row {
     display: flex;
-    align-items: center;
+    flex-direction: column;
     margin-bottom: 10px;
-    gap: 10px;
-    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .slot-controls-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
   }
 
   .spell-level-label {
-    min-width: 80px;
+    min-width: 0;
+    flex: 1 1 auto;
     font-weight: bold;
     color: var(--accent-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   /* Spell slot row actions (no absolute positioning) */
@@ -3888,6 +3943,7 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
     margin-left: auto;
     align-items: center;
     justify-content: flex-end;
+    flex-shrink: 0;
   }
 
   .spell-slot-edit-btn,
@@ -3917,6 +3973,7 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
     margin-left: auto;
     align-items: center;
     justify-content: flex-end;
+    flex-shrink: 0;
   }
 
   .spell-custom-delete-btn {
@@ -3945,6 +4002,7 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
     display: flex;
     gap: 5px;
     flex-wrap: wrap;
+    padding-left: 2px;
   }
 
   .spell-stepper-controls {
@@ -3989,8 +4047,40 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
     transition: all 0.2s;
   }
 
-  .spell-slot-dot.used {
+  .spell-slot-dot.available {
     background-color: var(--accent-text);
+  }
+
+  .spell-slot-dot.spent {
+    background-color: transparent;
+    opacity: 0.35;
+  }
+
+  /* Plus/minus stepper buttons — hidden on desktop mouse, shown on touch */
+  .slot-stepper-btn {
+    display: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 5px;
+    border: 1px solid var(--accent-border);
+    background: var(--accent);
+    color: var(--accent-contrast, #fff);
+    font-size: 1.1rem;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    padding: 0;
+    touch-action: manipulation;
+    user-select: none;
+  }
+
+  @media (pointer: coarse) {
+    .slot-stepper-btn {
+      display: flex;
+    }
   }
 
   .spells-list-container {
@@ -4033,7 +4123,7 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   .spell-item:hover {
     background: #333;
     transform: translateX(4px);
-    border-color: rgba(255, 215, 0, 0.4);
+    border-color: rgba(176, 184, 193, 0.4);
   }
 
   .spell-item-info strong {
@@ -4198,26 +4288,16 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
       padding: 4px 2px;
     }
 
-    .spell-level-row {
-      flex-wrap: wrap;
-      gap: 8px;
+    .slot-controls-row {
+      gap: 6px;
     }
 
-    /* Force actions to the next line on mobile */
     .spell-slot-row-actions {
-      flex: 0 0 100%;
-      width: 100%;
-      justify-content: flex-start;
-      margin-left: 0;
-      margin-top: 2px;
+      margin-left: auto;
     }
 
     .spell-custom-row-actions {
-      flex: 0 0 100%;
-      width: 100%;
-      justify-content: flex-start;
-      margin-left: 0;
-      margin-top: 2px;
+      margin-left: auto;
     }
 
     .spell-level-label {
@@ -4605,7 +4685,7 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   .action-filter select:focus {
     outline: none;
     border-color: var(--accent-text);
-    box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.2);
+    box-shadow: 0 0 0 2px rgba(176, 184, 193, 0.2);
     transform: translateY(-1px);
   }
 
@@ -5200,14 +5280,14 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 
   /* Star icon for favorites */
   .favorite-star {
-    color: #ffd700;
+    color: #888;
     cursor: pointer;
     font-size: 1.2em;
     margin-right: 5px;
   }
 
   .favorite-star:hover {
-    color: #ffed4e;
+    color: #ffd700;
   }
 
   .favorite-star.favorited {

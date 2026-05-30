@@ -1085,7 +1085,7 @@ function loadCharacterList() {
     const star = document.createElement('button');
     star.type = 'button';
     star.className = `character-favorite-btn${isFavoriteCharacter(char.id) ? ' is-favorite' : ''}`;
-    star.textContent = isFavoriteCharacter(char.id) ? '?' : '?';
+    star.textContent = isFavoriteCharacter(char.id) ? '★' : '☆';
     star.title = isFavoriteCharacter(char.id) ? 'Remove from favourites' : 'Add to favourites';
     star.setAttribute('aria-label', star.title);
     star.addEventListener('click', (event) => {
@@ -3002,7 +3002,7 @@ document.addEventListener('DOMContentLoaded', function() {
     input.addEventListener('focus', function() {
       this.style.transform = 'translateY(-1px)';
       this.style.borderColor = 'var(--accent)';
-      this.style.boxShadow = '0 0 0 2px rgba(255, 215, 0, 0.2)';
+      this.style.boxShadow = '0 0 0 2px var(--accent-soft)';
     });
     
     input.addEventListener('blur', function() {

@@ -515,18 +515,22 @@ function updateSpellSlots() {
     const usedValue = manualSpellSlotsUsed[slot.id] || 0;
     
     slotDiv.innerHTML = `
-      <span class="spell-level-label" title="${slot.resetType === 'long' ? 'Resets on Long Rest' : slot.resetType === 'short' ? 'Resets on Short Rest' : 'Manual Reset Only'}">${slot.name}:</span>
-      <input type="number" class="spell-slot-input" min="0" max="15" value="${slot.maxValue}" 
-             onchange="updateSpellSlotMax('${slot.id}', this.value)">
-      <div class="spell-slots-used" id="spell_used_${slot.id}"></div>
-      <div class="spell-slot-row-actions">
-        <button onclick="showEditSpellSlotPopup('${slot.id}')"
-                class="spell-slot-edit-btn"
-                title="Edit Spell Slot">Edit</button>
-        <button onclick="removeSpellSlot('${slot.id}')"
-                class="spell-slot-delete-btn"
-                title="Remove Spell Slot">Delete</button>
+      <div class="slot-controls-row">
+        <span class="spell-level-label" title="${slot.resetType === 'long' ? 'Resets on Long Rest' : slot.resetType === 'short' ? 'Resets on Short Rest' : 'Manual Reset Only'}">${slot.name}:</span>
+        <input type="number" class="spell-slot-input" min="0" max="15" value="${slot.maxValue}"
+               onchange="updateSpellSlotMax('${slot.id}', this.value)">
+        <button class="slot-stepper-btn slot-stepper-minus" onclick="spendSpellSlot('${slot.id}')" title="Spend slot">−</button>
+        <button class="slot-stepper-btn slot-stepper-plus" onclick="restoreSpellSlot('${slot.id}')" title="Restore slot">+</button>
+        <div class="spell-slot-row-actions">
+          <button onclick="showEditSpellSlotPopup('${slot.id}')"
+                  class="spell-slot-edit-btn"
+                  title="Edit Spell Slot">Edit</button>
+          <button onclick="removeSpellSlot('${slot.id}')"
+                  class="spell-slot-delete-btn"
+                  title="Remove Spell Slot">Delete</button>
+        </div>
       </div>
+      <div class="spell-slots-used" id="spell_used_${slot.id}"></div>
     `;
     
     container.appendChild(slotDiv);
@@ -536,7 +540,7 @@ function updateSpellSlots() {
     usedContainer.innerHTML = '';
     for (let i = 0; i < slot.maxValue; i++) {
       const dot = document.createElement('div');
-      dot.className = `spell-slot-dot ${i < usedValue ? 'used' : ''}`;
+      dot.className = `spell-slot-dot ${i < usedValue ? 'spent' : 'available'}`;
       dot.onclick = () => toggleSpellSlot(slot.id, i);
       usedContainer.appendChild(dot);
     }
@@ -567,6 +571,26 @@ function toggleSpellSlot(slotId, index) {
   }
   updateSpellSlots();
   autosave();
+}
+
+function spendSpellSlot(slotId) {
+  const slot = manualSpellSlots.find(s => s.id === slotId);
+  if (!slot) return;
+  const used = manualSpellSlotsUsed[slotId] || 0;
+  if (used < slot.maxValue) {
+    manualSpellSlotsUsed[slotId] = used + 1;
+    updateSpellSlots();
+    autosave();
+  }
+}
+
+function restoreSpellSlot(slotId) {
+  const used = manualSpellSlotsUsed[slotId] || 0;
+  if (used > 0) {
+    manualSpellSlotsUsed[slotId] = used - 1;
+    updateSpellSlots();
+    autosave();
+  }
 }
 
 // Reset spell slots based on rest type
@@ -718,15 +742,19 @@ function updateCustomResources() {
     const usedValue = customResourcesUsed[resource.id] || 0;
     
     resourceDiv.innerHTML = `
-      <span class="spell-level-label" title="${resource.resetType === 'long' ? 'Resets on Long Rest' : resource.resetType === 'short' ? 'Resets on Short Rest' : 'Manual Reset Only'}">${resource.name}:</span>
-      <input type="number" class="spell-slot-input" min="0" max="15" value="${resource.maxValue}" 
-             onchange="updateCustomResourceMax('${resource.id}', this.value)">
-      <div class="spell-slots-used" id="custom_used_${resource.id}"></div>
-      <div class="spell-custom-row-actions">
-        <button onclick="removeCustomResource('${resource.id}')"
-                class="spell-custom-delete-btn"
-                title="Remove Resource">×</button>
+      <div class="slot-controls-row">
+        <span class="spell-level-label" title="${resource.resetType === 'long' ? 'Resets on Long Rest' : resource.resetType === 'short' ? 'Resets on Short Rest' : 'Manual Reset Only'}">${resource.name}:</span>
+        <input type="number" class="spell-slot-input" min="0" max="15" value="${resource.maxValue}"
+               onchange="updateCustomResourceMax('${resource.id}', this.value)">
+        <button class="slot-stepper-btn slot-stepper-minus" onclick="spendCustomResource('${resource.id}')" title="Spend resource">−</button>
+        <button class="slot-stepper-btn slot-stepper-plus" onclick="restoreCustomResource('${resource.id}')" title="Restore resource">+</button>
+        <div class="spell-custom-row-actions">
+          <button onclick="removeCustomResource('${resource.id}')"
+                  class="spell-custom-delete-btn"
+                  title="Remove Resource">×</button>
+        </div>
       </div>
+      <div class="spell-slots-used" id="custom_used_${resource.id}"></div>
     `;
     
     container.appendChild(resourceDiv);
@@ -736,7 +764,7 @@ function updateCustomResources() {
     usedContainer.innerHTML = '';
     for (let i = 0; i < resource.maxValue; i++) {
       const dot = document.createElement('div');
-      dot.className = `spell-slot-dot ${i < usedValue ? 'used' : ''}`;
+      dot.className = `spell-slot-dot ${i < usedValue ? 'spent' : 'available'}`;
       dot.onclick = () => toggleCustomResource(resource.id, i);
       usedContainer.appendChild(dot);
     }
@@ -767,6 +795,26 @@ function toggleCustomResource(resourceId, index) {
   }
   updateCustomResources();
   autosave();
+}
+
+function spendCustomResource(resourceId) {
+  const resource = customResources.find(r => r.id === resourceId);
+  if (!resource) return;
+  const used = customResourcesUsed[resourceId] || 0;
+  if (used < resource.maxValue) {
+    customResourcesUsed[resourceId] = used + 1;
+    updateCustomResources();
+    autosave();
+  }
+}
+
+function restoreCustomResource(resourceId) {
+  const used = customResourcesUsed[resourceId] || 0;
+  if (used > 0) {
+    customResourcesUsed[resourceId] = used - 1;
+    updateCustomResources();
+    autosave();
+  }
 }
 
 // Reset custom resources based on rest type
