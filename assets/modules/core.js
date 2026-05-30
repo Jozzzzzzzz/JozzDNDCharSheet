@@ -1573,9 +1573,8 @@ function autosave() {
   characters[charIndex].name = document.getElementById('char_name').value || 'Unnamed';
   localStorage.setItem('dndCharacters', JSON.stringify(characters));
   
-  // Auto-sync to cloud if user is signed in
   if (window.currentUser && !window.__adminPreviewActive) {
-    syncToCloud();
+    syncToCloud(true);
   }
 }
 

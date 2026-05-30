@@ -484,35 +484,37 @@ async function signOut() {
 }
 
 // Cloud Sync Functions
-async function syncToCloud() {
+async function syncToCloud(silent = false) {
   if (!currentUser) {
-    setSyncStatus('Please sign in first');
+    if (!silent) setSyncStatus('Please sign in first');
     return;
   }
-  
+
   try {
-    setSyncStatus('Uploading to cloud...');
-    
-    // Get current character data
+    if (!silent) setSyncStatus('Uploading to cloud...');
+
     const characters = window.getStoredJSON ? window.getStoredJSON('dndCharacters', []) : (JSON.parse(localStorage.getItem('dndCharacters') || '[]'));
     const theme = localStorage.getItem('dndTheme') || 'dark';
     const accentColor = localStorage.getItem('dndAccentColor') || '#ffd700';
-    
+
+    const localModified = Date.now();
+    localStorage.setItem('dndLastModified', localModified);
+
     const userData = {
       characters: characters,
       theme: theme,
       accentColor: accentColor,
       lastSync: firebase.firestore.FieldValue.serverTimestamp(),
+      lastModified: localModified,
       version: '1.0'
     };
-    
-    // Save to Firestore
+
     await db.collection('userData').doc(currentUser.uid).set(userData);
-    
-    setSyncStatus(`Uploaded ${characters.length} characters to cloud`);
+
+    if (!silent) setSyncStatus(`Uploaded ${characters.length} characters to cloud`);
   } catch (error) {
     console.error('Upload error:', error);
-    setSyncStatus('Upload failed: ' + error.message);
+    if (!silent) setSyncStatus('Upload failed: ' + error.message);
   }
 }
 
@@ -534,41 +536,52 @@ async function syncFromCloud(silent = false) {
     }
     
     const userData = doc.data();
-    
-    // Ask user if they want to replace local data
-    const localCharacters = window.getStoredJSON ? window.getStoredJSON('dndCharacters', []) : (JSON.parse(localStorage.getItem('dndCharacters') || '[]'));
     const cloudCharacters = userData.characters || [];
-    
-    let shouldReplace = true;
-    if (!silent && localCharacters.length > 0) {
-      shouldReplace = confirm(
-        `Replace ${localCharacters.length} local characters with ${cloudCharacters.length} cloud characters?`
-      );
-    }
-    
-    if (shouldReplace) {
-      // Replace local data with cloud data
+
+    if (silent) {
+      // Compare timestamps to decide whether cloud is newer
+      const localModified = parseInt(localStorage.getItem('dndLastModified') || '0', 10);
+      const cloudModified = userData.lastModified || 0;
+
+      if (cloudModified <= localModified) {
+        // Local is same or newer — nothing to do
+        return;
+      }
+
+      // Cloud is newer — pull it in silently
       localStorage.setItem('dndCharacters', JSON.stringify(cloudCharacters));
       if (userData.theme) localStorage.setItem('dndTheme', userData.theme);
       if (userData.accentColor) localStorage.setItem('dndAccentColor', userData.accentColor);
-      
-      // Refresh the page to load new data
-      if (!silent) {
+      localStorage.setItem('dndLastModified', String(cloudModified));
+
+      loadCharacterList();
+      if (cloudCharacters.length > 0) {
+        currentCharacter = cloudCharacters[0].id;
+        loadData();
+        setupSkillCalculationFields();
+        enforceAutoMathNumericInputs();
+      }
+
+      showCloudToast('Cloud sync pulled latest data');
+    } else {
+      // Manual sync — ask the user
+      const localCharacters = window.getStoredJSON ? window.getStoredJSON('dndCharacters', []) : (JSON.parse(localStorage.getItem('dndCharacters') || '[]'));
+      const shouldReplace = localCharacters.length === 0 || confirm(
+        `Replace ${localCharacters.length} local character(s) with ${cloudCharacters.length} from cloud?`
+      );
+
+      if (shouldReplace) {
+        localStorage.setItem('dndCharacters', JSON.stringify(cloudCharacters));
+        if (userData.theme) localStorage.setItem('dndTheme', userData.theme);
+        if (userData.accentColor) localStorage.setItem('dndAccentColor', userData.accentColor);
+        if (userData.lastModified) localStorage.setItem('dndLastModified', String(userData.lastModified));
+
         setSyncStatus(`Downloaded ${cloudCharacters.length} characters`);
         setTimeout(() => {
           if (confirm('Reload page to apply synced data?')) {
             location.reload();
           }
         }, 1000);
-      } else {
-        // Silent sync - just reload character list
-        loadCharacterList();
-        if (cloudCharacters.length > 0) {
-          currentCharacter = cloudCharacters[0].id;
-          loadData();
-          setupSkillCalculationFields();
-          enforceAutoMathNumericInputs();
-        }
       }
     }
   } catch (error) {
@@ -577,37 +590,13 @@ async function syncFromCloud(silent = false) {
   }
 }
 
-// Auto-sync functionality
-function enableAutoSync() {
-  // Auto-save to cloud every 5 minutes if signed in
-  setInterval(() => {
-    if (currentUser) {
-      syncToCloud();
-    }
-  }, 5 * 60 * 1000); // 5 minutes
+function showCloudToast(message) {
+  const toast = document.createElement('div');
+  toast.textContent = message;
+  toast.style.cssText = 'position:fixed;bottom:20px;right:20px;background:var(--accent);color:var(--accent-contrast);padding:8px 14px;border-radius:6px;font-size:13px;z-index:9999;opacity:1;transition:opacity 0.4s';
+  document.body.appendChild(toast);
+  setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 400); }, 3000);
 }
-
-// Enhanced autosave to include cloud sync
-// Defer wrapping autosave since core.js might still be loading
-setTimeout(() => {
-  if (typeof autosave === 'function' && !autosave.__cloudSyncWrapped) {
-    const originalAutosave = autosave;
-    autosave = function() {
-      // Call original autosave
-      originalAutosave();
-      
-      // If user is signed in, schedule a cloud sync
-      if (currentUser) {
-        // Debounce cloud sync to avoid too many uploads
-        clearTimeout(window.cloudSyncTimeout);
-        window.cloudSyncTimeout = setTimeout(() => {
-          syncToCloud();
-        }, 10000); // Sync 10 seconds after last change
-      }
-    };
-    autosave.__cloudSyncWrapped = true;
-  }
-}, 100);
 
 // Skill calculation + numeric input helpers
 const SKILL_ABILITY_MAP = {
