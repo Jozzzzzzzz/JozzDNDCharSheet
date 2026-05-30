@@ -159,7 +159,6 @@ function showEquipmentForm() {
 
 // Save equipment
 function saveEquipment() {
-  console.log('Save equipment called');
   
   const name = document.getElementById('equipment_name').value.trim();
   const type = document.getElementById('equipment_type').value;
@@ -168,7 +167,6 @@ function saveEquipment() {
   const description = document.getElementById('equipment_description').value.trim();
   const editId = document.getElementById('saveEquipmentBtn').getAttribute('data-edit-id');
   
-  console.log('Form data:', { name, type, bonus, weight, description, editId });
   
   if (!name) {
     alert('Please enter a name for the equipment.');
@@ -186,20 +184,14 @@ function saveEquipment() {
   
   if (editId) {
     // Editing existing equipment
-    console.log('Editing existing equipment with ID:', editId);
     const existingEquipment = inventoryData.equipment.find(e => e.id === editId);
     if (existingEquipment) {
-      console.log('Found existing equipment:', existingEquipment);
       Object.assign(existingEquipment, equipmentData);
-      console.log('Updated equipment:', existingEquipment);
     } else {
-      console.log('Existing equipment not found!');
     }
   } else {
     // Adding new equipment
-    console.log('Adding new equipment');
     inventoryData.equipment.push(equipmentData);
-    console.log('Equipment added. New array:', inventoryData.equipment);
   }
   
   displayEquipment();
@@ -236,7 +228,6 @@ function displayEquipment() {
   }
   
   const data = inventoryData.equipment;
-  console.log('Displaying equipment:', data); // Debug log
   
   container.innerHTML = '';
   
@@ -374,14 +365,10 @@ function createEquipmentCard(equipment) {
 
 // Edit equipment
 function editEquipment(id) {
-  console.log('Edit equipment called with ID:', id);
-  console.log('Current equipment data:', inventoryData.equipment);
   
   const equipment = inventoryData.equipment.find(e => e.id === id);
-  console.log('Found equipment:', equipment);
   
   if (equipment) {
-    console.log('Populating form with equipment data:', equipment);
     
     document.getElementById('equipmentFormTitle').textContent = 'Edit Equipment';
     document.getElementById('equipment_name').value = equipment.name || '';
@@ -392,45 +379,27 @@ function editEquipment(id) {
     document.getElementById('saveEquipmentBtn').textContent = 'Update Equipment';
     document.getElementById('saveEquipmentBtn').setAttribute('data-edit-id', id);
     
-    console.log('Form populated, showing popup');
-    console.log('About to show equipmentFormPopup');
     showPopup('equipmentFormPopup');
-    console.log('Popup call completed');
     
     // Verify form values after popup is shown
     setTimeout(() => {
-      console.log('Form values after popup:');
-      console.log('Name:', document.getElementById('equipment_name').value);
-      console.log('Type:', document.getElementById('equipment_type').value);
-      console.log('Bonus:', document.getElementById('equipment_bonus').value);
-      console.log('Weight:', document.getElementById('equipment_weight').value);
-      console.log('Description:', document.getElementById('equipment_description').value);
       
       // Check which popups are visible
       const formPopup = document.getElementById('equipmentFormPopup');
       const tablePopup = document.getElementById('equipmentPopup');
-      console.log('Form popup display:', formPopup.style.display);
-      console.log('Table popup display:', tablePopup.style.display);
-      console.log('Form popup visible:', formPopup.offsetParent !== null);
-      console.log('Table popup visible:', tablePopup.offsetParent !== null);
     }, 200);
   } else {
-    console.log('Equipment not found with ID:', id);
   }
 }
 
 // Delete equipment
 function deleteEquipment(id) {
-  console.log('Delete equipment called with ID:', id);
-  console.log('Current equipment data:', inventoryData.equipment);
   
   if (confirm('Are you sure you want to delete this equipment?')) {
     const index = inventoryData.equipment.findIndex(e => e.id === id);
-    console.log('Found equipment at index:', index);
     
     if (index > -1) {
       inventoryData.equipment.splice(index, 1);
-      console.log('Equipment removed. New data:', inventoryData.equipment);
       
       displayEquipment();
       displayEquipmentStats();
@@ -449,9 +418,7 @@ function deleteEquipment(id) {
       
       autosave();
       
-      console.log('Equipment deletion completed');
     } else {
-      console.log('Equipment not found with ID:', id);
     }
   }
 }
@@ -1177,18 +1144,18 @@ function setSettingsModalLock(locked) {
   document.documentElement.classList.toggle('settings-open', locked);
 }
 
-document.getElementById('settingsBtn').addEventListener('click', function(e) {
-  e.stopPropagation();
-  const dropdown = document.getElementById('settingsDropdown');
-  const shouldOpen = dropdown.style.display === 'none';
-  dropdown.style.display = shouldOpen ? 'block' : 'none';
-  setSettingsModalLock(shouldOpen);
-});
-
-// Close dropdown when clicking elsewhere
+// Settings dropdown — delegated from document since settingsBtn is in async-loaded chrome.html
 document.addEventListener('click', function(e) {
-  if (!e.target.closest('#settingsDropdown') && !e.target.closest('#settingsBtn')) {
-    document.getElementById('settingsDropdown').style.display = 'none';
+  if (e.target.closest('#settingsBtn')) {
+    e.stopPropagation();
+    const dropdown = document.getElementById('settingsDropdown');
+    if (!dropdown) return;
+    const shouldOpen = dropdown.style.display === 'none';
+    dropdown.style.display = shouldOpen ? 'block' : 'none';
+    setSettingsModalLock(shouldOpen);
+  } else if (!e.target.closest('#settingsDropdown')) {
+    const dropdown = document.getElementById('settingsDropdown');
+    if (dropdown) dropdown.style.display = 'none';
     setSettingsModalLock(false);
   }
 });

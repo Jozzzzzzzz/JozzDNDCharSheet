@@ -2852,20 +2852,16 @@ function removePortrait() {
 
 // ========== POPUP FUNCTIONS ==========
 function showPopup(id) {
-  console.log('showPopup called with ID:', id);
   const popup = document.getElementById(id);
   const backdrop = document.getElementById('popupBackdrop');
   
   if (!popup) {
-    console.log('Popup element not found:', id);
     return;
   }
   if (!backdrop) {
-    console.log('Backdrop element not found');
     return;
   }
   
-  console.log('Popup and backdrop found, showing popup');
 
   if (id === 'darkModeOnlyPopup') {
     popup.style.top = '0';

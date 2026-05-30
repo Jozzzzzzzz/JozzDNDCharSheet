@@ -64,8 +64,6 @@ function bindAuthButtons() {
 
 function initializeFirebase() {
   try {
-    console.log('=== Firebase Initialization Starting ===');
-    console.log('Firebase global available:', typeof firebase !== 'undefined');
     
     // Verify Firebase libraries are loaded
     if (typeof firebase === 'undefined') {
@@ -74,40 +72,30 @@ function initializeFirebase() {
       return;
     }
     
-    console.log('Firebase object:', Object.keys(firebase || {}));
     
     // Prevent multiple initialization attempts
     if (firebaseApp) {
-      console.log('Firebase already initialized');
       updateAuthUI();
       return;
     }
     
-    console.log('Initializing Firebase with config:', firebaseConfig.projectId);
     firebaseApp = firebase.apps && firebase.apps.length
       ? firebase.app()
       : firebase.initializeApp(firebaseConfig);
-    console.log('Firebase app initialized:', firebaseApp.name);
     
     auth = firebase.auth();
-    console.log('Auth initialized:', typeof auth);
     
     // Set persistence to LOCAL so user stays logged in
     auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(err => {
-      console.log('Persistence error (non-critical):', err);
     });
     
     window.auth = auth; // Make auth globally available for button check
-    console.log('Auth set to window.auth');
     
     db = firebase.firestore();
-    console.log('Firestore initialized:', typeof db);
     window.db = db;
-    console.log('Firestore set to window.db');
 
     // Listen for auth state changes
     auth.onAuthStateChanged((user) => {
-      console.log('Auth state changed. User:', user ? user.email : 'null');
       currentUser = user;
       window.currentUser = user;
       updateAuthUI();
@@ -123,7 +111,6 @@ function initializeFirebase() {
       }
     });
 
-    console.log('Firebase initialized successfully');
     bindAuthButtons();
     // Update UI to enable sign-in button
     updateAuthUI();
@@ -139,33 +126,23 @@ function initializeFirebase() {
 }
 
 function updateAuthUI() {
-  console.log('=== updateAuthUI called ===');
   bindAuthButtons();
   const signedInView = document.getElementById('signedInView');
   const signedOutView = document.getElementById('signedOutView');
   const userEmail = document.getElementById('userEmail');
   const signInBtn = document.getElementById('signInBtn');
 
-  console.log('signedInView:', signedInView ? 'found' : 'NOT FOUND');
-  console.log('signedOutView:', signedOutView ? 'found' : 'NOT FOUND');
-  console.log('userEmail:', userEmail ? 'found' : 'NOT FOUND');
-  console.log('signInBtn:', signInBtn ? 'found' : 'NOT FOUND');
-  console.log('currentUser:', currentUser ? currentUser.email : 'null');
-  console.log('auth object:', auth ? 'exists' : 'NOT EXISTS');
 
   if (currentUser) {
-    console.log('User is signed in, showing signed-in view');
     if (signedInView) signedInView.style.display = 'block';
     if (signedOutView) signedOutView.style.display = 'none';
     if (userEmail) userEmail.textContent = currentUser.email;
   } else {
-    console.log('User is NOT signed in, showing sign-out view');
     if (signedInView) signedInView.style.display = 'none';
     if (signedOutView) signedOutView.style.display = 'block';
     // Enable/disable sign-in button based on Firebase availability
     if (signInBtn) {
       const firebaseAvailable = typeof firebase !== 'undefined' && !!firebase.auth;
-      console.log('Setting button disabled to false (firebase available:', firebaseAvailable, ', auth exists:', !!auth, ')');
       signInBtn.disabled = false;
       signInBtn.textContent = firebaseAvailable ? 'Sign In with Google' : 'Retry Google Sign In';
     }
@@ -410,10 +387,6 @@ function ensureFirebaseReady() {
 // Authentication Functions
 async function signInWithGoogle() {
   try {
-    console.log('=== Sign-in attempt started ===');
-    console.log('Firebase defined:', typeof firebase !== 'undefined');
-    console.log('Firebase.auth:', typeof firebase !== 'undefined' ? typeof firebase.auth : 'undefined');
-    console.log('window.auth:', typeof window.auth);
     
     // Comprehensive checks for Firebase availability
     if (typeof firebase === 'undefined') {
@@ -437,36 +410,28 @@ async function signInWithGoogle() {
       return;
     }
 
-    console.log('All Firebase checks passed, proceeding with sign-in...');
     setSyncStatus('Opening sign-in popup...');
 
     const provider = new firebase.auth.GoogleAuthProvider();
-    console.log('GoogleAuthProvider created:', provider);
     
     // Add scopes if needed
     provider.addScope('email');
     provider.addScope('profile');
-    console.log('Scopes added');
 
     let result;
-    console.log('Attempting signInWithPopup...');
     try {
       result = await window.auth.signInWithPopup(provider);
-      console.log('Sign-in successful (popup):', result.user.email);
       setSyncStatus('Signed in successfully');
     } catch (popupError) {
-      console.log('Popup error:', popupError.code, popupError.message);
       
       // If popup fails, try redirect method
       if (popupError.code === 'auth/popup-blocked' || 
           popupError.code === 'auth/operation-not-supported-in-this-environment' ||
           popupError.message?.includes('popup')) {
-        console.log('Popup unavailable, trying redirect method...');
         setSyncStatus('Redirecting to sign-in...');
         
         try {
           await window.auth.signInWithRedirect(provider);
-          console.log('Redirect initiated');
           // The page will redirect, but we'll get results when it comes back
         } catch (redirectError) {
           console.error('Redirect also failed:', redirectError);
@@ -492,7 +457,6 @@ async function signInWithGoogle() {
       errorMessage = 'Sign-in cancelled';
     } else if (error.code === 'auth/unauthorized-domain') {
       errorMessage = 'This domain is not authorized for sign-in. You need to add it to Firebase Console > Authentication > Settings > Authorized domains.\n\nCurrent domain: ' + window.location.hostname;
-      console.log('Current domain:', window.location.hostname);
     } else if (error.code === 'auth/operation-not-supported-in-this-environment') {
       errorMessage = 'Sign-in is not supported in this browser. Please try a different browser or add this domain to Firebase.';
     } else if (error.message && error.message.includes('signInWithPopup')) {
@@ -1137,7 +1101,6 @@ function registerServiceWorker() {
 
   return navigator.serviceWorker.register('/sw.js')
     .then(function(registration) {
-      console.log('Service Worker registered:', registration);
       return registration;
     })
     .catch(function(error) {
@@ -1146,8 +1109,6 @@ function registerServiceWorker() {
 }
 
 function initCloudFirebase() {
-  console.log('=== initCloudFirebase called ===');
-  console.log('document.readyState:', document.readyState);
   
   initializeFirebase();
   enableAutoSync();
@@ -1156,10 +1117,8 @@ function initCloudFirebase() {
 
 // Initialize immediately if DOM is ready, otherwise wait for the event
 if (document.readyState === 'loading') {
-  console.log('DOM still loading, adding DOMContentLoaded listener');
   document.addEventListener('DOMContentLoaded', initCloudFirebase);
 } else {
-  console.log('DOM already ready, initializing immediately');
   initCloudFirebase();
 }
 
