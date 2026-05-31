@@ -898,7 +898,9 @@ function createNewCharacter() {
     let characters = getStoredJSON('dndCharacters', []);
     characters.push(newChar);
     localStorage.setItem('dndCharacters', JSON.stringify(characters));
-    queueCloudSync(0);
+    if (window.currentUser && !window.__adminPreviewActive) {
+      syncToCloud(true);
+    }
 
     loadCharacterList();
     loadSelectedCharacter(newChar.id);
