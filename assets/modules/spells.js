@@ -676,3 +676,148 @@ function clearAllSpells(type) {
   }
 }
 
+// ========== SPELL SLOTS SYSTEM ==========
+
+function addSpellSlot() {
+  const name = document.getElementById('spell_slot_name').value.trim();
+  const maxValue = parseInt(document.getElementById('spell_slot_max').value) || 1;
+  const resetType = document.getElementById('spell_slot_reset_type').value;
+
+  if (!name) { alert("Please enter a spell slot name"); return; }
+  if (manualSpellSlots.find(s => s.name.toLowerCase() === name.toLowerCase())) {
+    alert("A spell slot type with this name already exists"); return;
+  }
+
+  const slotId = 'spell_' + Date.now();
+  manualSpellSlots.push({ id: slotId, name, maxValue, resetType });
+  manualSpellSlotsUsed[slotId] = 0;
+  updateSpellSlots();
+  closePopup('addSpellSlotPopup');
+  autosave();
+}
+
+function removeSpellSlot(slotId) {
+  if (confirm('Are you sure you want to remove this spell slot type?')) {
+    manualSpellSlots = manualSpellSlots.filter(s => s.id !== slotId);
+    delete manualSpellSlotsUsed[slotId];
+    updateSpellSlots();
+    autosave();
+  }
+}
+
+function updateSpellSlots() {
+  const container = document.getElementById('spell_slots_container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  if (manualSpellSlots.length === 0) {
+    container.innerHTML = '<p style="text-align: center; color: #666; font-style: italic; margin: 10px 0;">No spell slots yet. Click "Add Spell Slot Type" to get started!</p>';
+    return;
+  }
+
+  manualSpellSlots.forEach(slot => {
+    const slotDiv = document.createElement('div');
+    slotDiv.className = 'spell-level-row';
+    slotDiv.style.position = 'relative';
+    const usedValue = manualSpellSlotsUsed[slot.id] || 0;
+    const title = slot.resetType === 'long' ? 'Resets on Long Rest' : slot.resetType === 'short' ? 'Resets on Short Rest' : 'Manual Reset Only';
+    slotDiv.innerHTML = `
+      <span class="spell-level-label" title="${title}">${slot.name}:</span>
+      <input type="number" class="spell-slot-input" min="0" max="15" value="${slot.maxValue}"
+             onchange="updateSpellSlotMax('${slot.id}', this.value)">
+      <div class="spell-slots-used" id="spell_used_${slot.id}"></div>
+      <button onclick="showEditSpellSlotPopup('${slot.id}')"
+              style="position: absolute; right: 70px; top: 50%; transform: translateY(-50%);
+                     background: #4CAF50; color: white; border: none; border-radius: 3px;
+                     padding: 2px 6px; font-size: 10px; cursor: pointer;"
+              title="Edit Spell Slot">Edit</button>
+      <button onclick="removeSpellSlot('${slot.id}')"
+              style="position: absolute; right: -5px; top: 50%; transform: translateY(-50%);
+                     background: #ff4444; color: white; border: none; border-radius: 3px;
+                     padding: 2px 6px; font-size: 10px; cursor: pointer;"
+              title="Remove Spell Slot">Delete</button>
+    `;
+    container.appendChild(slotDiv);
+
+    const usedContainer = document.getElementById(`spell_used_${slot.id}`);
+    usedContainer.innerHTML = '';
+    for (let i = 0; i < slot.maxValue; i++) {
+      const dot = document.createElement('div');
+      dot.className = `spell-slot-dot ${i < usedValue ? 'used' : ''}`;
+      dot.onclick = () => toggleSpellSlot(slot.id, i);
+      usedContainer.appendChild(dot);
+    }
+  });
+}
+
+function updateSpellSlotMax(slotId, newMax) {
+  const slot = manualSpellSlots.find(s => s.id === slotId);
+  if (slot) {
+    slot.maxValue = parseInt(newMax) || 1;
+    if (manualSpellSlotsUsed[slotId] > slot.maxValue) manualSpellSlotsUsed[slotId] = slot.maxValue;
+    updateSpellSlots();
+    autosave();
+  }
+}
+
+function toggleSpellSlot(slotId, index) {
+  const usedValue = manualSpellSlotsUsed[slotId] || 0;
+  manualSpellSlotsUsed[slotId] = index < usedValue ? index : index + 1;
+  updateSpellSlots();
+  autosave();
+}
+
+function resetSpellSlots(restType = 'all') {
+  if (restType === 'all') {
+    if (confirm('Are you sure you want to reset all spell slots?')) {
+      manualSpellSlots.forEach(slot => { manualSpellSlotsUsed[slot.id] = 0; });
+      updateSpellSlots();
+      autosave();
+    }
+  } else {
+    manualSpellSlots.forEach(slot => {
+      if (slot.resetType === restType || (restType === 'long' && slot.resetType === 'short')) {
+        manualSpellSlotsUsed[slot.id] = 0;
+      }
+    });
+    updateSpellSlots();
+    autosave();
+  }
+}
+
+let currentEditingSpellSlotId = null;
+
+function showEditSpellSlotPopup(slotId) {
+  const slot = manualSpellSlots.find(s => s.id === slotId);
+  if (!slot) return;
+  currentEditingSpellSlotId = slotId;
+  document.getElementById('edit_spell_slot_name').value = slot.name;
+  document.getElementById('edit_spell_slot_max').value = slot.maxValue;
+  document.getElementById('edit_spell_slot_reset_type').value = slot.resetType;
+  showPopup('editSpellSlotPopup');
+}
+
+function saveSpellSlotEdit() {
+  if (!currentEditingSpellSlotId) return;
+  const name = document.getElementById('edit_spell_slot_name').value.trim();
+  const maxValue = parseInt(document.getElementById('edit_spell_slot_max').value) || 1;
+  const resetType = document.getElementById('edit_spell_slot_reset_type').value;
+  if (!name) { alert("Please enter a spell slot name"); return; }
+  if (manualSpellSlots.find(s => s.name.toLowerCase() === name.toLowerCase() && s.id !== currentEditingSpellSlotId)) {
+    alert("A spell slot type with this name already exists"); return;
+  }
+  const slot = manualSpellSlots.find(s => s.id === currentEditingSpellSlotId);
+  if (slot) {
+    slot.name = name;
+    slot.maxValue = maxValue;
+    slot.resetType = resetType;
+    if (manualSpellSlotsUsed[currentEditingSpellSlotId] > maxValue) {
+      manualSpellSlotsUsed[currentEditingSpellSlotId] = maxValue;
+    }
+    updateSpellSlots();
+    autosave();
+  }
+  closePopup('editSpellSlotPopup');
+  currentEditingSpellSlotId = null;
+}
+

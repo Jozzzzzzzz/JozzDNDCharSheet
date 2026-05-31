@@ -242,7 +242,7 @@ function activateRoute() {
 })();
 
 async function bootstrapModularApp() {
-  const scriptVersion = '20260601-fix-autosave-hardened';
+  const scriptVersion = '20260601-fix-missing-spell-slots';
   const [chrome, home, settings, stats, background, spells, inventory, notes, popups] = await Promise.all([
     loadText('partials/chrome.html'),
     loadText('pages/home.html'),
