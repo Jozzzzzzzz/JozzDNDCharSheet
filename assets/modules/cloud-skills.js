@@ -24,11 +24,11 @@ function bindAuthButtons() {
     signInBtn.type = 'button';
     signInBtn.addEventListener('click', (event) => {
       event.preventDefault();
-      window.signInWithGoogle();
+      signInWithGoogle();
     });
     signInBtn.addEventListener('touchend', (event) => {
       event.preventDefault();
-      window.signInWithGoogle();
+      signInWithGoogle();
     }, { passive: false });
   }
 
@@ -38,7 +38,7 @@ function bindAuthButtons() {
     syncUpBtn.type = 'button';
     syncUpBtn.addEventListener('click', (event) => {
       event.preventDefault();
-      window.syncToCloud();
+      syncToCloud();
     });
   }
 
@@ -48,7 +48,7 @@ function bindAuthButtons() {
     syncDownBtn.type = 'button';
     syncDownBtn.addEventListener('click', (event) => {
       event.preventDefault();
-      window.syncFromCloud();
+      syncFromCloud();
     });
   }
 
@@ -58,7 +58,7 @@ function bindAuthButtons() {
     signOutBtn.type = 'button';
     signOutBtn.addEventListener('click', (event) => {
       event.preventDefault();
-      window.signOut();
+      signOut();
     });
   }
 }
@@ -489,8 +489,6 @@ async function signOut() {
 // Firestore layout:
 //   userData/{uid}                         — user prefs (theme, accentColor)
 //   userData/{uid}/characters/{charId}     — one document per character
-
-let cloudSyncTimer = null;
 let activeCharacterUnsubscribe = null;
 // Timestamp of the last save WE initiated — used to suppress the echo
 // from our own writes coming back through onSnapshot.
