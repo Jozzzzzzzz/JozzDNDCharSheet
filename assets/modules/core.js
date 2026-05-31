@@ -1242,9 +1242,6 @@ function loadSelectedCharacter(charId) {
 
 function initiateDelete(charId) {
   const btn = document.getElementById('deleteCharacterActionBtn');
-  const input = document.getElementById('deleteCharacterConfirmInput');
-  const count = document.getElementById('deleteCharacterCount');
-  const inputWrap = document.getElementById('deleteCharacterInputWrap');
   const message = document.getElementById('deleteCharacterMessage');
   const characters = getStoredJSON('dndCharacters', []);
   const targetId =
@@ -1253,90 +1250,88 @@ function initiateDelete(charId) {
     (characters.some(char => char.id === currentCharacter) ? currentCharacter : null);
   const target = targetId ? characters.find(char => char.id === targetId) : null;
 
-  if (!btn || !input || !count || !inputWrap || !message) return;
+  if (!btn || !message) return;
   if (!targetId || !target) {
     alert('No character selected to delete');
     resetDeleteUI();
     return;
   }
 
+  // If a countdown is already running, do nothing
+  if (btn.dataset.counting === '1') return;
+
   if (deleteTargetCharacterId && deleteTargetCharacterId !== targetId) {
     resetDeleteUI();
   }
   deleteTargetCharacterId = targetId;
   showPopup('deleteCharacterPopup');
-  deleteState++;
-  
-  if (deleteState === 1) {
-    message.textContent = `Delete "${target.name || 'Character'}"?`;
-    btn.textContent = `Delete ${target.name || 'Character'}?`;
-    btn.classList.add('warning');
-    btn.classList.remove('danger');
-    inputWrap.style.display = 'none';
-    btn.disabled = false;
-  } else if (deleteState === 2) {
-    message.textContent = 'This action cannot be undone.';
-    btn.textContent = 'CONFIRM DELETE!';
-    btn.classList.remove('warning');
-    btn.classList.add('danger');
-    btn.disabled = false;
-  } else if (deleteState === 3) {
-    message.textContent = 'Type "DELETE" to permanently remove this character.';
-    btn.textContent = 'DELETE FOREVER';
-    inputWrap.style.display = 'block';
-    input.focus();
-    input.oninput = function() {
-      count.textContent = `${input.value.length}/6`;
-      btn.disabled = input.value !== 'DELETE';
-    };
-    btn.disabled = input.value !== 'DELETE';
-  } else if (deleteState === 4 && input.value === 'DELETE') {
-    const finalTargetId = deleteTargetCharacterId || targetId;
-    const finalTarget = characters.find(char => char.id === finalTargetId);
-    const charName = finalTarget?.name || 'character';
-    const updatedChars = characters.filter(char => char.id !== finalTargetId);
 
-    localStorage.setItem('dndCharacters', JSON.stringify(updatedChars));
-    setFavoriteCharacterIds(getFavoriteCharacterIds().filter(id => id !== finalTargetId));
-    alert(`${charName} deleted permanently`);
-    
-    if (updatedChars.length > 0) {
-      currentCharacter = updatedChars[0].id;
-      rememberSelectedCharacter(currentCharacter);
-      resetDeleteUI();
-      loadCharacterList();
-      loadData();
-      window.setupSkillCalculationFields();
-      window.enforceAutoMathNumericInputs();
-      document.querySelector('.tab[data-tab="page1"]').click();
-    } else {
-      currentCharacter = null;
-      clearRememberedSelectedCharacter();
-      resetDeleteUI();
-      loadCharacterList();
-      showHomePage();
-    }
-    closePopup('deleteCharacterPopup');
+  if (deleteState === 0) {
+    // Step 1: first click — show confirm button
+    deleteState = 1;
+    message.textContent = `Delete "${target.name || 'Character'}"? This cannot be undone.`;
+    btn.textContent = 'Confirm Delete';
+    btn.classList.add('danger');
+    btn.classList.remove('warning');
+    btn.disabled = false;
+  } else if (deleteState === 1) {
+    // Step 2: confirm clicked — start 3-second countdown then delete
+    deleteState = 2;
+    btn.dataset.counting = '1';
+    btn.disabled = true;
+    message.textContent = `Deleting "${target.name || 'Character'}" in 3 seconds...`;
+
+    let secs = 3;
+    btn.textContent = `Deleting in ${secs}s...`;
+
+    const tick = setInterval(() => {
+      secs--;
+      if (secs > 0) {
+        btn.textContent = `Deleting in ${secs}s...`;
+        message.textContent = `Deleting "${target.name || 'Character'}" in ${secs} second${secs !== 1 ? 's' : ''}...`;
+      } else {
+        clearInterval(tick);
+        delete btn.dataset.counting;
+
+        const finalChars = getStoredJSON('dndCharacters', []);
+        const updatedChars = finalChars.filter(c => c.id !== deleteTargetCharacterId);
+        localStorage.setItem('dndCharacters', JSON.stringify(updatedChars));
+        setFavoriteCharacterIds(getFavoriteCharacterIds().filter(id => id !== deleteTargetCharacterId));
+
+        closePopup('deleteCharacterPopup');
+        resetDeleteUI();
+
+        if (updatedChars.length > 0) {
+          currentCharacter = updatedChars[0].id;
+          rememberSelectedCharacter(currentCharacter);
+          loadCharacterList();
+          loadData();
+          window.setupSkillCalculationFields();
+          window.enforceAutoMathNumericInputs();
+          document.querySelector('.tab[data-tab="page1"]').click();
+        } else {
+          currentCharacter = null;
+          clearRememberedSelectedCharacter();
+          loadCharacterList();
+          showHomePage();
+        }
+      }
+    }, 1000);
   }
 }
 
 function resetDeleteUI() {
   const btn = document.getElementById('deleteCharacterActionBtn');
-  const input = document.getElementById('deleteCharacterConfirmInput');
-  const count = document.getElementById('deleteCharacterCount');
-  const inputWrap = document.getElementById('deleteCharacterInputWrap');
   const message = document.getElementById('deleteCharacterMessage');
 
   deleteState = 0;
   deleteTargetCharacterId = null;
-  if (!btn || !input || !count || !inputWrap || !message) return;
+  if (!btn || !message) return;
   message.textContent = 'Are you sure you want to delete this character?';
   btn.textContent = 'Delete Character';
   btn.classList.remove('warning', 'danger');
   btn.disabled = false;
-  inputWrap.style.display = 'none';
-  input.value = '';
-  count.textContent = '0/6';
+  delete btn.dataset.counting;
 }
 
 // Manual save function with status feedback
