@@ -36,41 +36,51 @@ function clampSectionToContent(section) {
 
 function recalcFlexWrapBase(container) {
   if (!isDesktopLayout()) return 0;
-  const sections = Array.from(container.querySelectorAll('.section'));
+  const sections = Array.from(container.children).filter(el => el.classList.contains('section'));
   if (sections.length === 0) return 0;
-  const contentHeight = Math.max(...sections.map(section => section.scrollHeight));
+
+  // Reset to auto so we measure natural content height
+  sections.forEach(section => {
+    section.style.minHeight = '';
+    section.style.height = 'auto';
+    const ta = section.querySelector('textarea.basic-textarea');
+    if (ta) ta.style.height = 'auto';
+  });
+
+  // Measure non-textarea overhead (h2 + padding) while still at natural height
+  const overheadMap = new Map();
+  sections.forEach(section => {
+    const ta = section.querySelector('textarea.basic-textarea');
+    if (ta) overheadMap.set(section, section.scrollHeight - ta.scrollHeight);
+  });
+
+  const contentHeight = Math.max(...sections.map(s => s.scrollHeight));
   const minHeight = parseInt(container.dataset.minHeight || '0', 10);
   const baseHeight = Math.max(contentHeight, minHeight);
   container.dataset.baseHeight = `${baseHeight}`;
+
   sections.forEach(section => {
     section.style.minHeight = `${baseHeight}px`;
-    if (!section.style.height || parseInt(section.style.height, 10) < baseHeight) {
-      section.style.height = `${baseHeight}px`;
+    section.style.height = `${baseHeight}px`;
+    const ta = section.querySelector('textarea.basic-textarea');
+    if (ta) {
+      const overhead = overheadMap.get(section) || 0;
+      ta.style.height = `${baseHeight - overhead}px`;
     }
   });
+
   return baseHeight;
 }
 
 function syncFlexWrapHeights(container) {
   if (!isDesktopLayout()) return;
-  const sections = Array.from(container.querySelectorAll('.section'));
+  const sections = Array.from(container.children).filter(el => el.classList.contains('section'));
   if (sections.length === 0) return;
   const baseHeight = parseInt(container.dataset.baseHeight || '0', 10);
-  const manualHeight = parseInt(container.dataset.manualHeight || '0', 10);
-  let desiredHeight = baseHeight;
-  if (manualHeight) {
-    desiredHeight = Math.max(baseHeight, manualHeight);
-  } else if (window.activeResizeSection && container.contains(window.activeResizeSection)) {
-    desiredHeight = Math.max(baseHeight, window.activeResizeSection.getBoundingClientRect().height);
-  } else {
-    const currentMax = Math.max(...sections.map(section => section.getBoundingClientRect().height));
-    desiredHeight = Math.max(baseHeight, currentMax);
-  }
-  const currentHeight = Math.round(sections[0].getBoundingClientRect().height);
-  if (Math.abs(currentHeight - desiredHeight) < 1) return;
+  if (!baseHeight) return;
   sections.forEach(section => {
     section.style.minHeight = `${baseHeight}px`;
-    section.style.height = `${desiredHeight}px`;
+    section.style.height = `${baseHeight}px`;
   });
 }
 
@@ -84,152 +94,25 @@ function applyFlexWrapSizing() {
 
 // Auto-resize containers when textareas change
 function setupAutoResize() {
-  document.querySelectorAll('.section textarea:not(.note-box)').forEach(textarea => {
-    textarea.addEventListener('input', function() {
-      const section = this.closest('.section');
-      const neededHeight = Math.max(section.scrollHeight, this.scrollHeight + 30);
-      if (neededHeight > section.clientHeight) {
-        section.style.height = `${neededHeight}px`;
-      }
-      const container = section.closest('.flex-wrap');
-      if (container) {
-        recalcFlexWrapBase(container);
-        syncFlexWrapHeights(container);
-      }
+  document.querySelectorAll('.flex-wrap').forEach(flexWrap => {
+    const directSections = Array.from(flexWrap.children).filter(el => el.classList.contains('section'));
+    directSections.forEach(section => {
+      const ta = section.querySelector('textarea.basic-textarea');
+      if (!ta) return;
+      ta.addEventListener('input', function() {
+        recalcFlexWrapBase(flexWrap);
+        syncFlexWrapHeights(flexWrap);
+      });
     });
   });
 }
 
 // Enable resizable containers
 function makeContainersResizable() {
-  if (window.activeResizeSection === undefined) {
-    window.activeResizeSection = null;
-    window.resizeSyncLoop = null;
-    window.groupResizeState = null;
-    document.addEventListener('mouseup', () => {
-      window.activeResizeSection = null;
-    });
-    document.addEventListener('touchend', () => {
-      window.activeResizeSection = null;
-    });
-    document.addEventListener('pointerup', () => {
-      window.activeResizeSection = null;
-      if (window.groupResizeState) {
-        window.groupResizeState = null;
-        document.body.style.cursor = '';
-      }
-    });
-    document.addEventListener('pointermove', event => {
-      if (!window.groupResizeState) return;
-      const { container, startY, startHeight } = window.groupResizeState;
-      const delta = event.clientY - startY;
-      const baseHeight = parseInt(container.dataset.baseHeight || '0', 10);
-      const nextHeight = Math.max(baseHeight, startHeight + delta);
-      container.dataset.manualHeight = `${nextHeight}`;
-      syncFlexWrapHeights(container);
-      event.preventDefault();
-    });
-    document.addEventListener('mousemove', () => {
-      if (!window.activeResizeSection) return;
-      const container = window.activeResizeSection.closest('.flex-wrap');
-      if (container) syncFlexWrapHeights(container);
-    });
-    document.addEventListener('touchmove', () => {
-      if (!window.activeResizeSection) return;
-      const container = window.activeResizeSection.closest('.flex-wrap');
-      if (container) syncFlexWrapHeights(container);
-    }, { passive: true });
-    document.addEventListener('pointermove', () => {
-      if (!window.activeResizeSection) return;
-      const container = window.activeResizeSection.closest('.flex-wrap');
-      if (container) syncFlexWrapHeights(container);
-    });
-  }
-
-  document.querySelectorAll('.section').forEach(section => {
-    if (section.classList.contains('character-info-section')) return;
-
-    section.classList.add('resizable-container');
-
-    if (!section.dataset.originalWidth) {
-      section.dataset.originalWidth = section.style.width || 'auto';
-      section.dataset.originalHeight = section.style.height || 'auto';
-    }
-    if (section.classList.contains('actions-notes-section')) {
-      clampSectionToContent(section);
-    }
-
-    section.addEventListener('mousedown', () => {
-      window.activeResizeSection = section;
-      if (!window.resizeSyncLoop) {
-        const loop = () => {
-          if (!window.activeResizeSection) { window.resizeSyncLoop = null; return; }
-          const container = window.activeResizeSection.closest('.flex-wrap');
-          if (container) syncFlexWrapHeights(container);
-          window.resizeSyncLoop = requestAnimationFrame(loop);
-        };
-        window.resizeSyncLoop = requestAnimationFrame(loop);
-      }
-    });
-    section.addEventListener('touchstart', () => {
-      window.activeResizeSection = section;
-      if (!window.resizeSyncLoop) {
-        const loop = () => {
-          if (!window.activeResizeSection) { window.resizeSyncLoop = null; return; }
-          const container = window.activeResizeSection.closest('.flex-wrap');
-          if (container) syncFlexWrapHeights(container);
-          window.resizeSyncLoop = requestAnimationFrame(loop);
-        };
-        window.resizeSyncLoop = requestAnimationFrame(loop);
-      }
-    });
-    section.addEventListener('pointerdown', () => {
-      window.activeResizeSection = section;
-      if (!window.resizeSyncLoop) {
-        const loop = () => {
-          if (!window.activeResizeSection) { window.resizeSyncLoop = null; return; }
-          const container = window.activeResizeSection.closest('.flex-wrap');
-          if (container) syncFlexWrapHeights(container);
-          window.resizeSyncLoop = requestAnimationFrame(loop);
-        };
-        window.resizeSyncLoop = requestAnimationFrame(loop);
-      }
-    });
-    section.addEventListener('pointerdown', event => {
-      if (!isDesktopLayout()) return;
-      const container = section.closest('.flex-wrap');
-      if (!container) return;
-      const rect = section.getBoundingClientRect();
-      if (rect.bottom - event.clientY > 14) return;
-      recalcFlexWrapBase(container);
-      const baseHeight = parseInt(container.dataset.baseHeight || '0', 10);
-      const startHeight = Math.max(baseHeight, container.getBoundingClientRect().height);
-      container.dataset.manualHeight = `${startHeight}`;
-      window.groupResizeState = { container, startY: event.clientY, startHeight };
-      document.body.style.cursor = 'ns-resize';
-      event.preventDefault();
-    });
-  });
-
   document.querySelectorAll('.flex-wrap').forEach(container => {
-    container.style.resize = 'vertical';
-    container.style.overflow = 'auto';
     recalcFlexWrapBase(container);
     syncFlexWrapHeights(container);
-    const baseHeight = parseInt(container.dataset.baseHeight || '0', 10);
-    if (baseHeight) container.style.minHeight = `${baseHeight}px`;
   });
-
-  if (window.ResizeObserver) {
-    document.querySelectorAll('.flex-wrap').forEach(container => {
-      const observer = new ResizeObserver(() => {
-        recalcFlexWrapBase(container);
-        syncFlexWrapHeights(container);
-      });
-      observer.observe(container);
-      container.querySelectorAll('.section').forEach(section => observer.observe(section));
-    });
-  }
 
   window.addEventListener('resize', () => {
     if (!isDesktopLayout()) return;

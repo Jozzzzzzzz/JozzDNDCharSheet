@@ -154,8 +154,7 @@ function updateNoteBoxContainerHeight(textarea, textareaHeight) {
     || container.classList.contains('actions-notes-section')
     || container.classList.contains('quick-notes-section')
     || container.closest('#page6')
-    || container.closest('#page2')
-    || textarea.id === 'proficiencies_training';
+    || container.closest('#page2');
   if (flexibleContainer) {
     container.style.height = 'auto';
   } else {
@@ -186,10 +185,14 @@ function updateNoteBoxSizing(textarea) {
         : [];
 
       if (sameRowSiblings.length > 0) {
+        // Temporarily reset siblings to natural height so we don't ratchet off inflated values
+        const savedHeights = sameRowSiblings.map(s => ({ el: s, minH: s.style.minHeight, h: s.style.height }));
+        sameRowSiblings.forEach(s => { s.style.minHeight = ''; s.style.height = 'auto'; });
         const rowTargetHeight = sameRowSiblings.reduce((maxHeight, sibling) => {
-          const siblingHeight = Math.ceil(sibling.getBoundingClientRect().height);
+          const siblingHeight = Math.ceil(sibling.scrollHeight);
           return Math.max(maxHeight, siblingHeight);
         }, 0);
+        savedHeights.forEach(({ el, minH, h }) => { el.style.minHeight = minH; el.style.height = h; });
 
         const sectionStyle = window.getComputedStyle(section);
         const sectionPadding = (parseFloat(sectionStyle.paddingTop) || 0) + (parseFloat(sectionStyle.paddingBottom) || 0);
@@ -208,6 +211,26 @@ function updateNoteBoxSizing(textarea) {
   }
 
   updateNoteBoxContainerHeight(textarea, targetHeight);
+
+  // After setting this section's height, push siblings to match if we grew taller
+  if (textarea.id === 'proficiencies_training') {
+    const section = textarea.closest('.section');
+    if (section) {
+      const finalSectionHeight = Math.ceil(section.getBoundingClientRect().height);
+      const parent = section.parentElement;
+      const sectionTop = section.getBoundingClientRect().top;
+      if (parent) {
+        Array.from(parent.children).forEach(sibling => {
+          if (sibling === section || !sibling.classList.contains('section')) return;
+          if (Math.abs(sibling.getBoundingClientRect().top - sectionTop) >= 8) return;
+          if (Math.ceil(sibling.getBoundingClientRect().height) < finalSectionHeight) {
+            sibling.style.minHeight = `${finalSectionHeight}px`;
+            sibling.style.height = `${finalSectionHeight}px`;
+          }
+        });
+      }
+    }
+  }
 }
 
 function scheduleNoteBoxSizing(textarea) {

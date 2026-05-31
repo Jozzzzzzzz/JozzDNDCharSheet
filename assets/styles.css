@@ -379,6 +379,7 @@ button[onclick*="home"] {
     scrollbar-gutter: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
+    scroll-padding-top: 120px;
   }
 
   html::-webkit-scrollbar,
@@ -1321,7 +1322,7 @@ button[onclick*="home"] {
     border: 1px solid var(--accent-border);
     padding: 10px;
     box-sizing: border-box;
-    height: auto !important;
+    height: auto;
     max-height: none;
     overflow-x: hidden;
     overflow-y: hidden;
