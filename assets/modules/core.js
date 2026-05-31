@@ -1238,6 +1238,10 @@ function loadSelectedCharacter(charId) {
   resetDeleteUI();
   loadData();
   document.querySelector('.tab[data-tab="page1"]').click();
+
+  if (typeof onActiveCharacterChanged === 'function') {
+    onActiveCharacterChanged(charId);
+  }
 }
 
 function initiateDelete(charId) {
@@ -1595,10 +1599,15 @@ function autosave() {
 
   characters[charIndex].data = data;
   characters[charIndex].name = (characterInfo && characterInfo.name) || existing.characterInfo?.name || 'Unnamed';
+  characters[charIndex].updatedAt = new Date().toISOString();
   localStorage.setItem('dndCharacters', JSON.stringify(characters));
 
   if (window.currentUser && !window.__adminPreviewActive) {
-    syncToCloud(true);
+    if (typeof scheduleSyncToCloud === 'function') {
+      scheduleSyncToCloud();
+    } else {
+      syncToCloud(true);
+    }
   }
   } catch (err) {
     console.error('autosave crashed — data NOT saved:', err);
@@ -2474,8 +2483,6 @@ function updateWeaponsPreview() {
   
   preview.appendChild(mobileCards);
   }
-  
-  autosave();
 }
 
 // ========== EQUIPMENT SYSTEM ==========
@@ -2542,7 +2549,6 @@ function updateEquipmentPreviews() {
       }
     }
     updateEquipmentWeight();
-    autosave();
     return;
   }
   
@@ -2589,7 +2595,6 @@ function updateEquipmentPreviews() {
   }
 
   updateEquipmentWeight();
-  autosave();
 }
 
 function removeEquipmentItem(index) {
@@ -2599,6 +2604,7 @@ function removeEquipmentItem(index) {
   if (index >= 0 && index < window.equipmentData.length) {
     window.equipmentData.splice(index, 1);
     updateEquipmentPreviews();
+    autosave();
   }
 }
 

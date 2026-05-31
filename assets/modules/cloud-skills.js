@@ -14,6 +14,7 @@ const firebaseConfig = {
 let firebaseApp, auth, db;
 let currentUser = null;
 window.currentUser = null;
+let cloudSyncTimer = null;
 const OWNER_EMAIL = 'vanreejoz33@gmail.com';
 
 function bindAuthButtons() {
@@ -483,161 +484,269 @@ async function signOut() {
   }
 }
 
-// Cloud Sync Functions
-async function syncToCloud(silent = false) {
-  if (!currentUser) {
-    if (!silent) setSyncStatus('Please sign in first');
-    return;
-  }
+// ========== CLOUD SYNC (subcollection-per-character) ==========
+//
+// Firestore layout:
+//   userData/{uid}                         — user prefs (theme, accentColor)
+//   userData/{uid}/characters/{charId}     — one document per character
 
-  try {
-    if (!silent) setSyncStatus('Uploading to cloud...');
+let cloudSyncTimer = null;
+let activeCharacterUnsubscribe = null;
+// Timestamp of the last save WE initiated — used to suppress the echo
+// from our own writes coming back through onSnapshot.
+let lastOwnSaveAt = 0;
 
-    const characters = window.getStoredJSON ? window.getStoredJSON('dndCharacters', []) : (JSON.parse(localStorage.getItem('dndCharacters') || '[]'));
-    const theme = localStorage.getItem('dndTheme') || 'dark';
-    const accentColor = localStorage.getItem('dndAccentColor') || '#ffd700';
+// ---- helpers ----
 
-    const localModified = Date.now();
-    localStorage.setItem('dndLastModified', localModified);
-
-    const userData = {
-      characters: characters,
-      theme: theme,
-      accentColor: accentColor,
-      lastSync: firebase.firestore.FieldValue.serverTimestamp(),
-      lastModified: localModified,
-      version: '1.0'
-    };
-
-    await db.collection('userData').doc(currentUser.uid).set(userData);
-
-    if (!silent) setSyncStatus(`Uploaded ${characters.length} characters to cloud`);
-  } catch (error) {
-    console.error('Upload error:', error);
-    if (!silent) setSyncStatus('Upload failed: ' + error.message);
-  }
+function charCollection() {
+  return db.collection('userData').doc(currentUser.uid).collection('characters');
 }
 
-async function syncFromCloud(silent = false) {
-  if (!currentUser) {
-    if (!silent) setSyncStatus('Please sign in first');
-    return;
-  }
-  
-  try {
-    if (!silent) setSyncStatus('Downloading from cloud...');
-    
-    // Get data from Firestore
-    const doc = await db.collection('userData').doc(currentUser.uid).get();
-    
-    if (!doc.exists) {
-      if (!silent) setSyncStatus('No cloud data found');
-      return;
-    }
-    
-    const userData = doc.data();
-    const cloudCharacters = userData.characters || [];
-
-    if (silent) {
-      // Compare timestamps to decide whether cloud is newer
-      const localModified = parseInt(localStorage.getItem('dndLastModified') || '0', 10);
-      const cloudModified = userData.lastModified || 0;
-
-      if (cloudModified <= localModified) {
-        // Local is same or newer — nothing to do
-        return;
-      }
-
-      // Cloud is newer — pull it in silently
-      localStorage.setItem('dndCharacters', JSON.stringify(cloudCharacters));
-      if (userData.theme) localStorage.setItem('dndTheme', userData.theme);
-      if (userData.accentColor) localStorage.setItem('dndAccentColor', userData.accentColor);
-      localStorage.setItem('dndLastModified', String(cloudModified));
-
-      loadCharacterList();
-      if (cloudCharacters.length > 0) {
-        currentCharacter = cloudCharacters[0].id;
-        loadData();
-        setupSkillCalculationFields();
-        enforceAutoMathNumericInputs();
-      }
-
-      showCloudToast('Cloud sync pulled latest data');
-    } else {
-      // Manual sync — ask the user
-      const localCharacters = window.getStoredJSON ? window.getStoredJSON('dndCharacters', []) : (JSON.parse(localStorage.getItem('dndCharacters') || '[]'));
-      const shouldReplace = localCharacters.length === 0 || confirm(
-        `Replace ${localCharacters.length} local character(s) with ${cloudCharacters.length} from cloud?`
-      );
-
-      if (shouldReplace) {
-        localStorage.setItem('dndCharacters', JSON.stringify(cloudCharacters));
-        if (userData.theme) localStorage.setItem('dndTheme', userData.theme);
-        if (userData.accentColor) localStorage.setItem('dndAccentColor', userData.accentColor);
-        if (userData.lastModified) localStorage.setItem('dndLastModified', String(userData.lastModified));
-
-        setSyncStatus(`Downloaded ${cloudCharacters.length} characters`);
-        setTimeout(() => {
-          if (confirm('Reload page to apply synced data?')) {
-            location.reload();
-          }
-        }, 1000);
-      }
-    }
-  } catch (error) {
-    console.error('Download error:', error);
-    if (!silent) setSyncStatus('Download failed: ' + error.message);
-  }
+function userMetaRef() {
+  return db.collection('userData').doc(currentUser.uid);
 }
 
 function showCloudToast(message) {
+  const existing = document.getElementById('__cloudToast');
+  if (existing) existing.remove();
   const toast = document.createElement('div');
+  toast.id = '__cloudToast';
   toast.textContent = message;
   toast.style.cssText = 'position:fixed;bottom:20px;right:20px;background:var(--accent);color:var(--accent-contrast);padding:8px 14px;border-radius:6px;font-size:13px;z-index:9999;opacity:1;transition:opacity 0.4s';
   document.body.appendChild(toast);
   setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 400); }, 3000);
 }
 
-// Stats/math functions moved to assets/modules/stats.js
+// ---- migration from old single-doc format ----
+
+async function migrateOldFormatIfNeeded() {
+  try {
+    const oldDoc = await userMetaRef().get();
+    if (!oldDoc.exists) return;
+    const data = oldDoc.data() || {};
+    if (!Array.isArray(data.characters) || data.characters.length === 0) return;
+
+    // Fan out each character into its own subcollection doc
+    const batch = db.batch();
+    const FieldValue = firebase.firestore.FieldValue;
+    data.characters.forEach(char => {
+      if (!char || !char.id) return;
+      const ref = charCollection().doc(char.id);
+      batch.set(ref, {
+        ...char,
+        updatedAt: FieldValue.serverTimestamp()
+      }, { merge: true });
+    });
+    // Remove the old characters array from the meta doc
+    batch.update(userMetaRef(), { characters: FieldValue.delete() });
+    await batch.commit();
+    console.log('[sync] Migrated', data.characters.length, 'characters to subcollection');
+  } catch (err) {
+    console.warn('[sync] Migration check failed (non-fatal):', err);
+  }
+}
+
+// ---- write: save active character to cloud ----
+
+function scheduleSyncToCloud() {
+  if (cloudSyncTimer) clearTimeout(cloudSyncTimer);
+  cloudSyncTimer = setTimeout(() => {
+    cloudSyncTimer = null;
+    syncActiveCharacterToCloud();
+  }, 2000);
+}
+
+async function syncActiveCharacterToCloud() {
+  if (!currentUser || !window.currentCharacter) return;
+  try {
+    const characters = window.getStoredJSON
+      ? window.getStoredJSON('dndCharacters', [])
+      : JSON.parse(localStorage.getItem('dndCharacters') || '[]');
+    const char = characters.find(c => c.id === window.currentCharacter);
+    if (!char) return;
+
+    const FieldValue = firebase.firestore.FieldValue;
+    // Record the moment we fire this write — the snapshot echo will arrive
+    // within a few seconds and must be ignored.
+    lastOwnSaveAt = Date.now();
+    await charCollection().doc(char.id).set({
+      ...char,
+      updatedAt: FieldValue.serverTimestamp()
+    });
+
+    // Keep user meta (theme/accent) in sync
+    const theme = localStorage.getItem('dndTheme') || 'dark';
+    const accentColor = localStorage.getItem('dndAccentColor') || '#ffd700';
+    await userMetaRef().set({ theme, accentColor, lastModified: FieldValue.serverTimestamp() }, { merge: true });
+  } catch (err) {
+    console.error('[sync] Upload failed:', err);
+  }
+}
+
+// Legacy name used by manual sync-up button in settings
+async function syncToCloud(silent = false) {
+  if (!currentUser) {
+    if (!silent) setSyncStatus('Please sign in first');
+    return;
+  }
+  try {
+    if (!silent) setSyncStatus('Uploading to cloud...');
+    await syncActiveCharacterToCloud();
+    if (!silent) setSyncStatus('Uploaded to cloud');
+  } catch (err) {
+    console.error('[sync] syncToCloud error:', err);
+    if (!silent) setSyncStatus('Upload failed: ' + err.message);
+  }
+}
+
+// ---- read: pull all characters from cloud on boot ----
+
+async function syncFromCloud(silent = false) {
+  if (!currentUser) {
+    if (!silent) setSyncStatus('Please sign in first');
+    return;
+  }
+  try {
+    if (!silent) setSyncStatus('Downloading from cloud...');
+
+    await migrateOldFormatIfNeeded();
+
+    const snapshot = await charCollection().get();
+    if (snapshot.empty) {
+      if (!silent) setSyncStatus('No cloud data found');
+      return;
+    }
+
+    const cloudChars = snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
+
+    // Pull theme/accent from meta doc
+    const metaSnap = await userMetaRef().get();
+    const meta = metaSnap.exists ? (metaSnap.data() || {}) : {};
+    if (meta.theme) localStorage.setItem('dndTheme', meta.theme);
+    if (meta.accentColor) localStorage.setItem('dndAccentColor', meta.accentColor);
+
+    // Merge cloud chars with local: newer updatedAt wins per character
+    const localChars = window.getStoredJSON
+      ? window.getStoredJSON('dndCharacters', [])
+      : JSON.parse(localStorage.getItem('dndCharacters') || '[]');
+
+    const merged = mergeByUpdatedAt(localChars, cloudChars);
+    localStorage.setItem('dndCharacters', JSON.stringify(merged));
+
+    if (!silent) {
+      setSyncStatus(`Synced ${merged.length} character(s)`);
+    }
+
+    loadCharacterList();
+
+    // Load the last-used character, or first in list
+    const lastId = localStorage.getItem('dndLastSelectedCharacter');
+    const target = (lastId && merged.find(c => c.id === lastId)) ? lastId : (merged[0]?.id || null);
+    if (target) {
+      window.currentCharacter = target;
+      rememberSelectedCharacter(target);
+      loadData();
+      if (typeof setupSkillCalculationFields === 'function') setupSkillCalculationFields();
+      if (typeof enforceAutoMathNumericInputs === 'function') enforceAutoMathNumericInputs();
+      startActiveCharacterListener(target);
+    }
+
+    if (silent) showCloudToast('Synced from cloud');
+  } catch (err) {
+    console.error('[sync] Download failed:', err);
+    if (!silent) setSyncStatus('Download failed: ' + err.message);
+  }
+}
+
+// Merge two character arrays: for each id, keep the one with the newer updatedAt.
+// Characters only in one list are included as-is.
+function mergeByUpdatedAt(local, cloud) {
+  const map = new Map();
+  const ts = c => {
+    if (!c) return 0;
+    // Firestore Timestamp object
+    if (c.updatedAt && typeof c.updatedAt.toMillis === 'function') return c.updatedAt.toMillis();
+    if (c.updatedAt) return Date.parse(c.updatedAt) || 0;
+    if (c.createdAt) return Date.parse(c.createdAt) || 0;
+    return 0;
+  };
+  [...(local || []), ...(cloud || [])].forEach(c => {
+    if (!c || !c.id) return;
+    const existing = map.get(c.id);
+    if (!existing || ts(c) >= ts(existing)) map.set(c.id, c);
+  });
+  return Array.from(map.values());
+}
+
+// ---- live listener: watch the active character only ----
+
+function startActiveCharacterListener(charId) {
+  stopActiveCharacterListener();
+  if (!currentUser || !charId) return;
+
+  activeCharacterUnsubscribe = charCollection().doc(charId).onSnapshot(snap => {
+    if (!snap.exists) return;
+    if (window.currentCharacter !== charId) return;
+
+    // Suppress echoes from our own saves — any snapshot arriving within
+    // 10 seconds of our last write is almost certainly our own echo.
+    if (Date.now() - lastOwnSaveAt < 10000) return;
+
+    const cloudChar = { ...snap.data(), id: snap.id };
+    const chars = window.getStoredJSON
+      ? window.getStoredJSON('dndCharacters', [])
+      : JSON.parse(localStorage.getItem('dndCharacters') || '[]');
+
+    // Another device is ahead — apply silently
+    const updated = chars.map(c => c.id === charId ? cloudChar : c);
+    localStorage.setItem('dndCharacters', JSON.stringify(updated));
+
+    loadData();
+    if (typeof setupSkillCalculationFields === 'function') setupSkillCalculationFields();
+    if (typeof enforceAutoMathNumericInputs === 'function') enforceAutoMathNumericInputs();
+    showCloudToast('Sheet updated from another device');
+  }, err => {
+    console.warn('[sync] Live listener error:', err);
+  });
+}
+
+function stopActiveCharacterListener() {
+  if (activeCharacterUnsubscribe) {
+    activeCharacterUnsubscribe();
+    activeCharacterUnsubscribe = null;
+  }
+}
+
+// Called by loadSelectedCharacter in core.js whenever the active character changes
+function onActiveCharacterChanged(charId) {
+  if (!currentUser || !charId) return;
+  startActiveCharacterListener(charId);
+}
+
+// ---- boot ----
 
 Object.assign(window, {
   signInWithGoogle,
   signOut,
   syncToCloud,
-  syncFromCloud
+  syncFromCloud,
+  scheduleSyncToCloud,
+  onActiveCharacterChanged,
+  stopActiveCharacterListener
 });
 
-
-// Initialize Firebase when page loads or immediately if already loaded
 function registerServiceWorker() {
-  if (!('serviceWorker' in navigator)) {
-    return Promise.resolve();
-  }
-
-  return navigator.serviceWorker.register('/sw.js')
-    .then(function(registration) {
-      return registration;
-    })
-    .catch(function(error) {
-      console.warn('Service Worker registration failed:', error);
-    });
-}
-
-function enableAutoSync() {
-  setInterval(() => {
-    if (window.currentUser) {
-      syncToCloud();
-    }
-  }, 5 * 60 * 1000);
+  if (!('serviceWorker' in navigator)) return Promise.resolve();
+  return navigator.serviceWorker.register('/sw.js').catch(err => {
+    console.warn('Service Worker registration failed:', err);
+  });
 }
 
 function initCloudFirebase() {
   initializeFirebase();
-  enableAutoSync();
   registerServiceWorker();
 }
 
-// Initialize immediately if DOM is ready, otherwise wait for the event
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initCloudFirebase);
 } else {

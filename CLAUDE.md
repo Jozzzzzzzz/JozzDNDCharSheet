@@ -28,10 +28,10 @@ All JS lives in `assets/`. Files are loaded **in this exact order** via dynamic 
 |------|------|-------|
 | `assets/banner-messages.js` | Static banner message array | small |
 | `assets/modules/stats.js` | Ability scores, saving throws, skills, proficiency bonus, numeric input helpers (`calculateAbilityBonus`, `calculateSavingThrow`, `calculateSkillBonus`, `enforceAutoMathNumericInputs`, etc.) | ~290 |
-| `assets/modules/cloud-skills.js` | Firebase Auth + Firestore sync only (`syncToCloud`, `syncFromCloud`, `signInWithGoogle`, `signOut`) | ~570 |
-| `assets/modules/core.js` | localStorage helpers, note box system, theme/accent, character CRUD (`loadData`, `autosave`, `createNewCharacter`, etc.), popup/tab system, `escapeHtml`, `initializeWebApp`, weapons/equipment system | ~2860 |
+| `assets/modules/cloud-skills.js` | Firebase Auth + Firestore sync (`syncToCloud`, `syncFromCloud`, `scheduleSyncToCloud`, `signInWithGoogle`, `signOut`, `onActiveCharacterChanged`) | ~700 |
+| `assets/modules/core.js` | localStorage helpers, note box system, theme/accent, character CRUD (`loadData`, `autosave`, `createNewCharacter`, etc.), popup/tab system, `escapeHtml`, `initializeWebApp`, weapons/equipment system | ~3125 |
 | `assets/modules/layout.js` | Flex-wrap sizing, section resize handles (`makeContainersResizable`, `applyFlexWrapSizing`), `setupAutoResize` | ~241 |
-| `assets/modules/characters.js` | Currency system (CP/SP/GP + custom — saved under `page4.currency`), banner wealth messages, suggestion form, autosave scheduling, cloud sync helpers, deleted-character tracking | ~389 |
+| `assets/modules/characters.js` | Currency system (CP/SP/GP + custom — saved under `page4.currency`), banner wealth messages, suggestion form, autosave scheduling (`scheduleAutosave`, `bindGlobalAutosaveListeners`), deleted-character tracking | ~379 |
 | `assets/modules/health.js` | HP display, death saves, potion use, short/long rest | ~292 |
 | `assets/modules/actions.js` | Combat actions/reactions tracking | ~270 |
 | `assets/modules/inventory.js` | Inventory CRUD, equipment, storage containers, coin tracking, portrait upload/remove, settings dropdown | ~1180 |
@@ -45,9 +45,41 @@ All JS lives in `assets/`. Files are loaded **in this exact order** via dynamic 
 
 ### Data Storage
 
-All character data persists in `localStorage`. Keys follow a per-character pattern (character name as part of key). Firebase Firestore is used only for optional cloud backup — the app is fully functional offline.
+All character data persists in `localStorage`. The app is fully functional offline; Firestore is an optional cloud layer on top.
 
 Firebase config is hardcoded in `cloud-skills.js`. The owner email (`vanreejoz33@gmail.com`) gates certain admin behaviors.
+
+#### localStorage key map (complete)
+Flat keys (not per-character):
+- `dndCharacters` — array of all character objects (each has `id`, `name`, `createdAt`, `updatedAt`, `data`)
+- `dndTheme`, `dndAccentColor`, `dndTextScalePercent` — UI settings
+- `dndLastSelectedCharacter`, `dndLastSelectedCharacterAt`, `dndFavoriteCharacters` — character selection state
+- `dndDeletedCharacters` — map of `{ [charId]: isoTimestamp }` for sync tombstoning
+- `dndDeviceId` — stable per-device ID used for presence tracking
+
+Per-character data is **not** namespaced by character ID in localStorage. All character data lives inside the `data` field of each entry in `dndCharacters`. Always use `getStoredJSON`/`setStoredJSON` helpers for reads/writes.
+
+#### Firestore structure
+```
+userData/{uid}                          — user prefs: theme, accentColor, lastModified
+userData/{uid}/characters/{charId}      — one document per character (mirrors localStorage shape + server updatedAt)
+userProfiles/{uid}                      — display name / nickname
+auth_signins/{uid}                      — sign-in history and per-device presence
+```
+
+**Rules:** the `characters` subcollection requires an explicit `match /characters/{charId}` rule in Firestore security rules — without it subcollection writes are denied even if the parent `userData/{uid}` rule allows writes.
+
+#### Cloud sync flow
+1. **Edit → save:** every field change debounces through `scheduleAutosave()` (400 ms) → `autosave()` writes localStorage + stamps `updatedAt` → `scheduleSyncToCloud()` (2 s debounce) → writes **only** the active character's Firestore doc.
+2. **Boot → pull:** `syncFromCloud(true)` runs 1 s after sign-in. Reads all docs from the `characters` subcollection, merges with local by `updatedAt` (newer wins per character), then restores the last-selected character.
+3. **Live updates:** `onSnapshot` watches the active character's doc only (`startActiveCharacterListener`). Echoes from our own saves are suppressed for 10 s after `lastOwnSaveAt`; only genuine remote changes reload the sheet.
+4. **Character switch:** `loadSelectedCharacter()` calls `onActiveCharacterChanged(charId)` which restarts the listener on the new character.
+5. **Migration:** `migrateOldFormatIfNeeded()` runs at boot — if the old single-doc `userData/{uid}.characters` array exists it fans it out into subcollection docs and removes the array.
+
+#### Key sync globals
+- `lastOwnSaveAt` — `Date.now()` timestamp of last write we initiated; used to suppress snapshot echoes
+- `activeCharacterUnsubscribe` — cleanup handle for the active onSnapshot listener
+- `cloudSyncTimer` — debounce handle for `scheduleSyncToCloud`
 
 ### Styling
 
@@ -57,9 +89,16 @@ Single stylesheet: `assets/styles.css`. Theming uses CSS custom properties (`--a
 
 `sw.js` is a minimal service worker — it registers but passes all fetches through to the browser. The `.sixth` directory appears to be a PWA/build artifact directory; don't modify it.
 
+## Known Gotchas
+
+- **`updateWeaponsPreview()` and `updateEquipmentPreviews()` must NOT call `autosave()`** — these are pure render functions called during `clearAllFormFields()` inside `loadData()`. Calling autosave there writes empty characterInfo to localStorage and destroys saved data. Callers that need to persist after rendering (e.g. `saveWeaponFromForm`, `removeEquipmentItem`) call `autosave()` explicitly after.
+- **All pages are in the DOM simultaneously** — `index.html` loads all page HTML at boot and hides/shows via CSS `display`. So `document.getElementById('char_name')` always resolves even when the stats page is not visible.
+- **`autosave()` uses `val(id) !== null` not `val(id)` to decide whether to save or preserve** — empty string `""` is a valid save (user cleared the field); `null` means the element isn't in the DOM (page not loaded yet). Don't change this to a falsy check.
+- **Script version cache-busting** — `index.html` has a `scriptVersion` constant appended as `?v=` to all script URLs. Bump it whenever JS files change so browsers don't serve stale cached scripts.
+
 ## Working Efficiently
 
-`assets/modules/core.js` (~3514 lines) is the largest file — never read it whole. Use `grep` to find the relevant function first, then read only that section. `assets/styles.css` is 126KB — same rule. `assets/data/spells.json` (482 spells, 365KB) is the canonical spell reference database — edit it directly to add or fix spells, no JS changes needed.
+`assets/modules/core.js` (~3125 lines) is the largest file — never read it whole. Use `grep` to find the relevant function first, then read only that section. `assets/styles.css` is 126KB — same rule. `assets/data/spells.json` (482 spells, 365KB) is the canonical spell reference database — edit it directly to add or fix spells, no JS changes needed.
 
 To locate any function:
 ```
@@ -72,10 +111,3 @@ grep -rn "function targetName" assets/
 - `window.initializeApp` — defined in `app.js`. Called by `index.html` after all modules load. Single definition only.
 - `initializeWebApp()` — in `core.js`. Called by `initializeApp` to set up web features.
 
-### localStorage key map
-Flat keys (not per-character):
-- `dndCharacters` — array of all character metadata objects
-- `dndTheme`, `dndAccentColor`, `dndTextScalePercent` — UI settings
-- `dndLastSelectedCharacter`, `dndLastSelectedCharacterAt`, `dndFavoriteCharacters` — character selection state
-
-Per-character data is stored under flat keys (`dndInventory`, `dndActions`, `dndSpells`, etc.) — the active character is tracked via `currentCharacter` rather than namespaced keys. Always use `getStoredJSON`/`setStoredJSON` helpers for reads/writes.
