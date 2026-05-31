@@ -1275,48 +1275,53 @@ function initiateDelete(charId) {
     btn.classList.remove('warning');
     btn.disabled = false;
   } else if (deleteState === 1) {
-    // Step 2: confirm clicked — start 3-second countdown then delete
+    // Step 2: confirm clicked — countdown, then enable final delete button
     deleteState = 2;
     btn.dataset.counting = '1';
     btn.disabled = true;
-    message.textContent = `Deleting "${target.name || 'Character'}" in 3 seconds...`;
 
     let secs = 3;
-    btn.textContent = `Deleting in ${secs}s...`;
+    btn.textContent = `Wait ${secs}s...`;
+    message.textContent = `Are you really sure? You can still cancel.`;
 
     const tick = setInterval(() => {
       secs--;
       if (secs > 0) {
-        btn.textContent = `Deleting in ${secs}s...`;
-        message.textContent = `Deleting "${target.name || 'Character'}" in ${secs} second${secs !== 1 ? 's' : ''}...`;
+        btn.textContent = `Wait ${secs}s...`;
       } else {
         clearInterval(tick);
         delete btn.dataset.counting;
-
-        const finalChars = getStoredJSON('dndCharacters', []);
-        const updatedChars = finalChars.filter(c => c.id !== deleteTargetCharacterId);
-        localStorage.setItem('dndCharacters', JSON.stringify(updatedChars));
-        setFavoriteCharacterIds(getFavoriteCharacterIds().filter(id => id !== deleteTargetCharacterId));
-
-        closePopup('deleteCharacterPopup');
-        resetDeleteUI();
-
-        if (updatedChars.length > 0) {
-          currentCharacter = updatedChars[0].id;
-          rememberSelectedCharacter(currentCharacter);
-          loadCharacterList();
-          loadData();
-          window.setupSkillCalculationFields();
-          window.enforceAutoMathNumericInputs();
-          document.querySelector('.tab[data-tab="page1"]').click();
-        } else {
-          currentCharacter = null;
-          clearRememberedSelectedCharacter();
-          loadCharacterList();
-          showHomePage();
-        }
+        deleteState = 3;
+        btn.disabled = false;
+        btn.textContent = `Delete Forever`;
+        message.textContent = `Last chance — click to permanently delete "${target.name || 'Character'}".`;
       }
     }, 1000);
+
+  } else if (deleteState === 3) {
+    // Step 3: final button clicked after countdown — actually delete
+    const finalChars = getStoredJSON('dndCharacters', []);
+    const updatedChars = finalChars.filter(c => c.id !== deleteTargetCharacterId);
+    localStorage.setItem('dndCharacters', JSON.stringify(updatedChars));
+    setFavoriteCharacterIds(getFavoriteCharacterIds().filter(id => id !== deleteTargetCharacterId));
+
+    closePopup('deleteCharacterPopup');
+    resetDeleteUI();
+
+    if (updatedChars.length > 0) {
+      currentCharacter = updatedChars[0].id;
+      rememberSelectedCharacter(currentCharacter);
+      loadCharacterList();
+      loadData();
+      window.setupSkillCalculationFields();
+      window.enforceAutoMathNumericInputs();
+      document.querySelector('.tab[data-tab="page1"]').click();
+    } else {
+      currentCharacter = null;
+      clearRememberedSelectedCharacter();
+      loadCharacterList();
+      showHomePage();
+    }
   }
 }
 
