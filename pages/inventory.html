@@ -31,6 +31,12 @@
         <span>lbs</span>
       </div>
 
+      <div class="inventory-settings" style="margin-top: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <input type="checkbox" id="encumbrance_toggle" onchange="toggleEncumbrance()" style="width: auto; margin: 0;"/>
+        <label for="encumbrance_toggle" style="margin: 0; cursor: pointer;">Use D&amp;D 5e Encumbrance Rules</label>
+        <span id="encumbrance_status" style="font-size: 0.85em; opacity: 0.8;"></span>
+      </div>
+
       <div class="currency-section">
         <div class="currency-header">
           <label>Currency</label>
@@ -82,8 +88,9 @@
       </div>
     </div>
 
-    <div class="inventory-controls">
+    <div class="inventory-controls" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
       <button onclick="showItemForm('main')">+ Add Item</button>
+      <input type="search" id="main_inventory_search" placeholder="Filter items..." oninput="filterInventory('main')" style="flex: 1; min-width: 120px;"/>
     </div>
 
     <div class="inventory-list-container" id="main_inventory_list">
@@ -106,6 +113,17 @@
       <button onclick="showAddStoragePopup()">
         + Add Additional Storage
       </button>
+    </div>
+  </div>
+
+  <!-- Purchase History Section -->
+  <div class="section" id="purchase_history_section">
+    <h2>Purchase History</h2>
+    <div id="purchase_history_list">
+      <p style="text-align: center; color: var(--text); opacity: 0.7;">No purchases recorded yet. Use the + button on a stackable item to record a purchase.</p>
+    </div>
+    <div style="margin-top: 10px; text-align: right;">
+      <button onclick="clearPurchaseHistory()" style="font-size: 0.8em; opacity: 0.7;">Clear History</button>
     </div>
   </div>
 </div>

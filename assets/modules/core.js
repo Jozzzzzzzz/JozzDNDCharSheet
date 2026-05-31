@@ -1505,15 +1505,15 @@ function autosave() {
       gold: document.getElementById('gold_field').value,
       equipment: equipmentData,
       inventory: [],
-      containers: Array.from(document.querySelectorAll('#extra_containers .section')).map(container => ({
-        name: container.querySelector('h3').textContent,
-        maxWeight: container.querySelector('div').textContent.includes('Max Weight') ? 
-                   parseInt(container.querySelector('div').textContent.match(/\d+/)[0]) : 0,
-        items: Array.from(container.querySelectorAll('tbody tr')).map(row => ({
-          name: row.cells[0].textContent,
-          description: row.cells[1].textContent,
-          notes: row.cells[2].textContent,
-          weight: parseFloat(row.cells[3].textContent) || 0
+      // Use live inventoryData for containers — legacy DOM scrape was unreliable
+      containers: (typeof inventoryData !== 'undefined' ? (inventoryData.storageContainers || []) : []).map(sc => ({
+        name: sc.name,
+        maxWeight: sc.maxWeight || 0,
+        items: (sc.items || []).map(item => ({
+          name: item.name,
+          description: item.description || '',
+          notes: '',
+          weight: (item.weight || 0) * (item.stackable ? (item.quantity || 1) : 1)
         }))
       }))
     },
@@ -1748,12 +1748,24 @@ function loadData() {
     
     // Inventory Data
     if (data.page1.inventoryData) {
-      inventoryData = data.page1.inventoryData;
+      inventoryData = {
+        equipment: [],
+        mainInventory: [],
+        storageContainers: [],
+        maxWeightCapacity: 0,
+        purchaseHistory: [],
+        encumbranceEnabled: false,
+        ...data.page1.inventoryData
+      };
       displayEquipment();
       displayEquipmentStats();
       displayMainInventory();
       loadStorageContainers();
       updateWeightDisplay();
+      if (typeof displayPurchaseHistory === 'function') displayPurchaseHistory();
+      // Restore encumbrance toggle
+      const encToggle = document.getElementById('encumbrance_toggle');
+      if (encToggle) encToggle.checked = !!inventoryData.encumbranceEnabled;
     } else {
       // If no inventory data, try to load from stats page equipment
       if (window.equipmentData && window.equipmentData.length > 0) {

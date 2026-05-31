@@ -3,7 +3,8 @@ let inventoryData = {
   equipment: [],
   mainInventory: [],
   storageContainers: [],
-  maxWeightCapacity: 0
+  maxWeightCapacity: 0,
+  purchaseHistory: []
 };
 
 // Initialize inventory system
@@ -14,7 +15,12 @@ function initializeInventory() {
   displayMainInventory();
   loadStorageContainers();
   updateWeightDisplay();
-  
+  displayPurchaseHistory();
+
+  // Restore encumbrance toggle state
+  const encToggle = document.getElementById('encumbrance_toggle');
+  if (encToggle) encToggle.checked = !!inventoryData.encumbranceEnabled;
+
   // Add event delegation for equipment buttons (only once)
   const equipmentContainer = document.getElementById('equipment_list');
   if (equipmentContainer) {
@@ -107,10 +113,11 @@ function loadStorageContainers() {
           <button class="delete-container-btn" onclick="confirmContainerDeletion('${storage.id}')">Delete Container</button>
         </div>
         
-        <div class="inventory-controls">
+        <div class="inventory-controls" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <button onclick="showItemForm('${storage.id}')">+ Add Item</button>
+          <input type="search" id="search_${storage.id}" placeholder="Filter items..." oninput="filterInventory('${storage.id}')" style="flex:1;min-width:120px;"/>
         </div>
-        
+
         <div class="inventory-list-container" id="${storage.id}_items">
           <!-- Items will be populated here -->
         </div>
@@ -421,10 +428,19 @@ function showItemForm(container) {
   document.getElementById('item_type').value = 'consumable';
   document.getElementById('item_weight').value = '';
   document.getElementById('item_description').value = '';
+  document.getElementById('item_value').value = '';
+  document.getElementById('item_stackable').checked = false;
+  document.getElementById('item_quantity').value = 1;
+  document.getElementById('item_quantity_row').style.display = 'none';
   document.getElementById('saveItemBtn').textContent = 'Add Item';
   document.getElementById('saveItemBtn').setAttribute('data-container', container);
   document.getElementById('saveItemBtn').removeAttribute('data-edit-id');
   showPopup('itemFormPopup');
+}
+
+function toggleItemStackable() {
+  const stackable = document.getElementById('item_stackable').checked;
+  document.getElementById('item_quantity_row').style.display = stackable ? 'flex' : 'none';
 }
 
 // Save item
@@ -448,35 +464,47 @@ function saveItem() {
   const description = descriptionElement.value.trim();
   const container = saveBtnElement.getAttribute('data-container');
   const editId = saveBtnElement.getAttribute('data-edit-id');
-  
+  const stackable = document.getElementById('item_stackable').checked;
+  const quantity = stackable ? (parseInt(document.getElementById('item_quantity').value) || 1) : 1;
+  const value = parseFloat(document.getElementById('item_value').value) || 0;
+
   if (!name) {
     alert('Please enter a name for the item.');
     return;
   }
-  
+
   const itemData = {
     id: editId || Date.now().toString(),
     name: name,
     type: type,
     weight: weight,
-    description: description
+    description: description,
+    stackable: stackable,
+    quantity: quantity,
+    value: value
   };
   
+  // Effective weight for this item (unit × qty for stackables)
+  const effectiveWeight = weight * quantity;
+
   // Check weight limits
   if (container === 'main') {
     const currentWeight = calculateMainInventoryWeight();
+    // When editing, subtract the old item's weight first
+    const oldWeight = editId ? itemEffectiveWeight(inventoryData.mainInventory.find(i => i.id === editId) || {}) : 0;
     const maxWeight = inventoryData.maxWeightCapacity;
-    if (maxWeight > 0 && currentWeight + weight > maxWeight) {
+    if (maxWeight > 0 && (currentWeight - oldWeight + effectiveWeight) > maxWeight) {
       document.getElementById('weightWarningMessage').textContent = 'Sorry, that item won\'t fit into your main inventory.';
       showPopup('weightWarningPopup');
       return;
     }
   } else {
-    // Check storage container weight
     const storageContainer = inventoryData.storageContainers.find(s => s.id === container);
     if (storageContainer) {
       const currentWeight = calculateStorageWeight(container);
-      if (storageContainer.maxWeight > 0 && currentWeight + weight > storageContainer.maxWeight) {
+      const oldItem = editId ? (storageContainer.items || []).find(i => i.id === editId) : null;
+      const oldWeight = oldItem ? itemEffectiveWeight(oldItem) : 0;
+      if (storageContainer.maxWeight > 0 && (currentWeight - oldWeight + effectiveWeight) > storageContainer.maxWeight) {
         document.getElementById('weightWarningMessage').textContent = `Sorry, that item won't fit into ${storageContainer.name}.`;
         showPopup('weightWarningPopup');
         return;
@@ -545,16 +573,48 @@ function displayMainInventory() {
 function createItemCard(item, container) {
   const card = document.createElement('div');
   card.className = 'item-card';
+  card.dataset.itemName = (item.name || '').toLowerCase();
+  card.dataset.itemType = (item.type || '').toLowerCase();
+
+  const qty = item.stackable ? (item.quantity || 1) : 1;
+  const totalWeight = ((item.weight || 0) * qty).toFixed(2).replace(/\.00$/, '');
+  const weightLabel = item.stackable && qty > 1
+    ? `${totalWeight} lbs (${item.weight} × ${qty})`
+    : `${totalWeight} lbs`;
+  const valueText = item.value > 0
+    ? `<div class="item-stat"><span class="item-stat-label">Value:</span><span class="item-stat-value">${item.value} gp${item.stackable && qty > 1 ? ` × ${qty} = ${(item.value * qty).toFixed(2).replace(/\.00$/, '')} gp` : ''}</span></div>`
+    : '';
+  const qtyBadge = item.stackable ? `<span class="item-qty-badge">×${qty}</span>` : '';
+  const refillBtn = item.stackable
+    ? `<button class="item-btn refill-btn" onclick="showRefillPopup('${item.id}', '${container}')" title="Refill stack">+</button>`
+    : '';
+
+  // Build move-to options (all destinations except current)
+  const destinations = [{ id: 'main', name: 'Main Inventory' }]
+    .concat((inventoryData.storageContainers || []).map(s => ({ id: s.id, name: s.name })))
+    .filter(d => d.id !== container);
+  const moveOptions = destinations.map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join('');
+  const moveSelect = destinations.length > 0
+    ? `<select class="item-move-select" onchange="moveItem('${item.id}', '${container}', this.value); this.value='';" title="Move to...">
+         <option value="" disabled selected>Move to...</option>
+         ${moveOptions}
+       </select>`
+    : '';
+
   card.innerHTML = `
     <div class="item-header">
-      <h4 class="item-name">${item.name}</h4>
-      <span class="item-type">${item.type}</span>
+      <h4 class="item-name">${escapeHtml(item.name)}</h4>
+      <span class="item-type">${escapeHtml(item.type)}</span>
+      ${qtyBadge}
     </div>
     <div class="item-stats">
-      <div class="item-stat"><span class="item-stat-label">Weight:</span><span class="item-stat-value">${item.weight} lbs</span></div>
+      <div class="item-stat"><span class="item-stat-label">Weight:</span><span class="item-stat-value">${weightLabel}</span></div>
+      ${valueText}
     </div>
-    ${item.description ? `<div class="item-description">${item.description}</div>` : ''}
+    ${item.description ? `<div class="item-description">${escapeHtml(item.description)}</div>` : ''}
     <div class="item-actions">
+      ${refillBtn}
+      ${moveSelect}
       <button class="item-btn edit-btn" onclick="editItem('${item.id}', '${container}')">✏️</button>
       <button class="item-btn delete-btn" onclick="deleteItem('${item.id}', '${container}')">🗑️</button>
     </div>
@@ -579,7 +639,11 @@ function editItem(id, container) {
     document.getElementById('item_name').value = item.name;
     document.getElementById('item_type').value = item.type;
     document.getElementById('item_weight').value = item.weight;
-    document.getElementById('item_description').value = item.description;
+    document.getElementById('item_description').value = item.description || '';
+    document.getElementById('item_value').value = item.value || '';
+    document.getElementById('item_stackable').checked = !!item.stackable;
+    document.getElementById('item_quantity').value = item.quantity || 1;
+    document.getElementById('item_quantity_row').style.display = item.stackable ? 'flex' : 'none';
     document.getElementById('saveItemBtn').textContent = 'Update Item';
     document.getElementById('saveItemBtn').setAttribute('data-container', container);
     document.getElementById('saveItemBtn').setAttribute('data-edit-id', id);
@@ -637,10 +701,16 @@ function displayStorageItems(storageId) {
   });
 }
 
+// Returns the effective weight of a single item (weight × quantity for stackables)
+function itemEffectiveWeight(item) {
+  const qty = item.stackable ? (item.quantity || 1) : 1;
+  return (item.weight || 0) * qty;
+}
+
 // Calculate main inventory weight (includes equipment + items)
 function calculateMainInventoryWeight() {
   const equipmentWeight = inventoryData.equipment.reduce((total, item) => total + (item.weight || 0), 0);
-  const itemsWeight = inventoryData.mainInventory.reduce((total, item) => total + (item.weight || 0), 0);
+  const itemsWeight = inventoryData.mainInventory.reduce((total, item) => total + itemEffectiveWeight(item), 0);
   return equipmentWeight + itemsWeight;
 }
 
@@ -648,13 +718,22 @@ function calculateMainInventoryWeight() {
 function calculateStorageWeight(storageId) {
   const storage = inventoryData.storageContainers.find(s => s.id === storageId);
   if (!storage) return 0;
-  return storage.items.reduce((total, item) => total + (item.weight || 0), 0);
+  return storage.items.reduce((total, item) => total + itemEffectiveWeight(item), 0);
 }
 
 // Update weight display
 function updateWeightDisplay() {
   updateEquipmentWeightDisplay();
   updateMainInventoryWeightDisplay();
+  updateStorageWeightDisplays();
+}
+
+// Aliases used by app.js and core.js inline handlers
+function updateWeight() {
+  updateWeightDisplay();
+}
+
+function updateContainerWeight(containerId) {
   updateStorageWeightDisplays();
 }
 
@@ -675,12 +754,46 @@ function updateEquipmentStatsWeightDisplay() {
 // Update main inventory weight display
 function updateMainInventoryWeightDisplay() {
   const equipmentWeight = inventoryData.equipment.reduce((total, item) => total + (item.weight || 0), 0);
-  const itemsWeight = inventoryData.mainInventory.reduce((total, item) => total + (item.weight || 0), 0);
-  const totalWeight = equipmentWeight + itemsWeight;
+  const itemsWeight = inventoryData.mainInventory.reduce((total, item) => total + itemEffectiveWeight(item), 0);
+  const totalWeight = parseFloat((equipmentWeight + itemsWeight).toFixed(2));
   const totalWeightKg = (totalWeight * 0.453592).toFixed(2);
   const maxWeight = inventoryData.maxWeightCapacity;
   const weightDisplay = document.getElementById('main_inventory_weight_total');
-  
+
+  const totalValue = inventoryData.mainInventory.reduce((sum, item) => {
+    const qty = item.stackable ? (item.quantity || 1) : 1;
+    return sum + ((item.value || 0) * qty);
+  }, 0);
+  const valueLine = totalValue > 0
+    ? `<div style="font-size: 0.8em; opacity: 0.8; margin-top: 3px;">Total Value: ${totalValue.toFixed(2).replace(/\.00$/, '')} gp</div>`
+    : '';
+
+  // Encumbrance line
+  let encumbranceLine = '';
+  if (inventoryData.encumbranceEnabled) {
+    const tier = getEncumbranceTier(totalWeight);
+    const strEl = document.getElementById('str');
+    const str = strEl ? (parseInt(strEl.value) || 10) : 10;
+    const enc = str * 5, heavy = str * 10, max = str * 15;
+    const thresholds = `Enc: ${enc} | Heavy: ${heavy} | Max: ${max} lbs`;
+    if (tier) {
+      encumbranceLine = `<div style="font-size:0.85em;font-weight:bold;color:${tier.color};margin-top:4px;">⚠ ${tier.label}</div>
+        <div style="font-size:0.75em;opacity:0.75;margin-top:2px;">${thresholds}</div>`;
+    } else {
+      encumbranceLine = `<div style="font-size:0.75em;opacity:0.7;margin-top:4px;">${thresholds}</div>`;
+    }
+  }
+
+  // Update encumbrance status chip near the toggle
+  const statusEl = document.getElementById('encumbrance_status');
+  if (statusEl && inventoryData.encumbranceEnabled) {
+    const tier = getEncumbranceTier(totalWeight);
+    statusEl.textContent = tier ? `⚠ ${tier.label.split(' (')[0]}` : 'No encumbrance';
+    statusEl.style.color = tier ? tier.color : '';
+  } else if (statusEl) {
+    statusEl.textContent = '';
+  }
+
   if (maxWeight > 0) {
     const weightStatus = totalWeight > maxWeight ? 'weight-warning' : 'weight-ok';
     weightDisplay.className = `weight-display ${weightStatus}`;
@@ -689,14 +802,18 @@ function updateMainInventoryWeightDisplay() {
       <div style="font-size: 0.8em; opacity: 0.8; margin-top: 5px;">
         Equipment: ${equipmentWeight} lbs | Items: ${itemsWeight} lbs
       </div>
+      ${valueLine}
+      ${encumbranceLine}
     `;
   } else {
-    weightDisplay.className = 'weight-display weight-ok';
+    weightDisplay.className = `weight-display weight-ok`;
     weightDisplay.innerHTML = `
       <div>Total: ${totalWeight} lbs / ${totalWeightKg} kg</div>
       <div style="font-size: 0.8em; opacity: 0.8; margin-top: 5px;">
         Equipment: ${equipmentWeight} lbs | Items: ${itemsWeight} lbs
       </div>
+      ${valueLine}
+      ${encumbranceLine}
     `;
   }
 }
@@ -706,18 +823,22 @@ function updateStorageWeightDisplays() {
   if (!inventoryData.storageContainers) return;
   
   inventoryData.storageContainers.forEach(storage => {
-    const currentWeight = calculateStorageWeight(storage.id);
+    const currentWeight = parseFloat(calculateStorageWeight(storage.id).toFixed(2));
     const totalWeightKg = (currentWeight * 0.453592).toFixed(2);
     const weightStatus = storage.maxWeight > 0 && currentWeight > storage.maxWeight ? 'weight-warning' : 'weight-ok';
-    
-    // Update the weight display for this container
+    const totalValue = (storage.items || []).reduce((sum, item) => {
+      const qty = item.stackable ? (item.quantity || 1) : 1;
+      return sum + ((item.value || 0) * qty);
+    }, 0);
+    const valueLine = totalValue > 0 ? ` | Value: ${totalValue.toFixed(2).replace(/\.00$/, '')} gp` : '';
+
     const weightDisplay = document.getElementById(`${storage.id}_weight`);
     if (weightDisplay) {
       weightDisplay.className = `weight-display ${weightStatus}`;
       if (storage.maxWeight > 0) {
-        weightDisplay.textContent = `Total: ${currentWeight}/${storage.maxWeight} lbs / ${totalWeightKg} kg`;
+        weightDisplay.textContent = `Total: ${currentWeight}/${storage.maxWeight} lbs / ${totalWeightKg} kg${valueLine}`;
       } else {
-        weightDisplay.textContent = `Total: ${currentWeight} lbs / ${totalWeightKg} kg`;
+        weightDisplay.textContent = `Total: ${currentWeight} lbs / ${totalWeightKg} kg${valueLine}`;
       }
     }
   });
@@ -788,7 +909,9 @@ function loadInventory() {
       equipment: loadedData.equipment || [],
       mainInventory: loadedData.mainInventory || [],
       storageContainers: loadedData.storageContainers || [],
-      maxWeightCapacity: loadedData.maxWeightCapacity || 0
+      maxWeightCapacity: loadedData.maxWeightCapacity || 0,
+      purchaseHistory: loadedData.purchaseHistory || [],
+      encumbranceEnabled: loadedData.encumbranceEnabled || false
     };
   } else {
     // Ensure equipment array exists
@@ -804,6 +927,209 @@ function updateMaxWeightCapacity() {
   inventoryData.maxWeightCapacity = maxWeight;
   updateWeightDisplay();
   autosave();
+}
+
+// ========== SEARCH / FILTER ==========
+function filterInventory(containerId) {
+  const searchId = containerId === 'main' ? 'main_inventory_search' : `search_${containerId}`;
+  const query = (document.getElementById(searchId)?.value || '').toLowerCase().trim();
+  const listId = containerId === 'main' ? 'main_inventory_list' : `${containerId}_items`;
+  const list = document.getElementById(listId);
+  if (!list) return;
+
+  list.querySelectorAll('.item-card').forEach(card => {
+    const name = card.dataset.itemName || '';
+    const type = card.dataset.itemType || '';
+    card.style.display = (!query || name.includes(query) || type.includes(query)) ? '' : 'none';
+  });
+}
+
+// ========== QUICK MOVE ==========
+function moveItem(itemId, fromContainer, toContainer) {
+  if (!toContainer || fromContainer === toContainer) return;
+
+  // Find the item
+  let item;
+  if (fromContainer === 'main') {
+    const idx = inventoryData.mainInventory.findIndex(i => i.id === itemId);
+    if (idx === -1) return;
+    item = inventoryData.mainInventory.splice(idx, 1)[0];
+  } else {
+    const sc = inventoryData.storageContainers.find(s => s.id === fromContainer);
+    if (!sc) return;
+    const idx = sc.items.findIndex(i => i.id === itemId);
+    if (idx === -1) return;
+    item = sc.items.splice(idx, 1)[0];
+  }
+
+  // Place in destination
+  if (toContainer === 'main') {
+    inventoryData.mainInventory.push(item);
+  } else {
+    const sc = inventoryData.storageContainers.find(s => s.id === toContainer);
+    if (sc) sc.items.push(item);
+    else { // destination gone — put it back
+      if (fromContainer === 'main') inventoryData.mainInventory.push(item);
+      else {
+        const orig = inventoryData.storageContainers.find(s => s.id === fromContainer);
+        if (orig) orig.items.push(item);
+      }
+      return;
+    }
+  }
+
+  saveInventory();
+  displayMainInventory();
+  displayStorageContainers();
+  updateWeightDisplay();
+  autosave();
+}
+
+// ========== ENCUMBRANCE ==========
+function toggleEncumbrance() {
+  const enabled = document.getElementById('encumbrance_toggle').checked;
+  inventoryData.encumbranceEnabled = enabled;
+  saveInventory();
+  updateWeightDisplay();
+  autosave();
+}
+
+function getEncumbranceTier(totalWeight) {
+  const strEl = document.getElementById('str');
+  const str = strEl ? (parseInt(strEl.value) || 10) : 10;
+  const enc = str * 5;
+  const heavy = str * 10;
+  const max = str * 15;
+
+  if (totalWeight > max)   return { tier: 'max',    label: 'Max Carry Exceeded', color: '#cc0000' };
+  if (totalWeight > heavy) return { tier: 'heavy',  label: 'Heavily Encumbered (speed −20, disadvantage on STR/DEX/CON)', color: '#e06c00' };
+  if (totalWeight > enc)   return { tier: 'enc',    label: 'Encumbered (speed −10)', color: '#c8a000' };
+  return null;
+}
+
+// ========== REFILL SYSTEM ==========
+let _refillItemId = null;
+let _refillContainer = null;
+
+function showRefillPopup(itemId, container) {
+  _refillItemId = itemId;
+  _refillContainer = container;
+
+  let item;
+  if (container === 'main') {
+    item = inventoryData.mainInventory.find(i => i.id === itemId);
+  } else {
+    const sc = inventoryData.storageContainers.find(s => s.id === container);
+    if (sc) item = sc.items.find(i => i.id === itemId);
+  }
+  if (!item) return;
+
+  document.getElementById('refillItemName').textContent = `${item.name} (currently ×${item.quantity || 1})`;
+  document.getElementById('refill_qty').value = 1;
+  document.getElementById('refill_purchased').checked = true;
+  document.getElementById('refill_cost').value = item.value || '';
+  document.getElementById('refill_currency').value = 'gp';
+  document.getElementById('refill_cost_section').style.display = 'block';
+  updateRefillTotalCost();
+  showPopup('refillPopup');
+}
+
+function toggleRefillCost() {
+  const purchased = document.getElementById('refill_purchased').checked;
+  document.getElementById('refill_cost_section').style.display = purchased ? 'block' : 'none';
+}
+
+function updateRefillTotalCost() {
+  const qty = parseInt(document.getElementById('refill_qty').value) || 0;
+  const cost = parseFloat(document.getElementById('refill_cost').value) || 0;
+  const currency = document.getElementById('refill_currency').value;
+  const total = (qty * cost).toFixed(2).replace(/\.00$/, '');
+  const el = document.getElementById('refill_total_cost');
+  if (el) el.textContent = qty > 0 && cost > 0 ? `Total: ${total} ${currency}` : '';
+}
+
+function confirmRefill() {
+  const qty = parseInt(document.getElementById('refill_qty').value) || 0;
+  const purchased = document.getElementById('refill_purchased').checked;
+  const costPerUnit = parseFloat(document.getElementById('refill_cost').value) || 0;
+  const currency = document.getElementById('refill_currency').value;
+
+  if (qty <= 0) { alert('Please enter a quantity greater than 0.'); return; }
+
+  // Find item
+  let item;
+  if (_refillContainer === 'main') {
+    item = inventoryData.mainInventory.find(i => i.id === _refillItemId);
+  } else {
+    const sc = inventoryData.storageContainers.find(s => s.id === _refillContainer);
+    if (sc) item = sc.items.find(i => i.id === _refillItemId);
+  }
+  if (!item) return;
+
+  // Deduct currency if purchased
+  if (purchased && costPerUnit > 0) {
+    const totalCost = costPerUnit * qty;
+    if (!deductCurrency(totalCost, currency)) {
+      alert(`Not enough ${currency.toUpperCase()} to purchase ${qty}× ${item.name}. You need ${totalCost.toFixed(2)} ${currency}.`);
+      return;
+    }
+  }
+
+  // Add to stack
+  item.quantity = (item.quantity || 1) + qty;
+
+  // Log to purchase history
+  if (!inventoryData.purchaseHistory) inventoryData.purchaseHistory = [];
+  inventoryData.purchaseHistory.unshift({
+    id: Date.now().toString(),
+    date: new Date().toLocaleDateString(),
+    itemName: item.name,
+    qtyAdded: qty,
+    purchased: purchased,
+    costPerUnit: purchased ? costPerUnit : 0,
+    totalCost: purchased ? costPerUnit * qty : 0,
+    currency: purchased ? currency : null
+  });
+
+  saveInventory();
+  if (_refillContainer === 'main') {
+    displayMainInventory();
+  } else {
+    displayStorageContainers();
+  }
+  updateWeightDisplay();
+  displayPurchaseHistory();
+  closePopup('refillPopup');
+  autosave();
+}
+
+// Deduct currency from inventory fields — tries to deduct in-kind, no auto-conversion
+function deductCurrency(amount, currency) {
+  const cpEl = document.getElementById('currency_cp');
+  const spEl = document.getElementById('currency_sp');
+  const gpEl = document.getElementById('gold_field');
+  if (!cpEl || !spEl || !gpEl) return false;
+
+  let cp = parseFloat(cpEl.value) || 0;
+  let sp = parseFloat(spEl.value) || 0;
+  let gp = parseFloat(gpEl.value) || 0;
+
+  if (currency === 'gp') {
+    if (gp < amount) return false;
+    gp = parseFloat((gp - amount).toFixed(2));
+    gpEl.value = gp;
+  } else if (currency === 'sp') {
+    if (sp < amount) return false;
+    sp = parseFloat((sp - amount).toFixed(2));
+    spEl.value = sp;
+  } else if (currency === 'cp') {
+    if (cp < amount) return false;
+    cp = parseFloat((cp - amount).toFixed(2));
+    cpEl.value = cp;
+  }
+
+  autosave();
+  return true;
 }
 
 // ========== CONDITIONS SYSTEM ==========
@@ -975,6 +1301,44 @@ function showItemDetails(item, type) {
   
   document.getElementById('itemDetailsContent').innerHTML = content;
   showPopup('itemDetailsPopup');
+}
+
+// ========== PURCHASE HISTORY ==========
+function displayPurchaseHistory() {
+  const container = document.getElementById('purchase_history_list');
+  if (!container) return;
+
+  const history = inventoryData.purchaseHistory || [];
+  if (history.length === 0) {
+    container.innerHTML = `<p style="text-align: center; color: var(--text); opacity: 0.7;">No purchases recorded yet. Use the + button on a stackable item to record a purchase.</p>`;
+    return;
+  }
+
+  const rows = history.map(entry => {
+    const costText = entry.purchased && entry.totalCost > 0
+      ? `${entry.totalCost.toFixed(2).replace(/\.00$/, '')} ${entry.currency}`
+      : '—';
+    const sourceText = entry.purchased ? 'Purchased' : 'Found / Given';
+    return `
+      <div class="purchase-history-row">
+        <span class="ph-date">${escapeHtml(entry.date)}</span>
+        <span class="ph-item">${escapeHtml(entry.itemName)}</span>
+        <span class="ph-qty">+${entry.qtyAdded}</span>
+        <span class="ph-source ${entry.purchased ? 'ph-purchased' : 'ph-found'}">${sourceText}</span>
+        <span class="ph-cost">${costText}</span>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = rows;
+}
+
+function clearPurchaseHistory() {
+  if (!confirm('Clear all purchase history? This cannot be undone.')) return;
+  inventoryData.purchaseHistory = [];
+  saveInventory();
+  displayPurchaseHistory();
+  autosave();
 }
 
 // ========== ROUND RESET BUTTON ==========

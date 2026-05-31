@@ -4469,19 +4469,21 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   font-size: 0.9em;
   color: var(--accent-contrast) !important;
   background: var(--accent);
-  padding: 6px;
+  padding: 6px 10px;
   border-radius: 4px;
   height: 32px;
   text-align: center;
   border: 2px solid var(--accent-border);
-  width: 80px;
+  width: auto;
+  min-width: 80px;
   cursor: pointer;
   transition: all 0.3s ease;
   box-sizing: border-box;
+  white-space: nowrap;
 }
 
 .proficiency-checkbox:hover {
@@ -4511,9 +4513,10 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   
   .proficiency-checkbox {
     font-size: 0.8em;
-    width: 70px;
+    width: auto;
+    min-width: 70px;
     height: 28px;
-    padding: 4px;
+    padding: 4px 8px;
   }
   
   .proficiency-checkbox span {
@@ -4529,9 +4532,10 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   
   .proficiency-checkbox {
     font-size: 0.75em;
-    width: 60px;
+    width: auto;
+    min-width: 60px;
     height: 24px;
-    padding: 3px;
+    padding: 3px 6px;
   }
   
   .proficiency-checkbox span {
@@ -5087,6 +5091,40 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
     margin-left: 10px;
   }
 
+  .item-qty-badge {
+    background: var(--accent-soft);
+    color: var(--accent-text);
+    border: 1px solid var(--accent-border);
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 0.8em;
+    font-weight: bold;
+    margin-left: 6px;
+    white-space: nowrap;
+  }
+
+  .item-btn.refill-btn {
+    background: var(--accent);
+    color: var(--accent-contrast);
+    font-weight: bold;
+    font-size: 1em;
+    padding: 2px 10px;
+  }
+  .item-btn.refill-btn:hover {
+    opacity: 0.85;
+  }
+
+  .item-move-select {
+    font-size: 0.78em;
+    padding: 3px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--panel-bg);
+    color: var(--text);
+    cursor: pointer;
+    max-width: 120px;
+  }
+
   .equipment-stats, .item-stats, .storage-stats, .weapon-stats {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -5209,6 +5247,25 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
     font-weight: bold;
     color: var(--text);
   }
+
+  .purchase-history-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto auto;
+    gap: 8px 14px;
+    align-items: center;
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.9em;
+    color: var(--text);
+  }
+  .purchase-history-row:last-child { border-bottom: none; }
+  .ph-date { opacity: 0.65; white-space: nowrap; }
+  .ph-item { font-weight: bold; }
+  .ph-qty { font-weight: bold; color: var(--accent-text); white-space: nowrap; }
+  .ph-source { padding: 2px 8px; border-radius: 10px; font-size: 0.8em; white-space: nowrap; }
+  .ph-purchased { background: var(--accent-soft); color: var(--accent-text); border: 1px solid var(--accent-border); }
+  .ph-found { background: var(--panel-bg); color: var(--text); border: 1px solid var(--border); opacity: 0.8; }
+  .ph-cost { white-space: nowrap; font-weight: bold; }
 
   .weight-warning {
     background: #ff4444;

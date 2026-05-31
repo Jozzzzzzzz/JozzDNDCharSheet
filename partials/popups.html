@@ -525,10 +525,10 @@
 <!-- Add Item Popup -->
 <div class="popup" id="itemFormPopup">
   <h3 id="itemFormTitle">Add Item</h3>
-  
+
   <label>Name:</label>
   <input type="text" id="item_name" placeholder="e.g. Rope, Potion of Healing, Rations"/>
-  
+
   <label>Type:</label>
   <select id="item_type">
     <option value="consumable">Consumable</option>
@@ -537,19 +537,64 @@
     <option value="misc">Miscellaneous</option>
     <option value="other">Other</option>
   </select>
-  
-  <label>Weight (lbs):</label>
+
+  <label>Weight per unit (lbs):</label>
   <input type="number" id="item_weight" min="0" step="0.1" placeholder="Enter weight in pounds"/>
-  
+
+  <label>Value per unit (gp):</label>
+  <input type="number" id="item_value" min="0" step="0.01" placeholder="e.g. 50 for a Potion of Healing"/>
+
+  <div style="display: flex; align-items: center; gap: 10px; margin: 8px 0;">
+    <input type="checkbox" id="item_stackable" onchange="toggleItemStackable()" style="width: auto; margin: 0;"/>
+    <label for="item_stackable" style="margin: 0; cursor: pointer;">Stackable (e.g. arrows, potions, rations)</label>
+  </div>
+
+  <div id="item_quantity_row" style="display: none; align-items: center; gap: 10px; margin: 4px 0 8px;">
+    <label for="item_quantity" style="margin: 0; white-space: nowrap;">Starting Quantity:</label>
+    <input type="number" id="item_quantity" min="1" step="1" value="1" style="width: 80px;"/>
+  </div>
+
   <label>Description/Notes:</label>
   <textarea id="item_description" placeholder="Describe the item and any special properties..."></textarea>
-  
+
   <div style="margin-top: 15px; display: flex; justify-content: space-between;">
     <button onclick="saveItem()" id="saveItemBtn">Add Item</button>
     <button onclick="closePopup('itemFormPopup')">Cancel</button>
   </div>
 </div>
 
+
+<!-- Refill Stack Popup -->
+<div class="popup" id="refillPopup">
+  <h3>Refill Stack</h3>
+  <p id="refillItemName" style="font-weight: bold; margin-bottom: 12px; color: var(--accent-text);"></p>
+
+  <label>Quantity to Add:</label>
+  <input type="number" id="refill_qty" min="1" step="1" value="1" oninput="updateRefillTotalCost()"/>
+
+  <div style="display: flex; align-items: center; gap: 10px; margin: 10px 0;">
+    <input type="checkbox" id="refill_purchased" onchange="toggleRefillCost()" style="width: auto; margin: 0;" checked/>
+    <label for="refill_purchased" style="margin: 0; cursor: pointer;">Was this purchased?</label>
+  </div>
+
+  <div id="refill_cost_section">
+    <label>Cost per unit:</label>
+    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+      <input type="number" id="refill_cost" min="0" step="0.01" placeholder="0" style="width: 90px;" oninput="updateRefillTotalCost()"/>
+      <select id="refill_currency" style="width: auto;" onchange="updateRefillTotalCost()">
+        <option value="gp">Gold (gp)</option>
+        <option value="sp">Silver (sp)</option>
+        <option value="cp">Copper (cp)</option>
+      </select>
+    </div>
+    <p id="refill_total_cost" style="font-size: 0.85em; opacity: 0.8; margin: 6px 0 0;"></p>
+  </div>
+
+  <div style="margin-top: 15px; display: flex; justify-content: space-between;">
+    <button onclick="confirmRefill()" id="confirmRefillBtn">Add to Stack</button>
+    <button onclick="closePopup('refillPopup')">Cancel</button>
+  </div>
+</div>
 
 <!-- Weight Warning Popup -->
 <div class="popup" id="weightWarningPopup">
