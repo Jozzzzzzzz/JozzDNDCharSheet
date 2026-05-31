@@ -1134,6 +1134,33 @@ function setSettingsModalLock(locked) {
   document.documentElement.classList.toggle('settings-open', locked);
 }
 
+function handlePortraitUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const portraitPreview = document.getElementById('portraitPreview');
+    portraitPreview.innerHTML = '';
+    const img = document.createElement('img');
+    img.src = e.target.result;
+    img.style.width = '100%';
+    img.style.height = '100%';
+    img.style.objectFit = 'cover';
+    img.style.borderRadius = '12px';
+    portraitPreview.appendChild(img);
+    autosave();
+  };
+  reader.readAsDataURL(file);
+}
+
+function removePortrait() {
+  const portraitPreview = document.getElementById('portraitPreview');
+  portraitPreview.innerHTML = '<span style="color: #666;">No image</span>';
+  document.getElementById('portraitUpload').value = '';
+  autosave();
+}
+
 // Settings dropdown — delegated from document since settingsBtn is in async-loaded chrome.html
 document.addEventListener('click', function(e) {
   if (e.target.closest('#settingsBtn')) {

@@ -1,7 +1,3 @@
-// Global variables declared in core.js: weaponsData, equipmentData, currentCharacter, deleteState,
-// deleteTargetCharacterId, LAST_SELECTED_CHARACTER_KEY, LAST_SELECTED_CHARACTER_AT_KEY,
-// CHARACTER_FAVORITES_KEY, LAST_SELECTION_MAX_AGE_MS, MAX_FAVORITE_CHARACTERS
-
 // ========== SUGGESTION FORM ==========
 
 function initializeSuggestionForm() {
@@ -115,7 +111,6 @@ const rollingBannerMessages = [
   'Fun fact: A dragon sitting on 100,000 GP is roughly sitting on NZ$10 million by this sheet estimate.',
   'Tip: Real-world money comparisons are just table flavour; D&D item prices are not balanced like modern shopping.'
 ];
-// rollingBannerLastIndex declared in core.js
 
 const wealthComparisonCountries = [
   { country: 'New Zealand', top1Gp: 50000, top5Gp: 15000, top10Gp: 8000 },
@@ -184,9 +179,6 @@ function buildCurrencyWealthBannerMessage() {
 }
 
 // ========== CHARACTER MANAGEMENT ==========
-
-// ========== EXISTING FUNCTIONALITY (UPDATED FOR CHARACTER SYSTEM) ==========
-// Manual save function with status feedback
 
 let autosaveDebounceTimer = null;
 function scheduleAutosave(delayMs = 400) {
@@ -310,8 +302,6 @@ function loadCurrencyData(page4 = {}) {
     });
   }
 }
-
-// ========== EXISTING FUNCTIONS (UPDATED) ==========
 
 function getCharacterSyncTimestamp(character) {
   const updated = character?.updatedAt ? Date.parse(character.updatedAt) : NaN;

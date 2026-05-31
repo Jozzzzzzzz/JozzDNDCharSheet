@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s http://localhost:*)",
+      "Bash(curl -s http://127.0.0.1:*)",
+      "Bash(kill *)",
+      "Bash(lsof *)",
+      "Bash(python3 *)",
+      "Bash(pip3 *)",
+      "Bash('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' *)",
+      "Read(~/.claude/projects/**)",
+      "Bash(curl -s http://127.0.0.1:5500/index.html)"
+    ]
+  }
+}

@@ -37,6 +37,7 @@ function addWeapon() {
 
 // Boot sequence — called by index.html after all modules are loaded
 window.initializeApp = function() {
+  loadSpellDatabase();
   initializeWebApp();
 
   loadCharacterList();

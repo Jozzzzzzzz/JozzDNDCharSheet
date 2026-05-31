@@ -193,7 +193,7 @@ function updatePotionInfo() {
   potionInfo.textContent = `Heals: ${data.dice}+${data.bonus} = ${data.min}-${data.max} HP`;
 }
 
-// potionConfirmCount declared in core.js
+let potionConfirmCount = 0;
 
 function useHealthPotion() {
   potionConfirmCount++;

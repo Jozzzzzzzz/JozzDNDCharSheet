@@ -27,14 +27,16 @@ All JS lives in `assets/`. Files are loaded **in this exact order** via dynamic 
 | File | Owns | Lines |
 |------|------|-------|
 | `assets/banner-messages.js` | Static banner message array | small |
-| `assets/modules/cloud-skills.js` | Firebase Auth + Firestore sync (`syncToCloud`, `syncFromCloud`) | ~1125 |
-| `assets/modules/core.js` | localStorage helpers, note box system, theme/accent, character CRUD (`loadData`, `autosave`, `createNewCharacter`, etc.), popup/tab system, `escapeHtml`, `initializeWebApp` | ~3516 |
+| `assets/modules/stats.js` | Ability scores, saving throws, skills, proficiency bonus, numeric input helpers (`calculateAbilityBonus`, `calculateSavingThrow`, `calculateSkillBonus`, `enforceAutoMathNumericInputs`, etc.) | ~290 |
+| `assets/modules/cloud-skills.js` | Firebase Auth + Firestore sync only (`syncToCloud`, `syncFromCloud`, `signInWithGoogle`, `signOut`) | ~570 |
+| `assets/modules/core.js` | localStorage helpers, note box system, theme/accent, character CRUD (`loadData`, `autosave`, `createNewCharacter`, etc.), popup/tab system, `escapeHtml`, `initializeWebApp`, weapons/equipment system | ~2860 |
 | `assets/modules/layout.js` | Flex-wrap sizing, section resize handles (`makeContainersResizable`, `applyFlexWrapSizing`), `setupAutoResize` | ~241 |
-| `assets/modules/characters.js` | Currency system, banner wealth messages, suggestion form, autosave scheduling, cloud sync helpers, deleted-character tracking | ~389 |
+| `assets/modules/characters.js` | Currency system (CP/SP/GP + custom — saved under `page4.currency`), banner wealth messages, suggestion form, autosave scheduling, cloud sync helpers, deleted-character tracking | ~389 |
 | `assets/modules/health.js` | HP display, death saves, potion use, short/long rest | ~292 |
 | `assets/modules/actions.js` | Combat actions/reactions tracking | ~270 |
-| `assets/modules/inventory.js` | Inventory CRUD, equipment, storage containers, coin tracking, settings dropdown | ~1152 |
-| `assets/modules/spells.js` | Spell list, spell slots, custom resources, favorites, sync panels | ~2683 |
+| `assets/modules/inventory.js` | Inventory CRUD, equipment, storage containers, coin tracking, portrait upload/remove, settings dropdown | ~1180 |
+| `assets/modules/spells.js` | Spell list, spell slots, custom resources, favorites, sync panels. Loads spell reference data async from `assets/data/spells.json` via `loadSpellDatabase()` at boot | ~635 |
+| `assets/modules/admin.js` | Owner-only admin portal: user list, character import/preview via Firestore. Depends on `escapeHtml`, `getStoredJSON`, `loadCharacterList`, `loadData` from `core.js` | ~230 |
 | `assets/app.js` | Boot entry point only: `window.initializeApp`, `showWeaponsPopup`, `addWeapon` | ~129 |
 
 **Each function is defined in exactly one file.** All functions are globals (no ES modules). Do not add duplicate definitions — the last-loaded file wins silently.
@@ -57,7 +59,7 @@ Single stylesheet: `assets/styles.css`. Theming uses CSS custom properties (`--a
 
 ## Working Efficiently
 
-`assets/modules/core.js` (~3516 lines) and `assets/modules/spells.js` (~2683 lines) are the largest files — never read them whole. Use `grep` to find the relevant function first, then read only that section. `assets/styles.css` is 126KB — same rule.
+`assets/modules/core.js` (~3514 lines) is the largest file — never read it whole. Use `grep` to find the relevant function first, then read only that section. `assets/styles.css` is 126KB — same rule. `assets/data/spells.json` (482 spells, 365KB) is the canonical spell reference database — edit it directly to add or fix spells, no JS changes needed.
 
 To locate any function:
 ```
