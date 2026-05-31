@@ -1386,9 +1386,11 @@ function autosave() {
       characters = [defaultChar];
       localStorage.setItem('dndCharacters', JSON.stringify(characters));
       currentCharacter = defaultChar.id;
+      rememberSelectedCharacter(currentCharacter);
       loadCharacterList();
     } else {
       currentCharacter = characters[0].id;
+      rememberSelectedCharacter(currentCharacter);
     }
   }
 
