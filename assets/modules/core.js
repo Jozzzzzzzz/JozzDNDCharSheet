@@ -1369,6 +1369,7 @@ function manualSave() {
 }
 
 function autosave() {
+  try {
   if (typeof window.presenceHeartbeat === 'function') {
     window.presenceHeartbeat();
   }
@@ -1390,186 +1391,213 @@ function autosave() {
       currentCharacter = characters[0].id;
     }
   }
-  
+
   const characters = getStoredJSON('dndCharacters', []);
   const charIndex = characters.findIndex(char => char.id === currentCharacter);
   if (charIndex === -1) return;
-  
-  const data = {
-    characterInfo: {
-      name: document.getElementById('char_name').value,
-      race: document.getElementById('char_race').value,
-      class: document.getElementById('char_class').value,
-      subclass: document.getElementById('char_subclass').value,
-      level: document.getElementById('char_level').value
-    },
-    actionTracker: {
-      actions: document.getElementById('action_counter').value,
-      actionUsed: document.getElementById('action_tick').checked,
-      bonusActions: document.getElementById('bonus_action_counter').value,
-      bonusActionUsed: document.getElementById('bonus_action_tick').checked
-    },
-    page1: {
-    abilities: ['str','dex','con','int','wis','cha'].reduce((obj,ability) => {
-  obj[ability] = document.getElementById(ability).value;
-  obj[`${ability}_bonus`] = document.getElementById(`${ability}_bonus`).value;
-  // Add this line for saving throws:
-  obj[`${ability}_save`] = document.getElementById(`${ability}_save`).value;
-  // Add saving throw proficiency
-  obj[`${ability}_save_prof`] = document.getElementById(`${ability}_save_prof`).checked;
-  return obj;
-}, {}),
-      combatStats: {
-        ac: document.getElementById('ac').value,
-        initiative: document.getElementById('initiative').value,
-        speed: document.getElementById('speed').value,
-        prof_bonus: document.getElementById('prof_bonus').value
-      },
 
-      health: {
-        max_hp: document.getElementById('max_hp').value,
-        curr_hp: document.getElementById('curr_hp').value,
-        temp_hp: document.getElementById('temp_hp_text')?.textContent?.match(/\d+/)?.[0] || '0',
-        hit_dice_spend: document.getElementById('hit_dice_spend').value,
-        con_modifier: document.getElementById('con_modifier').value,
-        hit_die_size: document.getElementById('hit_die_size').value,
-        potion_type: document.getElementById('potion_type').value
-      },
-      equipmentData: equipmentData,
-      skills: ['acrobatics','animal_handling','arcana','athletics','deception','history',
-               'insight','intimidation','investigation','medicine','nature','perception',
-               'performance','persuasion','religion','sleight_of_hand','stealth','survival']
-               .reduce((obj,skill) => {
-        obj[`prof_${skill}`] = document.getElementById(`prof_${skill}`).checked;
-        const adjInput = document.getElementById(`adj_${skill}`);
-        obj[`adj_${skill}`] = adjInput ? adjInput.value : '+0';
-        obj[`bonus_${skill}`] = document.getElementById(`bonus_${skill}`).value;
-        return obj;
-      }, {}),
-      deathSaves: {
-        success: [
-          document.getElementById('death_save_success_1_checkbox').checked,
-          document.getElementById('death_save_success_2_checkbox').checked,
-          document.getElementById('death_save_success_3_checkbox').checked
-        ],
-        failure: [
-          document.getElementById('death_save_failure_1_checkbox').checked,
-          document.getElementById('death_save_failure_2_checkbox').checked,
-          document.getElementById('death_save_failure_3_checkbox').checked
-        ]
-      },
-      actionsData: actionsData,
-      actionsNotes: document.getElementById('actions_notes').value,
-      inventoryData: inventoryData,
-      maxWeightCapacity: document.getElementById('max_weight_capacity').value,
-      equipmentData: inventoryData.equipment.map(item => ({
+  // Helper: read element value safely; returns null if element missing (signals "not in DOM")
+  const el = id => document.getElementById(id);
+  const val = id => { const e = el(id); return e ? e.value : null; };
+  const chk = id => { const e = el(id); return e ? e.checked : null; };
+
+  // Start from existing saved data so pages not currently in DOM are preserved
+  const existing = characters[charIndex].data || {};
+
+  // --- characterInfo (always in chrome/header, should always exist) ---
+  const charNameVal = val('char_name');
+  const characterInfo = charNameVal !== null ? {
+    name: charNameVal,
+    race: val('char_race'),
+    class: val('char_class'),
+    subclass: val('char_subclass'),
+    level: val('char_level')
+  } : existing.characterInfo;
+
+  // --- actionTracker ---
+  const actionTrackerInDom = el('action_counter');
+  const actionTracker = actionTrackerInDom ? {
+    actions: val('action_counter'),
+    actionUsed: chk('action_tick'),
+    bonusActions: val('bonus_action_counter'),
+    bonusActionUsed: chk('bonus_action_tick')
+  } : existing.actionTracker;
+
+  // --- page1 (stats page) ---
+  const page1InDom = el('str');
+  const page1 = page1InDom ? {
+    abilities: ['str','dex','con','int','wis','cha'].reduce((obj, ability) => {
+      obj[ability] = val(ability);
+      obj[`${ability}_bonus`] = val(`${ability}_bonus`);
+      obj[`${ability}_save`] = val(`${ability}_save`);
+      obj[`${ability}_save_prof`] = chk(`${ability}_save_prof`);
+      return obj;
+    }, {}),
+    combatStats: {
+      ac: val('ac'),
+      initiative: val('initiative'),
+      speed: val('speed'),
+      prof_bonus: val('prof_bonus')
+    },
+    health: {
+      max_hp: val('max_hp'),
+      curr_hp: val('curr_hp'),
+      temp_hp: el('temp_hp_text')?.textContent?.match(/\d+/)?.[0] || '0',
+      hit_dice_spend: val('hit_dice_spend'),
+      con_modifier: val('con_modifier'),
+      hit_die_size: val('hit_die_size'),
+      potion_type: val('potion_type')
+    },
+    skills: ['acrobatics','animal_handling','arcana','athletics','deception','history',
+             'insight','intimidation','investigation','medicine','nature','perception',
+             'performance','persuasion','religion','sleight_of_hand','stealth','survival']
+             .reduce((obj, skill) => {
+      obj[`prof_${skill}`] = chk(`prof_${skill}`);
+      obj[`adj_${skill}`] = val(`adj_${skill}`) ?? '+0';
+      obj[`bonus_${skill}`] = val(`bonus_${skill}`);
+      return obj;
+    }, {}),
+    deathSaves: {
+      success: [
+        chk('death_save_success_1_checkbox'),
+        chk('death_save_success_2_checkbox'),
+        chk('death_save_success_3_checkbox')
+      ],
+      failure: [
+        chk('death_save_failure_1_checkbox'),
+        chk('death_save_failure_2_checkbox'),
+        chk('death_save_failure_3_checkbox')
+      ]
+    },
+    actionsData: actionsData,
+    actionsNotes: val('actions_notes'),
+    inventoryData: inventoryData,
+    maxWeightCapacity: val('max_weight_capacity'),
+    equipmentData: inventoryData.equipment.map(item => ({
+      name: item.name,
+      type: item.type,
+      bonus: item.bonus,
+      weight: item.weight,
+      notes: item.description
+    })),
+    proficienciesTraining: val('proficiencies_training'),
+    statsQuickNotes: val('stats_quick_notes')
+  } : existing.page1;
+
+  // --- page2 (background) ---
+  const page2InDom = el('char_backstory');
+  const page2 = page2InDom ? {
+    portrait: el('portraitPreview')?.querySelector('img')?.src || null,
+    backstory: val('char_backstory'),
+    traits: {
+      personality: val('personality_traits'),
+      ideals: val('traits_ideals'),
+      bonds: val('traits_bonds'),
+      flaws: val('traits_flaws'),
+      allies: val('traits_allies'),
+      appearance: val('traits_appearance')
+    }
+  } : existing.page2;
+
+  // --- page3 (spells) ---
+  const page3InDom = el('spell_notes');
+  const page3 = page3InDom ? {
+    spellNotes: val('spell_notes'),
+    spellcastingInfo: {
+      ability: val('spellcasting_ability'),
+      saveDC: val('spell_save_dc'),
+      attackBonus: val('spell_attack_bonus'),
+      casterType: val('caster_type'),
+      spellsPrepared: val('spells_prepared')
+    },
+    manualSpellSlots: manualSpellSlots,
+    manualSpellSlotsUsed: manualSpellSlotsUsed,
+    customResources: customResources,
+    customResourcesUsed: customResourcesUsed,
+    spellsData: spellsData,
+    favoritesData: favoritesData
+  } : existing.page3;
+
+  // --- page4 (inventory) ---
+  const page4InDom = el('gold_field');
+  const page4 = page4InDom ? {
+    currency: collectCurrencyData(),
+    gold: val('gold_field'),
+    equipment: equipmentData,
+    inventory: [],
+    containers: (typeof inventoryData !== 'undefined' ? (inventoryData.storageContainers || []) : []).map(sc => ({
+      name: sc.name,
+      maxWeight: sc.maxWeight || 0,
+      items: (sc.items || []).map(item => ({
         name: item.name,
-        type: item.type,
-        bonus: item.bonus,
-        weight: item.weight,
-        notes: item.description
-      })),
-      proficienciesTraining: document.getElementById('proficiencies_training').value,
-      statsQuickNotes: document.getElementById('stats_quick_notes').value
-    },
-    page2: {
-      portrait: document.getElementById('portraitPreview').querySelector('img')?.src || null,
-      backstory: document.getElementById('char_backstory').value,
-      traits: {
-        personality: document.getElementById('personality_traits').value,
-        ideals: document.getElementById('traits_ideals').value,
-        bonds: document.getElementById('traits_bonds').value,
-        flaws: document.getElementById('traits_flaws').value,
-        allies: document.getElementById('traits_allies').value,
-        appearance: document.getElementById('traits_appearance').value
-      }
-    },
-    page3: {
-      spellNotes: document.getElementById('spell_notes').value,
-      spellcastingInfo: {
-        ability: document.getElementById('spellcasting_ability').value,
-        saveDC: document.getElementById('spell_save_dc').value,
-        attackBonus: document.getElementById('spell_attack_bonus').value,
-        casterType: document.getElementById('caster_type').value,
-        spellsPrepared: document.getElementById('spells_prepared').value
-      },
-      manualSpellSlots: manualSpellSlots,
-      manualSpellSlotsUsed: manualSpellSlotsUsed,
-      customResources: customResources,
-      customResourcesUsed: customResourcesUsed,
-      spellsData: spellsData,
-      favoritesData: favoritesData
-    },
-    page4: {
-      currency: collectCurrencyData(),
-      gold: document.getElementById('gold_field').value,
-      equipment: equipmentData,
-      inventory: [],
-      // Use live inventoryData for containers — legacy DOM scrape was unreliable
-      containers: (typeof inventoryData !== 'undefined' ? (inventoryData.storageContainers || []) : []).map(sc => ({
-        name: sc.name,
-        maxWeight: sc.maxWeight || 0,
-        items: (sc.items || []).map(item => ({
-          name: item.name,
-          description: item.description || '',
-          notes: '',
-          weight: (item.weight || 0) * (item.stackable ? (item.quantity || 1) : 1)
-        }))
+        description: item.description || '',
+        notes: '',
+        weight: (item.weight || 0) * (item.stackable ? (item.quantity || 1) : 1)
       }))
-    },
-    page6: {
-      // Quest & Mission Info
-      activeQuests: document.getElementById('active_quests').value,
-      completedQuests: document.getElementById('completed_quests').value,
-      questLeads: document.getElementById('quest_leads').value,
-      missionObjectives: document.getElementById('mission_objectives').value,
-      
-      // World & Locations
-      importantLocations: document.getElementById('important_locations').value,
-      travelRoutes: document.getElementById('travel_routes').value,
-      worldEvents: document.getElementById('world_events').value,
-      placesToVisit: document.getElementById('places_to_visit').value,
-      
-      // NPCs & Contacts
-      keyNpcs: document.getElementById('key_npcs').value,
-      alliesContacts: document.getElementById('allies_contacts').value,
-      enemiesThreats: document.getElementById('enemies_threats').value,
-      npcRelationships: document.getElementById('npc_relationships').value,
-      npcInformation: document.getElementById('npc_information').value,
-      
-      // Session & Campaign
-      sessionNotes: document.getElementById('session_notes').value,
-      campaignTimeline: document.getElementById('campaign_timeline').value,
-      partyDecisions: document.getElementById('party_decisions').value,
-      campaignGoals: document.getElementById('campaign_goals').value,
-      
-      // Combat & Strategy
-      combatNotes: document.getElementById('combat_notes').value,
-      enemyInformation: document.getElementById('enemy_information').value,
-      equipmentItems: document.getElementById('equipment_items').value,
-      spellAbilityNotes: document.getElementById('spell_ability_notes').value,
-      
-      // General Info
-      rulesMechanics: document.getElementById('rules_mechanics').value,
-      ideasPlans: document.getElementById('ideas_plans').value,
-      miscellaneousNotes: document.getElementById('miscellaneous_notes').value
-    },
-    weapons: weaponsData,
-    conditions: Array.from(document.querySelectorAll('#conditions_container .condition')).map(condition => ({
-      name: condition.querySelector('.condition-header').children[0].textContent,
-      turns: condition.querySelector('.condition-header').children[1].textContent,
-      effect: condition.children[1].textContent,
-      color: condition.classList.contains('blue') ? 'blue' : 
-             condition.classList.contains('green') ? 'green' : 'red'
     }))
+  } : existing.page4;
+
+  // --- page6 (notes) ---
+  const page6InDom = el('active_quests');
+  const page6 = page6InDom ? {
+    activeQuests: val('active_quests'),
+    completedQuests: val('completed_quests'),
+    questLeads: val('quest_leads'),
+    missionObjectives: val('mission_objectives'),
+    importantLocations: val('important_locations'),
+    travelRoutes: val('travel_routes'),
+    worldEvents: val('world_events'),
+    placesToVisit: val('places_to_visit'),
+    keyNpcs: val('key_npcs'),
+    alliesContacts: val('allies_contacts'),
+    enemiesThreats: val('enemies_threats'),
+    npcRelationships: val('npc_relationships'),
+    npcInformation: val('npc_information'),
+    sessionNotes: val('session_notes'),
+    campaignTimeline: val('campaign_timeline'),
+    partyDecisions: val('party_decisions'),
+    campaignGoals: val('campaign_goals'),
+    combatNotes: val('combat_notes'),
+    enemyInformation: val('enemy_information'),
+    equipmentItems: val('equipment_items'),
+    spellAbilityNotes: val('spell_ability_notes'),
+    rulesMechanics: val('rules_mechanics'),
+    ideasPlans: val('ideas_plans'),
+    miscellaneousNotes: val('miscellaneous_notes')
+  } : existing.page6;
+
+  const data = {
+    characterInfo,
+    actionTracker,
+    page1,
+    page2,
+    page3,
+    page4,
+    page6,
+    weapons: weaponsData,
+    conditions: Array.from(document.querySelectorAll('#conditions_container .condition')).map(condition => {
+      try {
+        const header = condition.querySelector('.condition-header');
+        return {
+          name: header?.children[0]?.textContent || '',
+          turns: header?.children[1]?.textContent || '',
+          effect: condition.children[1]?.textContent || '',
+          color: condition.classList.contains('blue') ? 'blue' :
+                 condition.classList.contains('green') ? 'green' : 'red'
+        };
+      } catch(e) { return null; }
+    }).filter(Boolean)
   };
-  
+
   characters[charIndex].data = data;
-  characters[charIndex].name = document.getElementById('char_name').value || 'Unnamed';
+  characters[charIndex].name = (characterInfo && characterInfo.name) || existing.characterInfo?.name || 'Unnamed';
   localStorage.setItem('dndCharacters', JSON.stringify(characters));
-  
+
   if (window.currentUser && !window.__adminPreviewActive) {
     syncToCloud(true);
+  }
+  } catch (err) {
+    console.error('autosave crashed — data NOT saved:', err);
   }
 }
 
@@ -1721,12 +1749,16 @@ function loadData() {
     if (data.page1.deathSaves) {
       for (let i = 0; i < 3; i++) {
         if (data.page1.deathSaves.success[i]) {
-          document.getElementById(`death_save_success_${i+1}_checkbox`).checked = true;
-          document.getElementById(`death_save_success_${i+1}`).classList.add('checked');
+          const cb = document.getElementById(`death_save_success_${i+1}_checkbox`);
+          const box = document.getElementById(`death_save_success_${i+1}`);
+          if (cb) cb.checked = true;
+          if (box) box.classList.add('checked');
         }
         if (data.page1.deathSaves.failure[i]) {
-          document.getElementById(`death_save_failure_${i+1}_checkbox`).checked = true;
-          document.getElementById(`death_save_failure_${i+1}`).classList.add('checked');
+          const cb = document.getElementById(`death_save_failure_${i+1}_checkbox`);
+          const box = document.getElementById(`death_save_failure_${i+1}`);
+          if (cb) cb.checked = true;
+          if (box) box.classList.add('checked');
         }
       }
     }

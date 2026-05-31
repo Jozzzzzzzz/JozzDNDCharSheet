@@ -187,7 +187,7 @@ function scheduleAutosave(delayMs = 400) {
   }
   autosaveDebounceTimer = setTimeout(() => {
     autosaveDebounceTimer = null;
-    autosave();
+    try { autosave(); } catch (err) { console.error('scheduleAutosave: autosave crashed:', err); }
   }, delayMs);
 }
 
