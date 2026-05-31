@@ -1541,3 +1541,11 @@ document.addEventListener('click', function(e) {
   }
 });
 
+function displayStorageContainers() {
+  if (!inventoryData.storageContainers) return;
+  inventoryData.storageContainers.forEach(storage => {
+    displayStorageItems(storage.id);
+    updateContainerWeight(storage.id);
+  });
+}
+

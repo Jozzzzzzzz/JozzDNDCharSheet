@@ -623,8 +623,15 @@ function registerServiceWorker() {
     });
 }
 
+function enableAutoSync() {
+  setInterval(() => {
+    if (window.currentUser) {
+      syncToCloud();
+    }
+  }, 5 * 60 * 1000);
+}
+
 function initCloudFirebase() {
-  
   initializeFirebase();
   enableAutoSync();
   registerServiceWorker();
