@@ -820,6 +820,1108 @@ function removePortrait() {
   autosave();
 }
 
+// ========== BACKGROUND CUSTOM FIELDS ==========
+
+const BG_DEFAULT_FIELDS = [
+  { id: 'personality_traits', title: 'Personality Traits',  placeholder: 'Describe your character\'s personality traits...',       isDefault: true },
+  { id: 'traits_ideals',      title: 'Ideals',              placeholder: 'What ideals drive your character?',                       isDefault: true },
+  { id: 'traits_bonds',       title: 'Bonds',               placeholder: 'What bonds tie your character to people, places, or events?', isDefault: true },
+  { id: 'traits_flaws',       title: 'Flaws',               placeholder: 'What flaws or weaknesses does your character have?',      isDefault: true },
+  { id: 'traits_allies',      title: 'Allies & Organizations', placeholder: 'List your character\'s allies and organizations...',   isDefault: true },
+  { id: 'traits_appearance',  title: 'Appearance',          placeholder: 'Describe your character\'s physical appearance...',       isDefault: true },
+];
+
+let bgCustomFields = [];   // array of { id, title, placeholder, isDefault }
+let bgReorderMode  = false;
+
+// --- delete state per field id ---
+const bgDeleteState = {};   // { [fieldId]: 0|1|2|3 }
+let bgDeleteTimer = null;
+
+// ============================================================
+// NOTES PAGE — folder + card system
+// ============================================================
+// Data shape: noteFolders = [{ id, title, cards: [{ id, title, body }] }]
+
+const NOTES_DEFAULT_FOLDERS = [
+  {
+    id: 'nfd_quests', title: 'Quests & Missions', isDefault: true,
+    cards: [
+      { id: 'nfc_q1', isDefault: true, title: '📋 Example — Active Quest',
+        body: 'Quest name: The Missing Merchant\nGiven by: Mayor Aldric of Millhaven\nObjective: Find out what happened to Torvin the trader, last seen on the Eastern Road.\nReward: 200gp + a letter of introduction to the Merchant Guild\nStatus: In progress\n\n— Copy this card format for each new quest you track.' },
+    ]
+  },
+  {
+    id: 'nfd_npcs', title: 'NPCs', isDefault: true,
+    cards: [
+      { id: 'nfc_n1', isDefault: true, title: '📋 Example — NPC',
+        body: 'Name: Sera Dunwhite\nRace / Class: Human Innkeeper\nLocation: The Broken Antler Inn, Millhaven\nRole: Quest giver / information source\nPersonality: Warm but nosy. Loves gossip.\nRelationship to party: Friendly — gave us a discount room\nKnown info: Saw Torvin arguing with a cloaked figure the night he vanished.\nNotes: Might know more if we bring her wine from the capital.\n\n— Add a new card for each NPC you meet.' },
+    ]
+  },
+  {
+    id: 'nfd_locations', title: 'Locations', isDefault: true,
+    cards: [
+      { id: 'nfc_l1', isDefault: true, title: '📋 Example — Location',
+        body: 'Name: Millhaven\nType: Small town\nRegion: The Thornwood Reaches\nFirst visited: Session 1\nKey NPCs: Mayor Aldric, Sera (innkeeper), Gruff the blacksmith\nPoints of interest: The Broken Antler Inn, the old watchtower, the market square\nDangers: Bandit activity on the Eastern Road\nNotes: Population ~400. Loyal to the Crown but ignored by them.\n\n— Add a new card for each place you discover.' },
+    ]
+  },
+  {
+    id: 'nfd_lore', title: 'Lore & World Notes', isDefault: true,
+    cards: [
+      { id: 'nfc_lw1', isDefault: true, title: '📋 Example — Faction',
+        body: 'Name: The Ember Court\nGoals: Restore the old empire by any means necessary\nLeader: Unknown — believed to be a noble in the capital\nHow they feel about us: Hostile — we disrupted their operation in Millhaven\nUseful contacts inside: None yet\nNotes: Their agents wear a red signet ring with a flame motif.\n\n— Add a new card for each faction, deity, or piece of lore you uncover.' },
+    ]
+  },
+  {
+    id: 'nfd_session', title: 'Session Notes', isDefault: true,
+    cards: [
+      { id: 'nfc_s1', isDefault: true, title: '📋 Example — Session Recap',
+        body: 'Session #: 1\nDate played: 2026-01-10\nWhere we started: Millhaven, The Broken Antler Inn\n\nWhat happened:\nWe arrived in Millhaven after answering a job posting. The mayor hired us to find Torvin the merchant. Sera the innkeeper told us about the cloaked figure. We investigated the Eastern Road and found cart tracks leading into the Greyfen Marsh.\n\nKey decisions made:\n— Decided to head into the marsh rather than wait for backup.\n— Chose not to report the Ember Court signet ring to the guards (don\'t trust them yet).\n\nLoose ends:\n— Who is the cloaked figure?\n— Why does the mayor seem nervous when the Ember Court is mentioned?\n\nWhere we ended: Camp at the edge of Greyfen Marsh.\n\n— Duplicate this card for each session.' },
+    ]
+  },
+  {
+    id: 'nfd_party', title: 'Party & Allies', isDefault: true,
+    cards: [
+      { id: 'nfc_p1', isDefault: true, title: '📋 Example — Party Member',
+        body: 'Name: Korrath Ashveil\nClass: Fighter (Battle Master) / Level 3\nPlayer: Dan\nRace: Half-orc\nPersonality: Blunt, honourable, secretly afraid of failure\nStrengths: Front-line tank, intimidation\nWeaknesses: Low Charisma, reckless in combat\nNotes: Has a bounty on his head in the capital. Doesn\'t talk about it.\n\n— Add a card for each party member and key ally.' },
+    ]
+  },
+  {
+    id: 'nfd_enemies', title: 'Enemies & Threats', isDefault: true,
+    cards: [
+      { id: 'nfc_e1', isDefault: true, title: '📋 Example — Enemy',
+        body: 'Name: Marsh Stalker (Crocodile variant)\nType / CR: Beast / CR 2\nLocation: Greyfen Marsh\nMotivation: Territorial predator\nWeaknesses: Fire damage, bright light\nAttacks: Bite (+4, 1d10+2), Tail (+4, 1d8+2)\nDefeated? Not yet — fled after taking 15 damage.\nNotes: There are at least two of them. One has an old arrow wound on its left flank.\n\n— Add a card for each notable enemy or boss.' },
+    ]
+  },
+  {
+    id: 'nfd_items', title: 'Items & Treasure', isDefault: true,
+    cards: [
+      { id: 'nfc_i1', isDefault: true, title: '📋 Example — Magic Item',
+        body: 'Name: Cloak of the Marsh Walker\nRarity: Uncommon\nAttuned to: Nyx (our Ranger)\nProperties: Advantage on Stealth checks in swamp/marsh terrain. Wearer does not sink in mud.\nWhere found: Looted from the Ember Court agent\'s body, Session 1.\nNotes: The lining has the Ember Court flame embroidered in faded red thread.\n\n— Add a card for each magic item, notable piece of loot, or thing you want to sell.' },
+    ]
+  },
+  {
+    id: 'nfd_combat', title: 'Combat & Tactics', isDefault: true,
+    cards: [
+      { id: 'nfc_c1', isDefault: true, title: '📋 Example — Tactic',
+        body: 'Tactic: The Bottleneck\nWho\'s involved: Korrath (Fighter) + Nyx (Ranger) + Zara (Wizard)\nSetup: Korrath holds a doorway or narrow passage. Nyx fires from range. Zara casts area spells behind the melee line.\nEffect: Enemies can\'t flank us. Zara\'s AOE never hits allies.\nBest used when: Indoors, dungeon corridors, chokepoints.\nWeakness: Falls apart in open terrain or against ranged-heavy enemies.\n\n— Add a card for combos, recurring enemy tactics, or anything useful to remember mid-fight.' },
+    ]
+  },
+  {
+    id: 'nfd_misc', title: 'Miscellaneous', isDefault: true,
+    cards: [
+      { id: 'nfc_m1', isDefault: true, title: '📋 Example — House Rule',
+        body: 'Rule: Inspiration can be spent for a free re-roll on any d20 check (not just one).\nAgreed on: Session 0, all players present.\nNotes: DM awards Inspiration for good roleplay, creative thinking, or making the session more fun for everyone.\n\n— Use this folder for anything that doesn\'t fit elsewhere: house rules, campaign goals, mysteries, random ideas.' },
+    ]
+  },
+];
+
+let noteFolders = [];
+let notesReorderMode = false;
+let notesCardReorderMode = false;
+let notesActiveFolderId = null;
+let notesEditingCardId = null;
+
+// --- multi-step delete state (mirrors bgDeleteState pattern) ---
+const notesDeleteState = {};  // { [id]: 0|1|2|3 }
+let notesDeleteTimer = null;
+
+function notesSetDeleteBtn(btn, state) {
+  if (state === 0) {
+    btn.textContent = 'Delete';
+    btn.classList.remove('notes-delete-warn', 'notes-delete-counting', 'notes-delete-final');
+    btn.disabled = false;
+  } else if (state === 1) {
+    btn.textContent = 'Sure?';
+    btn.classList.add('notes-delete-warn');
+    btn.classList.remove('notes-delete-counting', 'notes-delete-final');
+  } else if (state === 2) {
+    btn.classList.add('notes-delete-counting');
+    btn.classList.remove('notes-delete-warn', 'notes-delete-final');
+    btn.disabled = true;
+  } else if (state === 3) {
+    btn.textContent = 'Confirm';
+    btn.classList.add('notes-delete-final');
+    btn.classList.remove('notes-delete-warn', 'notes-delete-counting');
+    btn.disabled = false;
+  }
+}
+
+function notesResetDelete(id, btn) {
+  notesDeleteState[id] = 0;
+  if (btn) notesSetDeleteBtn(btn, 0);
+}
+
+function notesHandleDelete(id, btn, onConfirm) {
+  const state = notesDeleteState[id] || 0;
+
+  if (state === 0) {
+    notesDeleteState[id] = 1;
+    notesSetDeleteBtn(btn, 1);
+    clearTimeout(notesDeleteTimer);
+    notesDeleteTimer = setTimeout(() => notesResetDelete(id, btn), 4000);
+    return;
+  }
+
+  if (state === 1) {
+    clearTimeout(notesDeleteTimer);
+    notesDeleteState[id] = 2;
+    notesSetDeleteBtn(btn, 2);
+    let secs = 3;
+    btn.textContent = `Wait ${secs}s…`;
+    const tick = setInterval(() => {
+      secs--;
+      if (secs > 0) {
+        btn.textContent = `Wait ${secs}s…`;
+      } else {
+        clearInterval(tick);
+        notesDeleteState[id] = 3;
+        notesSetDeleteBtn(btn, 3);
+      }
+    }, 1000);
+    return;
+  }
+
+  if (state === 3) {
+    delete notesDeleteState[id];
+    onConfirm();
+  }
+}
+
+// --- render helpers ---
+
+function renderNoteFolders() {
+  const grid = document.getElementById('notesFoldersGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  noteFolders.forEach((folder, index) => {
+    grid.appendChild(makeNoteFolderEl(folder, index));
+  });
+}
+
+function makeNoteFolderEl(folder, index) {
+  const wrap = document.createElement('div');
+  wrap.className = 'notes-folder-card';
+  wrap.dataset.folderId = folder.id;
+
+  const header = document.createElement('div');
+  header.className = 'notes-folder-header';
+
+  const title = document.createElement('h3');
+  title.className = 'notes-folder-title';
+  title.textContent = folder.title;
+
+  const count = document.createElement('span');
+  count.className = 'notes-folder-count';
+  count.textContent = folder.cards.length + ' note' + (folder.cards.length !== 1 ? 's' : '');
+
+  header.appendChild(title);
+  header.appendChild(count);
+  wrap.appendChild(header);
+
+  if (notesReorderMode) {
+    const controls = document.createElement('div');
+    controls.className = 'notes-reorder-controls';
+
+    const upBtn = document.createElement('button');
+    upBtn.textContent = '▲';
+    upBtn.disabled = index === 0;
+    upBtn.onclick = () => moveNoteFolder(index, -1);
+
+    const downBtn = document.createElement('button');
+    downBtn.textContent = '▼';
+    downBtn.disabled = index === noteFolders.length - 1;
+    downBtn.onclick = () => moveNoteFolder(index, 1);
+
+    controls.appendChild(upBtn);
+    controls.appendChild(downBtn);
+    if (!folder.isDefault) {
+      const delBtn = document.createElement('button');
+      delBtn.className = 'notes-delete-btn';
+      notesSetDeleteBtn(delBtn, notesDeleteState[folder.id] || 0);
+      delBtn.onclick = () => notesHandleDelete(folder.id, delBtn, () => {
+        noteFolders.splice(index, 1);
+        renderNoteFolders();
+        autosave();
+      });
+      controls.appendChild(delBtn);
+    }
+    wrap.appendChild(controls);
+
+    // drag handle
+    const dragHandle = document.createElement('div');
+    dragHandle.className = 'notes-drag-handle';
+    dragHandle.textContent = '⠿';
+    dragHandle.title = 'Drag to reorder';
+    dragHandle.addEventListener('mousedown', notesFolderDragStart);
+    dragHandle.addEventListener('touchstart', notesFolderDragStart, { passive: false });
+    wrap.appendChild(dragHandle);
+  } else {
+    wrap.style.cursor = 'pointer';
+    wrap.addEventListener('click', () => openFolderView(folder.id));
+  }
+
+  return wrap;
+}
+
+function renderNoteCards(folderId) {
+  const folder = noteFolders.find(f => f.id === folderId);
+  const grid = document.getElementById('notesCardsGrid');
+  if (!grid || !folder) return;
+  grid.innerHTML = '';
+  folder.cards.forEach((card, index) => {
+    grid.appendChild(makeNoteCardEl(folder, card, index));
+  });
+}
+
+function makeNoteCardEl(folder, card, index) {
+  const wrap = document.createElement('div');
+  wrap.className = 'notes-note-card';
+  wrap.dataset.cardId = card.id;
+
+  const titleRow = document.createElement('div');
+  titleRow.className = 'notes-note-title-row';
+
+  const title = document.createElement('h3');
+  title.className = 'notes-note-title';
+  title.textContent = card.title || 'Untitled';
+  titleRow.appendChild(title);
+
+  if (card.isDefault) {
+    const badge = document.createElement('span');
+    badge.className = 'notes-template-badge';
+    badge.textContent = 'template';
+    titleRow.appendChild(badge);
+  }
+
+  const preview = document.createElement('p');
+  preview.className = 'notes-note-preview';
+  preview.textContent = card.body ? card.body.slice(0, 120) : '';
+
+  wrap.appendChild(titleRow);
+  wrap.appendChild(preview);
+
+  if (notesCardReorderMode) {
+    const controls = document.createElement('div');
+    controls.className = 'notes-reorder-controls';
+
+    const upBtn = document.createElement('button');
+    upBtn.textContent = '▲';
+    upBtn.disabled = index === 0;
+    upBtn.onclick = () => moveNoteCard(folder.id, index, -1);
+
+    const downBtn = document.createElement('button');
+    downBtn.textContent = '▼';
+    downBtn.disabled = index === folder.cards.length - 1;
+    downBtn.onclick = () => moveNoteCard(folder.id, index, 1);
+
+    controls.appendChild(upBtn);
+    controls.appendChild(downBtn);
+
+    if (!card.isDefault) {
+      const delBtn = document.createElement('button');
+      delBtn.className = 'notes-delete-btn';
+      notesSetDeleteBtn(delBtn, notesDeleteState[card.id] || 0);
+      delBtn.onclick = () => notesHandleDelete(card.id, delBtn, () => {
+        folder.cards.splice(index, 1);
+        renderNoteCards(folder.id);
+        autosave();
+      });
+      controls.appendChild(delBtn);
+    }
+
+    wrap.appendChild(controls);
+
+    if (!card.isDefault) {
+      const dragHandle = document.createElement('div');
+      dragHandle.className = 'notes-drag-handle';
+      dragHandle.textContent = '⠿';
+      dragHandle.title = 'Drag to reorder';
+      dragHandle.addEventListener('mousedown', notesCardDragStart);
+      dragHandle.addEventListener('touchstart', notesCardDragStart, { passive: false });
+      wrap.appendChild(dragHandle);
+    }
+  } else {
+    wrap.style.cursor = 'pointer';
+    wrap.addEventListener('click', () => openNoteEditor(folder.id, card.id));
+  }
+
+  return wrap;
+}
+
+// --- navigation ---
+
+function openFolderView(folderId) {
+  const folder = noteFolders.find(f => f.id === folderId);
+  if (!folder) return;
+  notesActiveFolderId = folderId;
+  notesCardReorderMode = false;
+  document.getElementById('notesFolderView').style.display = 'none';
+  const cardView = document.getElementById('notesCardView');
+  cardView.style.display = '';
+  const crumb = document.getElementById('notesBreadcrumb');
+  if (crumb) crumb.textContent = folder.title;
+  const cardToggle = document.getElementById('notesCardReorderToggle');
+  if (cardToggle) cardToggle.classList.remove('active');
+  renderNoteCards(folderId);
+}
+
+function notesGoBack() {
+  notesActiveFolderId = null;
+  notesCardReorderMode = false;
+  const cardView = document.getElementById('notesCardView');
+  const folderView = document.getElementById('notesFolderView');
+  if (cardView) cardView.style.display = 'none';
+  if (folderView) folderView.style.display = '';
+  renderNoteFolders();
+  const page = document.getElementById('page6');
+  if (page) page.scrollTop = 0;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// --- reorder mode toggles ---
+
+function toggleNotesReorderMode() {
+  notesReorderMode = !notesReorderMode;
+  const btn = document.getElementById('notesReorderToggle');
+  if (btn) btn.classList.toggle('active', notesReorderMode);
+  renderNoteFolders();
+}
+
+function toggleNotesCardReorderMode() {
+  notesCardReorderMode = !notesCardReorderMode;
+  const btn = document.getElementById('notesCardReorderToggle');
+  if (btn) btn.classList.toggle('active', notesCardReorderMode);
+  if (notesActiveFolderId) renderNoteCards(notesActiveFolderId);
+}
+
+// --- move ---
+
+function moveNoteFolder(index, dir) {
+  const newIndex = index + dir;
+  if (newIndex < 0 || newIndex >= noteFolders.length) return;
+  const tmp = noteFolders[index];
+  noteFolders[index] = noteFolders[newIndex];
+  noteFolders[newIndex] = tmp;
+  renderNoteFolders();
+  autosave();
+}
+
+function moveNoteCard(folderId, index, dir) {
+  const folder = noteFolders.find(f => f.id === folderId);
+  if (!folder) return;
+  const newIndex = index + dir;
+  if (newIndex < 0 || newIndex >= folder.cards.length) return;
+  const tmp = folder.cards[index];
+  folder.cards[index] = folder.cards[newIndex];
+  folder.cards[newIndex] = tmp;
+  renderNoteCards(folderId);
+  autosave();
+}
+
+// --- add folder popup ---
+
+function showAddFolderPopup() {
+  const popup = document.getElementById('addFolderPopup');
+  if (!popup) return;
+  popup.style.display = 'flex';
+  const input = document.getElementById('folderTitleInput');
+  if (input) { input.value = ''; setTimeout(() => input.focus(), 50); }
+}
+
+function closeAddFolderPopup() {
+  const popup = document.getElementById('addFolderPopup');
+  if (popup) popup.style.display = 'none';
+}
+
+function confirmAddFolder() {
+  const input = document.getElementById('folderTitleInput');
+  const title = input ? input.value.trim() : '';
+  if (!title) { alert('Please enter a folder name.'); return; }
+  noteFolders.push({ id: 'nf_' + Date.now(), title, cards: [] });
+  renderNoteFolders();
+  closeAddFolderPopup();
+  autosave();
+}
+
+// --- add card popup ---
+
+function showAddNoteCardPopup() {
+  const popup = document.getElementById('addNoteCardPopup');
+  if (!popup) return;
+  popup.style.display = 'flex';
+  const input = document.getElementById('noteCardTitleInput');
+  if (input) { input.value = ''; setTimeout(() => input.focus(), 50); }
+}
+
+function closeAddNoteCardPopup() {
+  const popup = document.getElementById('addNoteCardPopup');
+  if (popup) popup.style.display = 'none';
+}
+
+function confirmAddNoteCard() {
+  const input = document.getElementById('noteCardTitleInput');
+  const title = input ? input.value.trim() : '';
+  if (!title) { alert('Please enter a card title.'); return; }
+  const folder = noteFolders.find(f => f.id === notesActiveFolderId);
+  if (!folder) return;
+  const newCard = { id: 'nc_' + Date.now(), title, body: '' };
+  folder.cards.push(newCard);
+  renderNoteCards(folder.id);
+  closeAddNoteCardPopup();
+  autosave();
+  // open the editor immediately
+  openNoteEditor(folder.id, newCard.id);
+}
+
+// --- note editor popup ---
+
+function openNoteEditor(folderId, cardId) {
+  const folder = noteFolders.find(f => f.id === folderId);
+  if (!folder) return;
+  const card = folder.cards.find(c => c.id === cardId);
+  if (!card) return;
+  notesEditingCardId = cardId;
+  notesActiveFolderId = folderId;
+  const popup = document.getElementById('noteEditorPopup');
+  if (!popup) return;
+  document.getElementById('noteEditorTitle').value = card.title || '';
+  document.getElementById('noteEditorBody').value = card.body || '';
+  popup.style.display = 'flex';
+  setTimeout(() => document.getElementById('noteEditorBody').focus(), 50);
+}
+
+function closeNoteEditor() {
+  const popup = document.getElementById('noteEditorPopup');
+  if (popup) popup.style.display = 'none';
+  notesEditingCardId = null;
+  // refresh card preview
+  if (notesActiveFolderId) renderNoteCards(notesActiveFolderId);
+}
+
+function onNoteEditorTitleChange() {
+  if (!notesEditingCardId || !notesActiveFolderId) return;
+  const folder = noteFolders.find(f => f.id === notesActiveFolderId);
+  if (!folder) return;
+  const card = folder.cards.find(c => c.id === notesEditingCardId);
+  if (!card) return;
+  card.title = document.getElementById('noteEditorTitle').value;
+  autosave();
+}
+
+function onNoteEditorBodyChange() {
+  if (!notesEditingCardId || !notesActiveFolderId) return;
+  const folder = noteFolders.find(f => f.id === notesActiveFolderId);
+  if (!folder) return;
+  const card = folder.cards.find(c => c.id === notesEditingCardId);
+  if (!card) return;
+  card.body = document.getElementById('noteEditorBody').value;
+  autosave();
+}
+
+// --- drag-to-reorder: folders ---
+
+let _nfDragGhost = null, _nfDragSrc = null, _nfDragPlaceholder = null, _nfDragOffX = 0, _nfDragOffY = 0, _nfDragLastX = 0, _nfDragTilt = 0;
+
+function notesFolderDragStart(e) {
+  const handle = e.currentTarget;
+  const card = handle.closest('.notes-folder-card');
+  const grid = document.getElementById('notesFoldersGrid');
+  if (!card || !grid) return;
+  e.preventDefault();
+
+  const rect = card.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  _nfDragOffX = clientX - rect.left;
+  _nfDragOffY = clientY - rect.top;
+  _nfDragLastX = clientX;
+  _nfDragTilt = 0;
+
+  _nfDragSrc = card;
+  _nfDragGhost = card.cloneNode(true);
+  _nfDragGhost.className += ' notes-drag-ghost';
+  _nfDragGhost.style.width = rect.width + 'px';
+  _nfDragGhost.style.left = (clientX - _nfDragOffX) + 'px';
+  _nfDragGhost.style.top = (clientY - _nfDragOffY) + 'px';
+  document.body.appendChild(_nfDragGhost);
+
+  _nfDragPlaceholder = document.createElement('div');
+  _nfDragPlaceholder.className = 'notes-drag-placeholder';
+  _nfDragPlaceholder.style.width = rect.width + 'px';
+  _nfDragPlaceholder.style.height = rect.height + 'px';
+  card.parentNode.insertBefore(_nfDragPlaceholder, card);
+  card.style.display = 'none';
+
+  document.addEventListener('mousemove', notesFolderDragMove);
+  document.addEventListener('touchmove', notesFolderDragMove, { passive: false });
+  document.addEventListener('mouseup', notesFolderDragEnd);
+  document.addEventListener('touchend', notesFolderDragEnd);
+}
+
+function notesFolderDragMove(e) {
+  if (!_nfDragGhost) return;
+  e.preventDefault();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  const dx = clientX - _nfDragLastX;
+  _nfDragLastX = clientX;
+  _nfDragTilt = Math.max(-12, Math.min(12, _nfDragTilt * 0.88 + dx * 0.25));
+  _nfDragGhost.style.left = (clientX - _nfDragOffX) + 'px';
+  _nfDragGhost.style.top = (clientY - _nfDragOffY) + 'px';
+  _nfDragGhost.style.transform = `rotate(${_nfDragTilt}deg) scale(1.03)`;
+
+  const grid = document.getElementById('notesFoldersGrid');
+  if (!grid) return;
+  const cards = [...grid.children].filter(c => c !== _nfDragSrc && !c.classList.contains('notes-drag-ghost') && !c.classList.contains('notes-drag-placeholder'));
+  let inserted = false;
+  for (const c of cards) {
+    const r = c.getBoundingClientRect();
+    const midY = r.top + r.height / 2;
+    const midX = r.left + r.width / 2;
+    if (clientY < midY || (Math.abs(clientY - midY) < 10 && clientX < midX)) {
+      grid.insertBefore(_nfDragPlaceholder, c);
+      inserted = true;
+      break;
+    }
+  }
+  if (!inserted) grid.appendChild(_nfDragPlaceholder);
+}
+
+function notesFolderDragEnd(e) {
+  document.removeEventListener('mousemove', notesFolderDragMove);
+  document.removeEventListener('touchmove', notesFolderDragMove);
+  document.removeEventListener('mouseup', notesFolderDragEnd);
+  document.removeEventListener('touchend', notesFolderDragEnd);
+
+  if (!_nfDragGhost || !_nfDragSrc || !_nfDragPlaceholder) return;
+
+  const grid = document.getElementById('notesFoldersGrid');
+  const allChildren = [...grid.children];
+  const phPos = allChildren.indexOf(_nfDragPlaceholder);
+  const srcFolderId = _nfDragSrc.dataset.folderId;
+  const srcIndex = noteFolders.findIndex(f => f.id === srcFolderId);
+  let dest = allChildren.filter(c => !c.classList.contains('notes-drag-placeholder') && !c.classList.contains('notes-drag-ghost')).indexOf(
+    allChildren.filter(c => !c.classList.contains('notes-drag-placeholder') && !c.classList.contains('notes-drag-ghost'))[phPos] || null
+  );
+  // simpler: count non-ghost, non-placeholder children before placeholder
+  dest = allChildren.slice(0, phPos).filter(c => c !== _nfDragSrc && !c.classList.contains('notes-drag-ghost') && !c.classList.contains('notes-drag-placeholder')).length;
+
+  document.body.removeChild(_nfDragGhost);
+  _nfDragPlaceholder.remove();
+  _nfDragSrc.style.display = '';
+  _nfDragGhost = null; _nfDragSrc = null; _nfDragPlaceholder = null;
+
+  const moved = noteFolders.splice(srcIndex, 1)[0];
+  dest = Math.max(0, Math.min(dest, noteFolders.length));
+  noteFolders.splice(dest, 0, moved);
+  renderNoteFolders();
+  autosave();
+}
+
+// --- drag-to-reorder: cards ---
+
+let _ncDragGhost = null, _ncDragSrc = null, _ncDragPlaceholder = null, _ncDragOffX = 0, _ncDragOffY = 0, _ncDragLastX = 0, _ncDragTilt = 0;
+
+function notesCardDragStart(e) {
+  const handle = e.currentTarget;
+  const card = handle.closest('.notes-note-card');
+  const grid = document.getElementById('notesCardsGrid');
+  if (!card || !grid) return;
+  e.preventDefault();
+
+  const rect = card.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  _ncDragOffX = clientX - rect.left;
+  _ncDragOffY = clientY - rect.top;
+  _ncDragLastX = clientX;
+  _ncDragTilt = 0;
+
+  _ncDragSrc = card;
+  _ncDragGhost = card.cloneNode(true);
+  _ncDragGhost.className += ' notes-drag-ghost';
+  _ncDragGhost.style.width = rect.width + 'px';
+  _ncDragGhost.style.left = (clientX - _ncDragOffX) + 'px';
+  _ncDragGhost.style.top = (clientY - _ncDragOffY) + 'px';
+  document.body.appendChild(_ncDragGhost);
+
+  _ncDragPlaceholder = document.createElement('div');
+  _ncDragPlaceholder.className = 'notes-drag-placeholder';
+  _ncDragPlaceholder.style.width = rect.width + 'px';
+  _ncDragPlaceholder.style.height = rect.height + 'px';
+  card.parentNode.insertBefore(_ncDragPlaceholder, card);
+  card.style.display = 'none';
+
+  document.addEventListener('mousemove', notesCardDragMove);
+  document.addEventListener('touchmove', notesCardDragMove, { passive: false });
+  document.addEventListener('mouseup', notesCardDragEnd);
+  document.addEventListener('touchend', notesCardDragEnd);
+}
+
+function notesCardDragMove(e) {
+  if (!_ncDragGhost) return;
+  e.preventDefault();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  const dx = clientX - _ncDragLastX;
+  _ncDragLastX = clientX;
+  _ncDragTilt = Math.max(-12, Math.min(12, _ncDragTilt * 0.88 + dx * 0.25));
+  _ncDragGhost.style.left = (clientX - _ncDragOffX) + 'px';
+  _ncDragGhost.style.top = (clientY - _ncDragOffY) + 'px';
+  _ncDragGhost.style.transform = `rotate(${_ncDragTilt}deg) scale(1.03)`;
+
+  const grid = document.getElementById('notesCardsGrid');
+  if (!grid) return;
+  const cards = [...grid.children].filter(c => c !== _ncDragSrc && !c.classList.contains('notes-drag-ghost') && !c.classList.contains('notes-drag-placeholder'));
+  let inserted = false;
+  for (const c of cards) {
+    const r = c.getBoundingClientRect();
+    const midY = r.top + r.height / 2;
+    const midX = r.left + r.width / 2;
+    if (clientY < midY || (Math.abs(clientY - midY) < 10 && clientX < midX)) {
+      grid.insertBefore(_ncDragPlaceholder, c);
+      inserted = true;
+      break;
+    }
+  }
+  if (!inserted) grid.appendChild(_ncDragPlaceholder);
+}
+
+function notesCardDragEnd(e) {
+  document.removeEventListener('mousemove', notesCardDragMove);
+  document.removeEventListener('touchmove', notesCardDragMove);
+  document.removeEventListener('mouseup', notesCardDragEnd);
+  document.removeEventListener('touchend', notesCardDragEnd);
+
+  if (!_ncDragGhost || !_ncDragSrc || !_ncDragPlaceholder) return;
+
+  const grid = document.getElementById('notesCardsGrid');
+  const allChildren = [...grid.children];
+  const phPos = allChildren.indexOf(_ncDragPlaceholder);
+  const srcCardId = _ncDragSrc.dataset.cardId;
+  const folder = noteFolders.find(f => f.id === notesActiveFolderId);
+  if (!folder) return;
+  const srcIndex = folder.cards.findIndex(c => c.id === srcCardId);
+  const dest = allChildren.slice(0, phPos).filter(c => c !== _ncDragSrc && !c.classList.contains('notes-drag-ghost') && !c.classList.contains('notes-drag-placeholder')).length;
+
+  document.body.removeChild(_ncDragGhost);
+  _ncDragPlaceholder.remove();
+  _ncDragSrc.style.display = '';
+  _ncDragGhost = null; _ncDragSrc = null; _ncDragPlaceholder = null;
+
+  const moved = folder.cards.splice(srcIndex, 1)[0];
+  folder.cards.splice(Math.max(0, Math.min(dest, folder.cards.length)), 0, moved);
+  renderNoteCards(folder.id);
+  autosave();
+}
+
+// --- init notes page ---
+function initNotesPage() {
+  const folderView = document.getElementById('notesFolderView');
+  if (!folderView) return;
+  notesReorderMode = false;
+  notesCardReorderMode = false;
+  if (noteFolders.length === 0) {
+    noteFolders = NOTES_DEFAULT_FOLDERS.map(f => ({ ...f, cards: f.cards.map(c => ({ ...c })) }));
+  }
+  // show folder view, hide card view
+  folderView.style.display = '';
+  const cardView = document.getElementById('notesCardView');
+  if (cardView) cardView.style.display = 'none';
+  renderNoteFolders();
+}
+
+// ============================================================
+function makeBgFieldEl(field, index) {
+  const wrap = document.createElement('div');
+  wrap.className = 'section bg-field-wrap';
+  wrap.dataset.fieldId = field.id;
+  wrap.dataset.index = index;
+
+  const header = document.createElement('div');
+  header.className = 'bg-field-header';
+
+  const title = document.createElement('h3');
+  title.textContent = field.title;
+  header.appendChild(title);
+
+  const controls = document.createElement('div');
+  controls.className = 'bg-reorder-controls';
+  controls.style.display = bgReorderMode ? 'flex' : 'none';
+
+  const upBtn = document.createElement('button');
+  upBtn.className = 'bg-arrow-btn';
+  upBtn.textContent = '▲';
+  upBtn.title = 'Move up';
+  upBtn.disabled = index === 0;
+  upBtn.onclick = () => moveBgField(index, -1);
+
+  const downBtn = document.createElement('button');
+  downBtn.className = 'bg-arrow-btn';
+  downBtn.textContent = '▼';
+  downBtn.title = 'Move down';
+  downBtn.disabled = index === bgCustomFields.length - 1;
+  downBtn.onclick = () => moveBgField(index, 1);
+
+  controls.appendChild(upBtn);
+  controls.appendChild(downBtn);
+  header.appendChild(controls);
+
+  // Delete button sits outside the reorder controls so it's always visible
+  if (!field.isDefault) {
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'bg-remove-btn';
+    removeBtn.dataset.fieldId = field.id;
+    removeBtn.onclick = () => handleBgFieldDelete(field.id, false, removeBtn);
+    setBgDeleteBtnAppearance(removeBtn, bgDeleteState[field.id] || 0, false);
+    header.appendChild(removeBtn);
+  }
+
+  wrap.appendChild(header);
+
+  if (bgReorderMode) {
+    const handle = document.createElement('div');
+    handle.className = 'bg-drag-handle';
+    handle.textContent = '⠿';
+    handle.title = 'Drag to reorder';
+    handle.addEventListener('pointerdown', onBgPointerDown);
+    wrap.appendChild(handle);
+    wrap.classList.add('bg-draggable');
+  }
+
+  const ta = document.createElement('textarea');
+  ta.className = 'basic-textarea';
+  ta.id = field.id;
+  ta.placeholder = field.placeholder || '';
+  ta.addEventListener('input', () => {
+    autosave();
+    updateBgFieldOverflow(ta, overflowHint);
+  });
+  ta.addEventListener('click', () => {
+    if (ta.value.length > 450) openNotesEditorPopup(ta);
+  });
+  wrap.appendChild(ta);
+
+  // Overflow hint shown when content exceeds 450 chars
+  const overflowHint = document.createElement('div');
+  overflowHint.className = 'bg-overflow-hint';
+  overflowHint.textContent = 'Tap to expand full text';
+  overflowHint.style.display = 'none';
+  overflowHint.addEventListener('click', () => openNotesEditorPopup(ta));
+  wrap.appendChild(overflowHint);
+
+  return wrap;
+}
+
+function updateBgFieldOverflow(ta, hint) {
+  if (ta.value.length > 450) {
+    hint.style.display = 'block';
+    ta.classList.add('bg-textarea-capped');
+  } else {
+    hint.style.display = 'none';
+    ta.classList.remove('bg-textarea-capped');
+  }
+}
+
+function setBgDeleteBtnAppearance(btn, state, isDefault) {
+  if (state === 0) {
+    btn.textContent = '✕';
+    btn.title = isDefault ? 'Hide this box' : 'Remove box';
+    btn.classList.remove('bg-delete-warn', 'bg-delete-final', 'bg-delete-counting');
+  } else if (state === 1) {
+    btn.textContent = 'Sure?';
+    btn.title = 'Click again to start deletion countdown';
+    btn.classList.add('bg-delete-warn');
+    btn.classList.remove('bg-delete-final', 'bg-delete-counting');
+  } else if (state === 2) {
+    btn.classList.add('bg-delete-counting');
+    btn.classList.remove('bg-delete-warn', 'bg-delete-final');
+  } else if (state === 3) {
+    btn.textContent = isDefault ? 'Hide it' : 'Remove it';
+    btn.title = 'Final confirmation — click to remove';
+    btn.classList.add('bg-delete-final');
+    btn.classList.remove('bg-delete-warn', 'bg-delete-counting');
+  }
+}
+
+function handleBgFieldDelete(fieldId, isDefault, btn) {
+  const state = bgDeleteState[fieldId] || 0;
+
+  if (state === 0) {
+    // Step 1 — first click, ask if sure
+    bgDeleteState[fieldId] = 1;
+    setBgDeleteBtnAppearance(btn, 1, isDefault);
+    // Auto-reset if user walks away
+    clearTimeout(bgDeleteTimer);
+    bgDeleteTimer = setTimeout(() => resetBgDeleteState(fieldId, btn, isDefault), 5000);
+    return;
+  }
+
+  if (state === 1) {
+    // Step 2 — countdown
+    clearTimeout(bgDeleteTimer);
+    bgDeleteState[fieldId] = 2;
+    btn.disabled = true;
+    let secs = 3;
+    btn.textContent = `Wait ${secs}s…`;
+    setBgDeleteBtnAppearance(btn, 2, isDefault);
+    btn.textContent = `Wait ${secs}s…`;
+
+    const tick = setInterval(() => {
+      secs--;
+      if (secs > 0) {
+        btn.textContent = `Wait ${secs}s…`;
+      } else {
+        clearInterval(tick);
+        bgDeleteState[fieldId] = 3;
+        btn.disabled = false;
+        setBgDeleteBtnAppearance(btn, 3, isDefault);
+      }
+    }, 1000);
+    return;
+  }
+
+  if (state === 3) {
+    // Final — actually remove
+    resetBgDeleteState(fieldId, btn, isDefault);
+    const vals = captureBgFieldValues();
+    if (!isDefault) delete vals[fieldId];
+    bgCustomFields = bgCustomFields.filter(f => f.id !== fieldId);
+    delete bgDeleteState[fieldId];
+    renderBgFields();
+    applyBgFieldValues(vals);
+    autosave();
+  }
+}
+
+function resetBgDeleteState(fieldId, btn, isDefault) {
+  bgDeleteState[fieldId] = 0;
+  if (btn) setBgDeleteBtnAppearance(btn, 0, isDefault);
+}
+
+function renderBgFields() {
+  const grid = document.getElementById('bgCustomFieldsGrid');
+  if (!grid) return;
+  const vals = captureBgFieldValues();
+  grid.innerHTML = '';
+
+  bgCustomFields.forEach((field, index) => {
+    grid.appendChild(makeBgFieldEl(field, index));
+  });
+
+  applyBgFieldValues(vals);
+}
+
+function toggleBgReorderMode() {
+  bgReorderMode = !bgReorderMode;
+  const btn = document.getElementById('bgReorderToggle');
+  if (btn) {
+    btn.classList.toggle('active', bgReorderMode);
+    btn.textContent = bgReorderMode ? 'Done Reordering' : 'Reorder Mode';
+  }
+  renderBgFields();
+}
+
+function moveBgField(index, dir) {
+  const newIndex = index + dir;
+  if (newIndex < 0 || newIndex >= bgCustomFields.length) return;
+  const vals = captureBgFieldValues();
+  const tmp = bgCustomFields[index];
+  bgCustomFields[index] = bgCustomFields[newIndex];
+  bgCustomFields[newIndex] = tmp;
+  renderBgFields();
+  applyBgFieldValues(vals);
+  // Brief highlight on the moved card so user sees where it landed
+  const grid = document.getElementById('bgCustomFieldsGrid');
+  const landed = grid ? [...grid.children][newIndex] : null;
+  if (landed) {
+    landed.classList.add('bg-just-moved');
+    setTimeout(() => landed.classList.remove('bg-just-moved'), 400);
+  }
+  autosave();
+}
+
+function showAddBgFieldPopup() {
+  const popup = document.getElementById('addBgFieldPopup');
+  if (!popup) return;
+  document.getElementById('bgFieldTitleInput').value = '';
+  document.getElementById('bgFieldPlaceholderInput').value = '';
+  popup.style.display = 'flex';
+  document.getElementById('bgFieldTitleInput').focus();
+}
+
+function closeBgFieldPopup() {
+  const popup = document.getElementById('addBgFieldPopup');
+  if (popup) popup.style.display = 'none';
+}
+
+function confirmAddBgField() {
+  const title = document.getElementById('bgFieldTitleInput').value.trim();
+  if (!title) { alert('Please enter a title.'); return; }
+  const placeholder = document.getElementById('bgFieldPlaceholderInput').value.trim();
+  const id = 'bgcustom_' + Date.now();
+  const vals = captureBgFieldValues();
+  bgCustomFields.push({ id, title, placeholder, isDefault: false });
+  renderBgFields();
+  applyBgFieldValues(vals);
+  closeBgFieldPopup();
+  autosave();
+}
+
+function captureBgFieldValues() {
+  const out = {};
+  bgCustomFields.forEach(f => {
+    const el = document.getElementById(f.id);
+    if (el) out[f.id] = el.value;
+  });
+  return out;
+}
+
+function applyBgFieldValues(vals) {
+  Object.entries(vals).forEach(([id, v]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = v;
+    // Sync overflow hint state after value is set
+    const hint = el.parentNode ? el.parentNode.querySelector('.bg-overflow-hint') : null;
+    if (hint) updateBgFieldOverflow(el, hint);
+  });
+}
+
+// ---- Pointer-based drag (works on mouse + touch + pen) ----
+let bgDrag = null;  // { srcIndex, ghost, placeholder, offsetX, offsetY }
+
+function onBgPointerDown(e) {
+  if (!bgReorderMode) return;
+  e.preventDefault();
+  const handle = e.currentTarget;
+  const card = handle.closest('.bg-field-wrap');
+  const grid = document.getElementById('bgCustomFieldsGrid');
+  if (!card || !grid) return;
+
+  const cards = [...grid.children].filter(c => c.classList.contains('bg-field-wrap'));
+  const srcIndex = cards.indexOf(card);
+  if (srcIndex === -1) return;
+
+  const rect = card.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+  // Ghost: visual clone that follows the pointer
+  const ghost = card.cloneNode(true);
+  ghost.classList.add('bg-ghost');
+  ghost.style.width  = rect.width  + 'px';
+  ghost.style.height = rect.height + 'px';
+  ghost.style.left   = rect.left + 'px';
+  ghost.style.top    = rect.top  + 'px';
+  document.body.appendChild(ghost);
+
+  // Placeholder: empty slot that stays in grid
+  const placeholder = document.createElement('div');
+  placeholder.className = 'bg-drop-placeholder';
+  placeholder.style.height = rect.height + 'px';
+  grid.insertBefore(placeholder, card);
+  card.classList.add('bg-dragging');
+
+  bgDrag = {
+    srcIndex,
+    card,
+    ghost,
+    placeholder,
+    offsetX: clientX - rect.left,
+    offsetY: clientY - rect.top,
+    lastX: clientX,
+    tilt: 0,
+  };
+
+  document.addEventListener('pointermove', onBgPointerMove, { passive: false });
+  document.addEventListener('pointerup',   onBgPointerUp);
+  document.addEventListener('touchmove',   e => e.preventDefault(), { passive: false });
+}
+
+function onBgPointerMove(e) {
+  if (!bgDrag) return;
+  e.preventDefault();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+  // Tilt based on horizontal velocity — clamp to ±15 deg, decay toward 0
+  const dx = clientX - bgDrag.lastX;
+  bgDrag.lastX = clientX;
+  bgDrag.tilt = Math.max(-12, Math.min(12, bgDrag.tilt * 0.88 + dx * 0.25));
+
+  // Move ghost and apply tilt
+  bgDrag.ghost.style.left      = (clientX - bgDrag.offsetX) + 'px';
+  bgDrag.ghost.style.top       = (clientY - bgDrag.offsetY) + 'px';
+  bgDrag.ghost.style.transform = `rotate(${bgDrag.tilt}deg) scale(1.03)`;
+
+  // Find which card the centre of the ghost is over and move placeholder
+  const grid = document.getElementById('bgCustomFieldsGrid');
+  if (!grid) return;
+  const cards = [...grid.children].filter(c =>
+    c.classList.contains('bg-field-wrap') && !c.classList.contains('bg-dragging')
+  );
+
+  let inserted = false;
+  for (const c of cards) {
+    const r = c.getBoundingClientRect();
+    const mid = r.top + r.height / 2;
+    if (clientY < mid) {
+      grid.insertBefore(bgDrag.placeholder, c);
+      inserted = true;
+      break;
+    }
+  }
+  if (!inserted) grid.appendChild(bgDrag.placeholder);
+}
+
+function onBgPointerUp(e) {
+  document.removeEventListener('pointermove', onBgPointerMove);
+  document.removeEventListener('pointerup',   onBgPointerUp);
+
+  if (!bgDrag) return;
+  const { srcIndex, card, ghost, placeholder } = bgDrag;
+  bgDrag = null;
+
+  // Find destination: index of placeholder among field-wrap cards
+  const grid = document.getElementById('bgCustomFieldsGrid');
+  const allChildren = [...grid.children];
+  const phPos = allChildren.indexOf(placeholder);
+
+  // Count only field-wrap cards before placeholder (excluding the dragging card)
+  let dest = 0;
+  for (let i = 0; i < phPos; i++) {
+    const ch = allChildren[i];
+    if (ch.classList.contains('bg-field-wrap') && !ch.classList.contains('bg-dragging')) dest++;
+  }
+
+  // Clean up DOM
+  ghost.remove();
+  placeholder.remove();
+  card.classList.remove('bg-dragging');
+
+  if (dest === srcIndex) {
+    renderBgFields(); // just restore
+    return;
+  }
+
+  const vals = captureBgFieldValues();
+  const moved = bgCustomFields.splice(srcIndex, 1)[0];
+  dest = Math.max(0, Math.min(dest, bgCustomFields.length));
+  bgCustomFields.splice(dest, 0, moved);
+  renderBgFields();
+  applyBgFieldValues(vals);
+
+  // Highlight landed card
+  const landed = [...grid.children][dest];
+  if (landed) {
+    landed.classList.add('bg-just-moved');
+    setTimeout(() => landed.classList.remove('bg-just-moved'), 400);
+  }
+  autosave();
+}
+
 window.addEventListener('resize', refreshAllNoteBoxes);
 window.addEventListener('orientationchange', refreshAllNoteBoxes);
 
@@ -1174,10 +2276,14 @@ function clearAllFormFields() {
     if (element) element.checked = false;
   });
 
-  // Clear background fields
-  const backgroundFields = ['char_backstory', 'personality_traits', 'traits_ideals', 'traits_bonds',
-                           'traits_flaws', 'traits_allies', 'traits_appearance'];
-  backgroundFields.forEach(id => {
+  // Clear background fields — reset to defaults and blank values
+  bgCustomFields = BG_DEFAULT_FIELDS.map(f => ({ ...f }));
+  bgReorderMode = false;
+  const bgToggle = document.getElementById('bgReorderToggle');
+  if (bgToggle) { bgToggle.classList.remove('active'); bgToggle.textContent = 'Reorder Mode'; }
+  renderBgFields();
+  ['char_backstory', 'personality_traits', 'traits_ideals', 'traits_bonds',
+   'traits_flaws', 'traits_allies', 'traits_appearance'].forEach(id => {
     const element = document.getElementById(id);
     if (element) element.value = '';
   });
@@ -1205,17 +2311,13 @@ function clearAllFormFields() {
   const customCurrencyRows = document.getElementById('custom_currency_rows');
   if (customCurrencyRows) customCurrencyRows.innerHTML = '';
 
-  // Clear notes fields
-  const notesFields = ['active_quests', 'completed_quests', 'quest_leads', 'mission_objectives',
-                      'important_locations', 'travel_routes', 'world_events', 'places_to_visit',
-                      'key_npcs', 'allies_contacts', 'enemies_threats', 'npc_relationships',
-                      'npc_information', 'session_notes', 'campaign_timeline', 'party_decisions',
-                      'campaign_goals', 'combat_notes', 'enemy_information', 'equipment_items',
-                      'spell_ability_notes', 'rules_mechanics', 'ideas_plans', 'miscellaneous_notes'];
-  notesFields.forEach(id => {
-    const element = document.getElementById(id);
-    if (element) element.value = '';
-  });
+  // Clear notes (folder+card system)
+  noteFolders = [];
+  notesActiveFolderId = null;
+  notesEditingCardId = null;
+  notesReorderMode = false;
+  notesCardReorderMode = false;
+  initNotesPage();
 
   // Clear actions and features
   const actionsNotes = document.getElementById('actions_notes');
@@ -1567,7 +2669,14 @@ function autosave() {
       flaws: val('traits_flaws'),
       allies: val('traits_allies'),
       appearance: val('traits_appearance')
-    }
+    },
+    customFields: bgCustomFields.map(f => ({
+      id: f.id,
+      title: f.title,
+      placeholder: f.placeholder || '',
+      isDefault: !!f.isDefault,
+      value: val(f.id) || ''
+    }))
   } : existing.page2;
 
   // --- page3 (spells) ---
@@ -1609,33 +2718,12 @@ function autosave() {
   } : existing.page4;
 
   // --- page6 (notes) ---
-  const page6InDom = el('active_quests');
-  const page6 = page6InDom ? {
-    activeQuests: val('active_quests'),
-    completedQuests: val('completed_quests'),
-    questLeads: val('quest_leads'),
-    missionObjectives: val('mission_objectives'),
-    importantLocations: val('important_locations'),
-    travelRoutes: val('travel_routes'),
-    worldEvents: val('world_events'),
-    placesToVisit: val('places_to_visit'),
-    keyNpcs: val('key_npcs'),
-    alliesContacts: val('allies_contacts'),
-    enemiesThreats: val('enemies_threats'),
-    npcRelationships: val('npc_relationships'),
-    npcInformation: val('npc_information'),
-    sessionNotes: val('session_notes'),
-    campaignTimeline: val('campaign_timeline'),
-    partyDecisions: val('party_decisions'),
-    campaignGoals: val('campaign_goals'),
-    combatNotes: val('combat_notes'),
-    enemyInformation: val('enemy_information'),
-    equipmentItems: val('equipment_items'),
-    spellAbilityNotes: val('spell_ability_notes'),
-    rulesMechanics: val('rules_mechanics'),
-    ideasPlans: val('ideas_plans'),
-    miscellaneousNotes: val('miscellaneous_notes')
-  } : existing.page6;
+  const page6 = { noteFolders: noteFolders.map(f => ({
+    id: f.id,
+    title: f.title,
+    isDefault: !!f.isDefault,
+    cards: f.cards.map(c => ({ id: c.id, title: c.title, body: c.body, isDefault: !!c.isDefault }))
+  })) };
 
   const data = {
     characterInfo,
@@ -1930,20 +3018,34 @@ function loadData() {
       document.getElementById('portraitPreview').innerHTML = '';
       document.getElementById('portraitPreview').appendChild(img);
     }
-    
+
     // Backstory
     if (data.page2.backstory) {
       document.getElementById('char_backstory').value = data.page2.backstory;
     }
-    
-    // Traits
-    if (data.page2.traits) {
-      document.getElementById('personality_traits').value = data.page2.traits.personality || '';
-      document.getElementById('traits_ideals').value = data.page2.traits.ideals || '';
-      document.getElementById('traits_bonds').value = data.page2.traits.bonds || '';
-      document.getElementById('traits_flaws').value = data.page2.traits.flaws || '';
-      document.getElementById('traits_allies').value = data.page2.traits.allies || '';
-      document.getElementById('traits_appearance').value = data.page2.traits.appearance || '';
+
+    // Custom fields (includes defaults + user-added)
+    if (Array.isArray(data.page2.customFields) && data.page2.customFields.length > 0) {
+      bgCustomFields = data.page2.customFields.map(f => ({
+        id: f.id, title: f.title, placeholder: f.placeholder || '', isDefault: !!f.isDefault
+      }));
+      renderBgFields();
+      data.page2.customFields.forEach(f => {
+        const el = document.getElementById(f.id);
+        if (el) el.value = f.value || '';
+      });
+    } else {
+      // First load or old save — restore defaults and fill from legacy traits
+      bgCustomFields = BG_DEFAULT_FIELDS.map(f => ({ ...f }));
+      renderBgFields();
+      if (data.page2.traits) {
+        document.getElementById('personality_traits').value = data.page2.traits.personality || '';
+        document.getElementById('traits_ideals').value      = data.page2.traits.ideals      || '';
+        document.getElementById('traits_bonds').value       = data.page2.traits.bonds       || '';
+        document.getElementById('traits_flaws').value       = data.page2.traits.flaws       || '';
+        document.getElementById('traits_allies').value      = data.page2.traits.allies      || '';
+        document.getElementById('traits_appearance').value  = data.page2.traits.appearance  || '';
+      }
     }
   }
   
@@ -2103,92 +3205,33 @@ function loadData() {
     }
   }
   
-  // Page 6: Notes
-  if (data.page6) {
-    // Quest & Mission Info
-    if (data.page6.activeQuests) {
-      document.getElementById('active_quests').value = data.page6.activeQuests;
-    }
-    if (data.page6.completedQuests) {
-      document.getElementById('completed_quests').value = data.page6.completedQuests;
-    }
-    if (data.page6.questLeads) {
-      document.getElementById('quest_leads').value = data.page6.questLeads;
-    }
-    if (data.page6.missionObjectives) {
-      document.getElementById('mission_objectives').value = data.page6.missionObjectives;
-    }
-    
-    // World & Locations
-    if (data.page6.importantLocations) {
-      document.getElementById('important_locations').value = data.page6.importantLocations;
-    }
-    if (data.page6.travelRoutes) {
-      document.getElementById('travel_routes').value = data.page6.travelRoutes;
-    }
-    if (data.page6.worldEvents) {
-      document.getElementById('world_events').value = data.page6.worldEvents;
-    }
-    if (data.page6.placesToVisit) {
-      document.getElementById('places_to_visit').value = data.page6.placesToVisit;
-    }
-    
-    // NPCs & Contacts
-    if (data.page6.keyNpcs) {
-      document.getElementById('key_npcs').value = data.page6.keyNpcs;
-    }
-    if (data.page6.alliesContacts) {
-      document.getElementById('allies_contacts').value = data.page6.alliesContacts;
-    }
-    if (data.page6.enemiesThreats) {
-      document.getElementById('enemies_threats').value = data.page6.enemiesThreats;
-    }
-    if (data.page6.npcRelationships) {
-      document.getElementById('npc_relationships').value = data.page6.npcRelationships;
-    }
-    if (data.page6.npcInformation) {
-      document.getElementById('npc_information').value = data.page6.npcInformation;
-    }
-    
-    // Session & Campaign
-    if (data.page6.sessionNotes) {
-      document.getElementById('session_notes').value = data.page6.sessionNotes;
-    }
-    if (data.page6.campaignTimeline) {
-      document.getElementById('campaign_timeline').value = data.page6.campaignTimeline;
-    }
-    if (data.page6.partyDecisions) {
-      document.getElementById('party_decisions').value = data.page6.partyDecisions;
-    }
-    if (data.page6.campaignGoals) {
-      document.getElementById('campaign_goals').value = data.page6.campaignGoals;
-    }
-    
-    // Combat & Strategy
-    if (data.page6.combatNotes) {
-      document.getElementById('combat_notes').value = data.page6.combatNotes;
-    }
-    if (data.page6.enemyInformation) {
-      document.getElementById('enemy_information').value = data.page6.enemyInformation;
-    }
-    if (data.page6.equipmentItems) {
-      document.getElementById('equipment_items').value = data.page6.equipmentItems;
-    }
-    if (data.page6.spellAbilityNotes) {
-      document.getElementById('spell_ability_notes').value = data.page6.spellAbilityNotes;
-    }
-    
-    // General Info
-    if (data.page6.rulesMechanics) {
-      document.getElementById('rules_mechanics').value = data.page6.rulesMechanics;
-    }
-    if (data.page6.ideasPlans) {
-      document.getElementById('ideas_plans').value = data.page6.ideasPlans;
-    }
-    if (data.page6.miscellaneousNotes) {
-      document.getElementById('miscellaneous_notes').value = data.page6.miscellaneousNotes;
-    }
+  // Page 6: Notes (folder+card system)
+  if (data.page6 && Array.isArray(data.page6.noteFolders)) {
+    noteFolders = data.page6.noteFolders.map(f => ({
+      id: f.id,
+      title: f.title || 'Folder',
+      isDefault: !!f.isDefault,
+      cards: Array.isArray(f.cards) ? f.cards.map(c => ({ id: c.id, title: c.title || '', body: c.body || '', isDefault: !!c.isDefault })) : []
+    }));
+  } else {
+    noteFolders = [];
   }
+  // Ensure every default folder exists (handles old characters saved before this system).
+  // Append any missing default folders at the end, and inject the template card into any
+  // default folder that currently has no cards.
+  NOTES_DEFAULT_FOLDERS.forEach(def => {
+    let folder = noteFolders.find(f => f.id === def.id);
+    if (!folder) {
+      folder = { id: def.id, title: def.title, isDefault: true, cards: def.cards.map(c => ({ ...c })) };
+      noteFolders.push(folder);
+    } else {
+      folder.isDefault = true;
+      if (folder.cards.length === 0) {
+        folder.cards = def.cards.map(c => ({ ...c }));
+      }
+    }
+  });
+  initNotesPage();
   
   // Weapons
   if (data.weapons) {
@@ -3102,6 +4145,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ========== TAB SYSTEM ==========
 function switchTab(button) {
+  // Reset notes to folder view whenever leaving or re-entering the notes tab
+  if (typeof notesGoBack === 'function') notesGoBack();
+
   // Remove active classes from all tabs and pages
   document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
   document.querySelectorAll('.page').forEach(page => {

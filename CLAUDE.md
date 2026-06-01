@@ -29,7 +29,7 @@ All JS lives in `assets/`. Files are loaded **in this exact order** via dynamic 
 | `assets/banner-messages.js` | Static banner message array | small |
 | `assets/modules/stats.js` | Ability scores, saving throws, skills, proficiency bonus, numeric input helpers (`calculateAbilityBonus`, `calculateSavingThrow`, `calculateSkillBonus`, `enforceAutoMathNumericInputs`, etc.) | ~290 |
 | `assets/modules/cloud-skills.js` | Firebase Auth + Firestore sync (`syncToCloud`, `syncFromCloud`, `scheduleSyncToCloud`, `signInWithGoogle`, `signOut`, `onActiveCharacterChanged`) | ~700 |
-| `assets/modules/core.js` | localStorage helpers, note box system, theme/accent, character CRUD (`loadData`, `autosave`, `createNewCharacter`, etc.), popup/tab system, `escapeHtml`, `initializeWebApp`, weapons/equipment system | ~3125 |
+| `assets/modules/core.js` | localStorage helpers, note box system, theme/accent, character CRUD (`loadData`, `autosave`, `createNewCharacter`, etc.), popup/tab system, `escapeHtml`, `initializeWebApp`, weapons/equipment system, **notes folder+card system** | ~3600 |
 | `assets/modules/layout.js` | Flex-wrap sizing, section resize handles (`makeContainersResizable`, `applyFlexWrapSizing`), `setupAutoResize` | ~241 |
 | `assets/modules/characters.js` | Currency system (CP/SP/GP + custom — saved under `page4.currency`), banner wealth messages, suggestion form, autosave scheduling (`scheduleAutosave`, `bindGlobalAutosaveListeners`), deleted-character tracking | ~379 |
 | `assets/modules/health.js` | HP display, death saves, potion use, short/long rest | ~292 |
@@ -37,7 +37,7 @@ All JS lives in `assets/`. Files are loaded **in this exact order** via dynamic 
 | `assets/modules/inventory.js` | Inventory CRUD, equipment, storage containers, coin tracking, portrait upload/remove, settings dropdown | ~1180 |
 | `assets/modules/spells.js` | Spell list, spell slots, custom resources, favorites, sync panels. Loads spell reference data async from `assets/data/spells.json` via `loadSpellDatabase()` at boot | ~635 |
 | `assets/modules/admin.js` | Owner-only admin portal: user list, character import/preview via Firestore. Depends on `escapeHtml`, `getStoredJSON`, `loadCharacterList`, `loadData` from `core.js` | ~230 |
-| `assets/app.js` | Boot entry point only: `window.initializeApp`, `showWeaponsPopup`, `addWeapon` | ~129 |
+| `assets/app.js` | Boot entry point only: `window.initializeApp`, `showWeaponsPopup`, `addWeapon`. Also seeds default bg fields and calls `initNotesPage()` on first boot. | ~135 |
 
 **Each function is defined in exactly one file.** All functions are globals (no ES modules). Do not add duplicate definitions — the last-loaded file wins silently.
 
@@ -58,6 +58,33 @@ Flat keys (not per-character):
 - `dndDeviceId` — stable per-device ID used for presence tracking
 
 Per-character data is **not** namespaced by character ID in localStorage. All character data lives inside the `data` field of each entry in `dndCharacters`. Always use `getStoredJSON`/`setStoredJSON` helpers for reads/writes.
+
+#### page6 — Notes data shape
+Notes are no longer flat textarea fields. `data.page6` contains:
+```js
+{
+  noteFolders: [
+    {
+      id: string,       // 'nfd_quests' etc. for defaults, 'nf_<timestamp>' for user-created
+      title: string,
+      isDefault: boolean,   // true = cannot be deleted
+      cards: [
+        {
+          id: string,       // 'nfc_q1' etc. for defaults, 'nc_<timestamp>' for user-created
+          title: string,
+          body: string,
+          isDefault: boolean  // true = cannot be deleted, shown with 'template' badge
+        }
+      ]
+    }
+  ]
+}
+```
+- `NOTES_DEFAULT_FOLDERS` (in `core.js`) defines the 10 built-in folders and their one template card each.
+- On every `loadData()`, any default folder missing from saved data is appended, and any default folder with 0 cards gets its template card re-injected. This means new default folders added to `NOTES_DEFAULT_FOLDERS` will appear for all existing characters automatically.
+- `initNotesPage()` — called from `loadData()`, `clearAllFormFields()`, and `app.js` boot. Seeds defaults if `noteFolders` is empty, resets to folder view, renders.
+- `notesGoBack()` — resets to folder view and scrolls to top. Also called by `switchTab()` on every tab change so the user always lands on the folder grid.
+- Cloud sync carries `page6.noteFolders` automatically as part of the full character blob — no special handling needed.
 
 #### Firestore structure
 ```
@@ -95,6 +122,9 @@ Single stylesheet: `assets/styles.css`. Theming uses CSS custom properties (`--a
 - **All pages are in the DOM simultaneously** — `index.html` loads all page HTML at boot and hides/shows via CSS `display`. So `document.getElementById('char_name')` always resolves even when the stats page is not visible.
 - **`autosave()` uses `val(id) !== null` not `val(id)` to decide whether to save or preserve** — empty string `""` is a valid save (user cleared the field); `null` means the element isn't in the DOM (page not loaded yet). Don't change this to a falsy check.
 - **Script version cache-busting** — `index.html` has a `scriptVersion` constant appended as `?v=` to all script URLs. Bump it whenever JS files change so browsers don't serve stale cached scripts.
+- **Notes page is JS-rendered** — `pages/notes.html` contains only the shell markup (toolbar, grid containers, popups). All folder and card elements are built by `renderNoteFolders()` / `renderNoteCards()` in `core.js`. Do not add static note content to the HTML.
+- **Notes `isDefault` must be preserved through save/load** — both folder and card objects carry `isDefault: boolean`. The autosave block and the load block both map this flag explicitly. If you add new fields to the notes data shape, update both the save block (`page6 = { noteFolders: ... }`) and the load block in `loadData()`.
+- **Notes delete is multi-step** — uses `notesHandleDelete(id, btn, onConfirm)` with state tracked in `notesDeleteState`. Pattern: Delete → Sure? → Wait 3s… → Confirm. Do not replace with `confirm()` dialogs.
 
 ## Working Efficiently
 
@@ -110,4 +140,7 @@ grep -rn "function targetName" assets/
 - `loadData()` — in `core.js`. Main entry point that reloads all page data after switching characters.
 - `window.initializeApp` — defined in `app.js`. Called by `index.html` after all modules load. Single definition only.
 - `initializeWebApp()` — in `core.js`. Called by `initializeApp` to set up web features.
+- `noteFolders` — global array of folder objects for the notes page. Source of truth for all notes UI. Modified in place; always call `autosave()` after mutating.
+- `NOTES_DEFAULT_FOLDERS` — constant array defining the 10 built-in folders and their template cards. Edit this to change default content; changes propagate to all existing characters on next load (missing folders are appended, empty default folders get their card re-injected).
+- `notesHandleDelete(id, btn, onConfirm)` — shared multi-step delete handler for both folders and cards. Manages state in `notesDeleteState[id]`.
 

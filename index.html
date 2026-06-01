@@ -42,7 +42,7 @@
     if (event.target && event.target.closest('input[type="range"], input[type="color"], select, button')) return;
     const dx = event.touches[0].clientX - startX;
     const dy = event.touches[0].clientY - startY;
-    if (Math.abs(dx) > Math.abs(dy) + 4) {
+    if (Math.abs(dx) > Math.abs(dy) + 4 && event.cancelable) {
       event.preventDefault();
     }
   }, { passive: false });
@@ -242,7 +242,7 @@ function activateRoute() {
 })();
 
 async function bootstrapModularApp() {
-  const scriptVersion = '20260601-portrait-upload';
+  const scriptVersion = '20260601-notes-navreset';
   const [chrome, home, settings, stats, background, spells, inventory, notes, popups] = await Promise.all([
     loadText('partials/chrome.html'),
     loadText('pages/home.html'),

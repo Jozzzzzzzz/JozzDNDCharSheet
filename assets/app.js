@@ -51,6 +51,15 @@ window.initializeApp = function() {
   loadSpellDatabase();
   initializeWebApp();
 
+  // Render default background fields on first boot (before any character loads)
+  if (typeof bgCustomFields !== 'undefined' && bgCustomFields.length === 0) {
+    bgCustomFields = BG_DEFAULT_FIELDS.map(f => ({ ...f }));
+    renderBgFields();
+  }
+
+  // Init notes page on first boot
+  if (typeof initNotesPage === 'function') initNotesPage();
+
   loadCharacterList();
   loadThemeSettings();
 

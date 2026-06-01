@@ -1393,6 +1393,322 @@ button[onclick*="home"] {
     line-height: 1.45;
   }
 
+  /* ---- Notes folder+card system ---- */
+
+  .notes-page-header {
+    margin-bottom: 1.1rem;
+  }
+
+  .notes-page-title {
+    font-size: 1.3em;
+    font-weight: 700;
+    margin: 0 0 0.45rem;
+    color: var(--accent-text, #ddd);
+  }
+
+  .notes-page-desc {
+    font-size: 0.88em;
+    line-height: 1.6;
+    opacity: 0.65;
+    margin: 0;
+    max-width: 720px;
+  }
+
+  .notes-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .notes-breadcrumb {
+    font-weight: 600;
+    font-size: 1.05em;
+    flex: 1;
+    color: var(--accent-text, #ccc);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .notes-back-btn {
+    background: transparent;
+    border: 1px solid var(--accent-border);
+    color: var(--accent-text, #ccc);
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background 0.15s;
+  }
+  .notes-back-btn:hover { background: var(--accent-soft); }
+
+  .notes-reorder-toggle {
+    background: transparent;
+    border: 1px solid var(--accent-border);
+    color: var(--accent-text, #ccc);
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background 0.2s, color 0.2s;
+  }
+  .notes-reorder-toggle.active {
+    background: var(--accent);
+    color: var(--accent-contrast, #fff);
+    border-color: var(--accent);
+  }
+
+  .notes-add-btn {
+    background: var(--accent);
+    color: var(--accent-contrast, #fff);
+    border: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 600;
+    transition: opacity 0.15s;
+  }
+  .notes-add-btn:hover { opacity: 0.85; }
+
+  .notes-folders-grid,
+  .notes-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+  }
+
+  .notes-folder-card {
+    background: var(--section-bg, rgba(255,255,255,0.04));
+    border: 1px solid var(--accent-border);
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    position: relative;
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .notes-folder-card:hover {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .notes-folder-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .notes-folder-title {
+    font-size: 1em;
+    font-weight: 700;
+    margin: 0;
+    word-break: break-word;
+  }
+
+  .notes-folder-count {
+    font-size: 0.75em;
+    opacity: 0.55;
+    white-space: nowrap;
+    margin-top: 2px;
+  }
+
+  .notes-note-card {
+    background: var(--section-bg, rgba(255,255,255,0.04));
+    border: 1px solid var(--accent-border);
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    position: relative;
+    min-height: 90px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .notes-note-card:hover {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .notes-note-title-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-wrap: wrap;
+  }
+
+  .notes-template-badge {
+    font-size: 0.68em;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--accent-text, #aaa);
+    border: 1px solid var(--accent-border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    opacity: 0.6;
+    flex-shrink: 0;
+  }
+
+  .notes-note-title {
+    font-size: 0.95em;
+    font-weight: 700;
+    margin: 0;
+    word-break: break-word;
+  }
+
+  .notes-note-preview {
+    font-size: 0.8em;
+    opacity: 0.6;
+    margin: 0;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    line-height: 1.4;
+  }
+
+  .notes-reorder-controls {
+    display: flex;
+    gap: 4px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+
+  .notes-reorder-controls button {
+    padding: 2px 8px;
+    font-size: 0.8em;
+    border-radius: 4px;
+    border: 1px solid var(--accent-border);
+    background: var(--accent-soft);
+    color: var(--text-primary, #eee);
+    cursor: pointer;
+  }
+  .notes-reorder-controls button:disabled { opacity: 0.25; cursor: default; }
+
+  .notes-delete-btn {
+    margin-left: auto;
+    border-color: #e05252 !important;
+    color: #e05252 !important;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .notes-delete-btn:hover { background: rgba(224,82,82,0.15) !important; }
+
+  .notes-delete-btn.notes-delete-warn {
+    border-color: #e09a3a !important;
+    color: #e09a3a !important;
+  }
+  .notes-delete-btn.notes-delete-warn:hover { background: rgba(224,154,58,0.15) !important; }
+
+  .notes-delete-btn.notes-delete-counting {
+    border-color: #888 !important;
+    color: #888 !important;
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  .notes-delete-btn.notes-delete-final {
+    border-color: #e05252 !important;
+    color: #fff !important;
+    background: #e05252 !important;
+  }
+  .notes-delete-btn.notes-delete-final:hover { background: #c43e3e !important; }
+
+  .notes-drag-handle {
+    text-align: center;
+    font-size: 1.2em;
+    opacity: 0.4;
+    cursor: grab;
+    padding: 4px 0 0;
+    user-select: none;
+  }
+  .notes-drag-handle:active { cursor: grabbing; }
+
+  .notes-drag-ghost {
+    position: fixed;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0.85;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+    border-radius: 10px;
+  }
+
+  .notes-drag-placeholder {
+    border: 2px dashed var(--accent-border);
+    border-radius: 10px;
+    background: var(--accent-soft);
+    opacity: 0.5;
+    box-sizing: border-box;
+  }
+
+  /* Note editor popup */
+  .note-editor-popup {
+    width: min(680px, 95vw);
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .note-editor-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 1rem 1.2rem 0.75rem;
+    border-bottom: 1px solid var(--accent-border);
+  }
+
+  .note-editor-title-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 1.15em;
+    font-weight: 700;
+    color: var(--text-primary, #eee);
+    font-family: inherit;
+  }
+
+  .note-editor-close {
+    background: transparent;
+    border: none;
+    color: var(--text-primary, #aaa);
+    font-size: 1.1em;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .note-editor-close:hover { background: var(--accent-soft); }
+
+  .note-editor-body {
+    flex: 1;
+    width: 100%;
+    min-height: 300px;
+    max-height: 60vh;
+    resize: vertical;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--text-primary, #eee);
+    font-family: inherit;
+    font-size: 0.95em;
+    line-height: 1.6;
+    padding: 1rem 1.2rem;
+    box-sizing: border-box;
+    overflow-y: auto;
+  }
+
+  /* ---- end notes system ---- */
+
   .background-grid {
     display: grid;
     grid-template-columns: 250px 1fr;
@@ -1403,6 +1719,194 @@ button[onclick*="home"] {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 1rem;
+  }
+
+  /* Background custom fields toolbar */
+  .bg-fields-toolbar {
+    display: flex;
+    gap: 8px;
+    margin: 0.75rem 0 0.5rem;
+    align-items: center;
+  }
+
+  .bg-reorder-toggle {
+    background: transparent;
+    border: 1px solid var(--accent-border);
+    color: var(--accent-text, #ccc);
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85em;
+    transition: background 0.2s, color 0.2s;
+  }
+
+  .bg-reorder-toggle.active {
+    background: var(--accent);
+    color: var(--accent-contrast, #fff);
+    border-color: var(--accent);
+  }
+
+  .bg-add-field-btn {
+    background: var(--accent);
+    color: var(--accent-contrast, #fff);
+    border: none;
+    padding: 5px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85em;
+  }
+
+  /* Per-field header with reorder controls */
+  .bg-field-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+
+  .bg-field-header h3 {
+    margin: 0;
+    font-size: 1em;
+  }
+
+  .bg-reorder-controls {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .bg-reorder-controls button {
+    padding: 2px 7px;
+    font-size: 0.8em;
+    border-radius: 4px;
+    border: 1px solid var(--accent-border);
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    line-height: 1.4;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+
+  .bg-arrow-btn:hover:not(:disabled) {
+    background: var(--accent-soft);
+  }
+
+  .bg-reorder-controls button:disabled {
+    opacity: 0.25;
+    cursor: default;
+  }
+
+  /* Delete button states */
+  .bg-remove-btn {
+    color: #e06c6c !important;
+    border-color: #e06c6c !important;
+    min-width: 28px;
+  }
+
+  .bg-remove-btn.bg-delete-warn {
+    background: rgba(224, 108, 108, 0.15) !important;
+    color: #e06c6c !important;
+    border-color: #e06c6c !important;
+    animation: bg-warn-pulse 0.6s ease;
+  }
+
+  .bg-remove-btn.bg-delete-counting {
+    background: rgba(224, 108, 108, 0.08) !important;
+    color: #aaa !important;
+    border-color: #888 !important;
+    cursor: not-allowed;
+  }
+
+  .bg-remove-btn.bg-delete-final {
+    background: #c0392b !important;
+    color: #fff !important;
+    border-color: #c0392b !important;
+    font-weight: bold;
+    animation: bg-warn-pulse 0.4s ease;
+  }
+
+  @keyframes bg-warn-pulse {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(1.08); }
+    100% { transform: scale(1); }
+  }
+
+  /* Drag handle */
+  .bg-drag-handle {
+    text-align: center;
+    font-size: 1.4em;
+    letter-spacing: 3px;
+    color: var(--accent-border);
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+    padding: 4px 0 2px;
+  }
+
+  .bg-drag-handle:active {
+    cursor: grabbing;
+  }
+
+  /* Card being dragged — stays in grid as ghost source, fades out */
+  .bg-dragging {
+    opacity: 0.15;
+    pointer-events: none;
+  }
+
+  /* Live drop placeholder in the grid */
+  .bg-drop-placeholder {
+    border: 2px dashed var(--accent);
+    border-radius: 8px;
+    background: var(--accent-soft, rgba(100,100,200,0.07));
+    pointer-events: none;
+    min-height: 60px;
+  }
+
+  /* Floating ghost that follows pointer */
+  .bg-ghost {
+    position: fixed;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0.88;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+    border-radius: 10px;
+    will-change: transform, left, top;
+  }
+
+  /* Overflow hint — shown when field exceeds 450 chars */
+  .bg-overflow-hint {
+    text-align: center;
+    font-size: 0.78em;
+    color: var(--accent);
+    cursor: pointer;
+    padding: 4px 0 2px;
+    opacity: 0.8;
+    letter-spacing: 0.02em;
+  }
+
+  .bg-overflow-hint:hover {
+    opacity: 1;
+    text-decoration: underline;
+  }
+
+  /* Cap textarea height when content is long so card stays compact */
+  .bg-textarea-capped {
+    max-height: 120px !important;
+    overflow: hidden !important;
+    -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+    mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+    cursor: pointer !important;
+    user-select: none;
+  }
+
+  /* Flash highlight when a card lands after arrow move or drop */
+  .bg-just-moved {
+    animation: bg-land-flash 0.4s ease;
+  }
+
+  @keyframes bg-land-flash {
+    0%   { box-shadow: 0 0 0 3px var(--accent); }
+    100% { box-shadow: none; }
   }
 
   .weight-display {
@@ -5518,8 +6022,18 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
     }
     
     .background-textareas {
-      grid-template-columns: 1fr !important;
-      gap: 10px;
+      grid-template-columns: 1fr 1fr !important;
+      gap: 8px;
+    }
+
+    /* Compact cards in portrait mobile grid */
+    #bgCustomFieldsGrid .bg-field-wrap .basic-textarea {
+      min-height: 100px !important;
+      font-size: 0.85em;
+    }
+
+    #bgCustomFieldsGrid .bg-field-wrap h3 {
+      font-size: 0.9em;
     }
     
     .horizontal-sections {
