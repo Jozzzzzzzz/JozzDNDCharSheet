@@ -778,6 +778,46 @@ function initializeWebApp() {
   window.addEventListener('resize', handleViewportChange);
   window.addEventListener('orientationchange', handleViewportChange);
   handleViewportChange();
+
+  // Portrait upload
+  document.addEventListener('change', function(e) {
+    if (e.target.id !== 'portraitUpload') return;
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file (JPG, PNG, GIF, WebP, etc.)');
+      e.target.value = '';
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Image must be under 2MB to keep your character data manageable.');
+      e.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      const preview = document.getElementById('portraitPreview');
+      if (!preview) return;
+      preview.innerHTML = '';
+      const img = document.createElement('img');
+      img.src = ev.target.result;
+      img.style.width = '100%';
+      img.style.height = '100%';
+      img.style.objectFit = 'cover';
+      img.style.borderRadius = '12px';
+      preview.appendChild(img);
+      autosave();
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  });
+}
+
+function removePortrait() {
+  const preview = document.getElementById('portraitPreview');
+  if (!preview) return;
+  preview.innerHTML = '<span style="color: #666;">No image</span>';
+  autosave();
 }
 
 window.addEventListener('resize', refreshAllNoteBoxes);
