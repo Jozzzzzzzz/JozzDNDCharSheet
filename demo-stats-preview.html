@@ -376,6 +376,121 @@ label {
 .folder-count { font-size:12px; color:var(--text-dim); }
 .folder-default-badge { position:absolute; top:8px; right:8px; font-size:9px; color:var(--text-faint); font-family:'Cinzel',serif; letter-spacing:.08em; }
 
+/* ── Folder textures ── */
+.folder-card[data-type="quests"] {
+  background:
+    repeating-linear-gradient(45deg,transparent 0,transparent 3px,rgba(0,0,0,.08) 3px,rgba(0,0,0,.08) 4px),
+    repeating-linear-gradient(-45deg,transparent 0,transparent 3px,rgba(0,0,0,.05) 3px,rgba(0,0,0,.05) 4px),
+    radial-gradient(ellipse at 35% 60%,rgba(160,30,30,.22) 0%,transparent 65%),
+    #1c0c0c;
+  border-color:rgba(160,40,40,.3);
+}
+.folder-card[data-type="quests"]:hover { border-color:rgba(210,60,60,.55); box-shadow:0 8px 24px rgba(0,0,0,.6),0 0 18px rgba(180,40,40,.4); }
+.folder-card[data-type="quests"] .folder-name { color:#f5a0a0; }
+.folder-card[data-type="quests"] .folder-count { color:#a06060; }
+
+.folder-card[data-type="npcs"] {
+  background:
+    repeating-linear-gradient(0deg,transparent 0,transparent 14px,rgba(180,140,80,.07) 14px,rgba(180,140,80,.07) 15px),
+    radial-gradient(ellipse at 65% 30%,rgba(180,140,60,.14) 0%,transparent 65%),
+    #1a1508;
+  border-color:rgba(180,140,60,.25);
+}
+.folder-card[data-type="npcs"]:hover { border-color:rgba(210,170,80,.55); box-shadow:0 8px 24px rgba(0,0,0,.5),0 0 18px rgba(180,140,60,.35); }
+.folder-card[data-type="npcs"] .folder-name { color:#e8c880; }
+.folder-card[data-type="npcs"] .folder-count { color:#907840; }
+
+.folder-card[data-type="locations"] {
+  background:
+    repeating-linear-gradient(90deg,transparent 0,transparent 18px,rgba(60,120,60,.07) 18px,rgba(60,120,60,.07) 19px),
+    repeating-linear-gradient(0deg,transparent 0,transparent 18px,rgba(60,120,60,.05) 18px,rgba(60,120,60,.05) 19px),
+    radial-gradient(ellipse at 50% 50%,rgba(40,100,40,.18) 0%,transparent 68%),
+    #0c1510;
+  border-color:rgba(60,130,60,.25);
+}
+.folder-card[data-type="locations"]:hover { border-color:rgba(80,170,80,.55); box-shadow:0 8px 24px rgba(0,0,0,.5),0 0 18px rgba(60,140,60,.35); }
+.folder-card[data-type="locations"] .folder-name { color:#90d890; }
+.folder-card[data-type="locations"] .folder-count { color:#507050; }
+
+.folder-card[data-type="lore"] {
+  background:
+    repeating-linear-gradient(28deg,transparent 0,transparent 5px,rgba(200,160,60,.06) 5px,rgba(200,160,60,.06) 6px),
+    radial-gradient(ellipse at 50% 0%,rgba(200,160,60,.14) 0%,transparent 55%),
+    radial-gradient(ellipse at 50% 100%,rgba(0,0,0,.35) 0%,transparent 55%),
+    #1a1208;
+  border-color:rgba(200,160,60,.25);
+}
+.folder-card[data-type="lore"]:hover { border-color:rgba(230,185,80,.55); box-shadow:0 8px 24px rgba(0,0,0,.5),0 0 18px rgba(200,160,60,.4); }
+.folder-card[data-type="lore"] .folder-name { color:#e8c878; }
+.folder-card[data-type="lore"] .folder-count { color:#908040; }
+
+.folder-card[data-type="combat"] {
+  background:
+    repeating-linear-gradient(-22deg,transparent 0,transparent 7px,rgba(255,255,255,.025) 7px,rgba(255,255,255,.025) 8px),
+    repeating-linear-gradient(65deg,transparent 0,transparent 12px,rgba(255,255,255,.015) 12px,rgba(255,255,255,.015) 13px),
+    radial-gradient(ellipse at 30% 45%,rgba(130,25,25,.25) 0%,transparent 60%),
+    #0e0808;
+  border-color:rgba(130,35,35,.3);
+}
+.folder-card[data-type="combat"]:hover { border-color:rgba(190,50,50,.55); box-shadow:0 8px 24px rgba(0,0,0,.65),0 0 18px rgba(150,30,30,.45); }
+.folder-card[data-type="combat"] .folder-name { color:#d08080; }
+.folder-card[data-type="combat"] .folder-count { color:#785050; }
+
+.folder-card[data-type="items"] {
+  background:
+    linear-gradient(135deg,rgba(180,110,40,.1) 0%,rgba(210,150,60,.18) 40%,rgba(160,100,30,.09) 65%,rgba(210,150,60,.14) 100%),
+    radial-gradient(ellipse at 70% 25%,rgba(220,165,65,.12) 0%,transparent 55%),
+    #18110a;
+  border-color:rgba(190,125,40,.28);
+}
+.folder-card[data-type="items"]:hover { border-color:rgba(220,155,65,.55); box-shadow:0 8px 24px rgba(0,0,0,.5),0 0 18px rgba(190,130,45,.4); }
+.folder-card[data-type="items"] .folder-name { color:#e0b060; }
+.folder-card[data-type="items"] .folder-count { color:#906830; }
+
+.folder-card[data-type="party"] {
+  background:
+    radial-gradient(ellipse at 35% 65%,rgba(200,120,40,.22) 0%,transparent 60%),
+    radial-gradient(ellipse at 80% 20%,rgba(180,90,30,.12) 0%,transparent 50%),
+    #171008;
+  border-color:rgba(200,120,40,.25);
+}
+.folder-card[data-type="party"]:hover { border-color:rgba(230,145,60,.55); box-shadow:0 8px 24px rgba(0,0,0,.5),0 0 18px rgba(200,120,40,.4); }
+.folder-card[data-type="party"] .folder-name { color:#e0a860; }
+.folder-card[data-type="party"] .folder-count { color:#886030; }
+
+.folder-card[data-type="sessions"] {
+  background:
+    repeating-linear-gradient(0deg,transparent 0,transparent 16px,rgba(80,100,190,.08) 16px,rgba(80,100,190,.08) 17px),
+    radial-gradient(ellipse at 50% 50%,rgba(40,60,150,.18) 0%,transparent 65%),
+    #0a0c18;
+  border-color:rgba(80,100,210,.25);
+}
+.folder-card[data-type="sessions"]:hover { border-color:rgba(110,130,230,.55); box-shadow:0 8px 24px rgba(0,0,0,.5),0 0 18px rgba(80,100,210,.4); }
+.folder-card[data-type="sessions"] .folder-name { color:#9ab0f0; }
+.folder-card[data-type="sessions"] .folder-count { color:#506080; }
+
+.folder-card[data-type="world"] {
+  background:
+    repeating-linear-gradient(118deg,transparent 0,transparent 9px,rgba(40,155,145,.05) 9px,rgba(40,155,145,.05) 10px),
+    radial-gradient(ellipse at 60% 40%,rgba(35,145,130,.18) 0%,transparent 62%),
+    #081414;
+  border-color:rgba(40,150,140,.25);
+}
+.folder-card[data-type="world"]:hover { border-color:rgba(60,185,165,.55); box-shadow:0 8px 24px rgba(0,0,0,.5),0 0 18px rgba(40,155,135,.4); }
+.folder-card[data-type="world"] .folder-name { color:#70d8c8; }
+.folder-card[data-type="world"] .folder-count { color:#387868; }
+
+.folder-card[data-type="misc"] {
+  background:
+    repeating-linear-gradient(90deg,transparent 0,transparent 20px,rgba(130,130,145,.05) 20px,rgba(130,130,145,.05) 21px),
+    repeating-linear-gradient(0deg,transparent 0,transparent 20px,rgba(130,130,145,.04) 20px,rgba(130,130,145,.04) 21px),
+    #121214;
+  border-color:rgba(130,130,150,.18);
+}
+.folder-card[data-type="misc"]:hover { border-color:rgba(160,160,180,.4); box-shadow:0 8px 24px rgba(0,0,0,.45),0 0 14px rgba(130,130,150,.25); }
+.folder-card[data-type="misc"] .folder-name { color:#b0b0c8; }
+.folder-card[data-type="misc"] .folder-count { color:#606072; }
+
 /* ── Color picker ── */
 .color-picker-overlay { position:fixed; inset:0; z-index:500; background:rgba(0,0,0,.6); backdrop-filter:blur(6px); display:flex; align-items:flex-end; opacity:0; pointer-events:none; transition:opacity .25s; }
 .color-picker-overlay.open { opacity:1; pointer-events:all; }
@@ -698,16 +813,16 @@ const SPELLS = [
   {name:'Conjure Barrage',level:'3rd',school:'Conjuration',cast:'1 Action',range:'Self (60 ft cone)',duration:'Instant',desc:'You throw a nonmagical weapon or fire a piece of nonmagical ammunition into the air to create a cone of identical weapons.'},
 ];
 const NOTE_FOLDERS = [
-  {icon:'⚔️',name:'Quests',count:4,def:true},
-  {icon:'🧑‍🤝‍🧑',name:'NPCs',count:7,def:true},
-  {icon:'🗺️',name:'Locations',count:3,def:true},
-  {icon:'📜',name:'Lore',count:2,def:true},
-  {icon:'💀',name:'Combat Notes',count:1,def:true},
-  {icon:'🗝️',name:'Items Found',count:5,def:true},
-  {icon:'🏕️',name:'Party Notes',count:2,def:true},
-  {icon:'📅',name:'Session Log',count:8,def:true},
-  {icon:'🌍',name:'World Notes',count:3,def:false},
-  {icon:'📌',name:'Miscellaneous',count:0,def:false},
+  {icon:'⚔️',name:'Quests',       count:4,def:true, type:'quests'},
+  {icon:'🧑‍🤝‍🧑',name:'NPCs',         count:7,def:true, type:'npcs'},
+  {icon:'🗺️',name:'Locations',    count:3,def:true, type:'locations'},
+  {icon:'📜',name:'Lore',          count:2,def:true, type:'lore'},
+  {icon:'💀',name:'Combat Notes',  count:1,def:true, type:'combat'},
+  {icon:'🗝️',name:'Items Found',  count:5,def:true, type:'items'},
+  {icon:'🏕️',name:'Party Notes',  count:2,def:true, type:'party'},
+  {icon:'📅',name:'Session Log',   count:8,def:true, type:'sessions'},
+  {icon:'🌍',name:'World Notes',   count:3,def:false,type:'world'},
+  {icon:'📌',name:'Miscellaneous', count:0,def:false,type:'misc'},
 ];
 const SWATCHES = [
   {h:35,s:80,l:58,label:'Ember'},
@@ -816,6 +931,7 @@ function buildFolders(){
   const g=document.getElementById('foldersGrid'); g.innerHTML='';
   NOTE_FOLDERS.forEach(f=>{
     const d=document.createElement('div'); d.className='folder-card';
+    d.setAttribute('data-type',f.type);
     d.innerHTML=`${f.def?'<span class="folder-default-badge">Default</span>':''}<span class="folder-icon">${f.icon}</span><div class="folder-name">${f.name}</div><div class="folder-count">${f.count} card${f.count!==1?'s':''}</div>`;
     g.appendChild(d);
   });
