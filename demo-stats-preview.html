@@ -2,1076 +2,1169 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Stats Page — UI Demo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<title>Stats — Cozy Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,400&display=swap" rel="stylesheet"/>
 <style>
-  :root {
-    --accent: #c084fc;
-    --accent-border: #a855f7;
-    --accent-soft: rgba(192,132,252,0.12);
-    --accent-glow: rgba(192,132,252,0.25);
-    --bg: #111113;
-    --bg2: #18181c;
-    --bg3: #1e1e24;
-    --bg4: #26262e;
-    --border: rgba(255,255,255,0.07);
-    --text: #e8e8f0;
-    --text-dim: #7a7a90;
-    --success: #4ade80;
-    --danger: #f87171;
-    --warn: #facc15;
-    --radius: 14px;
-    --radius-sm: 8px;
-  }
+/* ── Accent system — mirrors the real app ── */
+:root {
+  --accent-h: 35;
+  --accent-s: 80%;
+  --accent-l: 58%;
+  --accent:        hsl(var(--accent-h), var(--accent-s), var(--accent-l));
+  --accent-border: hsl(var(--accent-h), var(--accent-s), calc(var(--accent-l) - 12%));
+  --accent-soft:   hsl(var(--accent-h), var(--accent-s), var(--accent-l), 0.13);
+  --accent-glow:   hsl(var(--accent-h), var(--accent-s), var(--accent-l), 0.28);
+  --accent-text:   hsl(var(--accent-h), calc(var(--accent-s) - 10%), calc(var(--accent-l) + 18%));
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  /* Warm dark base */
+  --bg:   #14110d;
+  --bg2:  #1c1812;
+  --bg3:  #231e16;
+  --bg4:  #2c261b;
+  --bg5:  #352e20;
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Segoe UI', system-ui, sans-serif;
-    font-size: 14px;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
+  /* Warm text */
+  --text:     #e8dcc8;
+  --text-dim: #8c7e65;
+  --text-faint: #4a4030;
 
-  /* ── Page entry animation ── */
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(18px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes popIn {
-    0%   { opacity: 0; transform: scale(0.88); }
-    70%  { transform: scale(1.04); }
-    100% { opacity: 1; transform: scale(1); }
-  }
-  @keyframes slideRight {
-    from { opacity: 0; transform: translateX(-16px); }
-    to   { opacity: 1; transform: translateX(0); }
-  }
-  @keyframes hpFill {
-    from { width: 0%; }
-  }
-  @keyframes shimmer {
-    0%   { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
-  }
-  @keyframes pulse {
-    0%, 100% { box-shadow: 0 0 0 0 var(--accent-glow); }
-    50%       { box-shadow: 0 0 0 8px transparent; }
-  }
+  /* Status */
+  --hp-full:   #7ec87e;
+  --hp-warn:   #d4a843;
+  --hp-danger: #c96060;
 
-  /* ── Layout ── */
-  .page-wrapper {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 20px 16px 60px;
-  }
+  --radius:    12px;
+  --radius-sm: 7px;
+  --tab-h:     62px;
+}
 
-  .demo-banner {
-    background: linear-gradient(135deg, rgba(192,132,252,0.15), rgba(168,85,247,0.08));
-    border: 1px solid var(--accent-border);
-    border-radius: var(--radius-sm);
-    padding: 10px 16px;
-    font-size: 12px;
-    color: var(--accent);
-    margin-bottom: 20px;
-    letter-spacing: 0.04em;
-    animation: fadeUp 0.4s ease both;
-  }
+*{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
 
-  /* ── Character Info Bar ── */
-  .char-info-bar {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 16px 20px;
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 12px;
-    margin-bottom: 20px;
-    animation: fadeUp 0.45s ease 0.05s both;
-  }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Crimson Pro', Georgia, serif;
+  font-size: 16px;
+  min-height: 100vh;
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+}
 
-  .char-field label {
-    display: block;
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--text-dim);
-    margin-bottom: 5px;
-    font-weight: 600;
-  }
+/* ── Subtle vignette bg ── */
+body::before {
+  content:'';
+  position:fixed; inset:0; z-index:0; pointer-events:none;
+  background: radial-gradient(ellipse at 50% 0%, hsl(var(--accent-h),30%,18%) 0%, transparent 70%);
+  opacity: 0.4;
+  transition: background 0.6s;
+}
 
-  .char-field input {
-    width: 100%;
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text);
-    padding: 8px 10px;
-    font-size: 13px;
-    outline: none;
-    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
-  }
-  .char-field input:focus {
-    border-color: var(--accent-border);
-    box-shadow: 0 0 0 3px var(--accent-glow);
-    background: var(--bg4);
-  }
+/* ── Demo banner ── */
+.demo-tag {
+  position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+  background: var(--bg4); border: 1px solid var(--accent-border);
+  color: var(--accent-text); font-size: 10px; font-family: 'Cinzel', serif;
+  letter-spacing: 0.12em; padding: 4px 12px; border-radius: 99px;
+  z-index: 999; white-space: nowrap; opacity: 0.75;
+}
 
-  /* ── Main grid ── */
-  .main-grid {
-    display: grid;
-    grid-template-columns: 220px 1fr 260px;
-    gap: 16px;
-    align-items: start;
-  }
+/* ── Viewport shell ── */
+.app-shell {
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column;
+  z-index: 1;
+}
 
-  /* ── Cards ── */
-  .card {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 18px;
-    transition: border-color 0.2s, box-shadow 0.2s;
-  }
-  .card:hover {
-    border-color: rgba(192,132,252,0.2);
-    box-shadow: 0 4px 24px rgba(0,0,0,0.4);
-  }
+/* ── Header ── */
+.app-header {
+  padding: 14px 18px 10px;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.char-name-display {
+  font-family: 'Cinzel', serif;
+  font-size: 17px; font-weight: 600;
+  color: var(--accent-text);
+  letter-spacing: 0.04em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 180px;
+}
+.char-subtitle {
+  font-size: 12px; color: var(--text-dim);
+  margin-top: 2px; letter-spacing: 0.02em;
+}
+.header-right {
+  display: flex; align-items: center; gap: 10px;
+}
+.palette-btn {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--bg4); border: 1px solid var(--text-faint);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 16px;
+  transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+}
+.palette-btn:hover { border-color: var(--accent-border); box-shadow: 0 0 10px var(--accent-glow); }
+.palette-btn:active { transform: scale(0.92); }
 
-  .card-title {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--accent);
-    font-weight: 700;
-    margin-bottom: 14px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .card-title::before {
-    content: '';
-    display: inline-block;
-    width: 3px;
-    height: 12px;
-    background: var(--accent);
-    border-radius: 2px;
-  }
+/* ── Color picker overlay ── */
+.color-picker-overlay {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
+  display: flex; align-items: flex-end;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.25s;
+}
+.color-picker-overlay.open { opacity: 1; pointer-events: all; }
+.color-picker-sheet {
+  width: 100%; background: var(--bg3);
+  border-radius: 20px 20px 0 0;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 20px 20px 36px;
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.34,1.4,0.64,1);
+}
+.color-picker-overlay.open .color-picker-sheet { transform: translateY(0); }
+.cp-title {
+  font-family: 'Cinzel', serif; font-size: 13px; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 16px;
+  text-align: center;
+}
+.cp-swatches {
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px;
+  margin-bottom: 16px;
+}
+.cp-swatch {
+  aspect-ratio: 1; border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.2s, box-shadow 0.2s;
+}
+.cp-swatch:hover { transform: scale(1.12); }
+.cp-swatch:active { transform: scale(0.92); }
+.cp-swatch.active { border-color: white; box-shadow: 0 0 12px rgba(255,255,255,0.4); }
+.cp-slider-label { font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
+.cp-slider {
+  width: 100%; height: 8px; border-radius: 99px;
+  -webkit-appearance: none; appearance: none;
+  background: linear-gradient(to right,
+    hsl(0,75%,55%), hsl(30,80%,55%), hsl(60,80%,55%), hsl(120,70%,50%),
+    hsl(180,70%,50%), hsl(240,70%,60%), hsl(270,70%,60%), hsl(320,70%,60%), hsl(360,75%,55%));
+  outline: none; margin-bottom: 14px;
+}
+.cp-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 20px; height: 20px;
+  border-radius: 50%; background: white;
+  border: 2px solid rgba(0,0,0,0.3);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  cursor: pointer;
+}
 
-  /* ── Ability Score Orbs ── */
-  .abilities-col {
-    animation: fadeUp 0.5s ease 0.1s both;
-  }
+/* ── Tab content container ── */
+.tabs-viewport {
+  flex: 1; overflow: hidden; position: relative;
+}
+.tabs-track {
+  display: flex; height: 100%;
+  will-change: transform;
+  transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.tabs-track.dragging { transition: none; }
 
-  .ability-orbs {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
+.tab-panel {
+  flex-shrink: 0; width: 100%; height: 100%;
+  overflow-y: auto; overflow-x: hidden;
+  padding: 14px 14px calc(var(--tab-h) + 14px);
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+/* Custom scrollbar */
+.tab-panel::-webkit-scrollbar { width: 3px; }
+.tab-panel::-webkit-scrollbar-track { background: transparent; }
+.tab-panel::-webkit-scrollbar-thumb { background: var(--bg5); border-radius: 99px; }
 
-  .ability-orb-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 10px;
-    background: var(--bg3);
-    border-radius: var(--radius-sm);
-    border: 1px solid transparent;
-    cursor: pointer;
-    transition: background 0.2s, border-color 0.2s, transform 0.15s;
-  }
-  .ability-orb-row:hover {
-    background: var(--bg4);
-    border-color: var(--accent-border);
-    transform: translateX(3px);
-  }
-  .ability-orb-row:active { transform: translateX(1px) scale(0.99); }
+/* ── Bottom tab bar ── */
+.tab-bar {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: var(--tab-h);
+  background: var(--bg2);
+  border-top: 1px solid rgba(255,255,255,0.05);
+  display: flex;
+  flex-shrink: 0;
+  z-index: 10;
+}
+.tab-btn {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 3px;
+  cursor: pointer; border: none; background: none;
+  padding-bottom: 4px;
+  transition: color 0.2s;
+  color: var(--text-faint);
+  -webkit-tap-highlight-color: transparent;
+}
+.tab-btn.active { color: var(--accent-text); }
+.tab-btn .tab-icon { font-size: 20px; transition: transform 0.2s; }
+.tab-btn.active .tab-icon { transform: scale(1.15); }
+.tab-btn .tab-label {
+  font-family: 'Cinzel', serif;
+  font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+}
+.tab-indicator {
+  position: absolute; top: 0; height: 2px;
+  background: var(--accent); border-radius: 0 0 2px 2px;
+  width: 25%; left: 0;
+  transition: left 0.35s cubic-bezier(0.34,1.4,0.64,1), background 0.3s;
+}
 
-  .ability-orb {
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 35% 35%, var(--bg4), var(--bg));
-    border: 2px solid var(--accent-border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--text);
-    flex-shrink: 0;
-    box-shadow: 0 0 12px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.05);
-    transition: box-shadow 0.2s, transform 0.2s;
-  }
-  .ability-orb-row:hover .ability-orb {
-    box-shadow: 0 0 20px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.1);
-    transform: scale(1.08);
-  }
+/* ── Card base ── */
+.card {
+  background: var(--bg2);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+  position: relative;
+  overflow: hidden;
+}
+/* Subtle inner top highlight */
+.card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+}
 
-  .ability-info {
-    flex: 1;
-    min-width: 0;
-  }
-  .ability-name {
-    font-size: 11px;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-weight: 600;
-  }
-  .ability-score-input {
-    width: 100%;
-    background: transparent;
-    border: none;
-    color: var(--text);
-    font-size: 13px;
-    font-weight: 600;
-    outline: none;
-    padding: 0;
-    margin-top: 1px;
-  }
+.card-title {
+  font-family: 'Cinzel', serif;
+  font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.14em;
+  color: var(--accent-text);
+  margin-bottom: 14px;
+  display: flex; align-items: center; gap: 8px;
+  opacity: 0.85;
+}
+.card-title::after {
+  content:''; flex:1; height:1px;
+  background: linear-gradient(90deg, var(--accent-border), transparent);
+  opacity: 0.4;
+}
 
-  .ability-bonus {
-    font-size: 18px;
-    font-weight: 800;
-    color: var(--accent);
-    min-width: 36px;
-    text-align: right;
-    letter-spacing: -0.02em;
-  }
+/* ── PANEL 0: Overview ── */
+.char-info-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  margin-bottom: 0;
+}
+.char-field label {
+  display: block; font-size: 10px; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 0.1em;
+  font-family: 'Cinzel', serif; margin-bottom: 5px;
+}
+.char-field input {
+  width: 100%;
+  background: var(--bg3); border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius-sm); color: var(--text);
+  padding: 9px 11px; font-size: 15px;
+  font-family: 'Crimson Pro', serif;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+.char-field input:focus {
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+  background: var(--bg4);
+}
 
-  /* ── Combat Stats ── */
-  .combat-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    margin-top: 14px;
-  }
+.combat-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
+}
+.combat-stat {
+  background: var(--bg3); border: 1px solid rgba(255,255,255,0.05);
+  border-radius: var(--radius-sm); padding: 12px 10px;
+  text-align: center; cursor: default;
+  transition: border-color 0.25s, box-shadow 0.25s, transform 0.2s;
+}
+.combat-stat:hover {
+  border-color: var(--accent-border);
+  box-shadow: 0 0 14px var(--accent-glow);
+  transform: translateY(-2px);
+}
+.combat-stat label {
+  display: block; font-size: 9px; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--text-dim);
+  font-family: 'Cinzel', serif; margin-bottom: 5px;
+}
+.combat-stat input {
+  background: none; border: none; outline: none;
+  color: var(--accent-text);
+  font-size: 26px; font-weight: 600;
+  font-family: 'Cinzel', serif;
+  text-align: center; width: 100%;
+  letter-spacing: -0.02em;
+}
 
-  .combat-stat {
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 10px 12px;
-    text-align: center;
-    transition: border-color 0.2s, box-shadow 0.15s, transform 0.15s;
-    cursor: default;
-  }
-  .combat-stat:hover {
-    border-color: var(--accent-border);
-    box-shadow: 0 0 10px var(--accent-glow);
-    transform: translateY(-2px);
-  }
-  .combat-stat label {
-    display: block;
-    font-size: 9px;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--text-dim);
-    margin-bottom: 4px;
-    font-weight: 600;
-  }
-  .combat-stat input {
-    background: none;
-    border: none;
-    color: var(--accent);
-    font-size: 22px;
-    font-weight: 800;
-    text-align: center;
-    width: 100%;
-    outline: none;
-    padding: 0;
-    letter-spacing: -0.03em;
-  }
+/* ── PANEL 1: Abilities ── */
+.ability-hex-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+  margin-bottom: 0;
+}
+.ability-card {
+  background: var(--bg3); border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius); padding: 14px 10px 12px;
+  text-align: center; cursor: default;
+  transition: border-color 0.25s, box-shadow 0.25s, transform 0.2s, background 0.2s;
+  position: relative; overflow: hidden;
+}
+.ability-card::after {
+  content:''; position:absolute; inset:0;
+  background: radial-gradient(circle at 50% 0%, var(--accent-soft), transparent 70%);
+  opacity: 0; transition: opacity 0.3s;
+}
+.ability-card:hover {
+  border-color: var(--accent-border);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.5), 0 0 16px var(--accent-glow);
+  transform: translateY(-3px) scale(1.02);
+}
+.ability-card:hover::after { opacity: 1; }
+.ability-card:active { transform: scale(0.97); }
 
-  /* ── Middle column ── */
-  .middle-col {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
+.ability-abbr {
+  font-family: 'Cinzel', serif; font-size: 10px; font-weight: 600;
+  letter-spacing: 0.16em; color: var(--text-dim);
+  text-transform: uppercase; margin-bottom: 8px;
+  position: relative; z-index:1;
+}
+.ability-score-num {
+  font-family: 'Cinzel', serif; font-size: 32px; font-weight: 700;
+  color: var(--text); line-height: 1; margin-bottom: 6px;
+  position: relative; z-index:1;
+  transition: color 0.2s;
+  cursor: text;
+}
+.ability-score-num input {
+  width: 100%; background: none; border: none; outline: none;
+  color: inherit; font: inherit; text-align: center;
+}
+.ability-mod {
+  font-family: 'Cinzel', serif; font-size: 16px; font-weight: 600;
+  color: var(--accent-text); position: relative; z-index:1;
+  transition: transform 0.2s;
+}
+.ability-card:hover .ability-mod { transform: scale(1.1); }
+.ability-mod-ring {
+  display: inline-block; padding: 2px 10px;
+  background: var(--accent-soft); border: 1px solid var(--accent-border);
+  border-radius: 99px;
+}
 
-  /* ── HP Card ── */
-  .hp-card {
-    animation: fadeUp 0.5s ease 0.15s both;
-  }
+/* Saving throws */
+.saves-list { display: flex; flex-direction: column; gap: 5px; }
+.save-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: var(--radius-sm);
+  background: var(--bg3); border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, transform 0.15s;
+}
+.save-row:hover { background: var(--bg4); border-color: rgba(255,255,255,0.07); transform: translateX(3px); }
+.save-row:active { transform: translateX(1px) scale(0.99); }
 
-  .hp-numbers {
-    display: flex;
-    align-items: baseline;
-    gap: 6px;
-    margin-bottom: 10px;
-  }
-  .hp-current {
-    font-size: 42px;
-    font-weight: 800;
-    color: var(--text);
-    line-height: 1;
-    letter-spacing: -0.03em;
-    cursor: text;
-    transition: color 0.3s;
-  }
-  .hp-current.danger { color: var(--danger); }
-  .hp-current.warn   { color: var(--warn); }
-  .hp-current.full   { color: var(--success); }
+.save-pip {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid var(--text-faint); flex-shrink: 0;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+  position: relative;
+}
+.save-pip::after {
+  content:''; position:absolute; inset:3px;
+  border-radius:50%; background: var(--accent);
+  transform: scale(0); transition: transform 0.2s cubic-bezier(0.34,1.6,0.64,1);
+}
+.save-row.prof .save-pip {
+  border-color: var(--accent-border);
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+.save-row.prof .save-pip::after { transform: scale(1); }
+.save-row.prof { background: var(--accent-soft); border-color: rgba(255,255,255,0.06); }
 
-  .hp-sep { color: var(--text-dim); font-size: 28px; font-weight: 300; }
-  .hp-max { font-size: 22px; color: var(--text-dim); font-weight: 600; }
+.save-name { flex:1; font-size: 14px; color: var(--text); }
+.save-row.prof .save-name { color: var(--text); font-weight: 600; }
+.save-val {
+  font-family: 'Cinzel', serif; font-size: 15px; font-weight: 600;
+  color: var(--accent-text); min-width: 30px; text-align: right;
+}
 
-  .hp-bar-track {
-    height: 8px;
-    background: var(--bg4);
-    border-radius: 99px;
-    overflow: hidden;
-    margin-bottom: 14px;
-    position: relative;
-  }
-  .hp-bar-fill {
-    height: 100%;
-    border-radius: 99px;
-    background: linear-gradient(90deg, var(--success), #86efac);
-    transition: width 0.6s cubic-bezier(0.34,1.56,0.64,1), background 0.4s;
-    animation: hpFill 1s cubic-bezier(0.34,1.56,0.64,1) 0.3s both;
-    width: 72%;
-  }
-  .hp-bar-fill.warn {
-    background: linear-gradient(90deg, var(--warn), #fde68a);
-  }
-  .hp-bar-fill.danger {
-    background: linear-gradient(90deg, var(--danger), #fca5a5);
-  }
+/* ── PANEL 2: Health ── */
+.hp-ring-wrap {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 10px 0 6px;
+}
+.hp-ring-svg { width: 160px; height: 160px; transform: rotate(-90deg); }
+.hp-ring-track { fill: none; stroke: var(--bg4); stroke-width: 10; }
+.hp-ring-fill {
+  fill: none; stroke: var(--hp-full); stroke-width: 10;
+  stroke-linecap: round;
+  stroke-dasharray: 440; stroke-dashoffset: 120;
+  transition: stroke-dashoffset 0.7s cubic-bezier(0.34,1.2,0.64,1), stroke 0.4s;
+  filter: drop-shadow(0 0 5px var(--hp-full));
+}
+.hp-ring-center {
+  position: absolute; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  width: 160px; height: 160px; top: 0; left: 50%; transform: translateX(-50%);
+  pointer-events: none;
+}
+.hp-ring-wrap { position: relative; }
+.hp-current-num {
+  font-family: 'Cinzel', serif; font-size: 44px; font-weight: 700;
+  color: var(--text); line-height: 1; letter-spacing: -0.03em;
+  transition: color 0.4s;
+}
+.hp-max-num {
+  font-size: 13px; color: var(--text-dim); margin-top: 2px;
+  font-family: 'Cinzel', serif;
+}
+.hp-label {
+  font-family: 'Cinzel', serif; font-size: 9px;
+  text-transform: uppercase; letter-spacing: 0.16em;
+  color: var(--text-dim); margin-top: 2px;
+}
 
-  .hp-buttons {
-    display: flex;
-    gap: 8px;
-  }
-  .hp-btn {
-    flex: 1;
-    padding: 9px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border);
-    background: var(--bg3);
-    color: var(--text);
-    font-size: 15px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: background 0.15s, transform 0.1s, border-color 0.2s;
-  }
-  .hp-btn:hover { background: var(--bg4); border-color: var(--accent-border); }
-  .hp-btn:active { transform: scale(0.96); }
-  .hp-btn.plus:hover { background: rgba(74,222,128,0.15); border-color: var(--success); color: var(--success); }
-  .hp-btn.minus:hover { background: rgba(248,113,113,0.15); border-color: var(--danger); color: var(--danger); }
-  .hp-btn.custom {
-    flex: 1.5;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--accent);
-    border-color: rgba(192,132,252,0.3);
-  }
-  .hp-btn.custom:hover { background: var(--accent-soft); }
+/* Shake animation for damage */
+@keyframes shake {
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-6px)}
+  40%{transform:translateX(6px)}
+  60%{transform:translateX(-4px)}
+  80%{transform:translateX(4px)}
+}
+@keyframes healPulse {
+  0%{transform:scale(1)}
+  40%{transform:scale(1.06)}
+  100%{transform:scale(1)}
+}
+.hp-ring-wrap.shake { animation: shake 0.35s ease; }
+.hp-ring-wrap.heal { animation: healPulse 0.4s ease; }
 
-  /* ── Death Saves ── */
-  .death-saves-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-top: 14px;
-    padding-top: 14px;
-    border-top: 1px solid var(--border);
-  }
-  .ds-group label {
-    display: block;
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    font-weight: 700;
-    margin-bottom: 6px;
-  }
-  .ds-group.success label { color: var(--success); }
-  .ds-group.failure label { color: var(--danger); }
+.hp-btns {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+  width: 100%; margin-top: 14px;
+}
+.hp-btn {
+  padding: 11px 6px; border-radius: var(--radius-sm);
+  border: 1px solid rgba(255,255,255,0.06);
+  background: var(--bg3); color: var(--text);
+  font-family: 'Cinzel', serif; font-size: 14px; font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.2s, color 0.2s, transform 0.1s, box-shadow 0.2s;
+}
+.hp-btn:active { transform: scale(0.94); }
+.hp-btn.minus:hover { background: rgba(201,96,96,0.18); border-color: var(--hp-danger); color: var(--hp-danger); box-shadow: 0 0 12px rgba(201,96,96,0.3); }
+.hp-btn.plus:hover  { background: rgba(126,200,126,0.18); border-color: var(--hp-full); color: var(--hp-full); box-shadow: 0 0 12px rgba(126,200,126,0.3); }
+.hp-btn.custom:hover { background: var(--accent-soft); border-color: var(--accent-border); color: var(--accent-text); }
 
-  .ds-pips {
-    display: flex;
-    gap: 6px;
-  }
-  .ds-pip {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    border: 2px solid;
-    cursor: pointer;
-    transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
-  }
-  .ds-group.success .ds-pip { border-color: var(--success); }
-  .ds-group.failure .ds-pip { border-color: var(--danger); }
-  .ds-pip:hover { transform: scale(1.15); }
-  .ds-pip:active { transform: scale(0.9); }
-  .ds-group.success .ds-pip.filled {
-    background: var(--success);
-    box-shadow: 0 0 8px rgba(74,222,128,0.5);
-  }
-  .ds-group.failure .ds-pip.filled {
-    background: var(--danger);
-    box-shadow: 0 0 8px rgba(248,113,113,0.5);
-  }
+/* Death saves */
+.death-saves-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  margin-top: 14px; padding-top: 14px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.ds-group { }
+.ds-label {
+  font-family: 'Cinzel', serif; font-size: 10px;
+  text-transform: uppercase; letter-spacing: 0.12em;
+  margin-bottom: 8px; font-weight: 600;
+}
+.ds-group.s .ds-label { color: var(--hp-full); }
+.ds-group.f .ds-label { color: var(--hp-danger); }
+.ds-pips { display: flex; gap: 8px; }
+.ds-pip {
+  width: 24px; height: 24px; border-radius: 50%;
+  border: 2px solid; cursor: pointer;
+  transition: background 0.18s, box-shadow 0.18s, transform 0.15s;
+  position: relative;
+}
+.ds-group.s .ds-pip { border-color: var(--hp-full); }
+.ds-group.f .ds-pip { border-color: var(--hp-danger); }
+.ds-pip:hover { transform: scale(1.15); }
+.ds-pip:active { transform: scale(0.88); }
+@keyframes pipPop {
+  0%{transform:scale(0.7)} 60%{transform:scale(1.2)} 100%{transform:scale(1)}
+}
+.ds-group.s .ds-pip.on { background: var(--hp-full); box-shadow: 0 0 10px rgba(126,200,126,0.6); animation: pipPop 0.25s ease; }
+.ds-group.f .ds-pip.on { background: var(--hp-danger); box-shadow: 0 0 10px rgba(201,96,96,0.6); animation: pipPop 0.25s ease; }
 
-  /* ── Rest Buttons ── */
-  .rest-btns {
-    display: flex;
-    gap: 8px;
-    margin-top: 12px;
-  }
-  .rest-btn {
-    flex: 1;
-    padding: 8px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border);
-    background: var(--bg3);
-    color: var(--text-dim);
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    transition: all 0.2s;
-  }
-  .rest-btn.short:hover {
-    background: rgba(250,204,21,0.12);
-    border-color: var(--warn);
-    color: var(--warn);
-  }
-  .rest-btn.long:hover {
-    background: rgba(74,222,128,0.12);
-    border-color: var(--success);
-    color: var(--success);
-  }
+/* Rest buttons */
+.rest-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.rest-btn {
+  padding: 10px; border-radius: var(--radius-sm);
+  border: 1px solid rgba(255,255,255,0.06);
+  background: var(--bg3); cursor: pointer;
+  font-family: 'Cinzel', serif; font-size: 11px;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-dim);
+  transition: all 0.2s;
+}
+.rest-btn.short:hover { background: rgba(212,168,67,0.15); border-color: var(--hp-warn); color: var(--hp-warn); }
+.rest-btn.long:hover  { background: rgba(126,200,126,0.15); border-color: var(--hp-full); color: var(--hp-full); }
 
-  /* ── Saving Throws ── */
-  .saves-card {
-    animation: fadeUp 0.5s ease 0.2s both;
-  }
+/* Action tracker */
+.action-rows { display: flex; flex-direction: column; gap: 6px; }
+.action-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; background: var(--bg3);
+  border-radius: var(--radius-sm); border: 1px solid rgba(255,255,255,0.04);
+  transition: border-color 0.2s;
+}
+.action-row:hover { border-color: rgba(255,255,255,0.08); }
+.action-lbl {
+  font-family: 'Cinzel', serif; font-size: 11px;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--text-dim); flex:1;
+}
+.action-count {
+  font-family: 'Cinzel', serif; font-size: 22px; font-weight: 700;
+  color: var(--text); width: 30px; text-align: center;
+  background: none; border: none; outline: none;
+}
+.used-toggle {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 12px; color: var(--text-dim);
+  padding: 5px 10px; border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.18s;
+  font-family: 'Crimson Pro', serif;
+}
+.used-toggle:hover { background: var(--bg4); border-color: rgba(255,255,255,0.07); }
+.used-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  border: 2px solid var(--text-faint);
+  transition: background 0.18s, border-color 0.18s, box-shadow 0.18s;
+}
+.used-toggle.on { color: var(--hp-danger); background: rgba(201,96,96,0.1); border-color: rgba(201,96,96,0.3); }
+.used-toggle.on .used-dot { background: var(--hp-danger); border-color: var(--hp-danger); box-shadow: 0 0 6px rgba(201,96,96,0.5); }
 
-  .saves-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
-  }
+.new-round-btn {
+  width: 100%; margin-top: 10px; padding: 11px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft); border: 1px solid var(--accent-border);
+  color: var(--accent-text); font-family: 'Cinzel', serif;
+  font-size: 12px; font-weight: 600;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+}
+.new-round-btn:hover { background: hsl(var(--accent-h),var(--accent-s),calc(var(--accent-l) - 5%), 0.22); box-shadow: 0 0 18px var(--accent-glow); }
+.new-round-btn:active { transform: scale(0.97); }
 
-  .save-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 7px 10px;
-    background: var(--bg3);
-    border-radius: var(--radius-sm);
-    border: 1px solid transparent;
-    transition: border-color 0.2s, background 0.2s;
-    cursor: pointer;
-  }
-  .save-row:hover {
-    background: var(--bg4);
-    border-color: var(--accent-border);
-  }
+/* ── PANEL 3: Skills ── */
+.skills-list { display: flex; flex-direction: column; gap: 3px; }
+.skill-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.2s, transform 0.15s;
+  position: relative; overflow: hidden;
+}
+.skill-row:hover { background: var(--bg3); border-color: rgba(255,255,255,0.06); transform: translateX(3px); }
+.skill-row:active { transform: translateX(1px) scale(0.99); }
+.skill-row.prof {
+  background: var(--accent-soft); border-color: rgba(255,255,255,0.05);
+}
+.skill-row.prof:hover { border-color: var(--accent-border); transform: translateX(3px); }
 
-  .save-check {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    border: 2px solid var(--text-dim);
-    flex-shrink: 0;
-    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.1s;
-    cursor: pointer;
-  }
-  .save-check.checked {
-    background: var(--accent);
-    border-color: var(--accent-border);
-    box-shadow: 0 0 8px var(--accent-glow);
-    transform: scale(1.15);
-  }
+/* Shimmer on proficient */
+.skill-row.prof::before {
+  content:''; position:absolute; inset:0;
+  background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,0.04) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: shimmer 3s linear infinite;
+}
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
 
-  .save-name {
-    font-size: 12px;
-    color: var(--text-dim);
-    flex: 1;
-    font-weight: 500;
-  }
-  .save-val {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--accent);
-    min-width: 28px;
-    text-align: right;
-  }
+.skill-pip {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid var(--text-faint); flex-shrink: 0;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  position: relative;
+}
+.skill-pip::after {
+  content:''; position:absolute; inset:2px; border-radius:50%;
+  background: var(--accent); transform: scale(0);
+  transition: transform 0.2s cubic-bezier(0.34,1.7,0.64,1);
+}
+.skill-row.prof .skill-pip { border-color: var(--accent-border); box-shadow: 0 0 6px var(--accent-glow); }
+.skill-row.prof .skill-pip::after { transform: scale(1); }
 
-  /* ── Skills ── */
-  .skills-col {
-    animation: fadeUp 0.5s ease 0.2s both;
-  }
+.skill-name { flex:1; font-size: 15px; color: var(--text); }
+.skill-row.prof .skill-name { font-weight: 600; }
+.skill-stat {
+  font-size: 11px; color: var(--text-dim);
+  background: var(--bg4); padding: 2px 6px;
+  border-radius: 4px; font-family: 'Cinzel', serif;
+  letter-spacing: 0.06em;
+}
+.skill-bonus {
+  font-family: 'Cinzel', serif; font-size: 15px; font-weight: 600;
+  color: var(--accent-text); min-width: 30px; text-align: right;
+}
 
-  .skills-list {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    max-height: 480px;
-    overflow-y: auto;
-    padding-right: 4px;
-  }
-  .skills-list::-webkit-scrollbar { width: 4px; }
-  .skills-list::-webkit-scrollbar-track { background: transparent; }
-  .skills-list::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 99px; }
+/* ── Entry animations ── */
+@keyframes fadeUp {
+  from { opacity:0; transform: translateY(14px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+.card { animation: fadeUp 0.4s ease both; }
+.card:nth-child(1){ animation-delay:0.04s }
+.card:nth-child(2){ animation-delay:0.1s }
+.card:nth-child(3){ animation-delay:0.16s }
+.ability-card { animation: fadeUp 0.35s ease both; }
+.ability-card:nth-child(1){animation-delay:0.04s}
+.ability-card:nth-child(2){animation-delay:0.09s}
+.ability-card:nth-child(3){animation-delay:0.14s}
+.ability-card:nth-child(4){animation-delay:0.19s}
+.ability-card:nth-child(5){animation-delay:0.24s}
+.ability-card:nth-child(6){animation-delay:0.29s}
 
-  .skill-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 10px;
-    border-radius: var(--radius-sm);
-    border: 1px solid transparent;
-    transition: background 0.15s, border-color 0.2s, transform 0.1s;
-    cursor: pointer;
-  }
-  .skill-row:hover {
-    background: var(--bg3);
-    border-color: var(--border);
-    transform: translateX(2px);
-  }
-  .skill-row.proficient {
-    background: var(--accent-soft);
-    border-color: rgba(192,132,252,0.2);
-  }
-  .skill-row.proficient:hover { border-color: var(--accent-border); }
+/* Ripple effect */
+.ripple-host { position: relative; overflow: hidden; }
+@keyframes rippleAnim {
+  from { transform: scale(0); opacity: 0.35; }
+  to   { transform: scale(4); opacity: 0; }
+}
+.ripple-circle {
+  position:absolute; border-radius:50%;
+  background: rgba(255,255,255,0.2);
+  width: 60px; height: 60px;
+  margin: -30px 0 0 -30px;
+  pointer-events: none;
+  animation: rippleAnim 0.55s ease-out forwards;
+}
 
-  .skill-check {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    border: 2px solid var(--text-dim);
-    flex-shrink: 0;
-    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.12s;
-  }
-  .skill-row.proficient .skill-check {
-    background: var(--accent);
-    border-color: var(--accent-border);
-    box-shadow: 0 0 6px var(--accent-glow);
-    transform: scale(1.1);
-  }
+/* ── Desktop two-column layout ── */
+@media (min-width: 700px) {
+  .tab-panel { padding: 18px 20px calc(var(--tab-h) + 18px); }
+  .ability-hex-grid { grid-template-columns: repeat(6, 1fr); }
+  .char-info-grid { grid-template-columns: repeat(3, 1fr); }
+  .combat-grid { grid-template-columns: repeat(4, 1fr); }
+}
 
-  .skill-name {
-    flex: 1;
-    font-size: 12px;
-    color: var(--text);
-    font-weight: 400;
-  }
-  .skill-row.proficient .skill-name {
-    color: var(--text);
-    font-weight: 600;
-  }
-  .skill-stat {
-    font-size: 10px;
-    color: var(--text-dim);
-    background: var(--bg3);
-    padding: 1px 5px;
-    border-radius: 4px;
-  }
-  .skill-bonus {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--accent);
-    min-width: 28px;
-    text-align: right;
-  }
-
-  /* ── Action Tracker ── */
-  .action-tracker-card {
-    animation: fadeUp 0.5s ease 0.25s both;
-  }
-  .action-tracker-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    background: var(--bg3);
-    border-radius: var(--radius-sm);
-    margin-bottom: 6px;
-    border: 1px solid transparent;
-    transition: border-color 0.2s;
-  }
-  .action-tracker-row:hover { border-color: var(--border); }
-  .at-label {
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-dim);
-    flex: 1;
-  }
-  .at-count {
-    font-size: 20px;
-    font-weight: 800;
-    color: var(--text);
-    width: 32px;
-    text-align: center;
-    background: none;
-    border: none;
-    outline: none;
-    color: var(--text);
-  }
-  .at-used {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 11px;
-    color: var(--text-dim);
-    cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 6px;
-    border: 1px solid transparent;
-    transition: all 0.15s;
-  }
-  .at-used:hover { background: var(--bg4); border-color: var(--border); }
-  .at-used.used {
-    color: var(--danger);
-    background: rgba(248,113,113,0.1);
-    border-color: rgba(248,113,113,0.3);
-  }
-  .at-used .at-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    border: 2px solid currentColor;
-    transition: background 0.15s;
-  }
-  .at-used.used .at-dot { background: var(--danger); }
-
-  .new-round-btn {
-    width: 100%;
-    padding: 9px;
-    background: linear-gradient(135deg, rgba(192,132,252,0.15), rgba(168,85,247,0.08));
-    border: 1px solid rgba(192,132,252,0.3);
-    border-radius: var(--radius-sm);
-    color: var(--accent);
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
-  }
-  .new-round-btn:hover {
-    background: var(--accent-soft);
-    box-shadow: 0 0 16px var(--accent-glow);
-  }
-  .new-round-btn:active { transform: scale(0.98); }
-
-  /* ── Stagger animations for child elements ── */
-  .ability-orb-row:nth-child(1) { animation: slideRight 0.35s ease 0.15s both; }
-  .ability-orb-row:nth-child(2) { animation: slideRight 0.35s ease 0.2s both; }
-  .ability-orb-row:nth-child(3) { animation: slideRight 0.35s ease 0.25s both; }
-  .ability-orb-row:nth-child(4) { animation: slideRight 0.35s ease 0.3s both; }
-  .ability-orb-row:nth-child(5) { animation: slideRight 0.35s ease 0.35s both; }
-  .ability-orb-row:nth-child(6) { animation: slideRight 0.35s ease 0.4s both; }
-
-  .skill-row:nth-child(n) { animation: slideRight 0.3s ease calc(0.1s + var(--i, 0) * 0.025s) both; }
-
-  /* ── Responsive ── */
-  @media (max-width: 860px) {
-    .main-grid {
-      grid-template-columns: 1fr 1fr;
-    }
-    .skills-col { grid-column: 1 / -1; }
-  }
-  @media (max-width: 560px) {
-    .main-grid { grid-template-columns: 1fr; }
-    .char-info-bar { grid-template-columns: 1fr 1fr; }
-  }
+/* Transitions for panel switching — re-run animations */
+.tab-panel.entering .card,
+.tab-panel.entering .ability-card {
+  animation-play-state: running;
+}
 </style>
 </head>
 <body>
 
-<div class="page-wrapper">
+<div class="demo-tag">Visual Demo — No project files modified</div>
 
-  <div class="demo-banner">
-    ✦ ISOLATED DEMO — No project files modified. This is a visual preview only.
-  </div>
+<div class="app-shell">
 
-  <!-- Character Info Bar -->
-  <div class="char-info-bar">
-    <div class="char-field">
-      <label>Name</label>
-      <input value="Thalindra" placeholder="Character Name"/>
+  <!-- Header -->
+  <div class="app-header">
+    <div>
+      <div class="char-name-display" id="charNameDisplay">Thalindra</div>
+      <div class="char-subtitle" id="charSubDisplay">Half-Elf Ranger · Lv 7</div>
     </div>
-    <div class="char-field">
-      <label>Race</label>
-      <input value="Half-Elf" placeholder="Race"/>
-    </div>
-    <div class="char-field">
-      <label>Class</label>
-      <input value="Ranger" placeholder="Class"/>
-    </div>
-    <div class="char-field">
-      <label>Subclass</label>
-      <input value="Gloom Stalker" placeholder="Subclass"/>
-    </div>
-    <div class="char-field">
-      <label>Level</label>
-      <input value="7" type="number" placeholder="Level"/>
+    <div class="header-right">
+      <div class="palette-btn" onclick="openPalette()" title="Change accent colour">🎨</div>
     </div>
   </div>
 
-  <!-- Main Grid -->
-  <div class="main-grid">
+  <!-- Tab panels -->
+  <div class="tabs-viewport" id="tabsViewport">
+    <div class="tabs-track" id="tabsTrack">
 
-    <!-- Left: Ability Scores -->
-    <div class="abilities-col">
-      <div class="card">
-        <div class="card-title">Ability Scores</div>
-        <div class="ability-orbs">
-
-          <div class="ability-orb-row">
-            <div class="ability-orb">16</div>
-            <div class="ability-info">
-              <div class="ability-name">Strength</div>
-              <input class="ability-score-input" value="16"/>
+      <!-- Panel 0: Overview -->
+      <div class="tab-panel" id="panel0">
+        <div class="card">
+          <div class="card-title">Character Info</div>
+          <div class="char-info-grid">
+            <div class="char-field">
+              <label>Name</label>
+              <input value="Thalindra" oninput="updateHeader()" id="inp_name"/>
             </div>
-            <div class="ability-bonus">+3</div>
-          </div>
-
-          <div class="ability-orb-row">
-            <div class="ability-orb">18</div>
-            <div class="ability-info">
-              <div class="ability-name">Dexterity</div>
-              <input class="ability-score-input" value="18"/>
+            <div class="char-field">
+              <label>Race</label>
+              <input value="Half-Elf"/>
             </div>
-            <div class="ability-bonus">+4</div>
-          </div>
-
-          <div class="ability-orb-row">
-            <div class="ability-orb">14</div>
-            <div class="ability-info">
-              <div class="ability-name">Constitution</div>
-              <input class="ability-score-input" value="14"/>
+            <div class="char-field">
+              <label>Class</label>
+              <input value="Ranger"/>
             </div>
-            <div class="ability-bonus">+2</div>
-          </div>
-
-          <div class="ability-orb-row">
-            <div class="ability-orb">10</div>
-            <div class="ability-info">
-              <div class="ability-name">Intelligence</div>
-              <input class="ability-score-input" value="10"/>
+            <div class="char-field">
+              <label>Subclass</label>
+              <input value="Gloom Stalker"/>
             </div>
-            <div class="ability-bonus">+0</div>
-          </div>
-
-          <div class="ability-orb-row">
-            <div class="ability-orb">15</div>
-            <div class="ability-info">
-              <div class="ability-name">Wisdom</div>
-              <input class="ability-score-input" value="15"/>
+            <div class="char-field">
+              <label>Level</label>
+              <input value="7" type="number" id="inp_level" oninput="updateHeader()"/>
             </div>
-            <div class="ability-bonus">+2</div>
-          </div>
-
-          <div class="ability-orb-row">
-            <div class="ability-orb">12</div>
-            <div class="ability-info">
-              <div class="ability-name">Charisma</div>
-              <input class="ability-score-input" value="12"/>
-            </div>
-            <div class="ability-bonus">+1</div>
-          </div>
-
-        </div>
-
-        <!-- Combat Stats -->
-        <div class="card-title" style="margin-top:18px;">Combat</div>
-        <div class="combat-grid">
-          <div class="combat-stat">
-            <label>Armor Class</label>
-            <input value="16"/>
-          </div>
-          <div class="combat-stat">
-            <label>Speed</label>
-            <input value="35"/>
-          </div>
-          <div class="combat-stat">
-            <label>Initiative</label>
-            <input value="+4"/>
-          </div>
-          <div class="combat-stat">
-            <label>Prof. Bonus</label>
-            <input value="+3" readonly/>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Middle: HP + Saves + Actions -->
-    <div class="middle-col">
-
-      <!-- HP -->
-      <div class="card hp-card">
-        <div class="card-title">Hit Points</div>
-        <div class="hp-numbers">
-          <span class="hp-current full" id="hpCurrent">38</span>
-          <span class="hp-sep">/</span>
-          <span class="hp-max">52</span>
-        </div>
-        <div class="hp-bar-track">
-          <div class="hp-bar-fill" id="hpBar" style="width:73%"></div>
-        </div>
-        <div class="hp-buttons">
-          <button class="hp-btn minus" onclick="adjustHPDemo(-1)">−1</button>
-          <button class="hp-btn plus" onclick="adjustHPDemo(1)">+1</button>
-          <button class="hp-btn custom">Custom</button>
-        </div>
-
-        <div class="death-saves-row">
-          <div class="ds-group success">
-            <label>Successes</label>
-            <div class="ds-pips">
-              <div class="ds-pip filled" onclick="togglePip(this)"></div>
-              <div class="ds-pip" onclick="togglePip(this)"></div>
-              <div class="ds-pip" onclick="togglePip(this)"></div>
-            </div>
-          </div>
-          <div class="ds-group failure">
-            <label>Failures</label>
-            <div class="ds-pips">
-              <div class="ds-pip filled" onclick="togglePip(this)"></div>
-              <div class="ds-pip" onclick="togglePip(this)"></div>
-              <div class="ds-pip" onclick="togglePip(this)"></div>
+            <div class="char-field">
+              <label>Background</label>
+              <input value="Outlander"/>
             </div>
           </div>
         </div>
 
-        <div class="rest-btns" style="margin-top:14px;">
-          <button class="rest-btn short">Short Rest</button>
-          <button class="rest-btn long">Long Rest</button>
-        </div>
-      </div>
-
-      <!-- Saving Throws -->
-      <div class="card saves-card">
-        <div class="card-title">Saving Throws</div>
-        <div class="saves-grid">
-          <div class="save-row" onclick="toggleSave(this)">
-            <div class="save-check checked"></div>
-            <span class="save-name">Strength</span>
-            <span class="save-val">+6</span>
-          </div>
-          <div class="save-row" onclick="toggleSave(this)">
-            <div class="save-check checked"></div>
-            <span class="save-name">Dexterity</span>
-            <span class="save-val">+7</span>
-          </div>
-          <div class="save-row" onclick="toggleSave(this)">
-            <div class="save-check"></div>
-            <span class="save-name">Constitution</span>
-            <span class="save-val">+2</span>
-          </div>
-          <div class="save-row" onclick="toggleSave(this)">
-            <div class="save-check"></div>
-            <span class="save-name">Intelligence</span>
-            <span class="save-val">+0</span>
-          </div>
-          <div class="save-row" onclick="toggleSave(this)">
-            <div class="save-check"></div>
-            <span class="save-name">Wisdom</span>
-            <span class="save-val">+2</span>
-          </div>
-          <div class="save-row" onclick="toggleSave(this)">
-            <div class="save-check"></div>
-            <span class="save-name">Charisma</span>
-            <span class="save-val">+1</span>
+        <div class="card">
+          <div class="card-title">Combat Stats</div>
+          <div class="combat-grid">
+            <div class="combat-stat">
+              <label>Armour Class</label>
+              <input value="16"/>
+            </div>
+            <div class="combat-stat">
+              <label>Speed</label>
+              <input value="35ft"/>
+            </div>
+            <div class="combat-stat">
+              <label>Initiative</label>
+              <input value="+4"/>
+            </div>
+            <div class="combat-stat">
+              <label>Prof. Bonus</label>
+              <input value="+3" readonly/>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Action Tracker -->
-      <div class="card action-tracker-card">
-        <div class="card-title">Action Tracker</div>
-        <div class="action-tracker-row">
-          <span class="at-label">Action</span>
-          <input class="at-count" value="1" type="number"/>
-          <div class="at-used" onclick="toggleUsed(this)">
-            <div class="at-dot"></div>Used
+      <!-- Panel 1: Abilities -->
+      <div class="tab-panel" id="panel1">
+        <div class="card">
+          <div class="card-title">Ability Scores</div>
+          <div class="ability-hex-grid" id="abilityGrid">
+            <!-- built by JS -->
           </div>
         </div>
-        <div class="action-tracker-row">
-          <span class="at-label">Bonus</span>
-          <input class="at-count" value="1" type="number"/>
-          <div class="at-used used" onclick="toggleUsed(this)">
-            <div class="at-dot"></div>Used
-          </div>
-        </div>
-        <button class="new-round-btn">⚔ New Round</button>
-      </div>
-
-    </div>
-
-    <!-- Right: Skills -->
-    <div class="skills-col">
-      <div class="card" style="animation: fadeUp 0.5s ease 0.22s both;">
-        <div class="card-title">Skills</div>
-        <div class="skills-list">
-          <div class="skill-row">
-            <div class="skill-check"></div>
-            <span class="skill-name">Acrobatics</span>
-            <span class="skill-stat">Dex</span>
-            <span class="skill-bonus">+4</span>
-          </div>
-          <div class="skill-row">
-            <div class="skill-check"></div>
-            <span class="skill-name">Animal Handling</span>
-            <span class="skill-stat">Wis</span>
-            <span class="skill-bonus">+2</span>
-          </div>
-          <div class="skill-row">
-            <div class="skill-check"></div>
-            <span class="skill-name">Arcana</span>
-            <span class="skill-stat">Int</span>
-            <span class="skill-bonus">+0</span>
-          </div>
-          <div class="skill-row proficient" onclick="toggleSkill(this)">
-            <div class="skill-check"></div>
-            <span class="skill-name">Athletics</span>
-            <span class="skill-stat">Str</span>
-            <span class="skill-bonus">+6</span>
-          </div>
-          <div class="skill-row">
-            <div class="skill-check"></div>
-            <span class="skill-name">Deception</span>
-            <span class="skill-stat">Cha</span>
-            <span class="skill-bonus">+1</span>
-          </div>
-          <div class="skill-row">
-            <div class="skill-check"></div>
-            <span class="skill-name">History</span>
-            <span class="skill-stat">Int</span>
-            <span class="skill-bonus">+0</span>
-          </div>
-          <div class="skill-row proficient" onclick="toggleSkill(this)">
-            <div class="skill-check"></div>
-            <span class="skill-name">Insight</span>
-            <span class="skill-stat">Wis</span>
-            <span class="skill-bonus">+5</span>
-          </div>
-          <div class="skill-row">
-            <div class="skill-check"></div>
-            <span class="skill-name">Intimidation</span>
-            <span class="skill-stat">Cha</span>
-            <span class="skill-bonus">+1</span>
-          </div>
-          <div class="skill-row">
-            <div class="skill-check"></div>
-            <span class="skill-name">Investigation</span>
-            <span class="skill-stat">Int</span>
-            <span class="skill-bonus">+0</span>
-          </div>
-          <div class="skill-row">
-            <div class="skill-check"></div>
-            <span class="skill-name">Medicine</span>
-            <span class="skill-stat">Wis</span>
-            <span class="skill-bonus">+2</span>
-          </div>
-          <div class="skill-row proficient" onclick="toggleSkill(this)">
-            <div class="skill-check"></div>
-            <span class="skill-name">Nature</span>
-            <span class="skill-stat">Int</span>
-            <span class="skill-bonus">+3</span>
-          </div>
-          <div class="skill-row proficient" onclick="toggleSkill(this)">
-            <div class="skill-check"></div>
-            <span class="skill-name">Perception</span>
-            <span class="skill-stat">Wis</span>
-            <span class="skill-bonus">+5</span>
-          </div>
-          <div class="skill-row">
-            <div class="skill-check"></div>
-            <span class="skill-name">Performance</span>
-            <span class="skill-stat">Cha</span>
-            <span class="skill-bonus">+1</span>
-          </div>
-          <div class="skill-row">
-            <div class="skill-check"></div>
-            <span class="skill-name">Persuasion</span>
-            <span class="skill-stat">Cha</span>
-            <span class="skill-bonus">+1</span>
-          </div>
-          <div class="skill-row">
-            <div class="skill-check"></div>
-            <span class="skill-name">Religion</span>
-            <span class="skill-stat">Int</span>
-            <span class="skill-bonus">+0</span>
-          </div>
-          <div class="skill-row">
-            <div class="skill-check"></div>
-            <span class="skill-name">Sleight of Hand</span>
-            <span class="skill-stat">Dex</span>
-            <span class="skill-bonus">+4</span>
-          </div>
-          <div class="skill-row proficient" onclick="toggleSkill(this)">
-            <div class="skill-check"></div>
-            <span class="skill-name">Stealth</span>
-            <span class="skill-stat">Dex</span>
-            <span class="skill-bonus">+7</span>
-          </div>
-          <div class="skill-row proficient" onclick="toggleSkill(this)">
-            <div class="skill-check"></div>
-            <span class="skill-name">Survival</span>
-            <span class="skill-stat">Wis</span>
-            <span class="skill-bonus">+5</span>
+        <div class="card">
+          <div class="card-title">Saving Throws</div>
+          <div class="saves-list" id="savesList">
+            <!-- built by JS -->
           </div>
         </div>
       </div>
-    </div>
 
+      <!-- Panel 2: Health -->
+      <div class="tab-panel" id="panel2">
+        <div class="card">
+          <div class="card-title">Hit Points</div>
+          <div class="hp-ring-wrap" id="hpRingWrap">
+            <svg class="hp-ring-svg" viewBox="0 0 160 160">
+              <circle class="hp-ring-track" cx="80" cy="80" r="70"/>
+              <circle class="hp-ring-fill" id="hpRingFill" cx="80" cy="80" r="70"/>
+            </svg>
+            <div class="hp-ring-center">
+              <div class="hp-current-num" id="hpNum">38</div>
+              <div class="hp-max-num" id="hpMaxNum">/ 52</div>
+              <div class="hp-label">Hit Points</div>
+            </div>
+          </div>
+          <div class="hp-btns">
+            <button class="hp-btn minus ripple-host" onclick="adjustHP(-1, this)">− 1</button>
+            <button class="hp-btn plus ripple-host"  onclick="adjustHP(+1, this)">+ 1</button>
+            <button class="hp-btn custom ripple-host">Custom</button>
+          </div>
+          <div class="death-saves-row">
+            <div class="ds-group s">
+              <div class="ds-label">Successes</div>
+              <div class="ds-pips">
+                <div class="ds-pip on" onclick="togglePip(this)"></div>
+                <div class="ds-pip" onclick="togglePip(this)"></div>
+                <div class="ds-pip" onclick="togglePip(this)"></div>
+              </div>
+            </div>
+            <div class="ds-group f">
+              <div class="ds-label">Failures</div>
+              <div class="ds-pips">
+                <div class="ds-pip on" onclick="togglePip(this)"></div>
+                <div class="ds-pip" onclick="togglePip(this)"></div>
+                <div class="ds-pip" onclick="togglePip(this)"></div>
+              </div>
+            </div>
+          </div>
+          <div class="rest-btns" style="margin-top:14px;">
+            <button class="rest-btn short ripple-host" onclick="shortRest(this)">Short Rest</button>
+            <button class="rest-btn long ripple-host" onclick="longRest(this)">Long Rest</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Action Tracker</div>
+          <div class="action-rows">
+            <div class="action-row">
+              <span class="action-lbl">Action</span>
+              <input class="action-count" value="1" type="number"/>
+              <div class="used-toggle" onclick="toggleUsed(this)">
+                <div class="used-dot"></div> Used
+              </div>
+            </div>
+            <div class="action-row">
+              <span class="action-lbl">Bonus</span>
+              <input class="action-count" value="1" type="number"/>
+              <div class="used-toggle on" onclick="toggleUsed(this)">
+                <div class="used-dot"></div> Used
+              </div>
+            </div>
+          </div>
+          <button class="new-round-btn ripple-host" onclick="newRound(this)">⚔ New Round</button>
+        </div>
+      </div>
+
+      <!-- Panel 3: Skills -->
+      <div class="tab-panel" id="panel3">
+        <div class="card">
+          <div class="card-title">Skills</div>
+          <div class="skills-list" id="skillsList">
+            <!-- built by JS -->
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /tabs-track -->
+  </div><!-- /tabs-viewport -->
+
+  <!-- Bottom tab bar -->
+  <div class="tab-bar">
+    <div class="tab-indicator" id="tabIndicator"></div>
+    <button class="tab-btn active" onclick="goTab(0)" id="tb0">
+      <span class="tab-icon">📜</span>
+      <span class="tab-label">Overview</span>
+    </button>
+    <button class="tab-btn" onclick="goTab(1)" id="tb1">
+      <span class="tab-icon">⚔️</span>
+      <span class="tab-label">Abilities</span>
+    </button>
+    <button class="tab-btn" onclick="goTab(2)" id="tb2">
+      <span class="tab-icon">❤️</span>
+      <span class="tab-label">Health</span>
+    </button>
+    <button class="tab-btn" onclick="goTab(3)" id="tb3">
+      <span class="tab-icon">📚</span>
+      <span class="tab-label">Skills</span>
+    </button>
+  </div>
+
+</div><!-- /app-shell -->
+
+<!-- Color picker -->
+<div class="color-picker-overlay" id="colorPicker" onclick="closePaletteOnBg(event)">
+  <div class="color-picker-sheet">
+    <div class="cp-title">Accent Colour</div>
+    <div class="cp-swatches" id="cpSwatches"></div>
+    <div class="cp-slider-label">Custom hue</div>
+    <input type="range" class="cp-slider" id="cpHue" min="0" max="360" value="35" oninput="setHue(this.value)"/>
   </div>
 </div>
 
 <script>
-  let hpCurrent = 38;
-  const hpMax = 52;
+// ── Data ──────────────────────────────────────────────────
+const ABILITIES = [
+  { abbr:'STR', name:'Strength',     score:16 },
+  { abbr:'DEX', name:'Dexterity',    score:18 },
+  { abbr:'CON', name:'Constitution', score:14 },
+  { abbr:'INT', name:'Intelligence', score:10 },
+  { abbr:'WIS', name:'Wisdom',       score:15 },
+  { abbr:'CHA', name:'Charisma',     score:12 },
+];
+const SAVES = [
+  { name:'Strength',     bonus:'+6', prof:true  },
+  { name:'Dexterity',    bonus:'+7', prof:true  },
+  { name:'Constitution', bonus:'+2', prof:false },
+  { name:'Intelligence', bonus:'+0', prof:false },
+  { name:'Wisdom',       bonus:'+2', prof:false },
+  { name:'Charisma',     bonus:'+1', prof:false },
+];
+const SKILLS = [
+  { name:'Acrobatics',     stat:'Dex', bonus:'+4', prof:false },
+  { name:'Animal Handling',stat:'Wis', bonus:'+2', prof:false },
+  { name:'Arcana',         stat:'Int', bonus:'+0', prof:false },
+  { name:'Athletics',      stat:'Str', bonus:'+6', prof:true  },
+  { name:'Deception',      stat:'Cha', bonus:'+1', prof:false },
+  { name:'History',        stat:'Int', bonus:'+0', prof:false },
+  { name:'Insight',        stat:'Wis', bonus:'+5', prof:true  },
+  { name:'Intimidation',   stat:'Cha', bonus:'+1', prof:false },
+  { name:'Investigation',  stat:'Int', bonus:'+0', prof:false },
+  { name:'Medicine',       stat:'Wis', bonus:'+2', prof:false },
+  { name:'Nature',         stat:'Int', bonus:'+3', prof:true  },
+  { name:'Perception',     stat:'Wis', bonus:'+5', prof:true  },
+  { name:'Performance',    stat:'Cha', bonus:'+1', prof:false },
+  { name:'Persuasion',     stat:'Cha', bonus:'+1', prof:false },
+  { name:'Religion',       stat:'Int', bonus:'+0', prof:false },
+  { name:'Sleight of Hand',stat:'Dex', bonus:'+4', prof:false },
+  { name:'Stealth',        stat:'Dex', bonus:'+7', prof:true  },
+  { name:'Survival',       stat:'Wis', bonus:'+5', prof:true  },
+];
+const SWATCHES = [
+  { h:35,  s:80, l:58, label:'Ember'    },
+  { h:270, s:70, l:62, label:'Amethyst' },
+  { h:200, s:75, l:55, label:'Sapphire' },
+  { h:140, s:60, l:48, label:'Forest'   },
+  { h:0,   s:70, l:58, label:'Crimson'  },
+  { h:50,  s:85, l:55, label:'Gold'     },
+];
 
-  function updateHP() {
-    const el = document.getElementById('hpCurrent');
-    const bar = document.getElementById('hpBar');
-    const pct = Math.max(0, Math.min(100, (hpCurrent / hpMax) * 100));
-    el.textContent = hpCurrent;
-    bar.style.width = pct + '%';
-    el.className = 'hp-current';
-    bar.className = 'hp-bar-fill';
-    if (pct <= 25) { el.classList.add('danger'); bar.classList.add('danger'); }
-    else if (pct <= 50) { el.classList.add('warn'); bar.classList.add('warn'); }
-    else if (pct >= 99) { el.classList.add('full'); }
-  }
+// ── HP State ──────────────────────────────────────────────
+let hp = 38, hpMax = 52;
 
-  function adjustHPDemo(n) {
-    hpCurrent = Math.max(0, Math.min(hpMax, hpCurrent + n));
-    updateHP();
-  }
+function mod(score){ return Math.floor((score - 10) / 2); }
+function modStr(score){ const m = mod(score); return (m >= 0 ? '+' : '') + m; }
 
-  function togglePip(el) {
-    el.classList.toggle('filled');
-  }
+// ── Render ability cards ───────────────────────────────────
+function buildAbilities() {
+  const grid = document.getElementById('abilityGrid');
+  grid.innerHTML = '';
+  ABILITIES.forEach(a => {
+    const m = mod(a.score);
+    const mStr = (m >= 0 ? '+' : '') + m;
+    const el = document.createElement('div');
+    el.className = 'ability-card';
+    el.innerHTML = `
+      <div class="ability-abbr">${a.abbr}</div>
+      <div class="ability-score-num"><input value="${a.score}" maxlength="2" oninput="updateMod(this)"/></div>
+      <div class="ability-mod"><span class="ability-mod-ring">${mStr}</span></div>
+    `;
+    grid.appendChild(el);
+  });
+}
 
-  function toggleSave(row) {
-    row.querySelector('.save-check').classList.toggle('checked');
-  }
+function updateMod(input) {
+  const val = parseInt(input.value) || 10;
+  const m = Math.floor((val - 10) / 2);
+  const mStr = (m >= 0 ? '+' : '') + m;
+  input.closest('.ability-card').querySelector('.ability-mod-ring').textContent = mStr;
+}
 
-  function toggleSkill(row) {
-    row.classList.toggle('proficient');
-  }
+// ── Render saving throws ───────────────────────────────────
+function buildSaves() {
+  const el = document.getElementById('savesList');
+  el.innerHTML = '';
+  SAVES.forEach(s => {
+    const row = document.createElement('div');
+    row.className = 'save-row' + (s.prof ? ' prof' : '');
+    row.onclick = () => { row.classList.toggle('prof'); };
+    row.innerHTML = `
+      <div class="save-pip"></div>
+      <span class="save-name">${s.name}</span>
+      <span class="save-val">${s.bonus}</span>
+    `;
+    el.appendChild(row);
+  });
+}
 
-  function toggleUsed(el) {
-    el.classList.toggle('used');
-  }
+// ── Render skills ──────────────────────────────────────────
+function buildSkills() {
+  const el = document.getElementById('skillsList');
+  el.innerHTML = '';
+  SKILLS.forEach(s => {
+    const row = document.createElement('div');
+    row.className = 'skill-row' + (s.prof ? ' prof' : '');
+    row.onclick = () => { row.classList.toggle('prof'); };
+    row.innerHTML = `
+      <div class="skill-pip"></div>
+      <span class="skill-name">${s.name}</span>
+      <span class="skill-stat">${s.stat}</span>
+      <span class="skill-bonus">${s.bonus}</span>
+    `;
+    el.appendChild(row);
+  });
+}
+
+// ── HP ─────────────────────────────────────────────────────
+function updateHPDisplay() {
+  const pct = Math.max(0, Math.min(1, hp / hpMax));
+  const circum = 2 * Math.PI * 70; // 439.8
+  const offset = circum * (1 - pct);
+  const fill = document.getElementById('hpRingFill');
+  fill.style.strokeDasharray = circum;
+  fill.style.strokeDashoffset = offset;
+
+  // Color
+  let color = 'var(--hp-full)';
+  if (pct <= 0.25) color = 'var(--hp-danger)';
+  else if (pct <= 0.5) color = 'var(--hp-warn)';
+  fill.style.stroke = color;
+  fill.style.filter = `drop-shadow(0 0 6px ${color})`;
+
+  document.getElementById('hpNum').textContent = hp;
+  document.getElementById('hpNum').style.color =
+    pct <= 0.25 ? 'var(--hp-danger)' : pct <= 0.5 ? 'var(--hp-warn)' : 'var(--text)';
+}
+
+function adjustHP(delta, btn) {
+  hp = Math.max(0, Math.min(hpMax, hp + delta));
+  updateHPDisplay();
+  const wrap = document.getElementById('hpRingWrap');
+  wrap.classList.remove('shake', 'heal');
+  void wrap.offsetWidth;
+  wrap.classList.add(delta < 0 ? 'shake' : 'heal');
+  if (btn) ripple(btn, event);
+}
+
+function shortRest(btn) {
+  hp = Math.min(hpMax, hp + Math.floor(Math.random() * 8) + 1 + 2);
+  updateHPDisplay();
+  const wrap = document.getElementById('hpRingWrap');
+  wrap.classList.remove('shake','heal'); void wrap.offsetWidth;
+  wrap.classList.add('heal');
+  if (btn) ripple(btn, event);
+}
+function longRest(btn) {
+  hp = hpMax;
+  updateHPDisplay();
+  const wrap = document.getElementById('hpRingWrap');
+  wrap.classList.remove('shake','heal'); void wrap.offsetWidth;
+  wrap.classList.add('heal');
+  if (btn) ripple(btn, event);
+}
+
+function togglePip(pip) {
+  pip.classList.toggle('on');
+}
+
+function toggleUsed(el) { el.classList.toggle('on'); }
+
+function newRound(btn) {
+  document.querySelectorAll('.used-toggle').forEach(u => u.classList.remove('on'));
+  if (btn) ripple(btn, event);
+}
+
+// ── Ripple ─────────────────────────────────────────────────
+function ripple(el, e) {
+  const r = document.createElement('div');
+  r.className = 'ripple-circle';
+  const rect = el.getBoundingClientRect();
+  const x = (e && e.clientX ? e.clientX : rect.left + rect.width/2) - rect.left;
+  const y = (e && e.clientY ? e.clientY : rect.top + rect.height/2) - rect.top;
+  r.style.left = x + 'px'; r.style.top = y + 'px';
+  el.appendChild(r);
+  setTimeout(() => r.remove(), 600);
+}
+// Attach ripple to all ripple-host buttons
+document.querySelectorAll('.ripple-host').forEach(btn => {
+  btn.addEventListener('click', e => { if(!btn.onclick) ripple(btn,e); });
+});
+document.querySelectorAll('.hp-btn, .rest-btn, .new-round-btn').forEach(btn => {
+  btn.addEventListener('click', e => ripple(btn, e));
+});
+
+// ── Tab switching ──────────────────────────────────────────
+let currentTab = 0;
+const track = document.getElementById('tabsTrack');
+const indicator = document.getElementById('tabIndicator');
+const NUM_TABS = 4;
+
+function goTab(i) {
+  currentTab = i;
+  track.classList.remove('dragging');
+  track.style.transform = `translateX(${-i * 100}%)`;
+  indicator.style.left = (i * 25) + '%';
+  document.querySelectorAll('.tab-btn').forEach((b,idx) => {
+    b.classList.toggle('active', idx === i);
+  });
+}
+
+// ── Swipe gesture ──────────────────────────────────────────
+let touchStartX = 0, touchStartY = 0, isDragging = false, startTab = 0;
+const viewport = document.getElementById('tabsViewport');
+
+viewport.addEventListener('touchstart', e => {
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+  startTab = currentTab;
+  isDragging = false;
+}, { passive: true });
+
+viewport.addEventListener('touchmove', e => {
+  const dx = e.touches[0].clientX - touchStartX;
+  const dy = e.touches[0].clientY - touchStartY;
+  if (!isDragging && Math.abs(dy) > Math.abs(dx)) return; // vertical scroll wins
+  if (Math.abs(dx) > 6) isDragging = true;
+  if (!isDragging) return;
+  const vw = viewport.offsetWidth;
+  const raw = -startTab * vw + dx;
+  const min = -(NUM_TABS - 1) * vw;
+  // Rubber band at edges
+  let x = raw;
+  if (raw > 0) x = raw * 0.25;
+  if (raw < min) x = min + (raw - min) * 0.25;
+  track.classList.add('dragging');
+  track.style.transform = `translateX(${x}px)`;
+  indicator.style.left = ((-x / vw) * 25) + '%';
+}, { passive: true });
+
+viewport.addEventListener('touchend', e => {
+  if (!isDragging) return;
+  isDragging = false;
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  const vw = viewport.offsetWidth;
+  let next = startTab;
+  if (dx < -vw * 0.2 && startTab < NUM_TABS - 1) next = startTab + 1;
+  if (dx >  vw * 0.2 && startTab > 0)             next = startTab - 1;
+  goTab(next);
+}, { passive: true });
+
+// ── Header update ──────────────────────────────────────────
+function updateHeader() {
+  const name = document.getElementById('inp_name').value || 'Character';
+  const lvl = document.getElementById('inp_level').value || '1';
+  document.getElementById('charNameDisplay').textContent = name;
+  document.getElementById('charSubDisplay').textContent =
+    `Half-Elf Ranger · Lv ${lvl}`;
+}
+
+// ── Accent colour ──────────────────────────────────────────
+function setHue(h) {
+  document.documentElement.style.setProperty('--accent-h', h);
+  document.getElementById('cpHue').value = h;
+  // Update active swatch
+  document.querySelectorAll('.cp-swatch').forEach(s => s.classList.remove('active'));
+}
+
+function applyAccent(h, s, l) {
+  document.documentElement.style.setProperty('--accent-h', h);
+  document.documentElement.style.setProperty('--accent-s', s + '%');
+  document.documentElement.style.setProperty('--accent-l', l + '%');
+  document.getElementById('cpHue').value = h;
+}
+
+function buildSwatches() {
+  const el = document.getElementById('cpSwatches');
+  SWATCHES.forEach((sw, i) => {
+    const d = document.createElement('div');
+    d.className = 'cp-swatch' + (i === 0 ? ' active' : '');
+    d.style.background = `hsl(${sw.h},${sw.s}%,${sw.l}%)`;
+    d.title = sw.label;
+    d.onclick = () => {
+      applyAccent(sw.h, sw.s, sw.l);
+      document.querySelectorAll('.cp-swatch').forEach(s => s.classList.remove('active'));
+      d.classList.add('active');
+    };
+    el.appendChild(d);
+  });
+}
+
+function openPalette() {
+  document.getElementById('colorPicker').classList.add('open');
+}
+function closePaletteOnBg(e) {
+  if (e.target === document.getElementById('colorPicker'))
+    document.getElementById('colorPicker').classList.remove('open');
+}
+
+// ── Init ───────────────────────────────────────────────────
+buildAbilities();
+buildSaves();
+buildSkills();
+buildSwatches();
+updateHPDisplay();
+goTab(0);
 </script>
 </body>
 </html>
