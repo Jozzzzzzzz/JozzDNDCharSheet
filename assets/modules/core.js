@@ -2018,7 +2018,6 @@ function showHomePage() {
 
   document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
   window.scrollTo({ top: 0, left: 0 });
-  rollBannerMessage();
 }
 
 function createNewCharacter() {
@@ -4175,7 +4174,6 @@ function switchTab(button) {
       targetPage.classList.add('active');
       // Recalculate textarea/container heights after tab visibility changes.
       refreshAllNoteBoxes();
-      rollBannerMessage();
     });
   }
 }
@@ -4224,7 +4222,6 @@ function openSettingsPage() {
       window.updateAdminPortalVisibility();
     }
     refreshAllNoteBoxes();
-    rollBannerMessage();
   });
 }
 
