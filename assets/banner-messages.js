@@ -14,6 +14,15 @@
   'Fun fact: Your message here.',
   ---------------------------------------------------------------
 */
+
+// ----------------------------------------------------------------
+// FIRST LOAD MESSAGE
+// This shows once every time the app opens, before the rotation starts.
+// Change the text between the quotes to whatever you want.
+// Set to '' (empty) to skip it and go straight into the rotation.
+// ----------------------------------------------------------------
+window.BANNER_FIRST_MESSAGE = 'HELLOOOO DND';
+
 window.BANNER_MESSAGES = [
 
   // ----------------------------------------------------------------

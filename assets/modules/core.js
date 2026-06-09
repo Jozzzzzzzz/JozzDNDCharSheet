@@ -1926,6 +1926,7 @@ window.addEventListener('resize', refreshAllNoteBoxes);
 window.addEventListener('orientationchange', refreshAllNoteBoxes);
 
 let rollingBannerLastIndex = -1;
+let bannerFirstShown = false;
 
 function getRollingBannerMessages() {
   const external = window.BANNER_MESSAGES;
@@ -1977,6 +1978,17 @@ function rollBannerMessage() {
   const textEl = document.getElementById('rollingBannerText');
   const messages = getRollingBannerMessages();
   if (!textEl || messages.length === 0) return;
+
+  if (!bannerFirstShown) {
+    bannerFirstShown = true;
+    const firstMsg = typeof window.BANNER_FIRST_MESSAGE === 'string' && window.BANNER_FIRST_MESSAGE.trim()
+      ? window.BANNER_FIRST_MESSAGE.trim()
+      : null;
+    if (firstMsg) {
+      textEl.textContent = firstMsg;
+      return;
+    }
+  }
 
   const dynamicMessage = Math.random() < 0.35 ? buildCurrencyWealthBannerMessage() : null;
   let nextMessage = dynamicMessage;
