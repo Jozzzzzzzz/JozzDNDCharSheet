@@ -3,659 +3,408 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
-<title>Stats — Cozy Demo</title>
+<title>Full Sheet Demo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,400&display=swap" rel="stylesheet"/>
 <style>
-/* ── Accent system — mirrors the real app ── */
 :root {
-  --accent-h: 35;
-  --accent-s: 80%;
-  --accent-l: 58%;
+  --accent-h: 35; --accent-s: 80%; --accent-l: 58%;
   --accent:        hsl(var(--accent-h), var(--accent-s), var(--accent-l));
   --accent-border: hsl(var(--accent-h), var(--accent-s), calc(var(--accent-l) - 12%));
   --accent-soft:   hsl(var(--accent-h), var(--accent-s), var(--accent-l), 0.13);
   --accent-glow:   hsl(var(--accent-h), var(--accent-s), var(--accent-l), 0.28);
   --accent-text:   hsl(var(--accent-h), calc(var(--accent-s) - 10%), calc(var(--accent-l) + 18%));
-
-  /* Warm dark base */
-  --bg:   #14110d;
-  --bg2:  #1c1812;
-  --bg3:  #231e16;
-  --bg4:  #2c261b;
-  --bg5:  #352e20;
-
-  /* Warm text */
-  --text:     #e8dcc8;
-  --text-dim: #8c7e65;
-  --text-faint: #4a4030;
-
-  /* Status */
-  --hp-full:   #7ec87e;
-  --hp-warn:   #d4a843;
-  --hp-danger: #c96060;
-
-  --radius:    12px;
-  --radius-sm: 7px;
-  --tab-h:     62px;
+  --bg:#14110d; --bg2:#1c1812; --bg3:#231e16; --bg4:#2c261b; --bg5:#352e20;
+  --text:#e8dcc8; --text-dim:#8c7e65; --text-faint:#4a4030;
+  --hp-full:#7ec87e; --hp-warn:#d4a843; --hp-danger:#c96060;
+  --radius:12px; --radius-sm:7px; --tab-h:60px;
 }
-
 *{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
-
 body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Crimson Pro', Georgia, serif;
-  font-size: 16px;
-  min-height: 100vh;
-  overflow: hidden;
-  position: fixed;
-  width: 100%;
-  height: 100%;
+  background:var(--bg); color:var(--text);
+  font-family:'Crimson Pro',Georgia,serif; font-size:16px;
+  min-height:100vh; overflow:hidden; position:fixed; width:100%; height:100%;
 }
-
-/* ── Subtle vignette bg ── */
 body::before {
-  content:'';
-  position:fixed; inset:0; z-index:0; pointer-events:none;
-  background: radial-gradient(ellipse at 50% 0%, hsl(var(--accent-h),30%,18%) 0%, transparent 70%);
-  opacity: 0.4;
-  transition: background 0.6s;
+  content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:radial-gradient(ellipse at 50% 0%, hsl(var(--accent-h),30%,18%) 0%, transparent 65%);
+  opacity:.4; transition:background .6s;
 }
-
-/* ── Demo banner ── */
 .demo-tag {
-  position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
-  background: var(--bg4); border: 1px solid var(--accent-border);
-  color: var(--accent-text); font-size: 10px; font-family: 'Cinzel', serif;
-  letter-spacing: 0.12em; padding: 4px 12px; border-radius: 99px;
-  z-index: 999; white-space: nowrap; opacity: 0.75;
+  position:fixed; top:8px; left:50%; transform:translateX(-50%);
+  background:var(--bg4); border:1px solid var(--accent-border);
+  color:var(--accent-text); font-size:10px; font-family:'Cinzel',serif;
+  letter-spacing:.12em; padding:3px 12px; border-radius:99px;
+  z-index:999; white-space:nowrap; opacity:.7; pointer-events:none;
 }
-
-/* ── Viewport shell ── */
-.app-shell {
-  position: fixed; inset: 0;
-  display: flex; flex-direction: column;
-  z-index: 1;
-}
+.app-shell { position:fixed; inset:0; display:flex; flex-direction:column; z-index:1; }
 
 /* ── Header ── */
 .app-header {
-  padding: 14px 18px 10px;
-  display: flex; align-items: center; justify-content: space-between;
-  flex-shrink: 0;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  padding:12px 16px 10px; display:flex; align-items:center;
+  justify-content:space-between; flex-shrink:0;
+  border-bottom:1px solid rgba(255,255,255,.04);
 }
 .char-name-display {
-  font-family: 'Cinzel', serif;
-  font-size: 17px; font-weight: 600;
-  color: var(--accent-text);
-  letter-spacing: 0.04em;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  max-width: 180px;
+  font-family:'Cinzel',serif; font-size:16px; font-weight:600;
+  color:var(--accent-text); letter-spacing:.04em;
 }
-.char-subtitle {
-  font-size: 12px; color: var(--text-dim);
-  margin-top: 2px; letter-spacing: 0.02em;
-}
-.header-right {
-  display: flex; align-items: center; gap: 10px;
-}
+.char-subtitle { font-size:12px; color:var(--text-dim); margin-top:1px; }
 .palette-btn {
-  width: 34px; height: 34px; border-radius: 50%;
-  background: var(--bg4); border: 1px solid var(--text-faint);
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; font-size: 16px;
-  transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+  width:32px; height:32px; border-radius:50%;
+  background:var(--bg4); border:1px solid var(--text-faint);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; font-size:15px;
+  transition:border-color .2s, transform .15s, box-shadow .2s;
 }
-.palette-btn:hover { border-color: var(--accent-border); box-shadow: 0 0 10px var(--accent-glow); }
-.palette-btn:active { transform: scale(0.92); }
+.palette-btn:hover { border-color:var(--accent-border); box-shadow:0 0 10px var(--accent-glow); }
+.palette-btn:active { transform:scale(.92); }
 
-/* ── Color picker overlay ── */
-.color-picker-overlay {
-  position: fixed; inset: 0; z-index: 500;
-  background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
-  display: flex; align-items: flex-end;
-  opacity: 0; pointer-events: none;
-  transition: opacity 0.25s;
-}
-.color-picker-overlay.open { opacity: 1; pointer-events: all; }
-.color-picker-sheet {
-  width: 100%; background: var(--bg3);
-  border-radius: 20px 20px 0 0;
-  border-top: 1px solid rgba(255,255,255,0.08);
-  padding: 20px 20px 36px;
-  transform: translateY(100%);
-  transition: transform 0.35s cubic-bezier(0.34,1.4,0.64,1);
-}
-.color-picker-overlay.open .color-picker-sheet { transform: translateY(0); }
-.cp-title {
-  font-family: 'Cinzel', serif; font-size: 13px; color: var(--text-dim);
-  text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 16px;
-  text-align: center;
-}
-.cp-swatches {
-  display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px;
-  margin-bottom: 16px;
-}
-.cp-swatch {
-  aspect-ratio: 1; border-radius: 50%;
-  border: 2px solid transparent;
-  cursor: pointer;
-  transition: transform 0.15s, border-color 0.2s, box-shadow 0.2s;
-}
-.cp-swatch:hover { transform: scale(1.12); }
-.cp-swatch:active { transform: scale(0.92); }
-.cp-swatch.active { border-color: white; box-shadow: 0 0 12px rgba(255,255,255,0.4); }
-.cp-slider-label { font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
-.cp-slider {
-  width: 100%; height: 8px; border-radius: 99px;
-  -webkit-appearance: none; appearance: none;
-  background: linear-gradient(to right,
-    hsl(0,75%,55%), hsl(30,80%,55%), hsl(60,80%,55%), hsl(120,70%,50%),
-    hsl(180,70%,50%), hsl(240,70%,60%), hsl(270,70%,60%), hsl(320,70%,60%), hsl(360,75%,55%));
-  outline: none; margin-bottom: 14px;
-}
-.cp-slider::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 20px; height: 20px;
-  border-radius: 50%; background: white;
-  border: 2px solid rgba(0,0,0,0.3);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-  cursor: pointer;
-}
-
-/* ── Tab content container ── */
-.tabs-viewport {
-  flex: 1; overflow: hidden; position: relative;
-}
+/* ── Tab system ── */
+.tabs-viewport { flex:1; overflow:hidden; position:relative; }
 .tabs-track {
-  display: flex; height: 100%;
-  will-change: transform;
-  transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1);
+  display:flex; height:100%;
+  will-change:transform;
+  transition:transform .38s cubic-bezier(.4,0,.2,1);
 }
-.tabs-track.dragging { transition: none; }
-
+.tabs-track.dragging { transition:none; }
 .tab-panel {
-  flex-shrink: 0; width: 100%; height: 100%;
-  overflow-y: auto; overflow-x: hidden;
-  padding: 14px 14px calc(var(--tab-h) + 14px);
-  scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
+  flex-shrink:0; width:100%; height:100%;
+  overflow-y:auto; overflow-x:hidden;
+  padding:12px 12px calc(var(--tab-h) + 12px);
+  -webkit-overflow-scrolling:touch;
 }
-/* Custom scrollbar */
-.tab-panel::-webkit-scrollbar { width: 3px; }
-.tab-panel::-webkit-scrollbar-track { background: transparent; }
-.tab-panel::-webkit-scrollbar-thumb { background: var(--bg5); border-radius: 99px; }
+.tab-panel::-webkit-scrollbar { width:3px; }
+.tab-panel::-webkit-scrollbar-thumb { background:var(--bg5); border-radius:99px; }
 
 /* ── Bottom tab bar ── */
 .tab-bar {
-  position: absolute; bottom: 0; left: 0; right: 0;
-  height: var(--tab-h);
-  background: var(--bg2);
-  border-top: 1px solid rgba(255,255,255,0.05);
-  display: flex;
-  flex-shrink: 0;
-  z-index: 10;
+  position:absolute; bottom:0; left:0; right:0; height:var(--tab-h);
+  background:var(--bg2); border-top:1px solid rgba(255,255,255,.05);
+  display:flex; z-index:10; flex-shrink:0;
 }
 .tab-btn {
-  flex: 1; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 3px;
-  cursor: pointer; border: none; background: none;
-  padding-bottom: 4px;
-  transition: color 0.2s;
-  color: var(--text-faint);
-  -webkit-tap-highlight-color: transparent;
+  flex:1; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:2px;
+  cursor:pointer; border:none; background:none;
+  padding-bottom:2px; color:var(--text-faint);
+  transition:color .2s;
 }
-.tab-btn.active { color: var(--accent-text); }
-.tab-btn .tab-icon { font-size: 20px; transition: transform 0.2s; }
-.tab-btn.active .tab-icon { transform: scale(1.15); }
-.tab-btn .tab-label {
-  font-family: 'Cinzel', serif;
-  font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
-}
+.tab-btn.active { color:var(--accent-text); }
+.tab-btn .ti { font-size:18px; transition:transform .2s; }
+.tab-btn.active .ti { transform:scale(1.15); }
+.tab-btn .tl { font-family:'Cinzel',serif; font-size:8px; letter-spacing:.08em; text-transform:uppercase; }
 .tab-indicator {
-  position: absolute; top: 0; height: 2px;
-  background: var(--accent); border-radius: 0 0 2px 2px;
-  width: 25%; left: 0;
-  transition: left 0.35s cubic-bezier(0.34,1.4,0.64,1), background 0.3s;
+  position:absolute; top:0; height:2px; background:var(--accent);
+  border-radius:0 0 2px 2px;
+  width:16.66%; left:0;
+  transition:left .35s cubic-bezier(.34,1.4,.64,1), background .3s;
 }
 
-/* ── Card base ── */
+/* ── Cards ── */
 .card {
-  background: var(--bg2);
-  border: 1px solid rgba(255,255,255,0.05);
-  border-radius: var(--radius);
-  padding: 16px;
-  margin-bottom: 12px;
-  position: relative;
-  overflow: hidden;
+  background:var(--bg2); border:1px solid rgba(255,255,255,.05);
+  border-radius:var(--radius); padding:14px; margin-bottom:10px;
+  position:relative; overflow:hidden;
+  animation:fadeUp .4s ease both;
 }
-/* Subtle inner top highlight */
 .card::before {
   content:''; position:absolute; top:0; left:0; right:0; height:1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.06),transparent);
 }
-
-.card-title {
-  font-family: 'Cinzel', serif;
-  font-size: 11px; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.14em;
-  color: var(--accent-text);
-  margin-bottom: 14px;
-  display: flex; align-items: center; gap: 8px;
-  opacity: 0.85;
+.card:nth-child(1){animation-delay:.04s}
+.card:nth-child(2){animation-delay:.1s}
+.card:nth-child(3){animation-delay:.16s}
+.card:nth-child(4){animation-delay:.22s}
+.card:nth-child(5){animation-delay:.28s}
+@keyframes fadeUp {
+  from{opacity:0;transform:translateY(12px)}
+  to  {opacity:1;transform:translateY(0)}
 }
-.card-title::after {
+.ct {
+  font-family:'Cinzel',serif; font-size:10px; font-weight:600;
+  text-transform:uppercase; letter-spacing:.14em; color:var(--accent-text);
+  margin-bottom:12px; display:flex; align-items:center; gap:8px; opacity:.85;
+}
+.ct::after {
   content:''; flex:1; height:1px;
-  background: linear-gradient(90deg, var(--accent-border), transparent);
-  opacity: 0.4;
+  background:linear-gradient(90deg,var(--accent-border),transparent); opacity:.4;
 }
 
-/* ── PANEL 0: Overview ── */
-.char-info-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-  margin-bottom: 0;
+/* ── Shared input ── */
+input, select, textarea {
+  background:var(--bg3); border:1px solid rgba(255,255,255,.07);
+  border-radius:var(--radius-sm); color:var(--text);
+  font-family:'Crimson Pro',serif; font-size:15px; outline:none;
+  transition:border-color .2s, box-shadow .2s, background .2s;
 }
-.char-field label {
-  display: block; font-size: 10px; color: var(--text-dim);
-  text-transform: uppercase; letter-spacing: 0.1em;
-  font-family: 'Cinzel', serif; margin-bottom: 5px;
+input:focus, select:focus, textarea:focus {
+  border-color:var(--accent-border);
+  box-shadow:0 0 0 3px var(--accent-glow);
+  background:var(--bg4);
 }
-.char-field input {
-  width: 100%;
-  background: var(--bg3); border: 1px solid rgba(255,255,255,0.06);
-  border-radius: var(--radius-sm); color: var(--text);
-  padding: 9px 11px; font-size: 15px;
-  font-family: 'Crimson Pro', serif;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
-}
-.char-field input:focus {
-  border-color: var(--accent-border);
-  box-shadow: 0 0 0 3px var(--accent-glow);
-  background: var(--bg4);
+select { padding:8px 10px; }
+label {
+  display:block; font-size:10px; color:var(--text-dim);
+  text-transform:uppercase; letter-spacing:.1em;
+  font-family:'Cinzel',serif; margin-bottom:5px;
 }
 
-.combat-grid {
-  display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
-}
-.combat-stat {
-  background: var(--bg3); border: 1px solid rgba(255,255,255,0.05);
-  border-radius: var(--radius-sm); padding: 12px 10px;
-  text-align: center; cursor: default;
-  transition: border-color 0.25s, box-shadow 0.25s, transform 0.2s;
-}
-.combat-stat:hover {
-  border-color: var(--accent-border);
-  box-shadow: 0 0 14px var(--accent-glow);
-  transform: translateY(-2px);
-}
-.combat-stat label {
-  display: block; font-size: 9px; text-transform: uppercase;
-  letter-spacing: 0.12em; color: var(--text-dim);
-  font-family: 'Cinzel', serif; margin-bottom: 5px;
-}
-.combat-stat input {
-  background: none; border: none; outline: none;
-  color: var(--accent-text);
-  font-size: 26px; font-weight: 600;
-  font-family: 'Cinzel', serif;
-  text-align: center; width: 100%;
-  letter-spacing: -0.02em;
-}
+/* ── STATS PAGE ── */
+.char-info-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+.char-field input { width:100%; padding:8px 10px; }
+.char-field:first-child { grid-column:1/-1; }
+.char-field:first-child input { font-size:18px; font-family:'Cinzel',serif; }
 
-/* ── PANEL 1: Abilities ── */
-.ability-hex-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
-  margin-bottom: 0;
-}
+.ability-hex-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; }
 .ability-card {
-  background: var(--bg3); border: 1px solid rgba(255,255,255,0.06);
-  border-radius: var(--radius); padding: 14px 10px 12px;
-  text-align: center; cursor: default;
-  transition: border-color 0.25s, box-shadow 0.25s, transform 0.2s, background 0.2s;
-  position: relative; overflow: hidden;
+  background:var(--bg3); border:1px solid rgba(255,255,255,.06);
+  border-radius:var(--radius); padding:12px 8px 10px;
+  text-align:center; cursor:default;
+  transition:border-color .25s, box-shadow .25s, transform .2s;
+  position:relative; overflow:hidden;
+  animation:fadeUp .35s ease both;
 }
 .ability-card::after {
   content:''; position:absolute; inset:0;
-  background: radial-gradient(circle at 50% 0%, var(--accent-soft), transparent 70%);
-  opacity: 0; transition: opacity 0.3s;
+  background:radial-gradient(circle at 50% 0%,var(--accent-soft),transparent 70%);
+  opacity:0; transition:opacity .3s;
 }
-.ability-card:hover {
-  border-color: var(--accent-border);
-  box-shadow: 0 6px 24px rgba(0,0,0,0.5), 0 0 16px var(--accent-glow);
-  transform: translateY(-3px) scale(1.02);
-}
-.ability-card:hover::after { opacity: 1; }
-.ability-card:active { transform: scale(0.97); }
+.ability-card:hover { border-color:var(--accent-border); box-shadow:0 6px 20px rgba(0,0,0,.5),0 0 14px var(--accent-glow); transform:translateY(-3px) scale(1.02); }
+.ability-card:hover::after { opacity:1; }
+.ability-card:nth-child(1){animation-delay:.05s} .ability-card:nth-child(2){animation-delay:.1s}
+.ability-card:nth-child(3){animation-delay:.15s} .ability-card:nth-child(4){animation-delay:.2s}
+.ability-card:nth-child(5){animation-delay:.25s} .ability-card:nth-child(6){animation-delay:.3s}
+.ability-abbr { font-family:'Cinzel',serif; font-size:9px; font-weight:600; letter-spacing:.16em; color:var(--text-dim); margin-bottom:6px; position:relative; z-index:1; }
+.ability-score-num { font-family:'Cinzel',serif; font-size:28px; font-weight:700; color:var(--text); line-height:1; margin-bottom:5px; position:relative; z-index:1; }
+.ability-score-num input { width:100%; background:none; border:none; outline:none; color:inherit; font:inherit; text-align:center; padding:0; box-shadow:none; }
+.ability-mod { font-family:'Cinzel',serif; font-size:14px; font-weight:600; color:var(--accent-text); position:relative; z-index:1; }
+.ability-mod-ring { display:inline-block; padding:2px 9px; background:var(--accent-soft); border:1px solid var(--accent-border); border-radius:99px; }
 
-.ability-abbr {
-  font-family: 'Cinzel', serif; font-size: 10px; font-weight: 600;
-  letter-spacing: 0.16em; color: var(--text-dim);
-  text-transform: uppercase; margin-bottom: 8px;
-  position: relative; z-index:1;
+.combat-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
+.combat-stat {
+  background:var(--bg3); border:1px solid rgba(255,255,255,.05);
+  border-radius:var(--radius-sm); padding:10px; text-align:center;
+  transition:border-color .25s, box-shadow .25s, transform .2s;
 }
-.ability-score-num {
-  font-family: 'Cinzel', serif; font-size: 32px; font-weight: 700;
-  color: var(--text); line-height: 1; margin-bottom: 6px;
-  position: relative; z-index:1;
-  transition: color 0.2s;
-  cursor: text;
-}
-.ability-score-num input {
-  width: 100%; background: none; border: none; outline: none;
-  color: inherit; font: inherit; text-align: center;
-}
-.ability-mod {
-  font-family: 'Cinzel', serif; font-size: 16px; font-weight: 600;
-  color: var(--accent-text); position: relative; z-index:1;
-  transition: transform 0.2s;
-}
-.ability-card:hover .ability-mod { transform: scale(1.1); }
-.ability-mod-ring {
-  display: inline-block; padding: 2px 10px;
-  background: var(--accent-soft); border: 1px solid var(--accent-border);
-  border-radius: 99px;
-}
+.combat-stat:hover { border-color:var(--accent-border); box-shadow:0 0 14px var(--accent-glow); transform:translateY(-2px); }
+.combat-stat label { margin-bottom:4px; }
+.combat-stat input { background:none; border:none; outline:none; color:var(--accent-text); font-size:24px; font-weight:600; font-family:'Cinzel',serif; text-align:center; width:100%; padding:0; box-shadow:none; }
 
-/* Saving throws */
-.saves-list { display: flex; flex-direction: column; gap: 5px; }
+.saves-list { display:flex; flex-direction:column; gap:4px; }
 .save-row {
-  display: flex; align-items: center; gap: 10px;
-  padding: 9px 12px; border-radius: var(--radius-sm);
-  background: var(--bg3); border: 1px solid transparent;
-  cursor: pointer;
-  transition: background 0.2s, border-color 0.2s, transform 0.15s;
+  display:flex; align-items:center; gap:9px;
+  padding:8px 11px; border-radius:var(--radius-sm);
+  background:var(--bg3); border:1px solid transparent; cursor:pointer;
+  transition:background .2s, border-color .2s, transform .15s;
 }
-.save-row:hover { background: var(--bg4); border-color: rgba(255,255,255,0.07); transform: translateX(3px); }
-.save-row:active { transform: translateX(1px) scale(0.99); }
+.save-row:hover { background:var(--bg4); border-color:rgba(255,255,255,.07); transform:translateX(3px); }
+.save-pip { width:15px; height:15px; border-radius:50%; border:2px solid var(--text-faint); flex-shrink:0; position:relative; transition:border-color .2s, box-shadow .2s; }
+.save-pip::after { content:''; position:absolute; inset:2px; border-radius:50%; background:var(--accent); transform:scale(0); transition:transform .2s cubic-bezier(.34,1.6,.64,1); }
+.save-row.prof .save-pip { border-color:var(--accent-border); box-shadow:0 0 7px var(--accent-glow); }
+.save-row.prof .save-pip::after { transform:scale(1); }
+.save-row.prof { background:var(--accent-soft); }
+.save-name { flex:1; font-size:14px; }
+.save-row.prof .save-name { font-weight:600; }
+.save-val { font-family:'Cinzel',serif; font-size:14px; font-weight:600; color:var(--accent-text); min-width:28px; text-align:right; }
 
-.save-pip {
-  width: 16px; height: 16px; border-radius: 50%;
-  border: 2px solid var(--text-faint); flex-shrink: 0;
-  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.15s;
-  position: relative;
-}
-.save-pip::after {
-  content:''; position:absolute; inset:3px;
-  border-radius:50%; background: var(--accent);
-  transform: scale(0); transition: transform 0.2s cubic-bezier(0.34,1.6,0.64,1);
-}
-.save-row.prof .save-pip {
-  border-color: var(--accent-border);
-  box-shadow: 0 0 8px var(--accent-glow);
-}
-.save-row.prof .save-pip::after { transform: scale(1); }
-.save-row.prof { background: var(--accent-soft); border-color: rgba(255,255,255,0.06); }
-
-.save-name { flex:1; font-size: 14px; color: var(--text); }
-.save-row.prof .save-name { color: var(--text); font-weight: 600; }
-.save-val {
-  font-family: 'Cinzel', serif; font-size: 15px; font-weight: 600;
-  color: var(--accent-text); min-width: 30px; text-align: right;
-}
-
-/* ── PANEL 2: Health ── */
-.hp-ring-wrap {
-  display: flex; flex-direction: column; align-items: center;
-  padding: 10px 0 6px;
-}
-.hp-ring-svg { width: 160px; height: 160px; transform: rotate(-90deg); }
-.hp-ring-track { fill: none; stroke: var(--bg4); stroke-width: 10; }
-.hp-ring-fill {
-  fill: none; stroke: var(--hp-full); stroke-width: 10;
-  stroke-linecap: round;
-  stroke-dasharray: 440; stroke-dashoffset: 120;
-  transition: stroke-dashoffset 0.7s cubic-bezier(0.34,1.2,0.64,1), stroke 0.4s;
-  filter: drop-shadow(0 0 5px var(--hp-full));
-}
-.hp-ring-center {
-  position: absolute; display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  width: 160px; height: 160px; top: 0; left: 50%; transform: translateX(-50%);
-  pointer-events: none;
-}
-.hp-ring-wrap { position: relative; }
-.hp-current-num {
-  font-family: 'Cinzel', serif; font-size: 44px; font-weight: 700;
-  color: var(--text); line-height: 1; letter-spacing: -0.03em;
-  transition: color 0.4s;
-}
-.hp-max-num {
-  font-size: 13px; color: var(--text-dim); margin-top: 2px;
-  font-family: 'Cinzel', serif;
-}
-.hp-label {
-  font-family: 'Cinzel', serif; font-size: 9px;
-  text-transform: uppercase; letter-spacing: 0.16em;
-  color: var(--text-dim); margin-top: 2px;
-}
-
-/* Shake animation for damage */
-@keyframes shake {
-  0%,100%{transform:translateX(0)}
-  20%{transform:translateX(-6px)}
-  40%{transform:translateX(6px)}
-  60%{transform:translateX(-4px)}
-  80%{transform:translateX(4px)}
-}
-@keyframes healPulse {
-  0%{transform:scale(1)}
-  40%{transform:scale(1.06)}
-  100%{transform:scale(1)}
-}
-.hp-ring-wrap.shake { animation: shake 0.35s ease; }
-.hp-ring-wrap.heal { animation: healPulse 0.4s ease; }
-
-.hp-btns {
-  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
-  width: 100%; margin-top: 14px;
-}
-.hp-btn {
-  padding: 11px 6px; border-radius: var(--radius-sm);
-  border: 1px solid rgba(255,255,255,0.06);
-  background: var(--bg3); color: var(--text);
-  font-family: 'Cinzel', serif; font-size: 14px; font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.2s, color 0.2s, transform 0.1s, box-shadow 0.2s;
-}
-.hp-btn:active { transform: scale(0.94); }
-.hp-btn.minus:hover { background: rgba(201,96,96,0.18); border-color: var(--hp-danger); color: var(--hp-danger); box-shadow: 0 0 12px rgba(201,96,96,0.3); }
-.hp-btn.plus:hover  { background: rgba(126,200,126,0.18); border-color: var(--hp-full); color: var(--hp-full); box-shadow: 0 0 12px rgba(126,200,126,0.3); }
-.hp-btn.custom:hover { background: var(--accent-soft); border-color: var(--accent-border); color: var(--accent-text); }
-
-/* Death saves */
-.death-saves-row {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
-  margin-top: 14px; padding-top: 14px;
-  border-top: 1px solid rgba(255,255,255,0.05);
-}
-.ds-group { }
-.ds-label {
-  font-family: 'Cinzel', serif; font-size: 10px;
-  text-transform: uppercase; letter-spacing: 0.12em;
-  margin-bottom: 8px; font-weight: 600;
-}
-.ds-group.s .ds-label { color: var(--hp-full); }
-.ds-group.f .ds-label { color: var(--hp-danger); }
-.ds-pips { display: flex; gap: 8px; }
-.ds-pip {
-  width: 24px; height: 24px; border-radius: 50%;
-  border: 2px solid; cursor: pointer;
-  transition: background 0.18s, box-shadow 0.18s, transform 0.15s;
-  position: relative;
-}
-.ds-group.s .ds-pip { border-color: var(--hp-full); }
-.ds-group.f .ds-pip { border-color: var(--hp-danger); }
-.ds-pip:hover { transform: scale(1.15); }
-.ds-pip:active { transform: scale(0.88); }
-@keyframes pipPop {
-  0%{transform:scale(0.7)} 60%{transform:scale(1.2)} 100%{transform:scale(1)}
-}
-.ds-group.s .ds-pip.on { background: var(--hp-full); box-shadow: 0 0 10px rgba(126,200,126,0.6); animation: pipPop 0.25s ease; }
-.ds-group.f .ds-pip.on { background: var(--hp-danger); box-shadow: 0 0 10px rgba(201,96,96,0.6); animation: pipPop 0.25s ease; }
-
-/* Rest buttons */
-.rest-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
-.rest-btn {
-  padding: 10px; border-radius: var(--radius-sm);
-  border: 1px solid rgba(255,255,255,0.06);
-  background: var(--bg3); cursor: pointer;
-  font-family: 'Cinzel', serif; font-size: 11px;
-  letter-spacing: 0.08em; text-transform: uppercase;
-  color: var(--text-dim);
-  transition: all 0.2s;
-}
-.rest-btn.short:hover { background: rgba(212,168,67,0.15); border-color: var(--hp-warn); color: var(--hp-warn); }
-.rest-btn.long:hover  { background: rgba(126,200,126,0.15); border-color: var(--hp-full); color: var(--hp-full); }
-
-/* Action tracker */
-.action-rows { display: flex; flex-direction: column; gap: 6px; }
-.action-row {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 14px; background: var(--bg3);
-  border-radius: var(--radius-sm); border: 1px solid rgba(255,255,255,0.04);
-  transition: border-color 0.2s;
-}
-.action-row:hover { border-color: rgba(255,255,255,0.08); }
-.action-lbl {
-  font-family: 'Cinzel', serif; font-size: 11px;
-  text-transform: uppercase; letter-spacing: 0.1em;
-  color: var(--text-dim); flex:1;
-}
-.action-count {
-  font-family: 'Cinzel', serif; font-size: 22px; font-weight: 700;
-  color: var(--text); width: 30px; text-align: center;
-  background: none; border: none; outline: none;
-}
-.used-toggle {
-  display: flex; align-items: center; gap: 5px;
-  font-size: 12px; color: var(--text-dim);
-  padding: 5px 10px; border-radius: 6px;
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: all 0.18s;
-  font-family: 'Crimson Pro', serif;
-}
-.used-toggle:hover { background: var(--bg4); border-color: rgba(255,255,255,0.07); }
-.used-dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  border: 2px solid var(--text-faint);
-  transition: background 0.18s, border-color 0.18s, box-shadow 0.18s;
-}
-.used-toggle.on { color: var(--hp-danger); background: rgba(201,96,96,0.1); border-color: rgba(201,96,96,0.3); }
-.used-toggle.on .used-dot { background: var(--hp-danger); border-color: var(--hp-danger); box-shadow: 0 0 6px rgba(201,96,96,0.5); }
-
-.new-round-btn {
-  width: 100%; margin-top: 10px; padding: 11px;
-  border-radius: var(--radius-sm);
-  background: var(--accent-soft); border: 1px solid var(--accent-border);
-  color: var(--accent-text); font-family: 'Cinzel', serif;
-  font-size: 12px; font-weight: 600;
-  letter-spacing: 0.1em; text-transform: uppercase;
-  cursor: pointer;
-  transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
-}
-.new-round-btn:hover { background: hsl(var(--accent-h),var(--accent-s),calc(var(--accent-l) - 5%), 0.22); box-shadow: 0 0 18px var(--accent-glow); }
-.new-round-btn:active { transform: scale(0.97); }
-
-/* ── PANEL 3: Skills ── */
-.skills-list { display: flex; flex-direction: column; gap: 3px; }
+.skills-list { display:flex; flex-direction:column; gap:2px; }
 .skill-row {
-  display: flex; align-items: center; gap: 10px;
-  padding: 8px 12px; border-radius: var(--radius-sm);
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: background 0.18s, border-color 0.2s, transform 0.15s;
-  position: relative; overflow: hidden;
+  display:flex; align-items:center; gap:9px;
+  padding:7px 11px; border-radius:var(--radius-sm);
+  border:1px solid transparent; cursor:pointer; position:relative; overflow:hidden;
+  transition:background .18s, border-color .2s, transform .15s;
 }
-.skill-row:hover { background: var(--bg3); border-color: rgba(255,255,255,0.06); transform: translateX(3px); }
-.skill-row:active { transform: translateX(1px) scale(0.99); }
-.skill-row.prof {
-  background: var(--accent-soft); border-color: rgba(255,255,255,0.05);
-}
-.skill-row.prof:hover { border-color: var(--accent-border); transform: translateX(3px); }
-
-/* Shimmer on proficient */
+.skill-row:hover { background:var(--bg3); border-color:rgba(255,255,255,.06); transform:translateX(3px); }
+.skill-row.prof { background:var(--accent-soft); border-color:rgba(255,255,255,.04); }
 .skill-row.prof::before {
   content:''; position:absolute; inset:0;
-  background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,0.04) 50%, transparent 70%);
-  background-size: 200% 100%;
-  animation: shimmer 3s linear infinite;
+  background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.04) 50%,transparent 70%);
+  background-size:200% 100%; animation:shimmer 3s linear infinite;
 }
 @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+.skill-pip { width:13px; height:13px; border-radius:50%; border:2px solid var(--text-faint); flex-shrink:0; position:relative; transition:border-color .2s, box-shadow .2s; }
+.skill-pip::after { content:''; position:absolute; inset:2px; border-radius:50%; background:var(--accent); transform:scale(0); transition:transform .2s cubic-bezier(.34,1.7,.64,1); }
+.skill-row.prof .skill-pip { border-color:var(--accent-border); box-shadow:0 0 6px var(--accent-glow); }
+.skill-row.prof .skill-pip::after { transform:scale(1); }
+.skill-name { flex:1; font-size:14px; }
+.skill-row.prof .skill-name { font-weight:600; }
+.skill-stat { font-size:10px; color:var(--text-dim); background:var(--bg4); padding:1px 5px; border-radius:4px; font-family:'Cinzel',serif; }
+.skill-bonus { font-family:'Cinzel',serif; font-size:14px; font-weight:600; color:var(--accent-text); min-width:28px; text-align:right; }
 
-.skill-pip {
-  width: 14px; height: 14px; border-radius: 50%;
-  border: 2px solid var(--text-faint); flex-shrink: 0;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  position: relative;
-}
-.skill-pip::after {
-  content:''; position:absolute; inset:2px; border-radius:50%;
-  background: var(--accent); transform: scale(0);
-  transition: transform 0.2s cubic-bezier(0.34,1.7,0.64,1);
-}
-.skill-row.prof .skill-pip { border-color: var(--accent-border); box-shadow: 0 0 6px var(--accent-glow); }
-.skill-row.prof .skill-pip::after { transform: scale(1); }
+/* ── HEALTH PAGE ── */
+.hp-ring-wrap { display:flex; flex-direction:column; align-items:center; padding:8px 0 4px; position:relative; }
+.hp-ring-svg { width:150px; height:150px; transform:rotate(-90deg); }
+.hp-ring-track { fill:none; stroke:var(--bg4); stroke-width:10; }
+.hp-ring-fill { fill:none; stroke:var(--hp-full); stroke-width:10; stroke-linecap:round; stroke-dasharray:440; stroke-dashoffset:120; transition:stroke-dashoffset .7s cubic-bezier(.34,1.2,.64,1), stroke .4s; filter:drop-shadow(0 0 5px var(--hp-full)); }
+.hp-ring-center { position:absolute; display:flex; flex-direction:column; align-items:center; justify-content:center; width:150px; height:150px; top:8px; pointer-events:none; }
+.hp-current-num { font-family:'Cinzel',serif; font-size:40px; font-weight:700; color:var(--text); line-height:1; letter-spacing:-.03em; transition:color .4s; }
+.hp-max-num { font-size:12px; color:var(--text-dim); margin-top:2px; font-family:'Cinzel',serif; }
+.hp-label { font-family:'Cinzel',serif; font-size:8px; text-transform:uppercase; letter-spacing:.16em; color:var(--text-dim); margin-top:1px; }
+@keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+@keyframes healPulse { 0%{transform:scale(1)} 40%{transform:scale(1.06)} 100%{transform:scale(1)} }
+.hp-ring-wrap.shake { animation:shake .35s ease; }
+.hp-ring-wrap.heal  { animation:healPulse .4s ease; }
+.hp-btns { display:grid; grid-template-columns:1fr 1fr 1fr; gap:7px; width:100%; margin-top:12px; }
+.hp-btn { padding:10px 6px; border-radius:var(--radius-sm); border:1px solid rgba(255,255,255,.06); background:var(--bg3); color:var(--text); font-family:'Cinzel',serif; font-size:13px; font-weight:600; cursor:pointer; transition:background .15s,border-color .2s,color .2s,transform .1s,box-shadow .2s; }
+.hp-btn:active { transform:scale(.94); }
+.hp-btn.minus:hover { background:rgba(201,96,96,.18); border-color:var(--hp-danger); color:var(--hp-danger); box-shadow:0 0 12px rgba(201,96,96,.3); }
+.hp-btn.plus:hover  { background:rgba(126,200,126,.18); border-color:var(--hp-full); color:var(--hp-full); box-shadow:0 0 12px rgba(126,200,126,.3); }
+.hp-btn.custom:hover { background:var(--accent-soft); border-color:var(--accent-border); color:var(--accent-text); }
+.death-saves-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,.05); }
+.ds-label { font-family:'Cinzel',serif; font-size:10px; text-transform:uppercase; letter-spacing:.12em; margin-bottom:7px; font-weight:600; }
+.ds-group.s .ds-label { color:var(--hp-full); }
+.ds-group.f .ds-label { color:var(--hp-danger); }
+.ds-pips { display:flex; gap:7px; }
+.ds-pip { width:22px; height:22px; border-radius:50%; border:2px solid; cursor:pointer; transition:background .18s,box-shadow .18s,transform .15s; }
+.ds-group.s .ds-pip { border-color:var(--hp-full); }
+.ds-group.f .ds-pip { border-color:var(--hp-danger); }
+.ds-pip:active { transform:scale(.88); }
+@keyframes pipPop { 0%{transform:scale(.7)} 60%{transform:scale(1.2)} 100%{transform:scale(1)} }
+.ds-group.s .ds-pip.on { background:var(--hp-full); box-shadow:0 0 10px rgba(126,200,126,.6); animation:pipPop .25s ease; }
+.ds-group.f .ds-pip.on { background:var(--hp-danger); box-shadow:0 0 10px rgba(201,96,96,.6); animation:pipPop .25s ease; }
+.rest-btns { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-top:10px; }
+.rest-btn { padding:9px; border-radius:var(--radius-sm); border:1px solid rgba(255,255,255,.06); background:var(--bg3); cursor:pointer; font-family:'Cinzel',serif; font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-dim); transition:all .2s; }
+.rest-btn.short:hover { background:rgba(212,168,67,.15); border-color:var(--hp-warn); color:var(--hp-warn); }
+.rest-btn.long:hover  { background:rgba(126,200,126,.15); border-color:var(--hp-full); color:var(--hp-full); }
+.action-rows { display:flex; flex-direction:column; gap:5px; }
+.action-row { display:flex; align-items:center; gap:9px; padding:9px 12px; background:var(--bg3); border-radius:var(--radius-sm); border:1px solid rgba(255,255,255,.04); transition:border-color .2s; }
+.action-lbl { font-family:'Cinzel',serif; font-size:10px; text-transform:uppercase; letter-spacing:.1em; color:var(--text-dim); flex:1; }
+.action-count { background:none; border:none; outline:none; font-family:'Cinzel',serif; font-size:20px; font-weight:700; color:var(--text); width:28px; text-align:center; padding:0; box-shadow:none; }
+.used-toggle { display:flex; align-items:center; gap:5px; font-size:12px; color:var(--text-dim); padding:4px 9px; border-radius:6px; border:1px solid transparent; cursor:pointer; transition:all .18s; }
+.used-toggle:hover { background:var(--bg4); border-color:rgba(255,255,255,.07); }
+.used-dot { width:8px; height:8px; border-radius:50%; border:2px solid var(--text-faint); transition:background .18s,border-color .18s,box-shadow .18s; }
+.used-toggle.on { color:var(--hp-danger); background:rgba(201,96,96,.1); border-color:rgba(201,96,96,.3); }
+.used-toggle.on .used-dot { background:var(--hp-danger); border-color:var(--hp-danger); box-shadow:0 0 6px rgba(201,96,96,.5); }
+.new-round-btn { width:100%; margin-top:9px; padding:10px; border-radius:var(--radius-sm); background:var(--accent-soft); border:1px solid var(--accent-border); color:var(--accent-text); font-family:'Cinzel',serif; font-size:11px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; cursor:pointer; transition:background .2s, box-shadow .2s, transform .1s; }
+.new-round-btn:hover { box-shadow:0 0 18px var(--accent-glow); }
+.new-round-btn:active { transform:scale(.97); }
+.conditions-empty { text-align:center; padding:20px; color:var(--text-faint); font-style:italic; font-size:14px; }
+.condition-chip { display:inline-flex; align-items:center; gap:6px; padding:5px 10px; background:var(--bg3); border:1px solid var(--accent-border); border-radius:99px; font-size:13px; margin:4px; }
+.add-btn { padding:7px 14px; border-radius:var(--radius-sm); background:var(--accent-soft); border:1px solid var(--accent-border); color:var(--accent-text); font-family:'Cinzel',serif; font-size:11px; letter-spacing:.08em; cursor:pointer; transition:all .2s; }
+.add-btn:hover { background:hsl(var(--accent-h),var(--accent-s),calc(var(--accent-l) - 5%),.22); box-shadow:0 0 14px var(--accent-glow); }
 
-.skill-name { flex:1; font-size: 15px; color: var(--text); }
-.skill-row.prof .skill-name { font-weight: 600; }
-.skill-stat {
-  font-size: 11px; color: var(--text-dim);
-  background: var(--bg4); padding: 2px 6px;
-  border-radius: 4px; font-family: 'Cinzel', serif;
-  letter-spacing: 0.06em;
-}
-.skill-bonus {
-  font-family: 'Cinzel', serif; font-size: 15px; font-weight: 600;
-  color: var(--accent-text); min-width: 30px; text-align: right;
-}
+/* ── BACKGROUND PAGE ── */
+.portrait-box { background:var(--bg3); border:2px dashed var(--text-faint); border-radius:var(--radius); height:140px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; color:var(--text-faint); font-size:13px; cursor:pointer; transition:border-color .2s, background .2s; margin-bottom:10px; }
+.portrait-box:hover { border-color:var(--accent-border); background:var(--accent-soft); color:var(--accent-text); }
+.portrait-box .pi { font-size:28px; opacity:.5; }
+.bg-fields-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+.bg-field { }
+.bg-field textarea { width:100%; padding:9px 10px; resize:none; min-height:80px; line-height:1.5; }
+.bg-field.full { grid-column:1/-1; }
+.bg-field.full textarea { min-height:110px; }
+.backstory-area { width:100%; padding:10px; resize:none; min-height:130px; line-height:1.6; font-size:15px; }
 
-/* ── Entry animations ── */
-@keyframes fadeUp {
-  from { opacity:0; transform: translateY(14px); }
-  to   { opacity:1; transform: translateY(0); }
-}
-.card { animation: fadeUp 0.4s ease both; }
-.card:nth-child(1){ animation-delay:0.04s }
-.card:nth-child(2){ animation-delay:0.1s }
-.card:nth-child(3){ animation-delay:0.16s }
-.ability-card { animation: fadeUp 0.35s ease both; }
-.ability-card:nth-child(1){animation-delay:0.04s}
-.ability-card:nth-child(2){animation-delay:0.09s}
-.ability-card:nth-child(3){animation-delay:0.14s}
-.ability-card:nth-child(4){animation-delay:0.19s}
-.ability-card:nth-child(5){animation-delay:0.24s}
-.ability-card:nth-child(6){animation-delay:0.29s}
+/* ── SPELLS PAGE ── */
+.spell-info-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
+.spell-info-item label { margin-bottom:4px; }
+.spell-info-item select, .spell-info-item input { width:100%; padding:7px 9px; }
+.spell-slots-grid { display:flex; flex-direction:column; gap:6px; }
+.spell-slot-row { display:flex; align-items:center; gap:10px; padding:8px 12px; background:var(--bg3); border-radius:var(--radius-sm); border:1px solid rgba(255,255,255,.04); transition:border-color .2s; }
+.spell-slot-row:hover { border-color:rgba(255,255,255,.08); }
+.slot-label { font-family:'Cinzel',serif; font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.08em; width:52px; flex-shrink:0; }
+.slot-pips { display:flex; gap:5px; flex:1; flex-wrap:wrap; }
+.slot-pip { width:18px; height:18px; border-radius:50%; border:2px solid var(--text-faint); cursor:pointer; transition:background .18s, border-color .18s, box-shadow .18s, transform .12s; }
+.slot-pip:hover { transform:scale(1.15); }
+.slot-pip:active { transform:scale(.88); }
+.slot-pip.used { background:var(--text-faint); border-color:var(--text-faint); }
+.slot-pip.full { background:var(--accent); border-color:var(--accent-border); box-shadow:0 0 7px var(--accent-glow); }
+.slot-count { font-family:'Cinzel',serif; font-size:11px; color:var(--text-dim); white-space:nowrap; }
 
-/* Ripple effect */
-.ripple-host { position: relative; overflow: hidden; }
-@keyframes rippleAnim {
-  from { transform: scale(0); opacity: 0.35; }
-  to   { transform: scale(4); opacity: 0; }
+.spell-card {
+  background:var(--bg3); border:1px solid rgba(255,255,255,.05);
+  border-radius:var(--radius-sm); margin-bottom:6px; overflow:hidden;
+  transition:border-color .2s;
 }
-.ripple-circle {
-  position:absolute; border-radius:50%;
-  background: rgba(255,255,255,0.2);
-  width: 60px; height: 60px;
-  margin: -30px 0 0 -30px;
-  pointer-events: none;
-  animation: rippleAnim 0.55s ease-out forwards;
+.spell-card:hover { border-color:rgba(255,255,255,.1); }
+.spell-card-header { display:flex; align-items:center; gap:8px; padding:9px 12px; cursor:pointer; }
+.spell-level-badge {
+  padding:2px 7px; border-radius:99px; font-family:'Cinzel',serif;
+  font-size:10px; font-weight:600; background:var(--accent-soft);
+  border:1px solid var(--accent-border); color:var(--accent-text); white-space:nowrap;
 }
+.spell-name { flex:1; font-size:15px; font-weight:600; }
+.spell-school { font-size:11px; color:var(--text-dim); font-style:italic; }
+.spell-fav { font-size:14px; cursor:pointer; opacity:.5; transition:opacity .2s, transform .15s; }
+.spell-fav:hover { opacity:1; transform:scale(1.2); }
+.spell-details { padding:0 12px 10px; display:none; }
+.spell-details.open { display:block; }
+.spell-meta { display:flex; gap:14px; flex-wrap:wrap; margin-bottom:7px; }
+.spell-meta-item { font-size:12px; color:var(--text-dim); }
+.spell-meta-item span { color:var(--text); font-size:13px; }
+.spell-desc { font-size:14px; color:var(--text-dim); line-height:1.55; }
 
-/* ── Desktop two-column layout ── */
-@media (min-width: 700px) {
-  .tab-panel { padding: 18px 20px calc(var(--tab-h) + 18px); }
-  .ability-hex-grid { grid-template-columns: repeat(6, 1fr); }
-  .char-info-grid { grid-template-columns: repeat(3, 1fr); }
-  .combat-grid { grid-template-columns: repeat(4, 1fr); }
-}
+/* ── INVENTORY PAGE ── */
+.currency-row { display:flex; gap:8px; flex-wrap:wrap; }
+.coin-box { flex:1; min-width:60px; background:var(--bg3); border:1px solid rgba(255,255,255,.06); border-radius:var(--radius-sm); padding:10px 8px; text-align:center; transition:border-color .2s, box-shadow .2s; }
+.coin-box:hover { border-color:var(--accent-border); box-shadow:0 0 10px var(--accent-glow); }
+.coin-icon { font-size:18px; margin-bottom:4px; }
+.coin-label { font-family:'Cinzel',serif; font-size:9px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.1em; margin-bottom:5px; }
+.coin-input { width:100%; background:none; border:none; outline:none; color:var(--text); font-size:16px; font-family:'Cinzel',serif; font-weight:600; text-align:center; padding:0; box-shadow:none; }
+.item-row { display:flex; align-items:center; gap:9px; padding:9px 12px; background:var(--bg3); border-radius:var(--radius-sm); border:1px solid transparent; margin-bottom:5px; transition:border-color .2s, background .2s; }
+.item-row:hover { background:var(--bg4); border-color:rgba(255,255,255,.07); }
+.item-name { flex:1; font-size:15px; }
+.item-qty { font-family:'Cinzel',serif; font-size:13px; color:var(--text-dim); white-space:nowrap; }
+.item-wt { font-family:'Cinzel',serif; font-size:12px; color:var(--text-faint); white-space:nowrap; min-width:50px; text-align:right; }
+.weight-total { font-family:'Cinzel',serif; font-size:11px; color:var(--text-dim); text-align:right; margin-top:6px; letter-spacing:.05em; }
+.equip-row { display:flex; align-items:center; gap:9px; padding:9px 12px; background:var(--bg3); border-radius:var(--radius-sm); border:1px solid transparent; margin-bottom:5px; transition:border-color .2s; }
+.equip-row:hover { border-color:rgba(255,255,255,.07); background:var(--bg4); }
+.equip-name { flex:1; font-size:15px; }
+.equip-badge { font-size:11px; color:var(--accent-text); background:var(--accent-soft); border:1px solid var(--accent-border); padding:2px 7px; border-radius:99px; font-family:'Cinzel',serif; white-space:nowrap; }
+.search-bar { width:100%; padding:9px 12px; margin-bottom:10px; }
 
-/* Transitions for panel switching — re-run animations */
-.tab-panel.entering .card,
-.tab-panel.entering .ability-card {
-  animation-play-state: running;
+/* ── NOTES PAGE ── */
+.notes-toolbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; gap:8px; }
+.notes-title { font-family:'Cinzel',serif; font-size:15px; font-weight:600; color:var(--accent-text); }
+.folders-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+.folder-card {
+  background:var(--bg2); border:1px solid rgba(255,255,255,.06);
+  border-radius:var(--radius); padding:16px 14px;
+  cursor:pointer; position:relative; overflow:hidden;
+  transition:border-color .25s, box-shadow .25s, transform .2s, background .2s;
+  animation:fadeUp .35s ease both;
+}
+.folder-card::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,rgba(255,255,255,.07),transparent); }
+.folder-card:hover { border-color:var(--accent-border); box-shadow:0 6px 20px rgba(0,0,0,.4),0 0 12px var(--accent-glow); transform:translateY(-2px); background:var(--bg3); }
+.folder-card:active { transform:scale(.97); }
+.folder-card:nth-child(1){animation-delay:.04s} .folder-card:nth-child(2){animation-delay:.09s}
+.folder-card:nth-child(3){animation-delay:.14s} .folder-card:nth-child(4){animation-delay:.19s}
+.folder-card:nth-child(5){animation-delay:.24s} .folder-card:nth-child(6){animation-delay:.29s}
+.folder-card:nth-child(7){animation-delay:.34s} .folder-card:nth-child(8){animation-delay:.39s}
+.folder-icon { font-size:26px; margin-bottom:8px; display:block; }
+.folder-name { font-family:'Cinzel',serif; font-size:13px; font-weight:600; color:var(--text); margin-bottom:4px; }
+.folder-count { font-size:12px; color:var(--text-dim); }
+.folder-default-badge { position:absolute; top:8px; right:8px; font-size:9px; color:var(--text-faint); font-family:'Cinzel',serif; letter-spacing:.08em; }
+
+/* ── Color picker ── */
+.color-picker-overlay { position:fixed; inset:0; z-index:500; background:rgba(0,0,0,.6); backdrop-filter:blur(6px); display:flex; align-items:flex-end; opacity:0; pointer-events:none; transition:opacity .25s; }
+.color-picker-overlay.open { opacity:1; pointer-events:all; }
+.color-picker-sheet { width:100%; background:var(--bg3); border-radius:20px 20px 0 0; border-top:1px solid rgba(255,255,255,.08); padding:18px 18px 34px; transform:translateY(100%); transition:transform .35s cubic-bezier(.34,1.4,.64,1); }
+.color-picker-overlay.open .color-picker-sheet { transform:translateY(0); }
+.cp-title { font-family:'Cinzel',serif; font-size:12px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.12em; margin-bottom:14px; text-align:center; }
+.cp-swatches { display:grid; grid-template-columns:repeat(6,1fr); gap:9px; margin-bottom:14px; }
+.cp-swatch { aspect-ratio:1; border-radius:50%; border:2px solid transparent; cursor:pointer; transition:transform .15s, border-color .2s, box-shadow .2s; }
+.cp-swatch:hover { transform:scale(1.12); }
+.cp-swatch:active { transform:scale(.92); }
+.cp-swatch.active { border-color:white; box-shadow:0 0 12px rgba(255,255,255,.4); }
+.cp-slider-label { font-size:11px; color:var(--text-dim); margin-bottom:5px; font-family:'Cinzel',serif; letter-spacing:.06em; }
+.cp-slider { width:100%; height:8px; border-radius:99px; -webkit-appearance:none; appearance:none; background:linear-gradient(to right,hsl(0,75%,55%),hsl(30,80%,55%),hsl(60,80%,55%),hsl(120,70%,50%),hsl(180,70%,50%),hsl(240,70%,60%),hsl(270,70%,60%),hsl(320,70%,60%),hsl(360,75%,55%)); outline:none; border:none; box-shadow:none; }
+.cp-slider::-webkit-slider-thumb { -webkit-appearance:none; width:20px; height:20px; border-radius:50%; background:white; border:2px solid rgba(0,0,0,.3); box-shadow:0 2px 8px rgba(0,0,0,.4); cursor:pointer; }
+
+/* ── Ripple ── */
+@keyframes rippleAnim { from{transform:scale(0);opacity:.35} to{transform:scale(4);opacity:0} }
+.ripple-host { position:relative; overflow:hidden; }
+.ripple-circle { position:absolute; border-radius:50%; background:rgba(255,255,255,.2); width:60px; height:60px; margin:-30px 0 0 -30px; pointer-events:none; animation:rippleAnim .55s ease-out forwards; }
+
+/* ── Desktop ── */
+@media(min-width:700px){
+  .char-info-grid { grid-template-columns:repeat(3,1fr); }
+  .char-field:first-child { grid-column:1/-1; }
+  .ability-hex-grid { grid-template-columns:repeat(6,1fr); }
+  .combat-grid { grid-template-columns:repeat(4,1fr); }
+  .bg-fields-grid { grid-template-columns:repeat(3,1fr); }
+  .spell-info-grid { grid-template-columns:repeat(4,1fr); }
+  .folders-grid { grid-template-columns:repeat(3,1fr); }
 }
 </style>
 </head>
@@ -665,100 +414,69 @@ body::before {
 
 <div class="app-shell">
 
-  <!-- Header -->
   <div class="app-header">
     <div>
       <div class="char-name-display" id="charNameDisplay">Thalindra</div>
-      <div class="char-subtitle" id="charSubDisplay">Half-Elf Ranger · Lv 7</div>
+      <div class="char-subtitle" id="charSubDisplay">Half-Elf · Ranger 7</div>
     </div>
-    <div class="header-right">
-      <div class="palette-btn" onclick="openPalette()" title="Change accent colour">🎨</div>
-    </div>
+    <div class="palette-btn" onclick="openPalette()">🎨</div>
   </div>
 
-  <!-- Tab panels -->
   <div class="tabs-viewport" id="tabsViewport">
     <div class="tabs-track" id="tabsTrack">
 
-      <!-- Panel 0: Overview -->
+      <!-- ── PANEL 0: STATS ── -->
       <div class="tab-panel" id="panel0">
         <div class="card">
-          <div class="card-title">Character Info</div>
+          <div class="ct">Character Info</div>
           <div class="char-info-grid">
-            <div class="char-field">
-              <label>Name</label>
-              <input value="Thalindra" oninput="updateHeader()" id="inp_name"/>
-            </div>
-            <div class="char-field">
-              <label>Race</label>
-              <input value="Half-Elf"/>
-            </div>
-            <div class="char-field">
-              <label>Class</label>
-              <input value="Ranger"/>
-            </div>
-            <div class="char-field">
-              <label>Subclass</label>
-              <input value="Gloom Stalker"/>
-            </div>
-            <div class="char-field">
-              <label>Level</label>
-              <input value="7" type="number" id="inp_level" oninput="updateHeader()"/>
-            </div>
-            <div class="char-field">
-              <label>Background</label>
-              <input value="Outlander"/>
-            </div>
+            <div class="char-field"><label>Name</label><input value="Thalindra" oninput="updateHeader(this,'name')"/></div>
+            <div class="char-field"><label>Race</label><input value="Half-Elf"/></div>
+            <div class="char-field"><label>Class</label><input value="Ranger"/></div>
+            <div class="char-field"><label>Subclass</label><input value="Gloom Stalker"/></div>
+            <div class="char-field"><label>Level</label><input value="7" type="number" oninput="updateHeader(this,'level')"/></div>
+            <div class="char-field"><label>Background</label><input value="Outlander"/></div>
           </div>
         </div>
-
         <div class="card">
-          <div class="card-title">Combat Stats</div>
+          <div class="ct">Ability Scores</div>
+          <div class="ability-hex-grid" id="abilityGrid"></div>
+        </div>
+        <div class="card">
+          <div class="ct">Combat Stats</div>
           <div class="combat-grid">
-            <div class="combat-stat">
-              <label>Armour Class</label>
-              <input value="16"/>
-            </div>
-            <div class="combat-stat">
-              <label>Speed</label>
-              <input value="35ft"/>
-            </div>
-            <div class="combat-stat">
-              <label>Initiative</label>
-              <input value="+4"/>
-            </div>
-            <div class="combat-stat">
-              <label>Prof. Bonus</label>
-              <input value="+3" readonly/>
-            </div>
+            <div class="combat-stat"><label>Armour Class</label><input value="16"/></div>
+            <div class="combat-stat"><label>Speed</label><input value="35ft"/></div>
+            <div class="combat-stat"><label>Initiative</label><input value="+4"/></div>
+            <div class="combat-stat"><label>Prof. Bonus</label><input value="+3" readonly/></div>
           </div>
+        </div>
+        <div class="card">
+          <div class="ct">Saving Throws</div>
+          <div class="saves-list" id="savesList"></div>
+        </div>
+        <div class="card">
+          <div class="ct">Skills</div>
+          <div class="skills-list" id="skillsList"></div>
+        </div>
+        <div class="card">
+          <div class="ct">Proficiencies & Training</div>
+          <textarea class="backstory-area" placeholder="Languages, tools, weapon and armour proficiencies…" style="min-height:80px;">Common, Elvish, Thieves' Tools, Longbow, Shortsword, Light Armour, Medium Armour</textarea>
+        </div>
+        <div class="card">
+          <div class="ct">Quick Notes</div>
+          <textarea class="backstory-area" placeholder="Jot quick notes here…" style="min-height:70px;"></textarea>
         </div>
       </div>
 
-      <!-- Panel 1: Abilities -->
+      <!-- ── PANEL 1: HEALTH ── -->
       <div class="tab-panel" id="panel1">
         <div class="card">
-          <div class="card-title">Ability Scores</div>
-          <div class="ability-hex-grid" id="abilityGrid">
-            <!-- built by JS -->
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-title">Saving Throws</div>
-          <div class="saves-list" id="savesList">
-            <!-- built by JS -->
-          </div>
-        </div>
-      </div>
-
-      <!-- Panel 2: Health -->
-      <div class="tab-panel" id="panel2">
-        <div class="card">
-          <div class="card-title">Hit Points</div>
+          <div class="ct">Hit Points</div>
           <div class="hp-ring-wrap" id="hpRingWrap">
-            <svg class="hp-ring-svg" viewBox="0 0 160 160">
-              <circle class="hp-ring-track" cx="80" cy="80" r="70"/>
-              <circle class="hp-ring-fill" id="hpRingFill" cx="80" cy="80" r="70"/>
+            <svg class="hp-ring-svg" viewBox="0 0 150 150">
+              <circle class="hp-ring-track" cx="75" cy="75" r="65"/>
+              <circle class="hp-ring-fill" id="hpRingFill" cx="75" cy="75" r="65"/>
             </svg>
             <div class="hp-ring-center">
               <div class="hp-current-num" id="hpNum">38</div>
@@ -767,88 +485,148 @@ body::before {
             </div>
           </div>
           <div class="hp-btns">
-            <button class="hp-btn minus ripple-host" onclick="adjustHP(-1, this)">− 1</button>
-            <button class="hp-btn plus ripple-host"  onclick="adjustHP(+1, this)">+ 1</button>
+            <button class="hp-btn minus ripple-host" onclick="adjustHP(-1,event,this)">− 1</button>
+            <button class="hp-btn plus ripple-host"  onclick="adjustHP(+1,event,this)">+ 1</button>
             <button class="hp-btn custom ripple-host">Custom</button>
           </div>
           <div class="death-saves-row">
-            <div class="ds-group s">
-              <div class="ds-label">Successes</div>
-              <div class="ds-pips">
-                <div class="ds-pip on" onclick="togglePip(this)"></div>
-                <div class="ds-pip" onclick="togglePip(this)"></div>
-                <div class="ds-pip" onclick="togglePip(this)"></div>
-              </div>
-            </div>
-            <div class="ds-group f">
-              <div class="ds-label">Failures</div>
-              <div class="ds-pips">
-                <div class="ds-pip on" onclick="togglePip(this)"></div>
-                <div class="ds-pip" onclick="togglePip(this)"></div>
-                <div class="ds-pip" onclick="togglePip(this)"></div>
-              </div>
-            </div>
+            <div class="ds-group s"><div class="ds-label">Successes</div><div class="ds-pips"><div class="ds-pip on" onclick="togglePip(this)"></div><div class="ds-pip" onclick="togglePip(this)"></div><div class="ds-pip" onclick="togglePip(this)"></div></div></div>
+            <div class="ds-group f"><div class="ds-label">Failures</div><div class="ds-pips"><div class="ds-pip on" onclick="togglePip(this)"></div><div class="ds-pip" onclick="togglePip(this)"></div><div class="ds-pip" onclick="togglePip(this)"></div></div></div>
           </div>
-          <div class="rest-btns" style="margin-top:14px;">
-            <button class="rest-btn short ripple-host" onclick="shortRest(this)">Short Rest</button>
-            <button class="rest-btn long ripple-host" onclick="longRest(this)">Long Rest</button>
+          <div class="rest-btns" style="margin-top:12px;">
+            <button class="rest-btn short ripple-host" onclick="shortRest(event,this)">Short Rest</button>
+            <button class="rest-btn long ripple-host"  onclick="longRest(event,this)">Long Rest</button>
           </div>
         </div>
-
         <div class="card">
-          <div class="card-title">Action Tracker</div>
+          <div class="ct">Action Tracker</div>
           <div class="action-rows">
-            <div class="action-row">
-              <span class="action-lbl">Action</span>
-              <input class="action-count" value="1" type="number"/>
-              <div class="used-toggle" onclick="toggleUsed(this)">
-                <div class="used-dot"></div> Used
-              </div>
-            </div>
-            <div class="action-row">
-              <span class="action-lbl">Bonus</span>
-              <input class="action-count" value="1" type="number"/>
-              <div class="used-toggle on" onclick="toggleUsed(this)">
-                <div class="used-dot"></div> Used
-              </div>
-            </div>
+            <div class="action-row"><span class="action-lbl">Action</span><input class="action-count" value="1" type="number"/><div class="used-toggle" onclick="toggleUsed(this)"><div class="used-dot"></div>Used</div></div>
+            <div class="action-row"><span class="action-lbl">Bonus</span><input class="action-count" value="1" type="number"/><div class="used-toggle on" onclick="toggleUsed(this)"><div class="used-dot"></div>Used</div></div>
+            <div class="action-row"><span class="action-lbl">Reaction</span><input class="action-count" value="1" type="number"/><div class="used-toggle" onclick="toggleUsed(this)"><div class="used-dot"></div>Used</div></div>
           </div>
-          <button class="new-round-btn ripple-host" onclick="newRound(this)">⚔ New Round</button>
+          <button class="new-round-btn ripple-host" onclick="newRound(event,this)">⚔ New Round</button>
+        </div>
+        <div class="card">
+          <div class="ct" style="justify-content:space-between;">Conditions <button class="add-btn" style="margin-bottom:0;font-size:10px;">+ Add</button></div>
+          <div style="padding:2px 0;">
+            <span class="condition-chip">🔥 Burning</span>
+            <span class="condition-chip">😴 Exhausted</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="ct">Actions Notes</div>
+          <textarea class="backstory-area" placeholder="Notes about your actions, reactions, and special abilities…" style="min-height:80px;"></textarea>
         </div>
       </div>
 
-      <!-- Panel 3: Skills -->
-      <div class="tab-panel" id="panel3">
+      <!-- ── PANEL 2: BACKGROUND ── -->
+      <div class="tab-panel" id="panel2">
         <div class="card">
-          <div class="card-title">Skills</div>
-          <div class="skills-list" id="skillsList">
-            <!-- built by JS -->
+          <div class="ct">Portrait & Backstory</div>
+          <div class="portrait-box"><span class="pi">🖼</span><span>Tap to upload portrait</span></div>
+          <textarea class="backstory-area" placeholder="Enter your character's backstory here…">Thalindra grew up on the fringes of the Greywood, raised by a wandering elven scout after her human village was destroyed in a raid. She learned to survive by instinct, tracking prey through dense fog and sleeping in treetops. The night is her natural home — and those who hunt in it have learned to fear her first.</textarea>
+        </div>
+        <div class="card">
+          <div class="ct">Character Fields</div>
+          <div class="bg-fields-grid">
+            <div class="bg-field"><label>Alignment</label><textarea placeholder="Neutral Good…">Chaotic Good</textarea></div>
+            <div class="bg-field"><label>Experience</label><textarea placeholder="0 XP">23 450 XP</textarea></div>
+            <div class="bg-field full"><label>Personality Traits</label><textarea placeholder="How does your character act?">I watch over my companions with careful eyes, rarely speaking unless I have something important to say. I trust actions over words.</textarea></div>
+            <div class="bg-field"><label>Ideals</label><textarea placeholder="What do you believe in?">Freedom — the wilds belong to no one and everyone. No walls, no cages.</textarea></div>
+            <div class="bg-field"><label>Bonds</label><textarea placeholder="What ties you to the world?">I protect a young village near the Greywood — the one that took me in when I had nothing.</textarea></div>
+            <div class="bg-field full"><label>Flaws</label><textarea placeholder="What are your weaknesses?">I have difficulty trusting people who've grown up in cities. Their comfort makes me suspicious.</textarea></div>
           </div>
         </div>
+      </div>
+
+      <!-- ── PANEL 3: SPELLS ── -->
+      <div class="tab-panel" id="panel3">
+        <div class="card">
+          <div class="ct">Spellcasting Info</div>
+          <div class="spell-info-grid">
+            <div class="spell-info-item"><label>Ability</label><select><option selected>Wisdom</option><option>Intelligence</option><option>Charisma</option></select></div>
+            <div class="spell-info-item"><label>Spell Save DC</label><input value="13" type="number"/></div>
+            <div class="spell-info-item"><label>Attack Bonus</label><input value="+5" type="text"/></div>
+            <div class="spell-info-item"><label>Caster Type</label><select><option>Half Caster</option><option selected>Prepared</option><option>Spellbook</option></select></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="ct">Spell Slots</div>
+          <div class="spell-slots-grid" id="spellSlotsGrid"></div>
+        </div>
+        <div class="card">
+          <div class="ct">Cantrips</div>
+          <div id="cantripsList"></div>
+          <button class="add-btn" style="width:100%;margin-top:6px;">+ Add Cantrip</button>
+        </div>
+        <div class="card">
+          <div class="ct">Spells</div>
+          <div id="spellsList"></div>
+          <button class="add-btn" style="width:100%;margin-top:6px;">+ Add Spell</button>
+        </div>
+        <div class="card">
+          <div class="ct">Spell Notes</div>
+          <textarea class="backstory-area" placeholder="Homebrew rules, concentration notes, ritual spells…" style="min-height:70px;"></textarea>
+        </div>
+      </div>
+
+      <!-- ── PANEL 4: INVENTORY ── -->
+      <div class="tab-panel" id="panel4">
+        <div class="card">
+          <div class="ct">Currency</div>
+          <div class="currency-row">
+            <div class="coin-box"><div class="coin-icon">🟤</div><div class="coin-label">Copper</div><input class="coin-input" value="47" type="number"/></div>
+            <div class="coin-box"><div class="coin-icon">⚪</div><div class="coin-label">Silver</div><input class="coin-input" value="120" type="number"/></div>
+            <div class="coin-box"><div class="coin-icon">🟡</div><div class="coin-label">Gold</div><input class="coin-input" value="38" type="number"/></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="ct">Equipment</div>
+          <div class="equip-row"><span class="equip-name">Studded Leather Armour</span><span class="equip-badge">Equipped</span></div>
+          <div class="equip-row"><span class="equip-name">Longbow</span><span class="equip-badge">Equipped</span></div>
+          <div class="equip-row"><span class="equip-name">Shortsword ×2</span><span class="equip-badge">Equipped</span></div>
+          <div class="weight-total">Equipment Weight: 24 lbs / 10.9 kg</div>
+          <button class="add-btn" style="width:100%;margin-top:8px;">+ Add Equipment</button>
+        </div>
+        <div class="card">
+          <div class="ct">Inventory</div>
+          <input type="search" class="search-bar" placeholder="Filter items…"/>
+          <div class="item-row"><span class="item-name">Quiver of Arrows</span><span class="item-qty">×40</span><span class="item-wt">2 lbs</span></div>
+          <div class="item-row"><span class="item-name">Healer's Kit</span><span class="item-qty">×1</span><span class="item-wt">3 lbs</span></div>
+          <div class="item-row"><span class="item-name">Healing Potion</span><span class="item-qty">×3</span><span class="item-wt">1.5 lbs</span></div>
+          <div class="item-row"><span class="item-name">Rope (Hempen, 50 ft)</span><span class="item-qty">×1</span><span class="item-wt">10 lbs</span></div>
+          <div class="item-row"><span class="item-name">Thieves' Tools</span><span class="item-qty">×1</span><span class="item-wt">1 lb</span></div>
+          <div class="item-row"><span class="item-name">Rations (1 day)</span><span class="item-qty">×5</span><span class="item-wt">10 lbs</span></div>
+          <div class="weight-total">Total: 27.5 lbs / 12.5 kg</div>
+          <button class="add-btn" style="width:100%;margin-top:8px;">+ Add Item</button>
+        </div>
+      </div>
+
+      <!-- ── PANEL 5: NOTES ── -->
+      <div class="tab-panel" id="panel5">
+        <div class="notes-toolbar">
+          <span class="notes-title">Notes</span>
+          <div style="display:flex;gap:7px;">
+            <button class="add-btn">Reorder</button>
+            <button class="add-btn">+ Add Folder</button>
+          </div>
+        </div>
+        <div class="folders-grid" id="foldersGrid"></div>
       </div>
 
     </div><!-- /tabs-track -->
   </div><!-- /tabs-viewport -->
 
-  <!-- Bottom tab bar -->
+  <!-- Bottom tab bar (6 tabs) -->
   <div class="tab-bar">
-    <div class="tab-indicator" id="tabIndicator"></div>
-    <button class="tab-btn active" onclick="goTab(0)" id="tb0">
-      <span class="tab-icon">📜</span>
-      <span class="tab-label">Overview</span>
-    </button>
-    <button class="tab-btn" onclick="goTab(1)" id="tb1">
-      <span class="tab-icon">⚔️</span>
-      <span class="tab-label">Abilities</span>
-    </button>
-    <button class="tab-btn" onclick="goTab(2)" id="tb2">
-      <span class="tab-icon">❤️</span>
-      <span class="tab-label">Health</span>
-    </button>
-    <button class="tab-btn" onclick="goTab(3)" id="tb3">
-      <span class="tab-icon">📚</span>
-      <span class="tab-label">Skills</span>
-    </button>
+    <div class="tab-indicator" id="tabIndicator" style="width:16.66%"></div>
+    <button class="tab-btn active" onclick="goTab(0)" id="tb0"><span class="ti">⚔️</span><span class="tl">Stats</span></button>
+    <button class="tab-btn" onclick="goTab(1)" id="tb1"><span class="ti">❤️</span><span class="tl">Health</span></button>
+    <button class="tab-btn" onclick="goTab(2)" id="tb2"><span class="ti">📖</span><span class="tl">BG</span></button>
+    <button class="tab-btn" onclick="goTab(3)" id="tb3"><span class="ti">✨</span><span class="tl">Spells</span></button>
+    <button class="tab-btn" onclick="goTab(4)" id="tb4"><span class="ti">🎒</span><span class="tl">Inv</span></button>
+    <button class="tab-btn" onclick="goTab(5)" id="tb5"><span class="ti">📝</span><span class="tl">Notes</span></button>
   </div>
 
 </div><!-- /app-shell -->
@@ -864,307 +642,284 @@ body::before {
 </div>
 
 <script>
-// ── Data ──────────────────────────────────────────────────
+// ── Data ──
 const ABILITIES = [
-  { abbr:'STR', name:'Strength',     score:16 },
-  { abbr:'DEX', name:'Dexterity',    score:18 },
-  { abbr:'CON', name:'Constitution', score:14 },
-  { abbr:'INT', name:'Intelligence', score:10 },
-  { abbr:'WIS', name:'Wisdom',       score:15 },
-  { abbr:'CHA', name:'Charisma',     score:12 },
+  {abbr:'STR',name:'Strength',score:16},
+  {abbr:'DEX',name:'Dexterity',score:18},
+  {abbr:'CON',name:'Constitution',score:14},
+  {abbr:'INT',name:'Intelligence',score:10},
+  {abbr:'WIS',name:'Wisdom',score:15},
+  {abbr:'CHA',name:'Charisma',score:12},
 ];
 const SAVES = [
-  { name:'Strength',     bonus:'+6', prof:true  },
-  { name:'Dexterity',    bonus:'+7', prof:true  },
-  { name:'Constitution', bonus:'+2', prof:false },
-  { name:'Intelligence', bonus:'+0', prof:false },
-  { name:'Wisdom',       bonus:'+2', prof:false },
-  { name:'Charisma',     bonus:'+1', prof:false },
+  {name:'Strength',bonus:'+6',prof:true},
+  {name:'Dexterity',bonus:'+7',prof:true},
+  {name:'Constitution',bonus:'+2',prof:false},
+  {name:'Intelligence',bonus:'+0',prof:false},
+  {name:'Wisdom',bonus:'+2',prof:false},
+  {name:'Charisma',bonus:'+1',prof:false},
 ];
 const SKILLS = [
-  { name:'Acrobatics',     stat:'Dex', bonus:'+4', prof:false },
-  { name:'Animal Handling',stat:'Wis', bonus:'+2', prof:false },
-  { name:'Arcana',         stat:'Int', bonus:'+0', prof:false },
-  { name:'Athletics',      stat:'Str', bonus:'+6', prof:true  },
-  { name:'Deception',      stat:'Cha', bonus:'+1', prof:false },
-  { name:'History',        stat:'Int', bonus:'+0', prof:false },
-  { name:'Insight',        stat:'Wis', bonus:'+5', prof:true  },
-  { name:'Intimidation',   stat:'Cha', bonus:'+1', prof:false },
-  { name:'Investigation',  stat:'Int', bonus:'+0', prof:false },
-  { name:'Medicine',       stat:'Wis', bonus:'+2', prof:false },
-  { name:'Nature',         stat:'Int', bonus:'+3', prof:true  },
-  { name:'Perception',     stat:'Wis', bonus:'+5', prof:true  },
-  { name:'Performance',    stat:'Cha', bonus:'+1', prof:false },
-  { name:'Persuasion',     stat:'Cha', bonus:'+1', prof:false },
-  { name:'Religion',       stat:'Int', bonus:'+0', prof:false },
-  { name:'Sleight of Hand',stat:'Dex', bonus:'+4', prof:false },
-  { name:'Stealth',        stat:'Dex', bonus:'+7', prof:true  },
-  { name:'Survival',       stat:'Wis', bonus:'+5', prof:true  },
+  {name:'Acrobatics',stat:'Dex',bonus:'+4',prof:false},
+  {name:'Animal Handling',stat:'Wis',bonus:'+2',prof:false},
+  {name:'Arcana',stat:'Int',bonus:'+0',prof:false},
+  {name:'Athletics',stat:'Str',bonus:'+6',prof:true},
+  {name:'Deception',stat:'Cha',bonus:'+1',prof:false},
+  {name:'History',stat:'Int',bonus:'+0',prof:false},
+  {name:'Insight',stat:'Wis',bonus:'+5',prof:true},
+  {name:'Intimidation',stat:'Cha',bonus:'+1',prof:false},
+  {name:'Investigation',stat:'Int',bonus:'+0',prof:false},
+  {name:'Medicine',stat:'Wis',bonus:'+2',prof:false},
+  {name:'Nature',stat:'Int',bonus:'+3',prof:true},
+  {name:'Perception',stat:'Wis',bonus:'+5',prof:true},
+  {name:'Performance',stat:'Cha',bonus:'+1',prof:false},
+  {name:'Persuasion',stat:'Cha',bonus:'+1',prof:false},
+  {name:'Religion',stat:'Int',bonus:'+0',prof:false},
+  {name:'Sleight of Hand',stat:'Dex',bonus:'+4',prof:false},
+  {name:'Stealth',stat:'Dex',bonus:'+7',prof:true},
+  {name:'Survival',stat:'Wis',bonus:'+5',prof:true},
+];
+const SPELL_SLOTS = [
+  {label:'1st',total:4,used:2},
+  {label:'2nd',total:3,used:1},
+  {label:'3rd',total:3,used:0},
+  {label:'4th',total:1,used:0},
+];
+const CANTRIPS = [
+  {name:'Druidcraft',school:'Transmutation'},
+  {name:'Guidance',school:'Divination'},
+  {name:'Thorn Whip',school:'Transmutation'},
+];
+const SPELLS = [
+  {name:"Hunter's Mark",level:'1st',school:'Divination',cast:'Bonus Action',range:'90 ft',duration:'Conc., 1 hr',desc:'You choose a creature you can see within range and mystically mark it as your quarry.'},
+  {name:'Ensnaring Strike',level:'1st',school:'Conjuration',cast:'Bonus Action',range:'Self',duration:'Conc., 1 min',desc:'The next time you hit a creature with a weapon attack, a writhing mass of thorny vines ensnares the target.'},
+  {name:'Misty Step',level:'2nd',school:'Conjuration',cast:'Bonus Action',range:'Self',duration:'Instant',desc:'Briefly surrounded by silvery mist, you teleport up to 30 feet to an unoccupied space that you can see.'},
+  {name:'Pass Without Trace',level:'2nd',school:'Abjuration',cast:'1 Action',range:'Self',duration:'Conc., 1 hr',desc:'A veil of shadows and silence radiates from you, masking you and your companions from detection.'},
+  {name:'Conjure Barrage',level:'3rd',school:'Conjuration',cast:'1 Action',range:'Self (60 ft cone)',duration:'Instant',desc:'You throw a nonmagical weapon or fire a piece of nonmagical ammunition into the air to create a cone of identical weapons.'},
+];
+const NOTE_FOLDERS = [
+  {icon:'⚔️',name:'Quests',count:4,def:true},
+  {icon:'🧑‍🤝‍🧑',name:'NPCs',count:7,def:true},
+  {icon:'🗺️',name:'Locations',count:3,def:true},
+  {icon:'📜',name:'Lore',count:2,def:true},
+  {icon:'💀',name:'Combat Notes',count:1,def:true},
+  {icon:'🗝️',name:'Items Found',count:5,def:true},
+  {icon:'🏕️',name:'Party Notes',count:2,def:true},
+  {icon:'📅',name:'Session Log',count:8,def:true},
+  {icon:'🌍',name:'World Notes',count:3,def:false},
+  {icon:'📌',name:'Miscellaneous',count:0,def:false},
 ];
 const SWATCHES = [
-  { h:35,  s:80, l:58, label:'Ember'    },
-  { h:270, s:70, l:62, label:'Amethyst' },
-  { h:200, s:75, l:55, label:'Sapphire' },
-  { h:140, s:60, l:48, label:'Forest'   },
-  { h:0,   s:70, l:58, label:'Crimson'  },
-  { h:50,  s:85, l:55, label:'Gold'     },
+  {h:35,s:80,l:58,label:'Ember'},
+  {h:270,s:70,l:62,label:'Amethyst'},
+  {h:200,s:75,l:55,label:'Sapphire'},
+  {h:140,s:60,l:48,label:'Forest'},
+  {h:0,s:70,l:58,label:'Crimson'},
+  {h:50,s:85,l:55,label:'Gold'},
 ];
 
-// ── HP State ──────────────────────────────────────────────
-let hp = 38, hpMax = 52;
+// ── HP State ──
+let hp=38, hpMax=52;
 
-function mod(score){ return Math.floor((score - 10) / 2); }
-function modStr(score){ const m = mod(score); return (m >= 0 ? '+' : '') + m; }
-
-// ── Render ability cards ───────────────────────────────────
-function buildAbilities() {
-  const grid = document.getElementById('abilityGrid');
-  grid.innerHTML = '';
-  ABILITIES.forEach(a => {
-    const m = mod(a.score);
-    const mStr = (m >= 0 ? '+' : '') + m;
-    const el = document.createElement('div');
-    el.className = 'ability-card';
-    el.innerHTML = `
-      <div class="ability-abbr">${a.abbr}</div>
-      <div class="ability-score-num"><input value="${a.score}" maxlength="2" oninput="updateMod(this)"/></div>
-      <div class="ability-mod"><span class="ability-mod-ring">${mStr}</span></div>
-    `;
-    grid.appendChild(el);
+// ── Build: Abilities ──
+function buildAbilities(){
+  const g=document.getElementById('abilityGrid'); g.innerHTML='';
+  ABILITIES.forEach(a=>{
+    const m=Math.floor((a.score-10)/2), ms=(m>=0?'+':'')+m;
+    const el=document.createElement('div'); el.className='ability-card';
+    el.innerHTML=`<div class="ability-abbr">${a.abbr}</div><div class="ability-score-num"><input value="${a.score}" maxlength="2" oninput="updateMod(this)"/></div><div class="ability-mod"><span class="ability-mod-ring">${ms}</span></div>`;
+    g.appendChild(el);
   });
 }
-
-function updateMod(input) {
-  const val = parseInt(input.value) || 10;
-  const m = Math.floor((val - 10) / 2);
-  const mStr = (m >= 0 ? '+' : '') + m;
-  input.closest('.ability-card').querySelector('.ability-mod-ring').textContent = mStr;
+function updateMod(inp){
+  const v=parseInt(inp.value)||10, m=Math.floor((v-10)/2), ms=(m>=0?'+':'')+m;
+  inp.closest('.ability-card').querySelector('.ability-mod-ring').textContent=ms;
 }
 
-// ── Render saving throws ───────────────────────────────────
-function buildSaves() {
-  const el = document.getElementById('savesList');
-  el.innerHTML = '';
-  SAVES.forEach(s => {
-    const row = document.createElement('div');
-    row.className = 'save-row' + (s.prof ? ' prof' : '');
-    row.onclick = () => { row.classList.toggle('prof'); };
-    row.innerHTML = `
-      <div class="save-pip"></div>
-      <span class="save-name">${s.name}</span>
-      <span class="save-val">${s.bonus}</span>
-    `;
+// ── Build: Saves ──
+function buildSaves(){
+  const el=document.getElementById('savesList'); el.innerHTML='';
+  SAVES.forEach(s=>{
+    const row=document.createElement('div'); row.className='save-row'+(s.prof?' prof':'');
+    row.onclick=()=>row.classList.toggle('prof');
+    row.innerHTML=`<div class="save-pip"></div><span class="save-name">${s.name}</span><span class="save-val">${s.bonus}</span>`;
     el.appendChild(row);
   });
 }
 
-// ── Render skills ──────────────────────────────────────────
-function buildSkills() {
-  const el = document.getElementById('skillsList');
-  el.innerHTML = '';
-  SKILLS.forEach(s => {
-    const row = document.createElement('div');
-    row.className = 'skill-row' + (s.prof ? ' prof' : '');
-    row.onclick = () => { row.classList.toggle('prof'); };
-    row.innerHTML = `
-      <div class="skill-pip"></div>
-      <span class="skill-name">${s.name}</span>
-      <span class="skill-stat">${s.stat}</span>
-      <span class="skill-bonus">${s.bonus}</span>
-    `;
+// ── Build: Skills ──
+function buildSkills(){
+  const el=document.getElementById('skillsList'); el.innerHTML='';
+  SKILLS.forEach(s=>{
+    const row=document.createElement('div'); row.className='skill-row'+(s.prof?' prof':'');
+    row.onclick=()=>row.classList.toggle('prof');
+    row.innerHTML=`<div class="skill-pip"></div><span class="skill-name">${s.name}</span><span class="skill-stat">${s.stat}</span><span class="skill-bonus">${s.bonus}</span>`;
     el.appendChild(row);
   });
 }
 
-// ── HP ─────────────────────────────────────────────────────
-function updateHPDisplay() {
-  const pct = Math.max(0, Math.min(1, hp / hpMax));
-  const circum = 2 * Math.PI * 70; // 439.8
-  const offset = circum * (1 - pct);
-  const fill = document.getElementById('hpRingFill');
-  fill.style.strokeDasharray = circum;
-  fill.style.strokeDashoffset = offset;
-
-  // Color
-  let color = 'var(--hp-full)';
-  if (pct <= 0.25) color = 'var(--hp-danger)';
-  else if (pct <= 0.5) color = 'var(--hp-warn)';
-  fill.style.stroke = color;
-  fill.style.filter = `drop-shadow(0 0 6px ${color})`;
-
-  document.getElementById('hpNum').textContent = hp;
-  document.getElementById('hpNum').style.color =
-    pct <= 0.25 ? 'var(--hp-danger)' : pct <= 0.5 ? 'var(--hp-warn)' : 'var(--text)';
+// ── Build: Spell Slots ──
+function buildSpellSlots(){
+  const g=document.getElementById('spellSlotsGrid'); g.innerHTML='';
+  SPELL_SLOTS.forEach(sl=>{
+    const row=document.createElement('div'); row.className='spell-slot-row';
+    let pips='';
+    for(let i=0;i<sl.total;i++) pips+=`<div class="slot-pip${i<sl.used?' used':(sl.total-i<=2?' full':'')}" onclick="toggleSlotPip(this)"></div>`;
+    row.innerHTML=`<span class="slot-label">${sl.label}</span><div class="slot-pips">${pips}</div><span class="slot-count">${sl.total-sl.used}/${sl.total}</span>`;
+    g.appendChild(row);
+  });
+}
+function toggleSlotPip(pip){
+  pip.classList.toggle('used');
+  const row=pip.closest('.spell-slot-row');
+  const pips=row.querySelectorAll('.slot-pip');
+  const used=[...pips].filter(p=>p.classList.contains('used')).length;
+  row.querySelector('.slot-count').textContent=`${pips.length-used}/${pips.length}`;
 }
 
-function adjustHP(delta, btn) {
-  hp = Math.max(0, Math.min(hpMax, hp + delta));
-  updateHPDisplay();
-  const wrap = document.getElementById('hpRingWrap');
-  wrap.classList.remove('shake', 'heal');
-  void wrap.offsetWidth;
-  wrap.classList.add(delta < 0 ? 'shake' : 'heal');
-  if (btn) ripple(btn, event);
+// ── Build: Cantrips & Spells ──
+function buildSpells(){
+  const cl=document.getElementById('cantripsList'); cl.innerHTML='';
+  CANTRIPS.forEach(c=>{
+    const d=document.createElement('div'); d.className='spell-card';
+    d.innerHTML=`<div class="spell-card-header"><span class="spell-level-badge">Cantrip</span><span class="spell-name">${c.name}</span><span class="spell-school">${c.school}</span></div>`;
+    cl.appendChild(d);
+  });
+  const sl=document.getElementById('spellsList'); sl.innerHTML='';
+  SPELLS.forEach(sp=>{
+    const d=document.createElement('div'); d.className='spell-card';
+    d.innerHTML=`
+      <div class="spell-card-header" onclick="toggleSpell(this)">
+        <span class="spell-level-badge">${sp.level}</span>
+        <span class="spell-name">${sp.name}</span>
+        <span class="spell-school">${sp.school}</span>
+        <span class="spell-fav">⭐</span>
+      </div>
+      <div class="spell-details">
+        <div class="spell-meta">
+          <div class="spell-meta-item">Cast <span>${sp.cast}</span></div>
+          <div class="spell-meta-item">Range <span>${sp.range}</span></div>
+          <div class="spell-meta-item">Duration <span>${sp.duration}</span></div>
+        </div>
+        <div class="spell-desc">${sp.desc}</div>
+      </div>`;
+    sl.appendChild(d);
+  });
+}
+function toggleSpell(header){
+  const details=header.nextElementSibling;
+  details.classList.toggle('open');
 }
 
-function shortRest(btn) {
-  hp = Math.min(hpMax, hp + Math.floor(Math.random() * 8) + 1 + 2);
-  updateHPDisplay();
-  const wrap = document.getElementById('hpRingWrap');
-  wrap.classList.remove('shake','heal'); void wrap.offsetWidth;
-  wrap.classList.add('heal');
-  if (btn) ripple(btn, event);
-}
-function longRest(btn) {
-  hp = hpMax;
-  updateHPDisplay();
-  const wrap = document.getElementById('hpRingWrap');
-  wrap.classList.remove('shake','heal'); void wrap.offsetWidth;
-  wrap.classList.add('heal');
-  if (btn) ripple(btn, event);
-}
-
-function togglePip(pip) {
-  pip.classList.toggle('on');
-}
-
-function toggleUsed(el) { el.classList.toggle('on'); }
-
-function newRound(btn) {
-  document.querySelectorAll('.used-toggle').forEach(u => u.classList.remove('on'));
-  if (btn) ripple(btn, event);
-}
-
-// ── Ripple ─────────────────────────────────────────────────
-function ripple(el, e) {
-  const r = document.createElement('div');
-  r.className = 'ripple-circle';
-  const rect = el.getBoundingClientRect();
-  const x = (e && e.clientX ? e.clientX : rect.left + rect.width/2) - rect.left;
-  const y = (e && e.clientY ? e.clientY : rect.top + rect.height/2) - rect.top;
-  r.style.left = x + 'px'; r.style.top = y + 'px';
-  el.appendChild(r);
-  setTimeout(() => r.remove(), 600);
-}
-// Attach ripple to all ripple-host buttons
-document.querySelectorAll('.ripple-host').forEach(btn => {
-  btn.addEventListener('click', e => { if(!btn.onclick) ripple(btn,e); });
-});
-document.querySelectorAll('.hp-btn, .rest-btn, .new-round-btn').forEach(btn => {
-  btn.addEventListener('click', e => ripple(btn, e));
-});
-
-// ── Tab switching ──────────────────────────────────────────
-let currentTab = 0;
-const track = document.getElementById('tabsTrack');
-const indicator = document.getElementById('tabIndicator');
-const NUM_TABS = 4;
-
-function goTab(i) {
-  currentTab = i;
-  track.classList.remove('dragging');
-  track.style.transform = `translateX(${-i * 100}%)`;
-  indicator.style.left = (i * 25) + '%';
-  document.querySelectorAll('.tab-btn').forEach((b,idx) => {
-    b.classList.toggle('active', idx === i);
+// ── Build: Notes folders ──
+function buildFolders(){
+  const g=document.getElementById('foldersGrid'); g.innerHTML='';
+  NOTE_FOLDERS.forEach(f=>{
+    const d=document.createElement('div'); d.className='folder-card';
+    d.innerHTML=`${f.def?'<span class="folder-default-badge">Default</span>':''}<span class="folder-icon">${f.icon}</span><div class="folder-name">${f.name}</div><div class="folder-count">${f.count} card${f.count!==1?'s':''}</div>`;
+    g.appendChild(d);
   });
 }
 
-// ── Swipe gesture ──────────────────────────────────────────
-let touchStartX = 0, touchStartY = 0, isDragging = false, startTab = 0;
-const viewport = document.getElementById('tabsViewport');
+// ── HP ──
+function updateHPDisplay(){
+  const pct=Math.max(0,Math.min(1,hp/hpMax));
+  const circum=2*Math.PI*65;
+  const fill=document.getElementById('hpRingFill');
+  fill.style.strokeDasharray=circum;
+  fill.style.strokeDashoffset=circum*(1-pct);
+  let color=pct<=.25?'var(--hp-danger)':pct<=.5?'var(--hp-warn)':'var(--hp-full)';
+  fill.style.stroke=color; fill.style.filter=`drop-shadow(0 0 6px ${color})`;
+  document.getElementById('hpNum').textContent=hp;
+  document.getElementById('hpNum').style.color=pct<=.25?'var(--hp-danger)':pct<=.5?'var(--hp-warn)':'var(--text)';
+}
+function adjustHP(delta,e,btn){
+  hp=Math.max(0,Math.min(hpMax,hp+delta));
+  updateHPDisplay();
+  const w=document.getElementById('hpRingWrap');
+  w.classList.remove('shake','heal'); void w.offsetWidth;
+  w.classList.add(delta<0?'shake':'heal');
+  ripple(btn,e);
+}
+function shortRest(e,btn){ adjustHP(Math.floor(Math.random()*8)+3,e,btn); }
+function longRest(e,btn){ hp=hpMax; updateHPDisplay(); const w=document.getElementById('hpRingWrap'); w.classList.remove('shake','heal'); void w.offsetWidth; w.classList.add('heal'); ripple(btn,e); }
+function togglePip(pip){ pip.classList.toggle('on'); }
+function toggleUsed(el){ el.classList.toggle('on'); }
+function newRound(e,btn){ document.querySelectorAll('.used-toggle').forEach(u=>u.classList.remove('on')); ripple(btn,e); }
 
-viewport.addEventListener('touchstart', e => {
-  touchStartX = e.touches[0].clientX;
-  touchStartY = e.touches[0].clientY;
-  startTab = currentTab;
-  isDragging = false;
-}, { passive: true });
+// ── Header ──
+function updateHeader(inp,field){
+  if(field==='name') document.getElementById('charNameDisplay').textContent=inp.value||'Character';
+  if(field==='level') document.getElementById('charSubDisplay').textContent=`Half-Elf · Ranger ${inp.value||1}`;
+}
 
-viewport.addEventListener('touchmove', e => {
-  const dx = e.touches[0].clientX - touchStartX;
-  const dy = e.touches[0].clientY - touchStartY;
-  if (!isDragging && Math.abs(dy) > Math.abs(dx)) return; // vertical scroll wins
-  if (Math.abs(dx) > 6) isDragging = true;
-  if (!isDragging) return;
-  const vw = viewport.offsetWidth;
-  const raw = -startTab * vw + dx;
-  const min = -(NUM_TABS - 1) * vw;
-  // Rubber band at edges
-  let x = raw;
-  if (raw > 0) x = raw * 0.25;
-  if (raw < min) x = min + (raw - min) * 0.25;
-  track.classList.add('dragging');
-  track.style.transform = `translateX(${x}px)`;
-  indicator.style.left = ((-x / vw) * 25) + '%';
-}, { passive: true });
-
-viewport.addEventListener('touchend', e => {
-  if (!isDragging) return;
-  isDragging = false;
-  const dx = e.changedTouches[0].clientX - touchStartX;
-  const vw = viewport.offsetWidth;
-  let next = startTab;
-  if (dx < -vw * 0.2 && startTab < NUM_TABS - 1) next = startTab + 1;
-  if (dx >  vw * 0.2 && startTab > 0)             next = startTab - 1;
+// ── Tabs ──
+let currentTab=0;
+const track=document.getElementById('tabsTrack');
+const indicator=document.getElementById('tabIndicator');
+const NUM_TABS=6;
+function goTab(i){
+  currentTab=i; track.classList.remove('dragging');
+  track.style.transform=`translateX(${-i*100}%)`;
+  indicator.style.left=(i*16.66)+'%';
+  document.querySelectorAll('.tab-btn').forEach((b,idx)=>b.classList.toggle('active',idx===i));
+}
+let touchStartX=0,touchStartY=0,isDragging=false,startTab=0;
+const vp=document.getElementById('tabsViewport');
+vp.addEventListener('touchstart',e=>{touchStartX=e.touches[0].clientX;touchStartY=e.touches[0].clientY;startTab=currentTab;isDragging=false;},{passive:true});
+vp.addEventListener('touchmove',e=>{
+  const dx=e.touches[0].clientX-touchStartX,dy=e.touches[0].clientY-touchStartY;
+  if(!isDragging&&Math.abs(dy)>Math.abs(dx))return;
+  if(Math.abs(dx)>6)isDragging=true; if(!isDragging)return;
+  const vw=vp.offsetWidth, raw=-startTab*vw+dx, min=-(NUM_TABS-1)*vw;
+  let x=raw; if(raw>0)x=raw*.25; if(raw<min)x=min+(raw-min)*.25;
+  track.classList.add('dragging'); track.style.transform=`translateX(${x}px)`;
+  indicator.style.left=((-x/vw)*16.66)+'%';
+},{passive:true});
+vp.addEventListener('touchend',e=>{
+  if(!isDragging)return; isDragging=false;
+  const dx=e.changedTouches[0].clientX-touchStartX, vw=vp.offsetWidth;
+  let next=startTab;
+  if(dx<-vw*.2&&startTab<NUM_TABS-1)next=startTab+1;
+  if(dx>vw*.2&&startTab>0)next=startTab-1;
   goTab(next);
-}, { passive: true });
+},{passive:true});
 
-// ── Header update ──────────────────────────────────────────
-function updateHeader() {
-  const name = document.getElementById('inp_name').value || 'Character';
-  const lvl = document.getElementById('inp_level').value || '1';
-  document.getElementById('charNameDisplay').textContent = name;
-  document.getElementById('charSubDisplay').textContent =
-    `Half-Elf Ranger · Lv ${lvl}`;
+// ── Ripple ──
+function ripple(el,e){
+  if(!el)return;
+  const r=document.createElement('div'); r.className='ripple-circle';
+  const rect=el.getBoundingClientRect();
+  const x=(e&&e.clientX?e.clientX:rect.left+rect.width/2)-rect.left;
+  const y=(e&&e.clientY?e.clientY:rect.top+rect.height/2)-rect.top;
+  r.style.left=x+'px'; r.style.top=y+'px';
+  el.appendChild(r); setTimeout(()=>r.remove(),600);
 }
 
-// ── Accent colour ──────────────────────────────────────────
-function setHue(h) {
-  document.documentElement.style.setProperty('--accent-h', h);
-  document.getElementById('cpHue').value = h;
-  // Update active swatch
-  document.querySelectorAll('.cp-swatch').forEach(s => s.classList.remove('active'));
-}
-
-function applyAccent(h, s, l) {
-  document.documentElement.style.setProperty('--accent-h', h);
-  document.documentElement.style.setProperty('--accent-s', s + '%');
-  document.documentElement.style.setProperty('--accent-l', l + '%');
-  document.getElementById('cpHue').value = h;
-}
-
-function buildSwatches() {
-  const el = document.getElementById('cpSwatches');
-  SWATCHES.forEach((sw, i) => {
-    const d = document.createElement('div');
-    d.className = 'cp-swatch' + (i === 0 ? ' active' : '');
-    d.style.background = `hsl(${sw.h},${sw.s}%,${sw.l}%)`;
-    d.title = sw.label;
-    d.onclick = () => {
-      applyAccent(sw.h, sw.s, sw.l);
-      document.querySelectorAll('.cp-swatch').forEach(s => s.classList.remove('active'));
-      d.classList.add('active');
-    };
+// ── Colour picker ──
+function buildSwatches(){
+  const el=document.getElementById('cpSwatches');
+  SWATCHES.forEach((sw,i)=>{
+    const d=document.createElement('div'); d.className='cp-swatch'+(i===0?' active':'');
+    d.style.background=`hsl(${sw.h},${sw.s}%,${sw.l}%)`; d.title=sw.label;
+    d.onclick=()=>{ applyAccent(sw.h,sw.s,sw.l); document.querySelectorAll('.cp-swatch').forEach(s=>s.classList.remove('active')); d.classList.add('active'); };
     el.appendChild(d);
   });
 }
-
-function openPalette() {
-  document.getElementById('colorPicker').classList.add('open');
+function applyAccent(h,s,l){
+  document.documentElement.style.setProperty('--accent-h',h);
+  document.documentElement.style.setProperty('--accent-s',s+'%');
+  document.documentElement.style.setProperty('--accent-l',l+'%');
+  document.getElementById('cpHue').value=h;
 }
-function closePaletteOnBg(e) {
-  if (e.target === document.getElementById('colorPicker'))
-    document.getElementById('colorPicker').classList.remove('open');
-}
+function setHue(h){ document.documentElement.style.setProperty('--accent-h',h); document.querySelectorAll('.cp-swatch').forEach(s=>s.classList.remove('active')); }
+function openPalette(){ document.getElementById('colorPicker').classList.add('open'); }
+function closePaletteOnBg(e){ if(e.target===document.getElementById('colorPicker')) document.getElementById('colorPicker').classList.remove('open'); }
 
-// ── Init ───────────────────────────────────────────────────
-buildAbilities();
-buildSaves();
-buildSkills();
-buildSwatches();
-updateHPDisplay();
-goTab(0);
+// ── Init ──
+buildAbilities(); buildSaves(); buildSkills();
+buildSpellSlots(); buildSpells(); buildFolders();
+updateHPDisplay(); goTab(0);
 </script>
 </body>
 </html>
