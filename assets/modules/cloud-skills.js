@@ -590,6 +590,16 @@ async function syncToCloud(silent = false) {
   try {
     if (!silent) setSyncStatus('Uploading to cloud...');
     await syncActiveCharacterToCloud();
+
+    // Delete any locally-tombstoned characters from Firestore
+    const deletedMap = window.getStoredJSON
+      ? window.getStoredJSON('dndDeletedCharacters', {})
+      : JSON.parse(localStorage.getItem('dndDeletedCharacters') || '{}');
+    const deletedIds = Object.keys(deletedMap);
+    if (deletedIds.length > 0) {
+      await Promise.all(deletedIds.map(id => charCollection().doc(id).delete().catch(() => {})));
+    }
+
     if (!silent) setSyncStatus('Uploaded to cloud');
   } catch (err) {
     console.error('[sync] syncToCloud error:', err);
@@ -628,7 +638,13 @@ async function syncFromCloud(silent = false) {
       ? window.getStoredJSON('dndCharacters', [])
       : JSON.parse(localStorage.getItem('dndCharacters') || '[]');
 
-    const merged = mergeByUpdatedAt(localChars, cloudChars);
+    // Filter out any cloud chars that were deleted locally (tombstoned)
+    const deletedMap = window.getStoredJSON
+      ? window.getStoredJSON('dndDeletedCharacters', {})
+      : JSON.parse(localStorage.getItem('dndDeletedCharacters') || '{}');
+    const filteredCloudChars = cloudChars.filter(c => !deletedMap[c.id]);
+
+    const merged = mergeByUpdatedAt(localChars, filteredCloudChars);
     localStorage.setItem('dndCharacters', JSON.stringify(merged));
 
     if (!silent) {
