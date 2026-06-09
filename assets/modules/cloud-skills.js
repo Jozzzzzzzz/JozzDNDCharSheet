@@ -38,7 +38,7 @@ function bindAuthButtons() {
     syncUpBtn.type = 'button';
     syncUpBtn.addEventListener('click', (event) => {
       event.preventDefault();
-      syncToCloud();
+      handleSyncUpConfirm(syncUpBtn);
     });
   }
 
@@ -48,7 +48,7 @@ function bindAuthButtons() {
     syncDownBtn.type = 'button';
     syncDownBtn.addEventListener('click', (event) => {
       event.preventDefault();
-      syncFromCloud();
+      handleSyncDownConfirm(syncDownBtn);
     });
   }
 
@@ -581,7 +581,46 @@ async function syncActiveCharacterToCloud() {
   }
 }
 
-// Legacy name used by manual sync-up button in settings
+// 3-step confirm state for the manual sync-up button
+const syncUpConfirmState = {};
+function handleSyncUpConfirm(btn) {
+  const state = syncUpConfirmState;
+  if (!state.step) {
+    // Step 1: first click
+    state.step = 1;
+    const localChars = window.getStoredJSON
+      ? window.getStoredJSON('dndCharacters', [])
+      : JSON.parse(localStorage.getItem('dndCharacters') || '[]');
+    btn.textContent = `Overwrite cloud with ${localChars.length} local character${localChars.length !== 1 ? 's' : ''}?`;
+    btn.style.background = '#c0392b';
+    if (state.timer) clearTimeout(state.timer);
+    state.timer = setTimeout(() => resetSyncUpBtn(btn), 6000);
+    return;
+  }
+  if (state.step === 1) {
+    // Step 2: second click
+    state.step = 2;
+    btn.textContent = 'Yes, overwrite — are you sure?';
+    if (state.timer) clearTimeout(state.timer);
+    state.timer = setTimeout(() => resetSyncUpBtn(btn), 6000);
+    return;
+  }
+  if (state.step === 2) {
+    // Step 3: confirmed — go
+    resetSyncUpBtn(btn);
+    syncToCloud();
+  }
+}
+function resetSyncUpBtn(btn) {
+  if (!btn) return;
+  const state = syncUpConfirmState;
+  state.step = 0;
+  if (state.timer) { clearTimeout(state.timer); state.timer = null; }
+  btn.textContent = 'Sync Up Now';
+  btn.style.background = '';
+}
+
+// Manual sync-up: full overwrite — push ALL local chars, delete any extras from Firestore
 async function syncToCloud(silent = false) {
   if (!currentUser) {
     if (!silent) setSyncStatus('Please sign in first');
@@ -589,22 +628,34 @@ async function syncToCloud(silent = false) {
   }
   try {
     if (!silent) setSyncStatus('Uploading to cloud...');
-    await syncActiveCharacterToCloud();
 
-    // Delete any locally-tombstoned characters from Firestore
-    const deletedMap = window.getStoredJSON
-      ? window.getStoredJSON('dndDeletedCharacters', {})
-      : JSON.parse(localStorage.getItem('dndDeletedCharacters') || '{}');
-    const deletedIds = Object.keys(deletedMap);
-    if (deletedIds.length > 0) {
-      await Promise.all(deletedIds.map(id => charCollection().doc(id).delete().catch(() => {})));
+    const localChars = window.getStoredJSON
+      ? window.getStoredJSON('dndCharacters', [])
+      : JSON.parse(localStorage.getItem('dndCharacters') || '[]');
+
+    const FieldValue = firebase.firestore.FieldValue;
+    lastOwnSaveAt = Date.now();
+
+    // Upload all local characters
+    await Promise.all(localChars.map(char =>
+      charCollection().doc(char.id).set({ ...char, updatedAt: FieldValue.serverTimestamp() })
+    ));
+
+    // Delete any Firestore docs not in the local list
+    const snapshot = await charCollection().get();
+    const localIds = new Set(localChars.map(c => c.id));
+    const toDelete = snapshot.docs.filter(d => !localIds.has(d.id));
+    if (toDelete.length > 0) {
+      await Promise.all(toDelete.map(d => d.ref.delete()));
     }
 
+    // Keep user meta in sync
+    const theme = localStorage.getItem('dndTheme') || 'dark';
+    const accentColor = localStorage.getItem('dndAccentColor') || '#ffd700';
+    await userMetaRef().set({ theme, accentColor, lastModified: FieldValue.serverTimestamp() }, { merge: true });
+
     if (!silent) {
-      const allChars = window.getStoredJSON
-        ? window.getStoredJSON('dndCharacters', [])
-        : JSON.parse(localStorage.getItem('dndCharacters') || '[]');
-      setSyncStatus(`Uploaded to cloud (${allChars.length} character${allChars.length !== 1 ? 's' : ''})`);
+      setSyncStatus(`Uploaded to cloud (${localChars.length} character${localChars.length !== 1 ? 's' : ''})`);
     }
   } catch (err) {
     console.error('[sync] syncToCloud error:', err);
@@ -612,8 +663,10 @@ async function syncToCloud(silent = false) {
   }
 }
 
-// ---- read: pull all characters from cloud on boot ----
+// ---- read: pull characters from cloud ----
 
+// Auto-sync (boot/sign-in): smart merge — tombstone-aware, never resurrects deleted chars.
+// Manual sync-down (button): full replace — cloud is the authority, wipes local entirely.
 async function syncFromCloud(silent = false) {
   if (!currentUser) {
     if (!silent) setSyncStatus('Please sign in first');
@@ -638,29 +691,52 @@ async function syncFromCloud(silent = false) {
     if (meta.theme) localStorage.setItem('dndTheme', meta.theme);
     if (meta.accentColor) localStorage.setItem('dndAccentColor', meta.accentColor);
 
-    // Merge cloud chars with local: newer updatedAt wins per character
-    const localChars = window.getStoredJSON
-      ? window.getStoredJSON('dndCharacters', [])
-      : JSON.parse(localStorage.getItem('dndCharacters') || '[]');
-
-    // Filter out any cloud chars that were deleted locally (tombstoned)
-    const deletedMap = window.getStoredJSON
-      ? window.getStoredJSON('dndDeletedCharacters', {})
-      : JSON.parse(localStorage.getItem('dndDeletedCharacters') || '{}');
-    const filteredCloudChars = cloudChars.filter(c => !deletedMap[c.id]);
-
-    const merged = mergeByUpdatedAt(localChars, filteredCloudChars);
-    localStorage.setItem('dndCharacters', JSON.stringify(merged));
+    let finalChars;
 
     if (!silent) {
-      setSyncStatus(`Synced ${merged.length} character(s)`);
+      // Manual Sync Down: full replace — cloud wins entirely
+      finalChars = cloudChars;
+      // Clear tombstones since cloud is now the authority
+      localStorage.setItem('dndDeletedCharacters', '{}');
+    } else {
+      // Auto sync: tombstone-aware smart merge
+      // Rule: cloud can UPDATE a char we already have (newer wins),
+      //       cloud can ADD a genuinely new char (not in local, not tombstoned),
+      //       cloud CANNOT resurrect a tombstoned char,
+      //       if local is empty, trust cloud fully (new device).
+      const localChars = window.getStoredJSON
+        ? window.getStoredJSON('dndCharacters', [])
+        : JSON.parse(localStorage.getItem('dndCharacters') || '[]');
+
+      const deletedMap = window.getStoredJSON
+        ? window.getStoredJSON('dndDeletedCharacters', {})
+        : JSON.parse(localStorage.getItem('dndDeletedCharacters') || '{}');
+
+      if (localChars.length === 0) {
+        // New device — trust cloud fully
+        finalChars = cloudChars;
+      } else {
+        const localIds = new Set(localChars.map(c => c.id));
+        finalChars = mergeByUpdatedAt(
+          localChars,
+          // Only pass cloud chars that either already exist locally (update),
+          // or are genuinely new and not tombstoned (add from another device).
+          cloudChars.filter(c => localIds.has(c.id) || !deletedMap[c.id])
+        );
+      }
+    }
+
+    localStorage.setItem('dndCharacters', JSON.stringify(finalChars));
+
+    if (!silent) {
+      setSyncStatus(`Downloaded ${finalChars.length} character${finalChars.length !== 1 ? 's' : ''} from cloud`);
     }
 
     loadCharacterList();
 
     // Load the last-used character, or first in list
     const lastId = localStorage.getItem('dndLastSelectedCharacter');
-    const target = (lastId && merged.find(c => c.id === lastId)) ? lastId : (merged[0]?.id || null);
+    const target = (lastId && finalChars.find(c => c.id === lastId)) ? lastId : (finalChars[0]?.id || null);
     if (target) {
       window.currentCharacter = target;
       rememberSelectedCharacter(target);
@@ -677,13 +753,44 @@ async function syncFromCloud(silent = false) {
   }
 }
 
+// 3-step confirm state for the manual sync-down button
+const syncDownConfirmState = {};
+function handleSyncDownConfirm(btn) {
+  const state = syncDownConfirmState;
+  if (!state.step) {
+    state.step = 1;
+    btn.textContent = 'Replace local with cloud data?';
+    btn.style.background = '#c0392b';
+    if (state.timer) clearTimeout(state.timer);
+    state.timer = setTimeout(() => resetSyncDownBtn(btn), 6000);
+    return;
+  }
+  if (state.step === 1) {
+    state.step = 2;
+    btn.textContent = 'Yes, overwrite — are you sure?';
+    if (state.timer) clearTimeout(state.timer);
+    state.timer = setTimeout(() => resetSyncDownBtn(btn), 6000);
+    return;
+  }
+  if (state.step === 2) {
+    resetSyncDownBtn(btn);
+    syncFromCloud(false);
+  }
+}
+function resetSyncDownBtn(btn) {
+  if (!btn) return;
+  const state = syncDownConfirmState;
+  state.step = 0;
+  if (state.timer) { clearTimeout(state.timer); state.timer = null; }
+  btn.textContent = 'Sync Down Now';
+  btn.style.background = '';
+}
+
 // Merge two character arrays: for each id, keep the one with the newer updatedAt.
-// Characters only in one list are included as-is.
 function mergeByUpdatedAt(local, cloud) {
   const map = new Map();
   const ts = c => {
     if (!c) return 0;
-    // Firestore Timestamp object
     if (c.updatedAt && typeof c.updatedAt.toMillis === 'function') return c.updatedAt.toMillis();
     if (c.updatedAt) return Date.parse(c.updatedAt) || 0;
     if (c.createdAt) return Date.parse(c.createdAt) || 0;
