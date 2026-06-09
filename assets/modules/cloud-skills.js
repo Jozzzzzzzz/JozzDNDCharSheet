@@ -600,7 +600,12 @@ async function syncToCloud(silent = false) {
       await Promise.all(deletedIds.map(id => charCollection().doc(id).delete().catch(() => {})));
     }
 
-    if (!silent) setSyncStatus('Uploaded to cloud');
+    if (!silent) {
+      const allChars = window.getStoredJSON
+        ? window.getStoredJSON('dndCharacters', [])
+        : JSON.parse(localStorage.getItem('dndCharacters') || '[]');
+      setSyncStatus(`Uploaded to cloud (${allChars.length} character${allChars.length !== 1 ? 's' : ''})`);
+    }
   } catch (err) {
     console.error('[sync] syncToCloud error:', err);
     if (!silent) setSyncStatus('Upload failed: ' + err.message);
