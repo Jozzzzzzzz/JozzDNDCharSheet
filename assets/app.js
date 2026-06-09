@@ -146,6 +146,7 @@ window.initializeApp = function() {
   loadLayout();
   bindGlobalAutosaveListeners();
   rollBannerMessage();
+  setInterval(rollBannerMessage, 60000);
   setTimeout(() => {
     applyFlexWrapSizing();
     syncSpellPanels();

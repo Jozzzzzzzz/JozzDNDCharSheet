@@ -1925,12 +1925,8 @@ function onBgPointerUp(e) {
 window.addEventListener('resize', refreshAllNoteBoxes);
 window.addEventListener('orientationchange', refreshAllNoteBoxes);
 
-const defaultRollingBannerMessages = [
-  'This sheet autosaves character data to your browser. Use Export to back up your character.',
-  'Tip: Cloud Sync is best for device-to-device play. Export is your emergency backup.',
-  'Fun fact: A mimic can be a chest, a door, or your trust issues.'
-];
 let rollingBannerLastIndex = -1;
+let bannerFirstShown = false;
 
 function getRollingBannerMessages() {
   const external = window.BANNER_MESSAGES;
@@ -1975,23 +1971,35 @@ function getRollingBannerMessages() {
   }
 
   window.handleSettingsSuggestionSubmit = handleSettingsSuggestionSubmit;
-  return defaultRollingBannerMessages;
+  return ['This sheet autosaves character data to your browser. Use Export to back up your character.'];
 }
 
 function rollBannerMessage() {
   const textEl = document.getElementById('rollingBannerText');
-  if (!textEl || rollingBannerMessages.length === 0) return;
+  const messages = getRollingBannerMessages();
+  if (!textEl || messages.length === 0) return;
+
+  if (!bannerFirstShown) {
+    bannerFirstShown = true;
+    const firstMsg = typeof window.BANNER_FIRST_MESSAGE === 'string' && window.BANNER_FIRST_MESSAGE.trim()
+      ? window.BANNER_FIRST_MESSAGE.trim()
+      : null;
+    if (firstMsg) {
+      textEl.textContent = firstMsg;
+      return;
+    }
+  }
 
   const dynamicMessage = Math.random() < 0.35 ? buildCurrencyWealthBannerMessage() : null;
   let nextMessage = dynamicMessage;
 
   if (!nextMessage) {
-    let nextIndex = Math.floor(Math.random() * rollingBannerMessages.length);
-    if (rollingBannerMessages.length > 1 && nextIndex === rollingBannerLastIndex) {
-      nextIndex = (nextIndex + 1) % rollingBannerMessages.length;
+    let nextIndex = Math.floor(Math.random() * messages.length);
+    if (messages.length > 1 && nextIndex === rollingBannerLastIndex) {
+      nextIndex = (nextIndex + 1) % messages.length;
     }
     rollingBannerLastIndex = nextIndex;
-    nextMessage = rollingBannerMessages[nextIndex];
+    nextMessage = messages[nextIndex];
   }
 
   textEl.classList.add('is-fading');
@@ -2022,7 +2030,6 @@ function showHomePage() {
 
   document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
   window.scrollTo({ top: 0, left: 0 });
-  rollBannerMessage();
 }
 
 function createNewCharacter() {
@@ -4179,7 +4186,6 @@ function switchTab(button) {
       targetPage.classList.add('active');
       // Recalculate textarea/container heights after tab visibility changes.
       refreshAllNoteBoxes();
-      rollBannerMessage();
     });
   }
 }
@@ -4228,7 +4234,6 @@ function openSettingsPage() {
       window.updateAdminPortalVisibility();
     }
     refreshAllNoteBoxes();
-    rollBannerMessage();
   });
 }
 
