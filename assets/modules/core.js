@@ -2372,7 +2372,7 @@ function loadCharacterList() {
 // Clear all form fields to prevent old character data from persisting
 function clearAllFormFields() {
   // Clear character info fields
-  const charInfoFields = ['char_name', 'char_race', 'char_class', 'char_subclass', 'char_level'];
+  const charInfoFields = ['char_name', 'char_race', 'char_background', 'char_class', 'char_subclass', 'char_level'];
   charInfoFields.forEach(id => {
     const element = document.getElementById(id);
     if (element) element.value = '';
@@ -2761,6 +2761,7 @@ function autosave() {
   const characterInfo = charNameVal !== null ? {
     name: charNameVal,
     race: val('char_race'),
+    background: val('char_background'),
     class: val('char_class'),
     subclass: val('char_subclass'),
     level: val('char_level')
@@ -2960,6 +2961,7 @@ function loadData() {
   if (data.characterInfo) {
     document.getElementById('char_name').value = data.characterInfo.name || '';
     document.getElementById('char_race').value = data.characterInfo.race || '';
+    document.getElementById('char_background').value = data.characterInfo.background || '';
     document.getElementById('char_class').value = data.characterInfo.class || '';
     document.getElementById('char_subclass').value = data.characterInfo.subclass || '';
     document.getElementById('char_level').value = data.characterInfo.level || '';
