@@ -56,6 +56,9 @@ Flat keys (not per-character):
 - `dndLastSelectedCharacter`, `dndLastSelectedCharacterAt`, `dndFavoriteCharacters` — character selection state
 - `dndDeletedCharacters` — map of `{ [charId]: isoTimestamp }` for sync tombstoning
 - `dndDeviceId` — stable per-device ID used for presence tracking
+- `dndBgImage` — active background image URL (preset path or data URL or remote URL)
+- `dndBgCustoms` — JSON array of user-added custom backgrounds `[{ id, label, url }]`
+- `dndLightModeJokeAt` — timestamp of last light mode joke, used for 24h cooldown
 
 Per-character data is **not** namespaced by character ID in localStorage. All character data lives inside the `data` field of each entry in `dndCharacters`. Always use `getStoredJSON`/`setStoredJSON` helpers for reads/writes.
 
@@ -110,7 +113,46 @@ auth_signins/{uid}                      — sign-in history and per-device prese
 
 ### Styling
 
-Single stylesheet: `assets/styles.css`. Theming uses CSS custom properties (`--accent`, `--accent-border`, `--accent-soft`, `--accent-contrast`, `--accent-text`, `--text-scale`) set dynamically from localStorage on page load (in `index.html` before paint to avoid flash).
+Single stylesheet: `assets/styles.css`. Theming uses CSS custom properties set dynamically from localStorage on page load (in `index.html` before paint to avoid flash).
+
+#### CSS custom property reference
+| Variable | Purpose |
+|----------|---------|
+| `--accent` | Raw accent colour chosen by user |
+| `--accent-muted` | Desaturated (35% toward grey) + 55% opacity version — used for button fills so colours aren't overpowering |
+| `--accent-border` | 50% opacity accent — used for borders and header dividers |
+| `--accent-soft` | 14% opacity accent — used for active tab highlight and hover states |
+| `--accent-contrast` | Black or white depending on YIQ brightness — readable text on raw accent |
+| `--accent-text` | Lightened accent for dark backgrounds, or raw accent if bright enough |
+| `--dark-bg` | Page body background (`#0e0c0a` dark / `#e8e4dc` light) |
+| `--panel-bg` | Semi-transparent panel/card background |
+| `--card-bg` | Slightly more opaque card background |
+| `--bg-image` | CSS custom property holding the background image `url()` — set via injected `<style id="bg-pseudo-style">` not directly, because browsers don't resolve relative URLs inside CSS variables |
+| `--text-scale` | Global text scale multiplier |
+
+All accent variables are computed in `setAccentDerivedColors()` in `core.js` and also in the early-boot inline script in `index.html` (to avoid flash). **Both places must be kept in sync.**
+
+#### Background image system
+Background is applied via a `<style id="bg-pseudo-style">` tag injected into `<head>` — **not** via a CSS variable on `body::before` — because browsers refuse to resolve relative `url()` paths inside CSS custom properties.
+
+- `body::before` is the fixed full-screen image layer (blurred, darkened). It defaults to `opacity: 0`.
+- `html.has-bg-image` class enables it (`opacity: 1`). Class lives on `<html>` not `<body>` so it can be set before `<body>` is parsed.
+- `bgApply(url)` in `core.js` — sets or clears the style tag + class + localStorage.
+- `loadBgSetting()` — called at boot from `loadThemeSettings()` to restore saved background.
+- Early-boot script in `index.html` also restores the style tag before first paint.
+
+#### Background presets
+Preset images live in `assets/backgrounds/`. Add a new preset by dropping an image there and adding one line to `BG_PRESETS` in `core.js`:
+```js
+{ id: 'bg-<slug>', label: '<Display Name>', url: 'assets/backgrounds/<filename>' },
+```
+Current presets: Forest, Dark Forest Path, Elven City, Medieval Town, Tavern, Dungeon Hall, Sewers, Ruined Gates, Lost Temple.
+
+#### Custom backgrounds (player-added)
+Stored as a JSON array under `dndBgCustoms` in localStorage. Each entry: `{ id, label, url }`. URL is either a base64 data URL (file upload) or a remote URL (URL input). Functions: `bgAddCustom`, `bgDeleteCustom`, `bgGetCustoms`, `bgSaveCustoms`. The picker renders a separate "Custom Backgrounds" section below presets with a ✕ delete button on each.
+
+#### Light mode joke
+`toggleTheme()` intercepts the first attempt to enable light mode and shows a popup joke instead. Timestamp stored in `dndLightModeJokeAt`. A second attempt within 60 seconds actually enables light mode. After 24 hours the joke resets.
 
 ### PWA
 
@@ -125,6 +167,10 @@ Single stylesheet: `assets/styles.css`. Theming uses CSS custom properties (`--a
 - **Notes page is JS-rendered** — `pages/notes.html` contains only the shell markup (toolbar, grid containers, popups). All folder and card elements are built by `renderNoteFolders()` / `renderNoteCards()` in `core.js`. Do not add static note content to the HTML.
 - **Notes `isDefault` must be preserved through save/load** — both folder and card objects carry `isDefault: boolean`. The autosave block and the load block both map this flag explicitly. If you add new fields to the notes data shape, update both the save block (`page6 = { noteFolders: ... }`) and the load block in `loadData()`.
 - **Notes delete is multi-step** — uses `notesHandleDelete(id, btn, onConfirm)` with state tracked in `notesDeleteState`. Pattern: Delete → Sure? → Wait 3s… → Confirm. Do not replace with `confirm()` dialogs.
+
+- **Never use `transition: all` in styles.css** — it causes all elements to animate colour/border/background at different stagger offsets when the accent colour changes, making the UI look broken. Always use explicit per-property transitions: `background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.3s ...`
+- **CSS `url()` inside custom properties doesn't work** — browsers store the string literally and never resolve relative paths. The background image system uses an injected `<style>` tag instead of `--bg-image` on `body::before`. Don't revert this to a CSS variable approach.
+- **`html.has-bg-image` not `body.has-bg-image`** — the class must go on `<html>` because the early-boot script in `<head>` runs before `<body>` exists. `document.body` is `null` at that point.
 
 ## Working Efficiently
 

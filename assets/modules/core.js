@@ -544,11 +544,38 @@ function showDarkModeOnlyPopup() {
 
 function toggleTheme() {
   const themeToggle = document.getElementById('themeToggle');
-  if (themeToggle.checked) {
-    showDarkModeOnlyPopup();
-  } else {
+  if (!themeToggle.checked) {
     document.documentElement.removeAttribute('data-theme');
     localStorage.setItem('dndTheme', 'dark');
+    return;
+  }
+  const now = Date.now();
+  const lastJoke = Number(localStorage.getItem('dndLightModeJokeAt') || 0);
+  const inLightMode = document.documentElement.getAttribute('data-theme') === 'light';
+
+  if (inLightMode) {
+    // Already in light mode, toggling off
+    document.documentElement.removeAttribute('data-theme');
+    localStorage.setItem('dndTheme', 'dark');
+    return;
+  }
+
+  const jokedRecently = now - lastJoke < 60000;
+  const onCooldown = now - lastJoke < 86400000; // 24h
+
+  if (onCooldown && !jokedRecently) {
+    // Showed joke in last 24h but not in last 60s — show joke again, reset 60s window
+    localStorage.setItem('dndLightModeJokeAt', String(now));
+    showDarkModeOnlyPopup();
+  } else if (jokedRecently) {
+    // Second attempt within 60s — they mean it, let them in
+    document.documentElement.setAttribute('data-theme', 'light');
+    localStorage.setItem('dndTheme', 'light');
+    localStorage.setItem('dndLightModeJokeAt', '0');
+  } else {
+    // First attempt, no recent history — show joke
+    localStorage.setItem('dndLightModeJokeAt', String(now));
+    showDarkModeOnlyPopup();
   }
 }
 
@@ -557,16 +584,28 @@ function setAccentDerivedColors(color) {
   const r = parseInt(hex.substr(0, 2), 16);
   const g = parseInt(hex.substr(2, 2), 16);
   const b = parseInt(hex.substr(4, 2), 16);
-  const borderColor = `rgba(${r}, ${g}, ${b}, 0.6)`;
-  const softColor = `rgba(${r}, ${g}, ${b}, 0.18)`;
+
+  // Mix toward grey to desaturate (soften) the accent for button fills
+  const mix = (v, target, amt) => Math.round(v + (target - v) * amt);
+  const grey = 140;
+  const mr = mix(r, grey, 0.35);
+  const mg = mix(g, grey, 0.35);
+  const mb = mix(b, grey, 0.35);
+
+  const borderColor  = `rgba(${r}, ${g}, ${b}, 0.5)`;
+  const softColor    = `rgba(${r}, ${g}, ${b}, 0.14)`;
+  const mutedColor   = `rgba(${mr}, ${mg}, ${mb}, 0.55)`;  // desaturated, semi-transparent fill
+
   const yiq = (r * 299 + g * 587 + b * 114) / 1000;
-  const contrast = yiq >= 140 ? '#111111' : '#f7f7f7';
+  const contrast = yiq >= 128 ? '#111111' : '#f0f0f0';
   const lighten = (value, amount) => Math.min(255, Math.round(value + (255 - value) * amount));
   const accentText = yiq < 120
     ? `rgb(${lighten(r, 0.65)}, ${lighten(g, 0.65)}, ${lighten(b, 0.65)})`
     : color;
+
   document.documentElement.style.setProperty('--accent-border', borderColor);
   document.documentElement.style.setProperty('--accent-soft', softColor);
+  document.documentElement.style.setProperty('--accent-muted', mutedColor);
   document.documentElement.style.setProperty('--accent-contrast', contrast);
   document.documentElement.style.setProperty('--accent-text', accentText);
 }
@@ -576,6 +615,136 @@ function updateAccentColor(color) {
   localStorage.setItem('dndAccentColor', color);
   setAccentDerivedColors(color);
 }
+
+// ========== BACKGROUND PICKER ==========
+
+const BG_PRESETS = [
+  { id: 'none',               label: 'None',             url: null },
+  { id: 'bg-forest',          label: 'Forest',           url: 'assets/backgrounds/bg-forest.jpg' },
+  { id: 'bg-dark-forest-path',label: 'Dark Forest Path', url: 'assets/backgrounds/bg-dark-forest-path.jpg' },
+  { id: 'bg-elven-city',      label: 'Elven City',       url: 'assets/backgrounds/bg-elven-city.jpg' },
+  { id: 'bg-medieval-town',   label: 'Medieval Town',    url: 'assets/backgrounds/bg-medieval-town.jpg' },
+  { id: 'bg-tavern',          label: 'Tavern',           url: 'assets/backgrounds/bg-tavern.jpg' },
+  { id: 'bg-dungeon-hall',    label: 'Dungeon Hall',     url: 'assets/backgrounds/bg-dungeon-hall.jpg' },
+  { id: 'bg-sewers',          label: 'Sewers',           url: 'assets/backgrounds/bg-sewers.jpg' },
+  { id: 'bg-ruined-gates',    label: 'Ruined Gates',     url: 'assets/backgrounds/bg-ruined-gates.jpg' },
+  { id: 'bg-lost-temple',     label: 'Lost Temple',      url: 'assets/backgrounds/bg-lost-temple.webp' },
+  // To add more presets: { id: 'bg-<slug>', label: '<Name>', url: 'assets/backgrounds/<file>' },
+];
+
+function bgGetCustoms() {
+  return getStoredJSON('dndBgCustoms') || [];
+}
+
+function bgSaveCustoms(list) {
+  localStorage.setItem('dndBgCustoms', JSON.stringify(list));
+}
+
+function bgApply(url) {
+  const pseudo = document.getElementById('bg-pseudo-style') || (() => {
+    const s = document.createElement('style');
+    s.id = 'bg-pseudo-style';
+    document.head.appendChild(s);
+    return s;
+  })();
+  if (url) {
+    pseudo.textContent = `body::before { background-image: url('${url}') !important; opacity: 1 !important; }`;
+    document.documentElement.classList.add('has-bg-image');
+    localStorage.setItem('dndBgImage', url);
+  } else {
+    pseudo.textContent = '';
+    document.documentElement.classList.remove('has-bg-image');
+    localStorage.removeItem('dndBgImage');
+  }
+  bgRenderPicker();
+}
+
+function bgHandleUpload(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const name = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    bgAddCustom(e.target.result, name);
+  };
+  reader.readAsDataURL(file);
+  event.target.value = '';
+}
+
+function bgPromptUrl() {
+  const url = window.prompt('Paste an image URL:');
+  if (!url || !url.trim()) return;
+  const trimmed = url.trim();
+  const name = trimmed.split('/').pop().replace(/\?.*$/, '').replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || 'Custom';
+  bgAddCustom(trimmed, name);
+}
+
+function bgAddCustom(url, name) {
+  const customs = bgGetCustoms();
+  const id = 'bgc_' + Date.now();
+  customs.push({ id, label: name, url });
+  bgSaveCustoms(customs);
+  bgApply(url);
+}
+
+function bgDeleteCustom(id) {
+  const customs = bgGetCustoms().filter(c => c.id !== id);
+  bgSaveCustoms(customs);
+  const current = localStorage.getItem('dndBgImage') || '';
+  const deleted = bgGetCustoms().find(c => c.id === id);
+  if (deleted && current === deleted.url) bgApply(null);
+  bgRenderPicker();
+}
+
+function bgRenderThumb(opt, current, deletable) {
+  const isActive = opt.url === null ? current === '' : current === opt.url;
+  const thumb = opt.url ? `style="background-image:url('${CSS.escape ? opt.url : opt.url}')"` : '';
+  const del = deletable
+    ? `<button type="button" class="bg-thumb-delete" onclick="event.stopPropagation();bgDeleteCustom('${opt.id}')" title="Remove">✕</button>`
+    : '';
+  return `<div class="bg-thumb-wrap">
+    <button type="button" class="bg-picker-thumb${isActive ? ' bg-picker-active' : ''}" onclick="bgApply(${opt.url ? `'${opt.url.replace(/'/g, "\\'")}'` : 'null'})" title="${escapeHtml(opt.label)}" ${thumb}>
+      <span class="bg-picker-label">${escapeHtml(opt.label)}</span>
+    </button>${del}
+  </div>`;
+}
+
+function bgRenderPicker() {
+  const presetGrid = document.getElementById('bgPickerGrid');
+  const customGrid = document.getElementById('bgCustomGrid');
+  const customLabel = document.getElementById('bgCustomLabel');
+  if (!presetGrid) return;
+
+  const current = localStorage.getItem('dndBgImage') || '';
+  const customs = bgGetCustoms();
+
+  presetGrid.innerHTML = BG_PRESETS.map(opt => bgRenderThumb(opt, current, false)).join('');
+
+  if (customGrid) {
+    if (customs.length === 0) {
+      customGrid.innerHTML = '<p class="settings-note" style="font-style:italic;opacity:0.6;">No custom backgrounds yet.</p>';
+      if (customLabel) customLabel.style.display = 'block';
+    } else {
+      if (customLabel) customLabel.style.display = 'block';
+      customGrid.innerHTML = customs.map(opt => bgRenderThumb(opt, current, true)).join('');
+    }
+  }
+}
+
+function loadBgSetting() {
+  const saved = localStorage.getItem('dndBgImage');
+  if (saved) {
+    bgApply(saved);
+  } else {
+    bgApply(null);
+  }
+}
+
+window.bgApply = bgApply;
+window.bgHandleUpload = bgHandleUpload;
+window.bgPromptUrl = bgPromptUrl;
+window.bgDeleteCustom = bgDeleteCustom;
+window.bgRenderPicker = bgRenderPicker;
 
 function clampTextScalePercent(value) {
   const num = Number(value);
@@ -629,6 +798,9 @@ function loadThemeSettings() {
 
   const savedTextScale = localStorage.getItem('dndTextScalePercent');
   applyTextScalePercent(savedTextScale || 100);
+
+  loadBgSetting();
+  bgRenderPicker();
 }
 
 // ========== INITIALIZATION ==========
@@ -4234,6 +4406,7 @@ function openSettingsPage() {
       window.updateAdminPortalVisibility();
     }
     refreshAllNoteBoxes();
+    bgRenderPicker();
   });
 }
 

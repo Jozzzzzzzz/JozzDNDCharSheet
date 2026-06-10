@@ -22,6 +22,23 @@
           <span class="theme-label">Light</span>
         </div>
         <div class="settings-field">
+          <label>Background Image</label>
+          <p class="settings-note">Presets</p>
+          <div class="bg-picker-grid" id="bgPickerGrid"></div>
+
+          <p class="settings-note" id="bgCustomLabel" style="margin-top:10px;">Custom Backgrounds</p>
+          <div class="bg-picker-grid" id="bgCustomGrid"></div>
+
+          <div class="bg-picker-actions" style="margin-top:8px;">
+            <label class="settings-action-btn accent-contrast-bg bg-upload-label">
+              Upload File
+              <input type="file" id="bgCustomUpload" accept="image/*" style="display:none" onchange="bgHandleUpload(event)">
+            </label>
+            <button type="button" class="settings-action-btn accent-contrast-bg" onclick="bgPromptUrl()">Add from URL</button>
+            <button type="button" class="settings-action-btn" onclick="bgApply(null)">Remove Background</button>
+          </div>
+        </div>
+        <div class="settings-field">
           <label for="accentColor">Accent Color</label>
           <input type="color" id="accentColor" class="accent-input settings-accent-input" oninput="updateAccentColor(this.value)" onchange="updateAccentColor(this.value)" value="#ffd700">
         </div>
