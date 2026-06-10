@@ -2778,8 +2778,11 @@ function autosave() {
     combatStats: {
       ac: val('ac'),
       initiative: val('initiative'),
+      initiativeOverride: autoMathOverrideState?.initiative || false,
       speed: val('speed'),
-      prof_bonus: val('prof_bonus')
+      prof_bonus: val('prof_bonus'),
+      passive_perception: val('passive_perception'),
+      passivePerceptionOverride: autoMathOverrideState?.passivePerception || false,
     },
     health: {
       max_hp: val('max_hp'),
@@ -2855,7 +2858,9 @@ function autosave() {
     spellcastingInfo: {
       ability: val('spellcasting_ability'),
       saveDC: val('spell_save_dc'),
+      saveDCOverride: autoMathOverrideState?.spellSaveDC || false,
       attackBonus: val('spell_attack_bonus'),
+      attackBonusOverride: autoMathOverrideState?.spellAttack || false,
       casterType: val('caster_type'),
       spellsPrepared: val('spells_prepared')
     },
@@ -3012,8 +3017,28 @@ function loadData() {
     // Combat Stats
     if (data.page1.combatStats) {
       document.getElementById('ac').value = data.page1.combatStats.ac || '';
-      document.getElementById('initiative').value = data.page1.combatStats.initiative || '';
       document.getElementById('speed').value = data.page1.combatStats.speed || '';
+
+      if (autoMathOverrideState) {
+        autoMathOverrideState.initiative = !!data.page1.combatStats.initiativeOverride;
+        autoMathOverrideState.passivePerception = !!data.page1.combatStats.passivePerceptionOverride;
+      }
+
+      const initEl = document.getElementById('initiative');
+      if (initEl) {
+        if (data.page1.combatStats.initiativeOverride && data.page1.combatStats.initiative) {
+          initEl.value = data.page1.combatStats.initiative;
+        }
+      }
+
+      const ppEl = document.getElementById('passive_perception');
+      const ppReset = document.getElementById('passive_perception_reset');
+      if (ppEl) {
+        if (data.page1.combatStats.passivePerceptionOverride && data.page1.combatStats.passive_perception) {
+          ppEl.value = data.page1.combatStats.passive_perception;
+          if (ppReset) ppReset.style.display = 'inline-block';
+        }
+      }
     }
 
     // Health
@@ -3078,6 +3103,7 @@ function loadData() {
       }
     }
     updateAllSkillBonuses();
+    if (typeof updateAllDerivedStats === 'function') updateAllDerivedStats();
 
     // Death Saves
     if (data.page1.deathSaves) {
@@ -3229,10 +3255,20 @@ function loadData() {
     // Load spellcasting info
     if (page3Data.spellcastingInfo) {
       document.getElementById('spellcasting_ability').value = page3Data.spellcastingInfo.ability || 'int';
-      document.getElementById('spell_save_dc').value = page3Data.spellcastingInfo.saveDC || '8';
-      document.getElementById('spell_attack_bonus').value = page3Data.spellcastingInfo.attackBonus || '0';
       document.getElementById('caster_type').value = page3Data.spellcastingInfo.casterType || 'prepared';
       document.getElementById('spells_prepared').value = page3Data.spellcastingInfo.spellsPrepared || '0';
+
+      if (autoMathOverrideState) {
+        autoMathOverrideState.spellSaveDC = !!page3Data.spellcastingInfo.saveDCOverride;
+        autoMathOverrideState.spellAttack = !!page3Data.spellcastingInfo.attackBonusOverride;
+      }
+
+      if (page3Data.spellcastingInfo.saveDCOverride && page3Data.spellcastingInfo.saveDC) {
+        document.getElementById('spell_save_dc').value = page3Data.spellcastingInfo.saveDC;
+      }
+      if (page3Data.spellcastingInfo.attackBonusOverride && page3Data.spellcastingInfo.attackBonus) {
+        document.getElementById('spell_attack_bonus').value = page3Data.spellcastingInfo.attackBonus;
+      }
     }
     
     // Load manual spell slots

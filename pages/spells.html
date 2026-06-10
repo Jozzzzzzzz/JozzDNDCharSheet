@@ -15,7 +15,7 @@
             <div class="spell-info-grid">
               <div class="spell-info-row">
                 <label class="spell-info-label" for="spellcasting_ability">Spellcasting Ability</label>
-                <select id="spellcasting_ability" onchange="autosave()">
+                <select id="spellcasting_ability" onchange="updateSpellcastingStats(); autosave()">
                   <option value="int">Intelligence</option>
                   <option value="wis">Wisdom</option>
                   <option value="cha">Charisma</option>
@@ -23,11 +23,11 @@
               </div>
               <div class="spell-info-row">
                 <label class="spell-info-label" for="spell_save_dc">Spell Save DC</label>
-                <input type="number" id="spell_save_dc" min="0" max="30" value="8" onchange="autosave()">
+                <input type="number" id="spell_save_dc" min="0" max="30" value="8" oninput="handleSpellSaveDCInput(); autosave()" title="Auto-calculated: 8 + Prof Bonus + Spellcasting Modifier. Type to override.">
               </div>
               <div class="spell-info-row">
                 <label class="spell-info-label" for="spell_attack_bonus">Spell Attack Bonus</label>
-                <input type="number" id="spell_attack_bonus" min="0" max="20" value="0" onchange="autosave()">
+                <input type="number" id="spell_attack_bonus" min="-10" max="20" value="0" oninput="handleSpellAttackInput(); autosave()" title="Auto-calculated: Prof Bonus + Spellcasting Modifier. Type to override.">
               </div>
               <div class="spell-info-row">
                 <label class="spell-info-label" for="caster_type">Caster Type</label>

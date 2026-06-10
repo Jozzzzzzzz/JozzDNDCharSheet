@@ -5153,27 +5153,52 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 }
   
 /* Combat Stats Grid Alignment */
-.combat-stats-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 15px;
-}
-
-.combat-stat-item {
+.combat-stats-list {
   display: flex;
   flex-direction: column;
+  gap: 8px;
 }
 
-.combat-stat-item label {
+.combat-stat-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.combat-stat-label {
   font-weight: bold;
-  margin-bottom: 5px;
   color: var(--accent-contrast) !important;
   background: var(--accent);
   padding: 4px 8px;
   border-radius: 4px;
-  min-height: 20px;
-  text-align: center;
   border: 2px solid var(--accent-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+}
+
+.combat-stat-reset-btn {
+  background: none;
+  border: none;
+  color: var(--accent-contrast);
+  cursor: pointer;
+  font-size: 1em;
+  padding: 0;
+  line-height: 1;
+  opacity: 0.75;
+  flex-shrink: 0;
+}
+
+.combat-stat-reset-btn:hover {
+  opacity: 1;
+}
+
+.combat-stat-auto {
+  background: #2a2a2a !important;
+  color: var(--accent-text) !important;
+  font-weight: bold;
+  text-align: center;
 }
   
 /* Saving Throws Grid Alignment */

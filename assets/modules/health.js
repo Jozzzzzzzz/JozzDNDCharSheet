@@ -113,7 +113,7 @@ function closeCustomHPPopup() {
 function shortRest() {
   // Get hit dice inputs
   const hitDiceSpend = parseInt(document.getElementById('hit_dice_spend').value) || 0;
-  const conMod = parseInt(document.getElementById('con_modifier').value) || 0;
+  const conMod = parseInt(document.getElementById('con_bonus')?.value || document.getElementById('con_modifier')?.value || 0);
   const hitDieSize = parseInt(document.getElementById('hit_die_size').value) || 6;
   
   if (hitDiceSpend <= 0) {
@@ -159,7 +159,7 @@ function shortRest() {
 
 function calculateHitDiceRecovery() {
   const hitDiceSpend = parseInt(document.getElementById('hit_dice_spend').value) || 0;
-  const conMod = parseInt(document.getElementById('con_modifier').value) || 0;
+  const conMod = parseInt(document.getElementById('con_bonus')?.value || document.getElementById('con_modifier')?.value || 0);
   const hitDieSize = parseInt(document.getElementById('hit_die_size').value) || 8;
   
   const recoveryText = document.getElementById('hit_dice_recovery_text');

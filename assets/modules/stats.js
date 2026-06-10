@@ -25,6 +25,10 @@ const SKILL_LIST = Object.keys(SKILL_ABILITY_MAP);
 const ABILITY_LIST = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
 const autoMathOverrideState = {
   profBonus: false,
+  initiative: false,
+  passivePerception: false,
+  spellSaveDC: false,
+  spellAttack: false,
   abilityBonus: ABILITY_LIST.reduce((acc, ability) => {
     acc[ability] = false;
     return acc;
@@ -176,7 +180,7 @@ function bindAutoMathOverrideInputs() {
 }
 
 function enforceAutoMathNumericInputs() {
-  const unsignedNumericIds = ['str','dex','con','int','wis','cha','char_level','max_hp','curr_hp','hit_dice_spend','ac','initiative','speed'];
+  const unsignedNumericIds = ['str','dex','con','int','wis','cha','char_level','max_hp','curr_hp','hit_dice_spend','ac','speed'];
   unsignedNumericIds.forEach(id => {
     const input = document.getElementById(id);
     if (!input || input.dataset.numericOnlyBound === '1') return;
@@ -189,7 +193,7 @@ function enforceAutoMathNumericInputs() {
     });
   });
 
-  const signedNumericIds = ['con_modifier'];
+  const signedNumericIds = ['con_modifier', 'initiative'];
   signedNumericIds.forEach(id => {
     const input = document.getElementById(id);
     if (!input || input.dataset.signedNumericOnlyBound === '1') return;
@@ -232,6 +236,7 @@ function calculateSkillBonus(skill) {
   if (profCheckbox.checked) total += profMod;
 
   totalInput.value = formatSignedNumber(total);
+  if (skill === 'perception') updatePassivePerception();
 }
 
 function updateAllSkillBonuses() {
@@ -322,6 +327,9 @@ function calculateAbilityBonus(ability) {
 
   calculateSavingThrow(ability);
   updateAllSkillBonuses();
+  if (ability === 'dex') updateInitiative();
+  if (ability === 'con') syncConModifier();
+  if (ability === 'int' || ability === 'wis' || ability === 'cha') updateSpellcastingStats();
 }
 
 function formatBonusInput(inputId) {
@@ -380,6 +388,7 @@ function updateProficiencyBonus() {
 
   ABILITY_LIST.forEach(ability => calculateSavingThrow(ability));
   updateAllSkillBonuses();
+  updateAllDerivedStats();
 }
 
 function handleProfBonusInput() {
@@ -391,6 +400,7 @@ function handleProfBonusInput() {
 
   ABILITY_LIST.forEach(ability => calculateSavingThrow(ability));
   updateAllSkillBonuses();
+  updateSpellcastingStats();
 }
 
 function resetProfBonusIfEmpty() {
@@ -411,6 +421,107 @@ function updateProficiencyBonusIfNotOverridden() {
   }
 }
 
+// ── Initiative (auto = DEX mod, overridable) ──────────────────────────────
+function updateInitiative() {
+  const input = document.getElementById('initiative');
+  if (!input) return;
+  if (autoMathOverrideState.initiative) return;
+  const dexBonus = document.getElementById('dex_bonus');
+  const val = parseSignedNumber(dexBonus ? dexBonus.value : '0');
+  input.value = formatSignedNumber(val);
+}
+
+function handleInitiativeInput() {
+  const input = document.getElementById('initiative');
+  if (!input) return;
+  const dexBonus = document.getElementById('dex_bonus');
+  const auto = formatSignedNumber(parseSignedNumber(dexBonus ? dexBonus.value : '0'));
+  autoMathOverrideState.initiative = input.value.trim() !== '' && input.value !== auto;
+}
+
+// ── Passive Perception (auto = 10 + bonus_perception, overridable) ───────
+function updatePassivePerception() {
+  const ppInput = document.getElementById('passive_perception');
+  if (!ppInput || autoMathOverrideState.passivePerception) return;
+  const percBonus = document.getElementById('bonus_perception');
+  const bonus = parseSignedNumber(percBonus ? percBonus.value : '0');
+  ppInput.value = 10 + bonus;
+}
+
+function handlePassivePerceptionInput() {
+  const ppInput = document.getElementById('passive_perception');
+  if (!ppInput) return;
+  const percBonus = document.getElementById('bonus_perception');
+  const auto = 10 + parseSignedNumber(percBonus ? percBonus.value : '0');
+  const isOverride = ppInput.value.trim() !== '' && parseInt(ppInput.value) !== auto;
+  autoMathOverrideState.passivePerception = isOverride;
+  const resetBtn = document.getElementById('passive_perception_reset');
+  if (resetBtn) resetBtn.style.display = isOverride ? 'inline-block' : 'none';
+}
+
+function resetPassivePerception() {
+  autoMathOverrideState.passivePerception = false;
+  const resetBtn = document.getElementById('passive_perception_reset');
+  if (resetBtn) resetBtn.style.display = 'none';
+  updatePassivePerception();
+  if (typeof autosave === 'function') autosave();
+}
+
+// ── CON modifier sync (auto from con_bonus, read-only in hit dice panel) ─
+function syncConModifier() {
+  const conMod = document.getElementById('con_modifier');
+  if (!conMod) return;
+  const conBonus = document.getElementById('con_bonus');
+  conMod.value = parseSignedNumber(conBonus ? conBonus.value : '0');
+}
+
+// ── Spell Save DC and Spell Attack Bonus (auto, overridable) ─────────────
+function getSpellcastingMod() {
+  const ability = document.getElementById('spellcasting_ability');
+  const abilityKey = ability ? ability.value : 'int';
+  const bonusEl = document.getElementById(`${abilityKey}_bonus`);
+  return parseSignedNumber(bonusEl ? bonusEl.value : '0');
+}
+
+function updateSpellcastingStats() {
+  const profBonus = parseSignedNumber((document.getElementById('prof_bonus') || {}).value || '0');
+  const spellMod = getSpellcastingMod();
+
+  const dcInput = document.getElementById('spell_save_dc');
+  if (dcInput && !autoMathOverrideState.spellSaveDC) {
+    dcInput.value = 8 + profBonus + spellMod;
+  }
+
+  const atkInput = document.getElementById('spell_attack_bonus');
+  if (atkInput && !autoMathOverrideState.spellAttack) {
+    atkInput.value = profBonus + spellMod;
+  }
+}
+
+function handleSpellSaveDCInput() {
+  const dcInput = document.getElementById('spell_save_dc');
+  if (!dcInput) return;
+  const profBonus = parseSignedNumber((document.getElementById('prof_bonus') || {}).value || '0');
+  const auto = 8 + profBonus + getSpellcastingMod();
+  autoMathOverrideState.spellSaveDC = dcInput.value.trim() !== '' && parseInt(dcInput.value) !== auto;
+}
+
+function handleSpellAttackInput() {
+  const atkInput = document.getElementById('spell_attack_bonus');
+  if (!atkInput) return;
+  const profBonus = parseSignedNumber((document.getElementById('prof_bonus') || {}).value || '0');
+  const auto = profBonus + getSpellcastingMod();
+  autoMathOverrideState.spellAttack = atkInput.value.trim() !== '' && parseInt(atkInput.value) !== auto;
+}
+
+// ── Run all derived stats ─────────────────────────────────────────────────
+function updateAllDerivedStats() {
+  updateInitiative();
+  updatePassivePerception();
+  syncConModifier();
+  updateSpellcastingStats();
+}
+
 Object.assign(window, {
   formatSignedNumber,
   parseSignedNumber,
@@ -428,5 +539,15 @@ Object.assign(window, {
   updateProficiencyBonus,
   handleProfBonusInput,
   resetProfBonusIfEmpty,
-  updateProficiencyBonusIfNotOverridden
+  updateProficiencyBonusIfNotOverridden,
+  updateInitiative,
+  handleInitiativeInput,
+  updatePassivePerception,
+  handlePassivePerceptionInput,
+  resetPassivePerception,
+  syncConModifier,
+  updateSpellcastingStats,
+  handleSpellSaveDCInput,
+  handleSpellAttackInput,
+  updateAllDerivedStats
 });

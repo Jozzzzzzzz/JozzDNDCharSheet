@@ -100,22 +100,29 @@
         
         <!-- Combat Stats -->
         <h3 style="margin-top: 15px;">Combat Stats</h3>
-        <div class="combat-stats-grid">
-          <div class="combat-stat-item">
-            <label>AC</label>
+        <div class="combat-stats-list">
+          <div class="combat-stat-row">
+            <label class="combat-stat-label" for="ac">Armour Class</label>
             <input id="ac" oninput="autosave()"/>
           </div>
-          <div class="combat-stat-item">
-            <label>Speed</label>
+          <div class="combat-stat-row">
+            <label class="combat-stat-label" for="initiative">Initiative</label>
+            <input id="initiative" oninput="handleInitiativeInput(); autosave()" title="Auto: DEX modifier. Type to override."/>
+          </div>
+          <div class="combat-stat-row">
+            <label class="combat-stat-label" for="prof_bonus">Proficiency Bonus</label>
+            <input id="prof_bonus" readonly maxlength="3" class="combat-stat-auto"/>
+          </div>
+          <div class="combat-stat-row">
+            <label class="combat-stat-label" for="passive_perception">
+              Passive Perception
+              <button class="combat-stat-reset-btn" id="passive_perception_reset" onclick="resetPassivePerception()" title="Reset to auto" style="display:none">↺</button>
+            </label>
+            <input id="passive_perception" oninput="handlePassivePerceptionInput(); autosave()" title="Auto: 10 + Perception bonus. Type to override."/>
+          </div>
+          <div class="combat-stat-row">
+            <label class="combat-stat-label" for="speed">Speed</label>
             <input id="speed" oninput="autosave()"/>
-          </div>
-          <div class="combat-stat-item">
-            <label>Initiative</label>
-            <input id="initiative" oninput="autosave()"/>
-          </div>
-          <div class="combat-stat-item">
-            <label>Prof. Bonus</label>
-            <input id="prof_bonus" readonly maxlength="3" style="background: #2a2a2a; color: var(--accent-text); font-weight: bold; text-align: center;"/>
           </div>
         </div>
         <!-- Saving Throws - Remastered -->
@@ -358,7 +365,7 @@
             </div>
             <div class="hit-dice-group">
               <label>Constitution Modifier:</label>
-              <input type="number" id="con_modifier" value="0" oninput="calculateHitDiceRecovery(); autosave()"/>
+              <input type="number" id="con_modifier" readonly style="background: #2a2a2a; color: var(--accent-text); font-weight: bold; text-align: center;" title="Auto-synced from CON modifier"/>
             </div>
             <div class="hit-dice-group">
               <label>Hit Die Size:</label>
