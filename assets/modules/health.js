@@ -127,9 +127,10 @@ function shortRest() {
   
   for (let i = 0; i < hitDiceSpend; i++) {
     const roll = Math.floor(Math.random() * hitDieSize) + 1;
-    const withConMod = roll + conMod;
+    const withConMod = Math.max(1, roll + conMod);
     totalRecovery += withConMod;
-    rollDetails.push(`d${hitDieSize}: ${roll} + ${conMod} = ${withConMod}`);
+    const conPart = conMod === 0 ? '' : conMod > 0 ? ` + ${conMod}` : ` ${conMod}`;
+    rollDetails.push(`d${hitDieSize}: ${roll}${conPart} = ${withConMod}`);
   }
   
   // Apply recovery to current HP
@@ -168,10 +169,14 @@ function calculateHitDiceRecovery() {
     return;
   }
   
-  const minRecovery = hitDiceSpend + (conMod * hitDiceSpend);
-  const maxRecovery = (hitDieSize * hitDiceSpend) + (conMod * hitDiceSpend);
-  
-  recoveryText.textContent = `Potential Recovery: ${hitDiceSpend}d${hitDieSize} + ${conMod * hitDiceSpend} = ${minRecovery}-${maxRecovery} HP`;
+  // Each die: roll + conMod, minimum 1 per die (5e rule)
+  const minPerDie = Math.max(1, 1 + conMod);
+  const maxPerDie = hitDieSize + conMod;
+  const minRecovery = minPerDie * hitDiceSpend;
+  const maxRecovery = Math.max(minRecovery, maxPerDie * hitDiceSpend);
+
+  const conPart = conMod === 0 ? '' : conMod > 0 ? ` + ${conMod} per die` : ` ${conMod} per die`;
+  recoveryText.textContent = `Potential Recovery: ${hitDiceSpend}d${hitDieSize}${conPart} = ${minRecovery}–${maxRecovery} HP`;
 }
 
 

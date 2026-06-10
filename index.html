@@ -6,7 +6,7 @@
 <title>Joz's Homebrew DND Sheet (Modular)</title>
 
 <script>
-(function applySavedTextScaleBeforePaint() {
+(function applySavedSettingsBeforePaint() {
   try {
     const stored = Number(localStorage.getItem('dndTextScalePercent') || '100');
     const percent = Number.isFinite(stored) ? Math.min(140, Math.max(85, Math.round(stored))) : 100;
@@ -16,6 +16,23 @@
   } catch (error) {
     document.documentElement.style.setProperty('--text-scale', '1');
   }
+  try {
+    const fontMap = {
+      segoe:     "'Segoe UI', sans-serif",
+      system:    "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif",
+      roboto:    "'Roboto', sans-serif",
+      georgia:   "Georgia, 'Times New Roman', serif",
+      garamond:  "Garamond, 'EB Garamond', 'Times New Roman', serif",
+      verdana:   "Verdana, Geneva, sans-serif",
+      tahoma:    "Tahoma, Geneva, sans-serif",
+      trebuchet: "'Trebuchet MS', Helvetica, sans-serif",
+      courier:   "'Courier New', Courier, monospace",
+    };
+    const saved = localStorage.getItem('dndFontFamily');
+    if (saved && fontMap[saved]) {
+      document.documentElement.style.setProperty('--font-family', fontMap[saved]);
+    }
+  } catch (e) {}
 })();
 </script>
 
@@ -23,6 +40,9 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
 <link rel="stylesheet" href="assets/styles.css">
 
 <script>
@@ -254,7 +274,7 @@ function activateRoute() {
 })();
 
 async function bootstrapModularApp() {
-  const scriptVersion = '20260610-char-background';
+  const scriptVersion = '20260611-hitdice-fix';
   const [chrome, home, settings, stats, background, spells, inventory, notes, popups] = await Promise.all([
     loadText('partials/chrome.html'),
     loadText('pages/home.html'),

@@ -779,6 +779,28 @@ function stepTextScale(deltaPercent) {
 
 window.stepTextScale = stepTextScale;
 
+const FONT_OPTIONS = [
+  { value: 'segoe',    label: 'Segoe UI (Default)', stack: "'Segoe UI', sans-serif" },
+  { value: 'system',   label: 'System Default',     stack: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" },
+  { value: 'roboto',   label: 'Roboto',             stack: "'Roboto', sans-serif" },
+  { value: 'georgia',  label: 'Georgia (Serif)',     stack: "Georgia, 'Times New Roman', serif" },
+  { value: 'garamond', label: 'Garamond (Elegant)',  stack: "Garamond, 'EB Garamond', 'Times New Roman', serif" },
+  { value: 'verdana',  label: 'Verdana (Wide)',      stack: "Verdana, Geneva, sans-serif" },
+  { value: 'tahoma',   label: 'Tahoma (Compact)',    stack: "Tahoma, Geneva, sans-serif" },
+  { value: 'trebuchet',label: 'Trebuchet MS',        stack: "'Trebuchet MS', Helvetica, sans-serif" },
+  { value: 'courier',  label: 'Courier (Monospace)', stack: "'Courier New', Courier, monospace" },
+];
+
+function applyFontFamily(value) {
+  const opt = FONT_OPTIONS.find(f => f.value === value) || FONT_OPTIONS[0];
+  document.documentElement.style.setProperty('--font-family', opt.stack);
+  localStorage.setItem('dndFontFamily', opt.value);
+  const select = document.getElementById('fontFamilySelect');
+  if (select) select.value = opt.value;
+}
+
+window.applyFontFamily = applyFontFamily;
+
 function loadThemeSettings() {
   const themeToggle = document.getElementById('themeToggle');
 
@@ -798,6 +820,9 @@ function loadThemeSettings() {
 
   const savedTextScale = localStorage.getItem('dndTextScalePercent');
   applyTextScalePercent(savedTextScale || 100);
+
+  const savedFont = localStorage.getItem('dndFontFamily');
+  if (savedFont) applyFontFamily(savedFont);
 
   loadBgSetting();
   bgRenderPicker();
@@ -985,12 +1010,6 @@ function initializeWebApp() {
   });
 }
 
-function removePortrait() {
-  const preview = document.getElementById('portraitPreview');
-  if (!preview) return;
-  preview.innerHTML = '<span style="color: #666;">No image</span>';
-  autosave();
-}
 
 // ========== BACKGROUND CUSTOM FIELDS ==========
 
@@ -2687,36 +2706,6 @@ function resetDeleteUI() {
   delete btn.dataset.counting;
 }
 
-// Manual save function with status feedback
-function manualSave() {
-  const saveStatus = document.getElementById('saveStatus');
-  if (saveStatus) {
-    saveStatus.textContent = 'Saving...';
-    saveStatus.style.color = '#ffd700';
-  }
-  
-  try {
-    autosave();
-    showSaveToast('Save complete', 'success');
-    if (saveStatus) {
-      saveStatus.textContent = 'Saved!';
-      saveStatus.style.color = '#4CAF50';
-      setTimeout(() => {
-        saveStatus.textContent = '';
-      }, 2000);
-    }
-  } catch (error) {
-    console.error('Save error:', error);
-    showSaveToast('Save failed', 'error');
-    if (saveStatus) {
-      saveStatus.textContent = 'Save failed!';
-      saveStatus.style.color = '#f44336';
-      setTimeout(() => {
-        saveStatus.textContent = '';
-      }, 3000);
-    }
-  }
-}
 
 function autosave() {
   try {

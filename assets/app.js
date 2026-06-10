@@ -37,13 +37,20 @@ function addWeapon() {
 
 function manualSave(btn) {
   if (!currentCharacter) return;
-  autosave();
-  if (typeof syncToCloud === 'function') syncToCloud();
-  if (!btn) return;
-  const orig = btn.textContent;
-  btn.textContent = 'Saved!';
-  btn.disabled = true;
-  setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1500);
+  try {
+    autosave();
+    if (typeof syncToCloud === 'function') syncToCloud();
+    if (typeof showSaveToast === 'function') showSaveToast('Save complete', 'success');
+    if (btn) {
+      const orig = btn.textContent;
+      btn.textContent = 'Saved!';
+      btn.disabled = true;
+      setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1500);
+    }
+  } catch (error) {
+    console.error('Save error:', error);
+    if (typeof showSaveToast === 'function') showSaveToast('Save failed', 'error');
+  }
 }
 
 // Boot sequence — called by index.html after all modules are loaded

@@ -70,6 +70,21 @@
             <input type="text" value="Sample input field" readonly>
           </div>
         </div>
+        <div class="settings-field">
+          <label for="fontFamilySelect">Font Style</label>
+          <select id="fontFamilySelect" onchange="applyFontFamily(this.value)" class="settings-font-select">
+            <option value="segoe">Segoe UI (Default)</option>
+            <option value="system">System Default</option>
+            <option value="roboto">Roboto</option>
+            <option value="georgia">Georgia (Serif)</option>
+            <option value="garamond">Garamond (Elegant)</option>
+            <option value="verdana">Verdana (Wide)</option>
+            <option value="tahoma">Tahoma (Compact)</option>
+            <option value="trebuchet">Trebuchet MS</option>
+            <option value="courier">Courier (Monospace)</option>
+          </select>
+          <p class="settings-note">Changes the font used across the whole app. All options are built-in system fonts — no internet required.</p>
+        </div>
       </div>
     </div>
 

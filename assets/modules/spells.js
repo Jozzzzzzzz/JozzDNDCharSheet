@@ -705,6 +705,8 @@ function removeSpellSlot(slotId) {
   }
 }
 
+let spellSlotDragSrcIndex = null;
+
 function updateSpellSlots() {
   const container = document.getElementById('spell_slots_container');
   if (!container) return;
@@ -715,38 +717,70 @@ function updateSpellSlots() {
     return;
   }
 
-  manualSpellSlots.forEach(slot => {
+  manualSpellSlots.forEach((slot, idx) => {
     const slotDiv = document.createElement('div');
-    slotDiv.className = 'spell-level-row';
-    slotDiv.style.position = 'relative';
+    slotDiv.className = 'spell-level-row spell-slot-draggable';
+    slotDiv.draggable = true;
+    slotDiv.dataset.idx = idx;
+
     const usedValue = manualSpellSlotsUsed[slot.id] || 0;
     const title = slot.resetType === 'long' ? 'Resets on Long Rest' : slot.resetType === 'short' ? 'Resets on Short Rest' : 'Manual Reset Only';
-    slotDiv.innerHTML = `
+
+    const controlsRow = document.createElement('div');
+    controlsRow.className = 'slot-controls-row';
+    controlsRow.innerHTML = `
+      <span class="spell-slot-drag-handle" title="Drag to reorder">⠿</span>
       <span class="spell-level-label" title="${title}">${slot.name}:</span>
       <input type="number" class="spell-slot-input" min="0" max="15" value="${slot.maxValue}"
              onchange="updateSpellSlotMax('${slot.id}', this.value)">
-      <div class="spell-slots-used" id="spell_used_${slot.id}"></div>
-      <button onclick="showEditSpellSlotPopup('${slot.id}')"
-              style="position: absolute; right: 70px; top: 50%; transform: translateY(-50%);
-                     background: #4CAF50; color: white; border: none; border-radius: 3px;
-                     padding: 2px 6px; font-size: 10px; cursor: pointer;"
-              title="Edit Spell Slot">Edit</button>
-      <button onclick="removeSpellSlot('${slot.id}')"
-              style="position: absolute; right: -5px; top: 50%; transform: translateY(-50%);
-                     background: #ff4444; color: white; border: none; border-radius: 3px;
-                     padding: 2px 6px; font-size: 10px; cursor: pointer;"
-              title="Remove Spell Slot">Delete</button>
+      <div class="spell-slot-row-actions">
+        <button class="spell-slot-edit-btn" onclick="showEditSpellSlotPopup('${slot.id}')" title="Edit">Edit</button>
+        <button class="spell-slot-delete-btn" onclick="removeSpellSlot('${slot.id}')" title="Remove">✕</button>
+      </div>
     `;
-    container.appendChild(slotDiv);
+    slotDiv.appendChild(controlsRow);
 
-    const usedContainer = document.getElementById(`spell_used_${slot.id}`);
-    usedContainer.innerHTML = '';
+    const usedContainer = document.createElement('div');
+    usedContainer.className = 'spell-slots-used';
+    usedContainer.id = `spell_used_${slot.id}`;
     for (let i = 0; i < slot.maxValue; i++) {
       const dot = document.createElement('div');
       dot.className = `spell-slot-dot ${i < usedValue ? 'used' : ''}`;
       dot.onclick = () => toggleSpellSlot(slot.id, i);
       usedContainer.appendChild(dot);
     }
+    slotDiv.appendChild(usedContainer);
+
+    // Drag-and-drop handlers
+    slotDiv.addEventListener('dragstart', e => {
+      spellSlotDragSrcIndex = idx;
+      slotDiv.classList.add('spell-slot-dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    slotDiv.addEventListener('dragend', () => {
+      slotDiv.classList.remove('spell-slot-dragging');
+      container.querySelectorAll('.spell-slot-drag-over').forEach(el => el.classList.remove('spell-slot-drag-over'));
+    });
+    slotDiv.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (spellSlotDragSrcIndex !== idx) slotDiv.classList.add('spell-slot-drag-over');
+    });
+    slotDiv.addEventListener('dragleave', () => slotDiv.classList.remove('spell-slot-drag-over'));
+    slotDiv.addEventListener('drop', e => {
+      e.preventDefault();
+      slotDiv.classList.remove('spell-slot-drag-over');
+      const from = spellSlotDragSrcIndex;
+      const to = idx;
+      if (from === null || from === to) return;
+      const moved = manualSpellSlots.splice(from, 1)[0];
+      manualSpellSlots.splice(to, 0, moved);
+      spellSlotDragSrcIndex = null;
+      updateSpellSlots();
+      autosave();
+    });
+
+    container.appendChild(slotDiv);
   });
 }
 
@@ -1242,14 +1276,14 @@ function createPreparedSpellItem(spell, actionType, indexToUse) {
   spellInfo.innerHTML = `
     <strong>${spell.name}</strong>
     <span style="color: #888; font-size: 0.9em;">
-      ${spell.school} � ${spell.castingTime} � ${spell.range}
-      ${spell.damage ? ` � ${spell.damage}` : ''}
+      ${spell.school} • ${spell.castingTime} • ${spell.range}
+      ${spell.damage ? ` • ${spell.damage}` : ''}
     </span>
   `;
 
   const star = document.createElement('span');
   star.className = `favorite-star ${isFav ? 'favorited' : 'not-favorited'}`;
-  star.textContent = '?';
+  star.textContent = '★';
   star.title = isFav ? 'Remove from favorites' : 'Add to favorites';
   star.style.marginRight = '6px';
   star.addEventListener('click', function(e) {
@@ -1302,28 +1336,66 @@ function renderPreparedSpells() {
     grouped[level].push(entry);
   });
 
+  const table = document.createElement('table');
+  table.className = 'prepared-spells-table';
+
+  const colgroup = document.createElement('colgroup');
+  colgroup.innerHTML = `
+    <col class="pcol-name">
+    <col class="pcol-level">
+    <col class="pcol-cast">
+    <col class="pcol-range">
+    <col class="pcol-damage">
+    <col class="pcol-actions">
+  `;
+  table.appendChild(colgroup);
+
+  const thead = document.createElement('thead');
+  thead.innerHTML = `<tr>
+    <th>Name</th>
+    <th>Lvl</th>
+    <th>Cast Time</th>
+    <th>Range</th>
+    <th>Damage</th>
+    <th></th>
+  </tr>`;
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+
   Object.keys(grouped)
     .sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
     .forEach(level => {
       const levelEntries = grouped[level];
-      const levelSection = document.createElement('div');
-      levelSection.className = 'spell-level-section';
+      const levelLabel = level === '0' ? 'Cantrips' : `${level}${getOrdinalSuffix(parseInt(level, 10))} Level`;
 
-      const levelHeader = document.createElement('div');
-      levelHeader.className = 'spell-level-header';
-      levelHeader.innerHTML = `
-        <span>${level === '0' ? 'Cantrips' : `${level}${getOrdinalSuffix(parseInt(level, 10))} Level`}</span>
-        <span>(${levelEntries.length} spell${levelEntries.length !== 1 ? 's' : ''})</span>
-      `;
-      levelSection.appendChild(levelHeader);
+      const groupRow = document.createElement('tr');
+      groupRow.className = 'prepared-spells-group-row';
+      groupRow.innerHTML = `<td colspan="6">${levelLabel} <span class="prepared-spells-count">(${levelEntries.length})</span></td>`;
+      tbody.appendChild(groupRow);
 
       levelEntries.forEach(entry => {
-        const spellItem = createPreparedSpellItem(entry.spell, entry.actionType, entry.index);
-        levelSection.appendChild(spellItem);
-      });
+        const { spell, actionType, index } = entry;
+        const damageDisplay = spell.damage && spell.damage.trim() ? spell.damage.trim() : '<span class="prep-na">—</span>';
 
-      container.appendChild(levelSection);
+        const tr = document.createElement('tr');
+        tr.className = 'prepared-spells-row';
+        tr.innerHTML = `
+          <td class="prep-name">${spell.name}</td>
+          <td class="prep-level">${level === '0' ? 'Cantrip' : level}</td>
+          <td class="prep-cast">${spell.castingTime || '—'}</td>
+          <td class="prep-range">${spell.range || '—'}</td>
+          <td class="prep-damage">${damageDisplay}</td>
+          <td class="prep-actions">
+            <button class="spell-item-btn" onclick="showSpellDetails('${actionType}', ${index})">View</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
     });
+
+  table.appendChild(tbody);
+  container.appendChild(table);
 }
 // Render favorites
 function renderFavorites() {
@@ -1394,27 +1466,35 @@ function filterSpells(type) {
   let levelFilter = 'all';
   let schoolFilter = 'all';
   let statusFilter = 'all';
-  
+  let searchTerm = '';
+
   if (type === 'cantrip') {
     statusFilter = document.getElementById('cantrip_filter').value;
+    searchTerm = (document.getElementById('cantrip_search')?.value || '').toLowerCase().trim();
   } else {
     levelFilter = document.getElementById('spell_level_filter').value;
     schoolFilter = document.getElementById('spell_school_filter').value;
     statusFilter = document.getElementById('spell_status_filter').value;
+    searchTerm = (document.getElementById('spell_search')?.value || '').toLowerCase().trim();
   }
-  
+
   // Filter spells
   let filteredSpells = spells.filter(spell => {
+    // Search filter
+    if (searchTerm && !spell.name.toLowerCase().includes(searchTerm)) {
+      return false;
+    }
+
     // Level filter
     if (levelFilter !== 'all' && spell.level.toString() !== levelFilter) {
       return false;
     }
-    
+
     // School filter
     if (schoolFilter !== 'all' && spell.school !== schoolFilter) {
       return false;
     }
-    
+
     // Status filter
     if (statusFilter !== 'all') {
       if (statusFilter === 'prepared' && !spell.prepared) return false;
@@ -1422,7 +1502,7 @@ function filterSpells(type) {
       if (statusFilter === 'ritual' && !spell.ritual) return false;
       if (statusFilter === 'favorites' && !isFavorited(type, spell.name)) return false;
     }
-    
+
     return true;
   });
   
