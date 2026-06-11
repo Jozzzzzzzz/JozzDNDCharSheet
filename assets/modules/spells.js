@@ -1308,6 +1308,64 @@ function createPreparedSpellItem(spell, actionType, indexToUse) {
   return item;
 }
 
+function getSpellEffect(spell) {
+  if (spell.damage && spell.damage.trim()) return spell.damage.trim();
+
+  // Build a short label from available fields when there's no damage value.
+  const desc = (spell.description || '').toLowerCase();
+  const save = (spell.save || '').trim();
+  const school = (spell.school || '').trim();
+
+  // Save-based effects
+  if (save) {
+    const saveMap = {
+      'strength': 'STR save', 'dexterity': 'DEX save', 'constitution': 'CON save',
+      'intelligence': 'INT save', 'wisdom': 'WIS save', 'charisma': 'CHA save'
+    };
+    for (const [key, label] of Object.entries(saveMap)) {
+      if (save.toLowerCase().includes(key)) return label;
+    }
+    return save.replace(/\s*save\s*/i, '').trim() + ' save';
+  }
+
+  // Description keyword scan — ordered by specificity
+  const keywords = [
+    [/\bheal\w*\b|\bregain\b.*\bhit point/,       'Healing'],
+    [/\bcharm\w*\b/,                               'Charmed'],
+    [/\bfear\w*\b|\bfrightened\b/,                 'Frightened'],
+    [/\brestrain\w*\b/,                            'Restrained'],
+    [/\bparalyz\w*\b/,                             'Paralyzed'],
+    [/\bsleep\b|\bunconsci\w*\b/,                  'Unconscious'],
+    [/\bblind\w*\b/,                               'Blinded'],
+    [/\bdeafen\w*\b/,                              'Deafened'],
+    [/\bstun\w*\b/,                                'Stunned'],
+    [/\bpush\w*\b|\bknock\w*\b.*\bback\b/,         'Pushed'],
+    [/\bprone\b/,                                  'Knocked prone'],
+    [/\bslow\w*\b|\bspeed.*reduced\b/,             'Slowed'],
+    [/\binvisib\w*\b/,                             'Invisible'],
+    [/\bsummon\w*\b|\bconjur\w*\b/,               'Summon'],
+    [/\bteleport\w*\b/,                            'Teleport'],
+    [/\bshield\w*\b|\bprotect\w*\b|\bward\w*\b/,  'Protection'],
+    [/\bresist\w*\b/,                              'Resistance'],
+    [/\badvantage\b/,                              'Advantage'],
+    [/\bdisadvantage\b/,                           'Disadvantage'],
+    [/\bdetect\w*\b/,                              'Detection'],
+    [/\billusion\w*\b|\bdisguise\w*\b/,            'Illusion'],
+    [/\bcontrol\w*\b|\bcommand\w*\b/,              'Control'],
+    [/\bcreate\w*\b|\bspawn\w*\b/,                 'Create'],
+    [/\bcommunicat\w*\b|\bmessage\b/,              'Communication'],
+    [/\blight\b|\billuminat\w*\b/,                 'Light'],
+    [/\bdarkness\b/,                               'Darkness'],
+    [/\bsilence\b/,                                'Silence'],
+  ];
+  for (const [pattern, label] of keywords) {
+    if (pattern.test(desc)) return label;
+  }
+
+  // Fall back to school
+  return school || '—';
+}
+
 function renderPreparedSpells() {
   const container = document.getElementById('prepared_spells_list');
   if (!container) return;
@@ -1356,7 +1414,7 @@ function renderPreparedSpells() {
     <th>Lvl</th>
     <th>Cast Time</th>
     <th>Range</th>
-    <th>Damage</th>
+    <th>Effect</th>
     <th></th>
   </tr>`;
   table.appendChild(thead);
@@ -1376,7 +1434,8 @@ function renderPreparedSpells() {
 
       levelEntries.forEach(entry => {
         const { spell, actionType, index } = entry;
-        const damageDisplay = spell.damage && spell.damage.trim() ? spell.damage.trim() : '<span class="prep-na">—</span>';
+        const effectText = getSpellEffect(spell);
+        const damageDisplay = effectText && effectText !== '—' ? effectText : '<span class="prep-na">—</span>';
 
         const tr = document.createElement('tr');
         tr.className = 'prepared-spells-row';

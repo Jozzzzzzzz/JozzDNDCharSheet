@@ -4864,7 +4864,7 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
     table-layout: fixed;
   }
 
-  /* Column widths */
+  /* Column widths — desktop */
   .pcol-name    { width: 22%; }
   .pcol-level   { width: 7%; }
   .pcol-cast    { width: 18%; }
@@ -4983,6 +4983,10 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   #prepared_spells_list {
     max-height: none;
     overflow-y: visible;
+    background: none;
+    border: none;
+    padding: 0;
+    border-radius: 0;
   }
 
   /* Spell Details Popup */
@@ -5055,6 +5059,26 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
       min-width: 60px;
       font-size: 0.85rem;
     }
+
+    .prep-actions .spell-item-btn {
+      padding: 3px 6px;
+      font-size: 0.78em;
+      white-space: nowrap;
+    }
+  }
+
+  /* Portrait phones: hide Cast Time, show Name / Lvl / Range / Dmg / View */
+  @media (max-width: 768px) and (orientation: portrait) {
+    .pcol-cast,
+    .prep-cast,
+    .prepared-spells-table th:nth-child(3) {
+      display: none;
+    }
+    .pcol-name    { width: 30%; }
+    .pcol-level   { width: 9%; }
+    .pcol-range   { width: 20%; }
+    .pcol-damage  { width: 24%; }
+    .pcol-actions { width: 17%; }
   }
 
   /* Extra small screens - ensure nothing gets squished */
@@ -5089,6 +5113,15 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 
     .spell-info-label {
       font-size: 0.85rem;
+    }
+
+    /* Prepared spells table — extra small: tighter font */
+    .prepared-spells-table {
+      font-size: 0.75em;
+    }
+    .prepared-spells-row td,
+    .prepared-spells-table th {
+      padding: 3px 4px;
     }
   }
 

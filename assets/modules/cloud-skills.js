@@ -272,14 +272,28 @@ async function trackSigninAndMaybeNotify(user) {
   });
 
   if (!isOwnerEmail(user.email) && (flags.firstEver || flags.newDevice)) {
-    const subject = flags.firstEver ? 'New User Sign-In (First Time)' : 'New User Sign-In (New Device)';
-    const message = `A user signed in with Google.\n\nEmail: ${user.email || 'unknown'}\nUID: ${user.uid}\nDevice: ${deviceId}\nEvent: ${flags.firstEver ? 'first_time' : 'new_device'}\nTime: ${nowIso}`;
-    await sendOwnerNotification(subject, message, {
-      event_type: flags.firstEver ? 'google_signin_first' : 'google_signin_new_device',
-      signed_in_email: user.email || '',
-      signed_in_uid: user.uid,
-      device_id: deviceId
-    });
+    // Guard: only notify once per device (stored in localStorage). Re-notifies after 7 days in case of
+    // legitimate re-use of a shared device by a different user.
+    const notifyKey = `dndNotifiedDevice_${deviceId}`;
+    let alreadyNotified = false;
+    try {
+      const ts = Number(localStorage.getItem(notifyKey) || 0);
+      alreadyNotified = ts > 0 && (Date.now() - ts) < 7 * 24 * 60 * 60 * 1000;
+    } catch (_) {}
+
+    if (!alreadyNotified) {
+      try { localStorage.setItem(notifyKey, String(Date.now())); } catch (_) {}
+      const userEmail = user.email || 'unknown';
+      const eventLabel = flags.firstEver ? 'First Time' : 'New Device';
+      const subject = `New User Sign-In (${eventLabel}) — ${userEmail}`;
+      const message = `A user signed in with Google.\n\nEmail: ${userEmail}\nUID: ${user.uid}\nDevice: ${deviceId}\nEvent: ${flags.firstEver ? 'first_time' : 'new_device'}\nTime: ${nowIso}`;
+      await sendOwnerNotification(subject, message, {
+        event_type: flags.firstEver ? 'google_signin_first' : 'google_signin_new_device',
+        signed_in_email: userEmail,
+        signed_in_uid: user.uid,
+        device_id: deviceId
+      });
+    }
   }
 
   return { ...flags, deviceId };
