@@ -4525,9 +4525,16 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 
   .spell-level-row {
     display: flex;
-    flex-direction: column;
-    margin-bottom: 10px;
+    flex-direction: row;
+    align-items: center;
     gap: 6px;
+    padding: 5px 4px;
+    border-radius: 6px;
+    margin-bottom: 4px;
+  }
+
+  .spell-level-row:hover {
+    background: var(--accent-soft);
   }
 
   .slot-controls-row {
@@ -4545,6 +4552,15 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .spell-slot-drag-placeholder {
+    border: 2px dashed var(--accent-border);
+    border-radius: 6px;
+    background: var(--accent-soft);
+    opacity: 0.5;
+    margin-bottom: 4px;
+    box-sizing: border-box;
   }
 
   /* Spell slot row actions (no absolute positioning) */
@@ -4624,29 +4640,36 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   }
 
   .spell-stepper-btn {
-    min-width: 30px;
-    height: 30px;
-    padding: 0 8px;
+    min-width: 28px;
+    height: 28px;
+    padding: 0 6px;
     border: 1px solid var(--accent-border);
     border-radius: 4px;
-    background: var(--accent);
+    background: var(--accent-muted);
     color: var(--accent-contrast) !important;
     font-weight: 700;
+    font-size: 1rem;
     line-height: 1;
     cursor: pointer;
+    transition: background-color 0.15s ease;
+  }
+
+  .spell-stepper-btn:hover {
+    background: var(--accent);
   }
 
   .spell-available-count {
     min-width: 52px;
-    padding: 4px 6px;
-    border: 1px solid var(--border);
+    padding: 4px 8px;
+    border: 1px solid var(--accent-border);
     border-radius: 4px;
-    background: var(--input-bg);
-    color: var(--text);
+    background: var(--card-bg);
+    color: var(--accent-text);
     text-align: center;
     font-weight: 700;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     box-sizing: border-box;
+    letter-spacing: 0.03em;
   }
 
   .spell-slot-dot {
@@ -4659,12 +4682,13 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   }
 
   .spell-slot-dot.available {
-    background-color: var(--accent-text);
+    background-color: transparent;
+    opacity: 0.35;
   }
 
   .spell-slot-dot.spent {
-    background-color: transparent;
-    opacity: 0.35;
+    background-color: var(--accent-text);
+    opacity: 1;
   }
 
   /* Plus/minus stepper buttons — hidden on desktop mouse, shown on touch */
@@ -4829,31 +4853,18 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   }
 
   /* Spell slot drag-reorder */
-  .spell-slot-draggable {
-    cursor: default;
-  }
-
   .spell-slot-drag-handle {
     cursor: grab;
     font-size: 16px;
     color: #666;
-    padding: 0 4px;
+    padding: 0 2px;
     user-select: none;
     flex-shrink: 0;
+    touch-action: none;
   }
 
   .spell-slot-drag-handle:active {
     cursor: grabbing;
-  }
-
-  .spell-slot-dragging {
-    opacity: 0.45;
-  }
-
-  .spell-slot-drag-over {
-    border: 1px dashed var(--accent);
-    border-radius: 6px;
-    background: var(--accent-soft);
   }
 
   /* Prepared spells table */

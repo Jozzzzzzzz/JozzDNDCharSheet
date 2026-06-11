@@ -226,16 +226,24 @@ async function trackSigninAndMaybeNotify(user) {
   const docRef = db.collection('auth_signins').doc(user.uid);
   const nowIso = new Date().toISOString();
 
+  const NOTIFY_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
   const flags = await db.runTransaction(async (tx) => {
     const snap = await tx.get(docRef);
     const data = snap.exists ? (snap.data() || {}) : {};
     const knownDevices = data.knownDevices || {};
     const firstEver = !snap.exists;
-    const newDevice = !knownDevices || !Object.prototype.hasOwnProperty.call(knownDevices, deviceId);
+    const deviceData = knownDevices[deviceId] || {};
+    const newDevice = !Object.prototype.hasOwnProperty.call(knownDevices, deviceId);
+
+    // Check if we already notified for this device recently (server-side, survives localStorage clears)
+    const lastNotifiedIso = deviceData.notifiedAt || '';
+    const lastNotifiedMs = lastNotifiedIso ? new Date(lastNotifiedIso).getTime() : 0;
+    const shouldNotify = (firstEver || newDevice) && (Date.now() - lastNotifiedMs > NOTIFY_COOLDOWN_MS);
 
     let knownDeviceCount = Number(data.knownDeviceCount);
     if (!Number.isFinite(knownDeviceCount)) {
-      knownDeviceCount = Object.keys(knownDevices || {}).length;
+      knownDeviceCount = Object.keys(knownDevices).length;
     }
     if (newDevice) knownDeviceCount += 1;
 
@@ -245,11 +253,9 @@ async function trackSigninAndMaybeNotify(user) {
       lastSignInAt: FieldValue.serverTimestamp(),
       lastDeviceId: deviceId,
       knownDeviceCount: knownDeviceCount,
-      // Presence: updated by heartbeat too, but set once on sign-in.
       lastSeenAt: FieldValue.serverTimestamp()
     };
 
-    // Nested device stats (dot-path updates so we don't overwrite other devices).
     update[`knownDevices.${deviceId}.lastSeenAt`] = FieldValue.serverTimestamp();
     update[`knownDevices.${deviceId}.lastSignInAt`] = FieldValue.serverTimestamp();
     update[`knownDevices.${deviceId}.ua`] = (navigator.userAgent || '').slice(0, 180);
@@ -257,6 +263,9 @@ async function trackSigninAndMaybeNotify(user) {
     if (newDevice) {
       update[`knownDevices.${deviceId}.firstSeenAt`] = FieldValue.serverTimestamp();
       update[`knownDevices.${deviceId}.firstSeenIso`] = nowIso;
+    }
+    if (shouldNotify) {
+      update[`knownDevices.${deviceId}.notifiedAt`] = nowIso;
     }
 
     if (firstEver) {
@@ -268,32 +277,20 @@ async function trackSigninAndMaybeNotify(user) {
     }
 
     tx.set(docRef, update, { merge: true });
-    return { firstEver, newDevice };
+    return { firstEver, newDevice, shouldNotify };
   });
 
-  if (!isOwnerEmail(user.email) && (flags.firstEver || flags.newDevice)) {
-    // Guard: only notify once per device (stored in localStorage). Re-notifies after 7 days in case of
-    // legitimate re-use of a shared device by a different user.
-    const notifyKey = `dndNotifiedDevice_${deviceId}`;
-    let alreadyNotified = false;
-    try {
-      const ts = Number(localStorage.getItem(notifyKey) || 0);
-      alreadyNotified = ts > 0 && (Date.now() - ts) < 7 * 24 * 60 * 60 * 1000;
-    } catch (_) {}
-
-    if (!alreadyNotified) {
-      try { localStorage.setItem(notifyKey, String(Date.now())); } catch (_) {}
-      const userEmail = user.email || 'unknown';
-      const eventLabel = flags.firstEver ? 'First Time' : 'New Device';
-      const subject = `New User Sign-In (${eventLabel}) — ${userEmail}`;
-      const message = `A user signed in with Google.\n\nEmail: ${userEmail}\nUID: ${user.uid}\nDevice: ${deviceId}\nEvent: ${flags.firstEver ? 'first_time' : 'new_device'}\nTime: ${nowIso}`;
-      await sendOwnerNotification(subject, message, {
-        event_type: flags.firstEver ? 'google_signin_first' : 'google_signin_new_device',
-        signed_in_email: userEmail,
-        signed_in_uid: user.uid,
-        device_id: deviceId
-      });
-    }
+  if (!isOwnerEmail(user.email) && flags.shouldNotify) {
+    const userEmail = user.email || 'unknown';
+    const eventLabel = flags.firstEver ? 'First Time' : 'New Device';
+    const subject = `New User Sign-In (${eventLabel}) — ${userEmail}`;
+    const message = `A user signed in with Google.\n\nEmail: ${userEmail}\nUID: ${user.uid}\nDevice: ${deviceId}\nEvent: ${flags.firstEver ? 'first_time' : 'new_device'}\nTime: ${nowIso}`;
+    await sendOwnerNotification(subject, message, {
+      event_type: flags.firstEver ? 'google_signin_first' : 'google_signin_new_device',
+      signed_in_email: userEmail,
+      signed_in_uid: user.uid,
+      device_id: deviceId
+    });
   }
 
   return { ...flags, deviceId };

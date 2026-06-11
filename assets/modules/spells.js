@@ -705,7 +705,9 @@ function removeSpellSlot(slotId) {
   }
 }
 
-let spellSlotDragSrcIndex = null;
+// Ghost drag state for spell slots
+let _ssDragGhost = null, _ssDragSrc = null, _ssDragPlaceholder = null;
+let _ssDragOffX = 0, _ssDragOffY = 0, _ssDragLastX = 0, _ssDragTilt = 0;
 
 function updateSpellSlots() {
   const container = document.getElementById('spell_slots_container');
@@ -717,71 +719,131 @@ function updateSpellSlots() {
     return;
   }
 
-  manualSpellSlots.forEach((slot, idx) => {
+  manualSpellSlots.forEach((slot) => {
     const slotDiv = document.createElement('div');
-    slotDiv.className = 'spell-level-row spell-slot-draggable';
-    slotDiv.draggable = true;
-    slotDiv.dataset.idx = idx;
+    slotDiv.className = 'spell-level-row';
+    slotDiv.dataset.slotId = slot.id;
 
     const usedValue = manualSpellSlotsUsed[slot.id] || 0;
     const title = slot.resetType === 'long' ? 'Resets on Long Rest' : slot.resetType === 'short' ? 'Resets on Short Rest' : 'Manual Reset Only';
 
-    const controlsRow = document.createElement('div');
-    controlsRow.className = 'slot-controls-row';
-    controlsRow.innerHTML = `
+    slotDiv.innerHTML = `
       <span class="spell-slot-drag-handle" title="Drag to reorder">⠿</span>
-      <span class="spell-level-label" title="${title}">${slot.name}:</span>
-      <input type="number" class="spell-slot-input" min="0" max="15" value="${slot.maxValue}"
-             onchange="updateSpellSlotMax('${slot.id}', this.value)">
+      <span class="spell-level-label" title="${title}">${slot.name}</span>
+      <div class="spell-stepper-controls">
+        <button class="spell-stepper-btn" onclick="stepSpellSlot('${slot.id}', -1)" title="Restore slot">−</button>
+        <span class="spell-available-count" id="spell_used_${slot.id}">${usedValue} / ${slot.maxValue}</span>
+        <button class="spell-stepper-btn" onclick="stepSpellSlot('${slot.id}', 1)" title="Spend slot">+</button>
+      </div>
       <div class="spell-slot-row-actions">
         <button class="spell-slot-edit-btn" onclick="showEditSpellSlotPopup('${slot.id}')" title="Edit">Edit</button>
         <button class="spell-slot-delete-btn" onclick="removeSpellSlot('${slot.id}')" title="Remove">✕</button>
       </div>
     `;
-    slotDiv.appendChild(controlsRow);
 
-    const usedContainer = document.createElement('div');
-    usedContainer.className = 'spell-slots-used';
-    usedContainer.id = `spell_used_${slot.id}`;
-    for (let i = 0; i < slot.maxValue; i++) {
-      const dot = document.createElement('div');
-      dot.className = `spell-slot-dot ${i < usedValue ? 'used' : ''}`;
-      dot.onclick = () => toggleSpellSlot(slot.id, i);
-      usedContainer.appendChild(dot);
-    }
-    slotDiv.appendChild(usedContainer);
-
-    // Drag-and-drop handlers
-    slotDiv.addEventListener('dragstart', e => {
-      spellSlotDragSrcIndex = idx;
-      slotDiv.classList.add('spell-slot-dragging');
-      e.dataTransfer.effectAllowed = 'move';
-    });
-    slotDiv.addEventListener('dragend', () => {
-      slotDiv.classList.remove('spell-slot-dragging');
-      container.querySelectorAll('.spell-slot-drag-over').forEach(el => el.classList.remove('spell-slot-drag-over'));
-    });
-    slotDiv.addEventListener('dragover', e => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      if (spellSlotDragSrcIndex !== idx) slotDiv.classList.add('spell-slot-drag-over');
-    });
-    slotDiv.addEventListener('dragleave', () => slotDiv.classList.remove('spell-slot-drag-over'));
-    slotDiv.addEventListener('drop', e => {
-      e.preventDefault();
-      slotDiv.classList.remove('spell-slot-drag-over');
-      const from = spellSlotDragSrcIndex;
-      const to = idx;
-      if (from === null || from === to) return;
-      const moved = manualSpellSlots.splice(from, 1)[0];
-      manualSpellSlots.splice(to, 0, moved);
-      spellSlotDragSrcIndex = null;
-      updateSpellSlots();
-      autosave();
-    });
+    const handle = slotDiv.querySelector('.spell-slot-drag-handle');
+    handle.addEventListener('mousedown', spellSlotDragStart);
+    handle.addEventListener('touchstart', spellSlotDragStart, { passive: false });
 
     container.appendChild(slotDiv);
   });
+}
+
+function spellSlotDragStart(e) {
+  const handle = e.currentTarget;
+  const row = handle.closest('.spell-level-row');
+  const container = document.getElementById('spell_slots_container');
+  if (!row || !container) return;
+  e.preventDefault();
+
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  const rect = row.getBoundingClientRect();
+
+  _ssDragOffX = clientX - rect.left;
+  _ssDragOffY = clientY - rect.top;
+  _ssDragLastX = clientX;
+  _ssDragTilt = 0;
+  _ssDragSrc = row;
+
+  // Ghost
+  _ssDragGhost = row.cloneNode(true);
+  _ssDragGhost.className = 'spell-level-row spell-slot-drag-ghost';
+  _ssDragGhost.style.cssText = `
+    position:fixed; z-index:9999; pointer-events:none;
+    width:${rect.width}px; left:${rect.left}px; top:${rect.top}px;
+    opacity:0.88; box-shadow:0 8px 32px rgba(0,0,0,0.45);
+    border-radius:8px; background:var(--card-bg);
+    border:1px solid var(--accent-border);
+  `;
+  document.body.appendChild(_ssDragGhost);
+
+  // Placeholder
+  _ssDragPlaceholder = document.createElement('div');
+  _ssDragPlaceholder.className = 'spell-slot-drag-placeholder';
+  _ssDragPlaceholder.style.height = rect.height + 'px';
+  container.insertBefore(_ssDragPlaceholder, row);
+  row.style.display = 'none';
+
+  document.addEventListener('mousemove', spellSlotDragMove);
+  document.addEventListener('touchmove', spellSlotDragMove, { passive: false });
+  document.addEventListener('mouseup', spellSlotDragEnd);
+  document.addEventListener('touchend', spellSlotDragEnd);
+}
+
+function spellSlotDragMove(e) {
+  if (!_ssDragGhost) return;
+  e.preventDefault();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  const dx = clientX - _ssDragLastX;
+  _ssDragLastX = clientX;
+  _ssDragTilt = Math.max(-10, Math.min(10, _ssDragTilt * 0.85 + dx * 0.3));
+  _ssDragGhost.style.left = (clientX - _ssDragOffX) + 'px';
+  _ssDragGhost.style.top = (clientY - _ssDragOffY) + 'px';
+  _ssDragGhost.style.transform = `rotate(${_ssDragTilt}deg) scale(1.03)`;
+
+  const container = document.getElementById('spell_slots_container');
+  if (!container) return;
+  const rows = [...container.children].filter(c => c !== _ssDragSrc && !c.classList.contains('spell-slot-drag-ghost') && !c.classList.contains('spell-slot-drag-placeholder'));
+  let inserted = false;
+  for (const r of rows) {
+    const rr = r.getBoundingClientRect();
+    if (clientY < rr.top + rr.height / 2) {
+      container.insertBefore(_ssDragPlaceholder, r);
+      inserted = true;
+      break;
+    }
+  }
+  if (!inserted) container.appendChild(_ssDragPlaceholder);
+}
+
+function spellSlotDragEnd() {
+  document.removeEventListener('mousemove', spellSlotDragMove);
+  document.removeEventListener('touchmove', spellSlotDragMove);
+  document.removeEventListener('mouseup', spellSlotDragEnd);
+  document.removeEventListener('touchend', spellSlotDragEnd);
+
+  if (!_ssDragGhost || !_ssDragSrc || !_ssDragPlaceholder) return;
+
+  const container = document.getElementById('spell_slots_container');
+  const allChildren = [...container.children];
+  const phPos = allChildren.indexOf(_ssDragPlaceholder);
+  const srcId = _ssDragSrc.dataset.slotId;
+  const srcIndex = manualSpellSlots.findIndex(s => s.id === srcId);
+  const dest = allChildren.slice(0, phPos).filter(c => c !== _ssDragSrc && !c.classList.contains('spell-slot-drag-ghost') && !c.classList.contains('spell-slot-drag-placeholder')).length;
+
+  document.body.removeChild(_ssDragGhost);
+  _ssDragPlaceholder.remove();
+  _ssDragSrc.style.display = '';
+  _ssDragGhost = null; _ssDragSrc = null; _ssDragPlaceholder = null;
+
+  if (srcIndex !== -1) {
+    const moved = manualSpellSlots.splice(srcIndex, 1)[0];
+    manualSpellSlots.splice(Math.max(0, Math.min(dest, manualSpellSlots.length)), 0, moved);
+    updateSpellSlots();
+    autosave();
+  }
 }
 
 function updateSpellSlotMax(slotId, newMax) {
@@ -798,6 +860,16 @@ function toggleSpellSlot(slotId, index) {
   const usedValue = manualSpellSlotsUsed[slotId] || 0;
   manualSpellSlotsUsed[slotId] = index < usedValue ? index : index + 1;
   updateSpellSlots();
+  autosave();
+}
+
+function stepSpellSlot(slotId, delta) {
+  const slot = manualSpellSlots.find(s => s.id === slotId);
+  if (!slot) return;
+  const current = manualSpellSlotsUsed[slotId] || 0;
+  manualSpellSlotsUsed[slotId] = Math.max(0, Math.min(slot.maxValue, current + delta));
+  const el = document.getElementById(`spell_used_${slotId}`);
+  if (el) el.textContent = `${manualSpellSlotsUsed[slotId]} / ${slot.maxValue}`;
   autosave();
 }
 
@@ -907,22 +979,14 @@ function updateCustomResources() {
       <span class="spell-level-label" title="${title}">${resource.name}:</span>
       <input type="number" class="spell-slot-input" min="0" max="15" value="${resource.maxValue}"
              onchange="updateCustomResourceMax('${resource.id}', this.value)">
-      <div class="spell-slots-used" id="custom_used_${resource.id}"></div>
-      <button onclick="removeCustomResource('${resource.id}')"
-              style="position: absolute; right: -5px; top: 50%; transform: translateY(-50%);
-                     background: #ff4444; color: white; border: none; border-radius: 3px;
-                     width: 20px; height: 20px; font-size: 12px; cursor: pointer;"
-              title="Remove Resource">×</button>
+      <div class="spell-stepper-controls">
+        <button class="spell-stepper-btn" onclick="stepCustomResource('${resource.id}', -1)" title="Restore">−</button>
+        <span class="spell-available-count" id="custom_used_${resource.id}">${usedValue} / ${resource.maxValue}</span>
+        <button class="spell-stepper-btn" onclick="stepCustomResource('${resource.id}', 1)" title="Spend">+</button>
+      </div>
+      <button class="spell-slot-delete-btn" onclick="removeCustomResource('${resource.id}')" title="Remove Resource">✕</button>
     `;
     container.appendChild(resourceDiv);
-    const usedContainer = document.getElementById(`custom_used_${resource.id}`);
-    usedContainer.innerHTML = '';
-    for (let i = 0; i < resource.maxValue; i++) {
-      const dot = document.createElement('div');
-      dot.className = `spell-slot-dot ${i < usedValue ? 'used' : ''}`;
-      dot.onclick = () => toggleCustomResource(resource.id, i);
-      usedContainer.appendChild(dot);
-    }
   });
 }
 
@@ -940,6 +1004,16 @@ function toggleCustomResource(resourceId, index) {
   const usedValue = customResourcesUsed[resourceId] || 0;
   customResourcesUsed[resourceId] = index < usedValue ? index : index + 1;
   updateCustomResources();
+  autosave();
+}
+
+function stepCustomResource(resourceId, delta) {
+  const resource = customResources.find(r => r.id === resourceId);
+  if (!resource) return;
+  const current = customResourcesUsed[resourceId] || 0;
+  customResourcesUsed[resourceId] = Math.max(0, Math.min(resource.maxValue, current + delta));
+  const el = document.getElementById(`custom_used_${resourceId}`);
+  if (el) el.textContent = `${customResourcesUsed[resourceId]} / ${resource.maxValue}`;
   autosave();
 }
 
