@@ -341,20 +341,21 @@ function createWeaponCard(weapon, index) {
 function createEquipmentCard(equipment) {
   const card = document.createElement('div');
   card.className = 'equipment-card';
+  const esc = typeof escapeHtml === 'function' ? escapeHtml : (s => String(s));
   card.innerHTML = `
     <div class="equipment-header">
-      <h4 class="equipment-name">${equipment.name}</h4>
-      <span class="equipment-type">${equipment.type}</span>
+      <h4 class="equipment-name">${esc(equipment.name)}</h4>
+      <span class="equipment-type">${esc(equipment.type)}</span>
     </div>
     <div class="equipment-stats">
-      ${equipment.bonus ? `<div class="equipment-stat"><span class="equipment-stat-label">Bonus/AC:</span><span class="equipment-stat-value">${equipment.bonus}</span></div>` : ''}
-      <div class="equipment-stat"><span class="equipment-stat-label">Weight:</span><span class="equipment-stat-value">${equipment.weight} lbs</span></div>
+      ${equipment.bonus ? `<div class="equipment-stat"><span class="equipment-stat-label">Bonus/AC:</span><span class="equipment-stat-value">${esc(equipment.bonus)}</span></div>` : ''}
+      <div class="equipment-stat"><span class="equipment-stat-label">Weight:</span><span class="equipment-stat-value">${esc(String(equipment.weight))} lbs</span></div>
     </div>
-    ${equipment.description ? `<div class="equipment-description">${equipment.description}</div>` : ''}
+    ${equipment.description ? `<div class="equipment-description">${esc(equipment.description)}</div>` : ''}
     <div class="equipment-actions">
-      <button class="equipment-btn notes-btn" data-equipment-id="${equipment.id}" data-action="notes">Notes</button>
-      <button class="equipment-btn edit-btn" data-equipment-id="${equipment.id}" data-action="edit">Edit</button>
-      <button class="equipment-btn delete-btn" data-equipment-id="${equipment.id}" data-action="delete">Delete</button>
+      <button class="equipment-btn notes-btn" data-equipment-id="${esc(equipment.id)}" data-action="notes">Notes</button>
+      <button class="equipment-btn edit-btn" data-equipment-id="${esc(equipment.id)}" data-action="edit">Edit</button>
+      <button class="equipment-btn delete-btn" data-equipment-id="${esc(equipment.id)}" data-action="delete">Delete</button>
     </div>
   `;
   return card;
@@ -685,7 +686,7 @@ function displayStorageItems(storageId) {
   const storage = inventoryData.storageContainers.find(s => s.id === storageId);
   if (!storage) return;
   
-  const container = document.getElementById(`storage_${storageId}_items`);
+  const container = document.getElementById(`${storageId}_items`);
   const data = storage.items;
   
   container.innerHTML = '';
@@ -1028,7 +1029,26 @@ function showRefillPopup(itemId, container) {
   document.getElementById('refill_qty').value = 1;
   document.getElementById('refill_purchased').checked = true;
   document.getElementById('refill_cost').value = item.value || '';
-  document.getElementById('refill_currency').value = 'gp';
+
+  // Populate currency dropdown with all available currencies
+  const currencySelect = document.getElementById('refill_currency');
+  currencySelect.innerHTML = `
+    <option value="gp">Gold (gp)</option>
+    <option value="sp">Silver (sp)</option>
+    <option value="cp">Copper (cp)</option>
+    <option value="ep">Electrum (ep)</option>
+  `;
+  document.querySelectorAll('#custom_currency_rows .custom-currency-row').forEach(row => {
+    const name = row.querySelector('.custom-currency-name')?.value?.trim();
+    if (name) {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      currencySelect.appendChild(opt);
+    }
+  });
+  currencySelect.value = 'gp';
+
   document.getElementById('refill_cost_section').style.display = 'block';
   updateRefillTotalCost();
   showPopup('refillPopup');
@@ -1105,31 +1125,33 @@ function confirmRefill() {
 
 // Deduct currency from inventory fields — tries to deduct in-kind, no auto-conversion
 function deductCurrency(amount, currency) {
-  const cpEl = document.getElementById('currency_cp');
-  const spEl = document.getElementById('currency_sp');
-  const gpEl = document.getElementById('gold_field');
-  if (!cpEl || !spEl || !gpEl) return false;
+  const fieldMap = { gp: 'gold_field', sp: 'currency_sp', cp: 'currency_cp', ep: 'currency_ep' };
 
-  let cp = parseFloat(cpEl.value) || 0;
-  let sp = parseFloat(spEl.value) || 0;
-  let gp = parseFloat(gpEl.value) || 0;
-
-  if (currency === 'gp') {
-    if (gp < amount) return false;
-    gp = parseFloat((gp - amount).toFixed(2));
-    gpEl.value = gp;
-  } else if (currency === 'sp') {
-    if (sp < amount) return false;
-    sp = parseFloat((sp - amount).toFixed(2));
-    spEl.value = sp;
-  } else if (currency === 'cp') {
-    if (cp < amount) return false;
-    cp = parseFloat((cp - amount).toFixed(2));
-    cpEl.value = cp;
+  if (fieldMap[currency]) {
+    const el = document.getElementById(fieldMap[currency]);
+    if (!el) return false;
+    const current = parseFloat(el.value) || 0;
+    if (current < amount) return false;
+    el.value = parseFloat((current - amount).toFixed(2));
+    autosave();
+    return true;
   }
 
-  autosave();
-  return true;
+  // Custom currency — find by name in the custom rows
+  const rows = document.querySelectorAll('#custom_currency_rows .custom-currency-row');
+  for (const row of rows) {
+    const nameInput = row.querySelector('.custom-currency-name');
+    const amountInput = row.querySelector('.custom-currency-amount');
+    if (nameInput && amountInput && nameInput.value.trim().toLowerCase() === currency.toLowerCase()) {
+      const current = parseFloat(amountInput.value) || 0;
+      if (current < amount) return false;
+      amountInput.value = parseFloat((current - amount).toFixed(2));
+      autosave();
+      return true;
+    }
+  }
+
+  return false;
 }
 
 // ========== CONDITIONS SYSTEM ==========
@@ -1153,13 +1175,14 @@ function addCondition() {
   }
   
   const conditionId = Date.now();
+  const esc = typeof escapeHtml === 'function' ? escapeHtml : (s => String(s));
   const conditionHTML = `
     <div class="condition ${color}" id="condition_${conditionId}">
       <div class="condition-header">
-        <span>${name}</span>
-        <span class="condition-turns">${turns ? turns + ' turns' : 'Indefinite'}</span>
+        <span>${esc(name)}</span>
+        <span class="condition-turns">${turns ? esc(turns) + ' turns' : 'Indefinite'}</span>
       </div>
-      <div>${effect}</div>
+      <div>${esc(effect)}</div>
       <button onclick="removeCondition('${conditionId}')" style="float:right; padding:2px 5px; margin-top:5px;">Remove</button>
     </div>
   `;

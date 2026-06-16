@@ -187,10 +187,50 @@ Every spell object is normalised through `normalizeSpellRecord()` on load — al
 - **Notes page is JS-rendered** — `pages/notes.html` contains only the shell markup (toolbar, grid containers, popups). All folder and card elements are built by `renderNoteFolders()` / `renderNoteCards()` in `core.js`. Do not add static note content to the HTML.
 - **Notes `isDefault` must be preserved through save/load** — both folder and card objects carry `isDefault: boolean`. The autosave block and the load block both map this flag explicitly. If you add new fields to the notes data shape, update both the save block (`page6 = { noteFolders: ... }`) and the load block in `loadData()`.
 - **Notes delete is multi-step** — uses `notesHandleDelete(id, btn, onConfirm)` with state tracked in `notesDeleteState`. Pattern: Delete → Sure? → Wait 3s… → Confirm. Do not replace with `confirm()` dialogs.
+- **`.section:hover` and `.home-card:hover` do NOT use `transform: translateY`** — the lift was removed because it caused jitter whenever any input inside the section was hovered (inputs have their own hover transform). The hover state only adjusts `box-shadow` now. Do not re-add `translateY` to these selectors.
+- **`input:hover` has a `translateY(-1px)` lift** — suppressed for `.skill-row input` and `input[readonly]` via an override rule. If you add new read-only or dense-layout inputs that shouldn't lift, add them to that override group.
 - **Never use `transition: all` in styles.css** — it causes all elements to animate colour/border/background at different stagger offsets when the accent colour changes, making the UI look broken. Always use explicit per-property transitions: `background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.3s ...`
 - **CSS `url()` inside custom properties doesn't work** — browsers store the string literally and never resolve relative paths. The background image system uses an injected `<style>` tag instead of `--bg-image` on `body::before`. Don't revert this to a CSS variable approach.
 - **`html.has-bg-image` not `body.has-bg-image`** — the class must go on `<html>` because the early-boot script in `<head>` runs before `<body>` exists. `document.body` is `null` at that point.
 - **Roboto is loaded from Google Fonts** — `index.html` includes a `<link>` to `fonts.googleapis.com`. All other font options are system fonts and work offline. If Roboto is selected and the user is offline, the browser falls back to the system sans-serif gracefully.
+
+## Section Help System
+
+Every `.section` and `.home-card` has a `?` button (`.section-help-btn`) positioned `absolute` at `top:10px; right:10px`. Clicking it opens a `.section-help-panel` overlay that covers the entire section box. The panel uses `position: absolute; top/left/right/bottom: 0` so it floats over the content without pushing it down.
+
+- `toggleHelp(btn)` — defined in `app.js`. Closes any other open panel, then opens the one after `btn`. Both live in `app.js`.
+- `closeHelp(panel)` — defined in `app.js`. Called by `onclick="closeHelp(this)"` on every panel for tap-to-close.
+- Outside-click listener in `app.js` closes any open panel when clicking elsewhere.
+- `.section` and `.home-card` both have `position: relative` so the absolute button and panel are scoped inside them.
+- Panel background is `rgba(14, 12, 10, 0.96)` — near-opaque dark, readable over any background image.
+- **Adding a help panel to a new section:** add `<button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>` as the first child of the `.section`, immediately followed by `<div class="section-help-panel" onclick="closeHelp(this)">...</div>`.
+- Help panels exist on all sections of: `pages/stats.html`, `pages/spells.html`, `pages/inventory.html`, `pages/background.html`, `pages/notes.html`, `pages/settings.html`.
+
+## Skills Auto-Math System
+
+Skill rows (`pages/stats.html`) have three interactive elements per row:
+1. **Checkbox** (`prof_<skill>`) — proficiency toggle
+2. **Total input** (`bonus_<skill>`) — read-only, auto-calculated by `calculateSkillBonus()`. Display order: **left**.
+3. **Adj input** (`adj_<skill>`) — manual adjustment (item bonuses, expertise, etc.). Display order: **right**. Created dynamically by `setupSkillCalculationFields()` via `row.appendChild(adjInput)`.
+
+The adj input is inserted by JS, not present in the HTML. It is saved as `page1.skills.adj_<skill>` and loaded back in `loadData()`. If you change the insertion method, verify the load path still finds `#adj_<skill>` correctly.
+
+Ability bonus fields (`str_bonus` etc.) and `prof_bonus` are **read-only** — auto-calculated from scores and level. The `bindAutoMathOverrideInputs()` function still exists but its overrides are intentionally not used (ability score overrides were removed as a design decision — use skill adj inputs instead).
+
+Persisted override flags in `page1.combatStats`: `initiativeOverride`, `passivePerceptionOverride`, `profBonusOverride`, `abilityBonusOverrides` — these survive refresh. The `profBonusOverride` and `abilityBonusOverrides` fields are new (added 2026-06-16); old saves that don't have them default to `false` (all auto), which is correct.
+
+## Rest → Resource Reset
+
+`longRest()` in `health.js` calls `resetSpellSlots('long')` and `resetCustomResources('long')` before `autosave()`. `shortRest()` calls `resetSpellSlots('short')` and `resetCustomResources('short')`. Both use guard checks (`typeof fn === 'function'`) so they degrade gracefully if spells.js isn't loaded. The non-`'all'` code paths in `resetSpellSlots` and `resetCustomResources` never show a confirm dialog — they reset silently based on each slot's `resetType` field.
+
+## Storage Container ID Convention
+
+Container item list elements are created with `id="${storage.id}_items"` (in `loadStorageContainers()`). `displayStorageItems(storageId)` looks up `${storageId}_items`. Weight displays use `${storage.id}_weight`. Do not add a `storage_` prefix — that was a prior bug that has been fixed.
+
+## Known Vestigial Code
+
+- `saveActions()` / `loadActions()` in `actions.js` — write to `dndActions` localStorage key. This is a legacy path; the real save/load goes through `core.js` `page1.actionsData`. The `dndActions` key is harmless but redundant. Do not remove `saveActions()` calls from `actions.js` without also removing the `loadActions()` call in `initializeActions()` — they must stay in sync or actions appear to load from stale data.
+- `dndInventory` localStorage key — similarly legacy. Real inventory data is in `page1.inventoryData` inside the character blob.
 
 ## Working Efficiently
 
@@ -211,3 +251,34 @@ grep -rn "function targetName" assets/
 - `notesHandleDelete(id, btn, onConfirm)` — shared multi-step delete handler for both folders and cards. Manages state in `notesDeleteState[id]`.
 - `FONT_OPTIONS` — array in `core.js` defining available font choices. Must stay in sync with the `fontMap` in `index.html` early-boot script and the `<select>` in `pages/settings.html`.
 - `manualSpellSlots` — array of spell slot objects; order in the array is the display order. Drag-reorder mutates this array directly.
+
+## End-of-Session Changelog Checklist
+
+**IMPORTANT — always do this before the session ends or when the user mentions pushing, deploying, or finishing up.**
+
+When the user says anything like "push", "deploy", "we're done", "wrap up", "commit", or "ship it" — stop and prompt them with the following checklist before they go:
+
+> "Before you push, checklist:
+> 1. Run `node tools/update-changelog.js` — it'll ask for version bump, title, and bullet points, then writes `changelog.js` automatically
+> 2. Bump `scriptVersion` in `index.html` (I can do this for you — just say the word)
+> 3. Commit `assets/changelog.js` and `index.html` alongside your other changes
+>
+> Want me to draft the changelog bullet points based on what we did this session?"
+
+Also offer to draft the bullet points yourself — you know exactly what changed during the session, so give the user a ready-to-paste list of updates and fixes, grouped correctly, that they can confirm or edit before running the script.
+
+The changelog file is `assets/changelog.js`. Version lives in `CHANGELOG_LATEST_VERSION`. New entries go at the top of the `CHANGELOG` array. The script at `tools/update-changelog.js` handles the write automatically.
+
+### Changelog system notes
+- `CHANGELOG_LATEST_VERSION` in `changelog.js` is the single source of truth for the current version number
+- The hero title in `pages/home.html` has a `<span id="heroVersion">` — populated by `initChangelog()` on page load, always stays in sync with the version constant
+- Home page shows last 5 changelog entries by default — "view all" toggle appears only when there are 6+ entries
+- `COMING_SOON` array in `changelog.js` must only be declared once — duplicate declarations cause a SyntaxError that crashes the entire page
+
+### Home page grid layout
+- `.home-grid` uses `repeat(3, 1fr)` at base — three equal columns on desktop
+- Row 1: `.character-manager-card` (order 1) + `.quick-start-card` (order 2) + `.suggestion-card` (order 3)
+- Row 2+: `.features-card`, `.changelog-card`, `.tips-card` — all `grid-column: 1 / -1` (full width)
+- At 1024px: drops to 2 columns, `.suggestion-card` goes `grid-column: 1 / -1` so it sits below the pair
+- At 768px: single column, everything stacks in order
+- Do not add `grid-template-columns` to `.home-grid` elsewhere — the cascade is intentional and breakpoints are set in three places only: base rule (~line 3509), 1024px media query (~line 3595), 768px media query (~line 4764)

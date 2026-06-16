@@ -610,19 +610,19 @@ function isFavorited(type, spellName) {
 }
 
 // Clear all spells with 3-press confirmation
-function clearAllSpells(type) {
+function clearAllSpells(type, event) {
   const currentCount = clearAllConfirmations[type];
   const requiredPresses = 3;
-  
+
   // Increment the confirmation count
   clearAllConfirmations[type]++;
-  
+
   if (clearAllConfirmations[type] < requiredPresses) {
     const remaining = requiredPresses - clearAllConfirmations[type];
     const typeName = type === 'cantrip' ? 'Cantrips' : 'Spells';
-    
+
     // Update button text to show progress
-    const button = event.target;
+    const button = (event && event.target) || document.querySelector(`.clear-all-btn[onclick*="${type}"]`);
     const originalText = button.textContent;
     button.textContent = `Clear All ${typeName} (${remaining} more clicks)`;
     button.style.backgroundColor = '#ff6666';
@@ -1063,14 +1063,18 @@ function showSpellForm(type, spellIndex = null) {
     // Edit existing spell
     const spell = type === 'cantrip' ? spellsData.cantrips[spellIndex] : spellsData.spells[spellIndex];
     title.textContent = 'Edit Spell';
+    form.dataset.editIndex = spellIndex;
+    form.dataset.editType = type;
     populateSpellForm(spell);
   } else {
     // Add new spell
     title.textContent = type === 'cantrip' ? 'Add Cantrip' : 'Add Spell';
+    delete form.dataset.editIndex;
+    delete form.dataset.editType;
     form.reset();
     document.getElementById('spellLevel').value = type === 'cantrip' ? '0' : '1';
   }
-  
+
   showPopup('spellFormPopup');
 }
 
@@ -1116,20 +1120,27 @@ function saveSpell(event) {
   };
   
   const isCantrip = spell.level === 0;
-  const spellArray = isCantrip ? spellsData.cantrips : spellsData.spells;
-  
-  // Check if editing existing spell
-  const formTitle = document.getElementById('spellFormTitle').textContent;
-  if (formTitle.includes('Edit')) {
-    // Find and update existing spell
-    const spellName = document.getElementById('spellName').value;
-    const index = spellArray.findIndex(s => s.name === spellName);
-    if (index !== -1) {
-      spellArray[index] = spell;
+  const form = document.getElementById('spellForm');
+  const editIndex = form.dataset.editIndex !== undefined ? parseInt(form.dataset.editIndex, 10) : null;
+  const editType = form.dataset.editType || null;
+
+  if (editIndex !== null && editType !== null) {
+    // Edit existing spell — use stored index, handles renames correctly
+    const sourceArray = editType === 'cantrip' ? spellsData.cantrips : spellsData.spells;
+    if (editIndex >= 0 && editIndex < sourceArray.length) {
+      // If level changed between cantrip (0) and spell (1+), move between arrays
+      if ((editType === 'cantrip') === isCantrip) {
+        sourceArray[editIndex] = spell;
+      } else {
+        sourceArray.splice(editIndex, 1);
+        (isCantrip ? spellsData.cantrips : spellsData.spells).push(spell);
+      }
     }
+    delete form.dataset.editIndex;
+    delete form.dataset.editType;
   } else {
     // Add new spell
-    spellArray.push(spell);
+    (isCantrip ? spellsData.cantrips : spellsData.spells).push(spell);
   }
   
   renderSpells();

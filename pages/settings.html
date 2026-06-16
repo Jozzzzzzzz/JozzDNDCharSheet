@@ -8,6 +8,16 @@
 
   <div class="home-grid settings-grid">
     <div class="home-card settings-card">
+      <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
+      <div class="section-help-panel" onclick="closeHelp(this)">
+        <p><strong>Appearance</strong> — controls how the whole app looks.</p>
+        <p><strong>Dark / Light mode</strong> — toggle between dark (default) and light themes. The first time you try light mode, you'll get a friendly warning — click again within 60 seconds to confirm.</p>
+        <p><strong>Background Image</strong> — set a full-screen background behind the panels. Choose from presets (forest, tavern, dungeon, etc.), upload your own image file, or paste a URL. Click Remove Background to go back to plain.</p>
+        <p><strong>Accent Color</strong> — changes the highlight colour used for borders, buttons, headers, and active elements across the whole app. Pick any colour you like.</p>
+        <p><strong>Text Size</strong> — use A− / A+ or the slider to scale all text globally. Range is 85%–140%. Useful for larger screens or accessibility.</p>
+        <p><strong>Font Style</strong> — choose from 9 font options. All are built-in system fonts (except Roboto which loads from Google Fonts) — they work offline.</p>
+        <p>All appearance settings are saved to your browser and persist across sessions.</p>
+      </div>
       <div class="card-header">
         <h3>Appearance</h3>
         <p>Theme and accent controls</p>
@@ -89,6 +99,16 @@
     </div>
 
     <div class="home-card settings-card">
+      <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
+      <div class="section-help-panel" onclick="closeHelp(this)">
+        <p><strong>Account and Cloud Sync</strong> — sign in with Google to keep your characters backed up and synced across devices.</p>
+        <p><strong>Sign In with Google</strong> — links your characters to your Google account. No password needed — uses Google's secure sign-in.</p>
+        <p>Once signed in, every change auto-syncs to the cloud within a few seconds. You can open the sheet on any device and your characters will be there.</p>
+        <p><strong>Sync Up Now</strong> — manually push your current local data to the cloud. Use this if you've made changes offline and want to force an immediate upload.</p>
+        <p><strong>Sync Down Now</strong> — pull the latest cloud data down to this device. Use this if another device made changes and you want them here now without waiting.</p>
+        <p><strong>Sign Out</strong> — disconnects this device from your account. Your local character data stays on the device — it is not deleted. You can sign back in at any time.</p>
+        <p>Sync happens automatically in the background — you don't need to press any button during normal play.</p>
+      </div>
       <div class="card-header">
         <h3>Account and Cloud Sync</h3>
         <p>Automatic cross-device syncing</p>
@@ -109,6 +129,14 @@
     </div>
 
     <div class="home-card settings-card">
+      <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
+      <div class="section-help-panel" onclick="closeHelp(this)">
+        <p><strong>Data and Backup</strong> — manual tools for saving, exporting, and importing your character data.</p>
+        <p><strong>Save Data</strong> — forces an immediate save of all character data to your browser's local storage. Normally saves happen automatically every few seconds — use this button if you want to be certain.</p>
+        <p><strong>Export Character</strong> — downloads your currently loaded character as a JSON file to your device. Use this as a backup before making big changes, or to move a character to another device without cloud sync. Keep these files somewhere safe.</p>
+        <p><strong>Import Character</strong> — loads a character from a previously exported JSON file. The imported character is added to your character list — it does not overwrite existing characters.</p>
+        <p>If cloud sync is enabled, exports are still useful as a local backup that doesn't depend on Google or the internet.</p>
+      </div>
       <div class="card-header">
         <h3>Data and Backup</h3>
         <p>Manual backup tools kept as fallback</p>

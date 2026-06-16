@@ -2,6 +2,12 @@
   <div class="page" id="page1">
 <!-- Character Basic Info -->
 <div class="section character-info-section" style="margin-bottom: 15px;">
+  <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
+  <div class="section-help-panel" onclick="closeHelp(this)">
+    <p><strong>Character Info</strong> — your character's identity at a glance.</p>
+    <p><strong>Name / Race / Background / Class / Subclass</strong> — free-text fields, fill in whatever your character sheet says.</p>
+    <p><strong>Level</strong> — entering your level automatically updates your Proficiency Bonus in the Ability Scores box below. All proficiency-based calculations (saves, skills, spell DC) update instantly.</p>
+  </div>
   <h2>Character Info</h2>
   <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px;">
     <div>
@@ -34,6 +40,17 @@
       
       <!-- Ability Scores -->
       <div class="section">
+        <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
+        <div class="section-help-panel" onclick="closeHelp(this)">
+          <p><strong>Ability Scores</strong> — the six core stats that drive everything.</p>
+          <p>Enter the raw score (e.g. 16) and the <strong>Bonus</strong> field calculates automatically: (score − 10) ÷ 2, rounded down. A 16 STR gives +3, a 9 DEX gives −1.</p>
+          <p><strong>Combat Stats</strong> below auto-fill from your scores:</p>
+          <p>— <strong>Initiative</strong> = DEX bonus. Type to override (e.g. Alert feat adds +5).</p>
+          <p>— <strong>Proficiency Bonus</strong> = your level (levels 1–4: +2, 5–8: +3, 9–12: +4, 13–16: +5, 17–20: +6). Read-only.</p>
+          <p>— <strong>Passive Perception</strong> = 10 + Perception bonus. Type to override, use ↺ to reset.</p>
+          <p>— <strong>AC</strong> and <strong>Speed</strong> are manual — enter from your equipment and race.</p>
+          <p><strong>Saving Throws</strong> — auto-calculated from ability bonus + proficiency if the checkbox is ticked. Tick it if your class grants proficiency in that save.</p>
+        </div>
         <h2>Ability Scores</h2>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div class="ability-row">
@@ -194,6 +211,14 @@
       <!-- Skills -->
       <div class="section">
         <h2>Skills</h2>
+        <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
+        <div class="section-help-panel" onclick="closeHelp(this)">
+          <p><strong>Skills</strong> — your character's trained abilities, each tied to one of the six ability scores.</p>
+          <p><strong>Checkbox</strong> — tick if your class or background grants proficiency in this skill. Adds your Proficiency Bonus to the total.</p>
+          <p><strong>Total</strong> (left box, read-only) — auto-calculated: ability modifier + proficiency bonus (if proficient). Updates automatically whenever your scores or level change.</p>
+          <p><strong>Adj</strong> (right box) — your manual adjustment. Use this for item bonuses, spell effects, Bard's Jack of All Trades, Expertise, or any situational modifier. Positive or negative, e.g. +2 or −1.</p>
+          <p>The total shown is what you roll for skill checks unless you have a special modifier from a feature.</p>
+        </div>
         <div class="skills-container">
           <div class="skill-row">
             <input id="prof_acrobatics" oninput="autosave()" type="checkbox"/>
@@ -290,6 +315,17 @@
       
       <!-- Health -->
       <div class="section health-section">
+        <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
+        <div class="section-help-panel" onclick="closeHelp(this)">
+          <p><strong>Health</strong> — track your HP, death saves, rests, hit dice, and potions.</p>
+          <p><strong>Max HP / Current HP</strong> — enter max from your class and CON modifier. Current HP updates live. Use +1/−1 buttons or Custom for damage and healing.</p>
+          <p><strong>Temp HP</strong> — managed separately via the Custom button. Damage hits temp HP first; it doesn't stack with other temp HP sources.</p>
+          <p><strong>Death Saves</strong> — click the circles to track successes (3 = stabilise) and failures (3 = dead). Reset automatically on Long Rest.</p>
+          <p><strong>Short Rest</strong> — spend hit dice to recover HP. Enter how many to spend and click Short Rest. Resets short-rest spell slots and resources.</p>
+          <p><strong>Long Rest</strong> — fully restores HP and death saves. Resets all spell slots and resources that recover on long rest.</p>
+          <p><strong>Hit Dice Recovery</strong> — choose your hit die size (from your class) and how many to spend. CON modifier is auto-synced from your CON score above.</p>
+          <p><strong>Health Potions</strong> — select a potion type, click Use Potion three times to confirm. Rolls the dice and applies healing automatically.</p>
+        </div>
         <h2>Health</h2>
         
         <div class="health-container">
@@ -407,6 +443,12 @@
       
       <!-- Proficiencies & Training (swapped with Conditions) -->
       <div class="section">
+        <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
+        <div class="section-help-panel" onclick="closeHelp(this)">
+          <p><strong>Proficiencies & Training</strong> — a free-text notepad for everything your character is trained in.</p>
+          <p>Use it to list: weapon and armour proficiencies, tool proficiencies (e.g. Thieves' Tools, Herbalism Kit), languages, and any special training from your background or class.</p>
+          <p>This is a reference field only — it doesn't affect any calculations. Keep it as brief or detailed as you like.</p>
+        </div>
         <h2>Proficiencies & Training</h2>
         <textarea id="proficiencies_training" class="basic-textarea notes-textarea"
                   oninput="autosave()" placeholder="List your proficiencies, tools, languages, and special training..."
@@ -416,6 +458,14 @@
     
     <!-- Actions & Features -->
     <div class="section actions-features-section">
+      <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
+      <div class="section-help-panel" onclick="closeHelp(this)">
+        <p><strong>Actions & Features</strong> — your character's combat actions, reactions, and class/racial features.</p>
+        <p><strong>Add Action</strong> — for things you do on your turn: attacks, spells cast as actions, class abilities. Fill in name, damage, range, and notes.</p>
+        <p><strong>Add Feature</strong> — for passive or triggered features: class abilities, racial traits, feats. No damage needed.</p>
+        <p><strong>Favourite Actions</strong> — star any action or feature to pin it to the top for quick reference during combat.</p>
+        <p><strong>Actions Notes</strong> — free-text area for extra detail, combo reminders, or anything that doesn't fit a card.</p>
+      </div>
       <h2>Actions & Features</h2>
       
       <!-- Favorites Section -->
@@ -450,6 +500,12 @@
     <div class="horizontal-sections">
         <!-- Weapons -->
          <div class="section">
+           <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
+           <div class="section-help-panel" onclick="closeHelp(this)">
+             <p><strong>Weapons</strong> — your equipped weapons and their attack details.</p>
+             <p>Add each weapon with its name, damage dice (e.g. 1d8+3), attack bonus, damage type, range, and any notes (e.g. "silvered", "magic +1").</p>
+             <p>Attack bonus is usually: Proficiency Bonus + STR modifier (melee) or DEX modifier (ranged/finesse). Weapons show up as a quick-reference list during play.</p>
+           </div>
            <h2>Weapons</h2>
            <div class="weapons-controls">
              <button onclick="showWeaponsForm()">+ Add Weapon</button>
@@ -461,6 +517,13 @@
             
          <!-- Equipment -->
          <div class="section">
+           <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
+           <div class="section-help-panel" onclick="closeHelp(this)">
+             <p><strong>Equipment</strong> — armour, shields, and worn gear that affects your combat stats.</p>
+             <p>This list is <strong>synced with the Inventory page</strong> — anything added here appears there too, and vice versa.</p>
+             <p>Add items with their AC bonus/value and weight. Use the Notes button to store details like attunement, properties, or lore.</p>
+             <p>Total equipment weight is tracked at the bottom.</p>
+           </div>
            <h2>Equipment (synced to inventory page)</h2>
            <div class="equipment-controls">
              <button onclick="showEquipmentForm()">+ Add Equipment</button>
@@ -498,7 +561,14 @@
 
       <!-- Conditions (swapped with Proficiencies & Training) -->
       <div class="section">
-        <h2>Long Term Conditions 
+        <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
+        <div class="section-help-panel" onclick="closeHelp(this)">
+          <p><strong>Long Term Conditions</strong> — persistent status effects on your character.</p>
+          <p>Use this for conditions from spells, diseases, curses, or ongoing effects: Poisoned, Blinded, Charmed, Restrained, etc.</p>
+          <p>Each condition card shows its name, how many turns it lasts (or Indefinite), and a description of the effect. Click Remove when it ends.</p>
+          <p>Conditions are saved with your character and persist across sessions.</p>
+        </div>
+        <h2>Long Term Conditions
           <button onclick="showConditionPopup()" style="float: right; padding: 2px 6px; font-size: 0.8rem;">+ Add</button>
         </h2>
         <div id="conditions_container">
@@ -508,6 +578,12 @@
 
       <!-- Quick Notes -->
       <div class="section quick-notes-section">
+        <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
+        <div class="section-help-panel" onclick="closeHelp(this)">
+          <p><strong>Quick Notes</strong> — a scratchpad for anything that doesn't have its own field.</p>
+          <p>Good uses: reminders about class features, things to ask your DM, current quest objectives, spell concentration reminders, NPC names, or anything you need to jot mid-session.</p>
+          <p>This is a free-text area — no formatting, just type. Saved with your character automatically.</p>
+        </div>
         <h2>Quick Notes</h2>
         <textarea id="stats_quick_notes" class="basic-textarea notes-textarea"
                   oninput="autosave()" placeholder="Jot down quick notes here..."></textarea>

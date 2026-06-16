@@ -274,7 +274,7 @@ function activateRoute() {
 })();
 
 async function bootstrapModularApp() {
-  const scriptVersion = '20260611e-slot-ghost-drag';
+  const scriptVersion = '20260617e-v1-home-polish';
   const [chrome, home, settings, stats, background, spells, inventory, notes, popups] = await Promise.all([
     loadText('partials/chrome.html'),
     loadText('pages/home.html'),
@@ -304,6 +304,7 @@ async function bootstrapModularApp() {
     'assets/modules/inventory.js',
     'assets/modules/spells.js',
     'assets/modules/admin.js',
+    'assets/changelog.js',
     'assets/app.js'
   ];
 

@@ -262,7 +262,7 @@ function setupSkillCalculationFields() {
       adjInput.className = 'skill-adjust-input';
       adjInput.placeholder = '+0';
       adjInput.value = '+0';
-      row.insertBefore(adjInput, totalInput);
+      row.appendChild(adjInput);
     }
 
     if (adjInput.dataset.skillAdjustBound !== '1') {

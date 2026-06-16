@@ -13,7 +13,9 @@
 <!-- Data Controls -->
 <div class="header-bar">
   <!-- Home Button -->
-  <button onclick="showHomePage()" class="accent-contrast-bg header-btn" title="Home">Home</button>
+  <button onclick="showHomePage()" class="accent-contrast-bg header-btn home-header-btn" title="Home">
+    Home<span id="homeNewBadge" class="home-new-badge" style="display:none;">NEW</span>
+  </button>
   <button onclick="openSettingsPage()" class="accent-contrast-bg header-btn" title="Settings">Settings</button>
   <button onclick="manualSave(this)" class="accent-contrast-bg header-btn" title="Save &amp; sync now">Save</button>
 

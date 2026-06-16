@@ -151,6 +151,17 @@ async function adminRefreshUsers() {
 
 window.adminRefreshUsers = adminRefreshUsers;
 
+async function adminLoadUserChars(uid) {
+  const db = window.db;
+  if (!db) throw new Error('Firestore not ready');
+  const snap = await db.collection('userData').doc(uid).collection('characters').get();
+  const chars = [];
+  snap.forEach(doc => chars.push({ id: doc.id, ...doc.data() }));
+  // Sort by name for consistent display
+  chars.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+  return chars;
+}
+
 async function adminSelectUser(uid) {
   const meta = document.getElementById('adminUserMeta');
   const out = document.getElementById('adminUserCharacters');
@@ -170,48 +181,40 @@ async function adminSelectUser(uid) {
   if (!db || !out) return;
 
   try {
-    const doc = await db.collection('userData').doc(uid).get();
-    if (!doc.exists) {
-      out.innerHTML = '<p class="settings-note">No cloud data for this user yet.</p>';
-      return;
-    }
-    const data = doc.data() || {};
-    const chars = Array.isArray(data.characters) ? data.characters : [];
+    const chars = await adminLoadUserChars(uid);
     if (!chars.length) {
       out.innerHTML = '<p class="settings-note">No characters found for this user.</p>';
       return;
     }
 
-    const rows = chars.map((c, idx) => {
+    const container = document.createElement('div');
+    chars.forEach(c => {
       const info = c?.data?.characterInfo || {};
       const name = info.name || c.name || 'Unnamed';
       const race = info.race || '';
       const klass = info.class || '';
       const subclass = info.subclass || '';
       const level = info.level || '';
-      return { idx, name, race, klass, subclass, level };
-    });
+      const charId = c.id;
 
-    const container = document.createElement('div');
-    rows.forEach(r => {
       const line = document.createElement('div');
       line.className = 'settings-text-preview-row';
-      line.innerHTML = `<span class="settings-preview-tag">${escapeHtml(r.name)}</span>
-        <span class="settings-note">${escapeHtml([r.race, r.klass, r.subclass, r.level ? ('Lv ' + r.level) : ''].filter(Boolean).join(' | '))}</span>`;
+      line.innerHTML = `<span class="settings-preview-tag">${escapeHtml(name)}</span>
+        <span class="settings-note">${escapeHtml([race, klass, subclass, level ? ('Lv ' + level) : ''].filter(Boolean).join(' | '))}</span>`;
 
       const previewBtn = document.createElement('button');
       previewBtn.type = 'button';
       previewBtn.className = 'settings-action-btn accent-contrast-bg';
       previewBtn.style.maxWidth = '200px';
       previewBtn.textContent = 'Preview (Read Only)';
-      previewBtn.onclick = () => adminPreviewCharacter(uid, r.idx);
+      previewBtn.onclick = () => adminPreviewCharacter(uid, charId);
 
       const importBtn = document.createElement('button');
       importBtn.type = 'button';
       importBtn.className = 'settings-action-btn accent-contrast-bg';
       importBtn.style.maxWidth = '200px';
       importBtn.textContent = 'Import Copy';
-      importBtn.onclick = () => adminImportCharacter(uid, r.idx);
+      importBtn.onclick = () => adminImportCharacter(uid, charId);
 
       const btnRow = document.createElement('div');
       btnRow.className = 'settings-text-preview-row';
@@ -228,19 +231,18 @@ async function adminSelectUser(uid) {
     out.appendChild(container);
   } catch (e) {
     console.error(e);
-    out.innerHTML = '<p class="settings-note">Cannot read user data. If you want admin import/preview, update Firestore rules to allow admin read on `userData/{userId}`.</p>';
+    out.innerHTML = '<p class="settings-note">Cannot read user data. Check Firestore rules allow admin read on <code>userData/{userId}/characters</code>.</p>';
   }
 }
 
 window.adminSelectUser = adminSelectUser;
 
-async function adminImportCharacter(uid, charIndex) {
+async function adminImportCharacter(uid, charId) {
   const db = window.db;
   if (!db) return;
-  const doc = await db.collection('userData').doc(uid).get();
-  const data = doc.data() || {};
-  const chars = Array.isArray(data.characters) ? data.characters : [];
-  const src = chars[charIndex];
+  const doc = await db.collection('userData').doc(uid).collection('characters').doc(charId).get();
+  if (!doc.exists) return;
+  const src = { id: doc.id, ...doc.data() };
   if (!src) return;
 
   const users = window.__adminUsersByUid || {};
@@ -262,13 +264,12 @@ window.adminImportCharacter = adminImportCharacter;
 
 let adminPreviewSnapshot = null;
 
-async function adminPreviewCharacter(uid, charIndex) {
+async function adminPreviewCharacter(uid, charId) {
   const db = window.db;
   if (!db) return;
-  const doc = await db.collection('userData').doc(uid).get();
-  const data = doc.data() || {};
-  const chars = Array.isArray(data.characters) ? data.characters : [];
-  const src = chars[charIndex];
+  const doc = await db.collection('userData').doc(uid).collection('characters').doc(charId).get();
+  if (!doc.exists) return;
+  const src = { id: doc.id, ...doc.data() };
   if (!src) return;
 
   if (!adminPreviewSnapshot) {

@@ -9,6 +9,18 @@
 //   inventory.js   — inventory, equipment, containers, conditions
 //   spells.js      — spell list, spell slots, custom resources, favorites
 
+function toggleHelp(btn) {
+  const panel = btn.nextElementSibling;
+  if (!panel || !panel.classList.contains('section-help-panel')) return;
+  const isOpen = panel.classList.contains('open');
+  document.querySelectorAll('.section-help-panel.open').forEach(p => p.classList.remove('open'));
+  if (!isOpen) panel.classList.add('open');
+}
+
+function closeHelp(panel) {
+  panel.classList.remove('open');
+}
+
 // Unique weapon popup helpers (weaponsData is declared in characters.js)
 function showWeaponsPopup() {
   const tbody = document.getElementById('weapons_table_popup').querySelector('tbody');
@@ -154,6 +166,17 @@ window.initializeApp = function() {
   bindGlobalAutosaveListeners();
   rollBannerMessage();
   setInterval(rollBannerMessage, 60000);
+
+  if (typeof initChangelog === 'function') initChangelog();
+
+  // Close any open help panels when clicking outside them
+  document.addEventListener('click', e => {
+    if (!e.target.classList.contains('section-help-btn')) {
+      document.querySelectorAll('.section-help-panel.open').forEach(panel => {
+        if (!panel.contains(e.target)) panel.classList.remove('open');
+      });
+    }
+  });
   setTimeout(() => {
     applyFlexWrapSizing();
     syncSpellPanels();

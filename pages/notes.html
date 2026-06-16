@@ -3,9 +3,19 @@
 
     <!-- Folder view (top level) -->
     <div id="notesFolderView">
-      <div class="notes-page-header">
+      <div class="notes-page-header" style="position:relative;">
         <h2 class="notes-page-title">Notes</h2>
-        <p class="notes-page-desc">Your notes are organised into <strong>folders</strong>. Click a folder to open it and see its note cards. Inside a folder, click any card to open a full editor where you can write as much as you like. Use <strong>+ Add Folder</strong> to create new folders, and <strong>+ Add Card</strong> inside a folder to add new notes. Hit <strong>Reorder</strong> to drag cards or folders into any order, or delete ones you no longer need. Everything saves automatically.</p>
+        <button class="section-help-btn" onclick="toggleHelp(this)" title="How notes work" style="position:absolute;top:0;right:0;">?</button>
+        <div class="section-help-panel" onclick="closeHelp(this)" style="border-radius:8px;">
+          <p><strong>Notes</strong> — your campaign journal, organised into folders and cards.</p>
+          <p><strong>Folders</strong> — the top-level grid you see here. Each folder is a category. Click any folder to open it and see its cards. Default folders include Quests, NPCs, Locations, Loot, Party, World, Combat, Downtime, Secrets, and Misc.</p>
+          <p><strong>Cards</strong> — inside a folder, each card is a separate note. Click a card to open the full editor and write as much as you like. The card title and body both save automatically as you type.</p>
+          <p><strong>+ Add Folder</strong> — creates a new custom folder. Name it anything (e.g. "Gods & Religion", "Merchant Contacts", "House Rules").</p>
+          <p><strong>+ Add Card</strong> — inside a folder, adds a new note card. Give it a title to find it quickly later.</p>
+          <p><strong>Reorder</strong> — drag folders (or cards inside a folder) into any order you like. Click Reorder again to exit.</p>
+          <p><strong>Delete</strong> — multi-step confirmation to prevent accidents. Default folders and their template cards cannot be deleted, but you can edit the template content freely.</p>
+          <p>← Back returns you to the folder grid from inside a folder. The tab also resets to folder view every time you switch pages.</p>
+        </div>
       </div>
       <div class="notes-toolbar">
         <button class="notes-reorder-toggle" id="notesReorderToggle" onclick="toggleNotesReorderMode()">Reorder</button>

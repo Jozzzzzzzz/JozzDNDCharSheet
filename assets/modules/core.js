@@ -2221,6 +2221,8 @@ function showHomePage() {
 
   document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
   window.scrollTo({ top: 0, left: 0 });
+
+  if (typeof markChangelogSeen === 'function') markChangelogSeen();
 }
 
 function createNewCharacter() {
@@ -2781,8 +2783,10 @@ function autosave() {
       initiativeOverride: autoMathOverrideState?.initiative || false,
       speed: val('speed'),
       prof_bonus: val('prof_bonus'),
+      profBonusOverride: autoMathOverrideState?.profBonus || false,
       passive_perception: val('passive_perception'),
       passivePerceptionOverride: autoMathOverrideState?.passivePerception || false,
+      abilityBonusOverrides: autoMathOverrideState ? { ...autoMathOverrideState.abilityBonus } : {}
     },
     health: {
       max_hp: val('max_hp'),
@@ -3022,6 +3026,12 @@ function loadData() {
       if (autoMathOverrideState) {
         autoMathOverrideState.initiative = !!data.page1.combatStats.initiativeOverride;
         autoMathOverrideState.passivePerception = !!data.page1.combatStats.passivePerceptionOverride;
+        autoMathOverrideState.profBonus = !!data.page1.combatStats.profBonusOverride;
+        if (data.page1.combatStats.abilityBonusOverrides) {
+          Object.keys(autoMathOverrideState.abilityBonus).forEach(ability => {
+            autoMathOverrideState.abilityBonus[ability] = !!data.page1.combatStats.abilityBonusOverrides[ability];
+          });
+        }
       }
 
       const initEl = document.getElementById('initiative');

@@ -4,6 +4,13 @@
     <!-- Portrait + Backstory row -->
     <div class="background-grid">
       <div class="section resizable">
+        <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
+        <div class="section-help-panel" onclick="closeHelp(this)">
+          <p><strong>Portrait</strong> — upload an image of your character to display on this page.</p>
+          <p>Click the file input to choose an image from your device (JPG, PNG, WebP etc). It's stored as a data URL in your character — no internet upload required.</p>
+          <p>Note: large images increase save size. Resize to roughly 400×600px or smaller before uploading for best performance.</p>
+          <p><strong>Remove Portrait</strong> — clears the image and frees the storage space it was using.</p>
+        </div>
         <h2>Portrait</h2>
         <div class="portrait-container" id="portraitPreview">
           <span style="color: #666;">No image</span>
@@ -13,21 +20,36 @@
       </div>
 
       <div class="section">
+        <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
+        <div class="section-help-panel" onclick="closeHelp(this)">
+          <p><strong>Backstory</strong> — your character's history, origin, and story before the campaign began.</p>
+          <p>Write as much or as little as you like. Common things to include: where your character grew up, what drove them to adventure, key events from their past, important relationships, and how they got their class abilities.</p>
+          <p>This is a free-text field — no formatting rules. Saves automatically.</p>
+        </div>
         <h2>Backstory</h2>
         <textarea id="char_backstory" class="basic-textarea"
                   oninput="autosave()" placeholder="Enter your character's backstory here..."></textarea>
       </div>
     </div>
 
-    <!-- Custom fields toolbar -->
-    <div class="bg-fields-toolbar">
-      <button class="bg-reorder-toggle" id="bgReorderToggle" onclick="toggleBgReorderMode()">Reorder Mode</button>
-      <button class="bg-add-field-btn" onclick="showAddBgFieldPopup()">+ Add Box</button>
-    </div>
-
-    <!-- Custom fields grid -->
-    <div class="background-textareas" id="bgCustomFieldsGrid">
-      <!-- Default fields rendered by JS on load -->
+    <!-- Custom fields -->
+    <div class="section">
+      <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
+      <div class="section-help-panel" onclick="closeHelp(this)">
+        <p><strong>Background Fields</strong> — customisable text boxes for any aspect of your character's background and personality.</p>
+        <p>Default boxes include: Personality Traits, Ideals, Bonds, Flaws, Appearance, and more. Each is a free-text area — write as much as you like.</p>
+        <p><strong>+ Add Box</strong> — create a new custom field with any title you choose (e.g. "Gods & Religion", "Party Relationships", "Known Languages", "Secrets").</p>
+        <p><strong>Reorder Mode</strong> — drag the boxes into any order you prefer. Click Reorder Mode again to exit.</p>
+        <p>Each box has a delete button in reorder mode. Default boxes (Traits, Ideals, Bonds, Flaws) cannot be deleted — they are part of the standard D&D 5e character sheet.</p>
+        <p>Everything saves automatically as you type.</p>
+      </div>
+      <div class="bg-fields-toolbar">
+        <button class="bg-reorder-toggle" id="bgReorderToggle" onclick="toggleBgReorderMode()">Reorder Mode</button>
+        <button class="bg-add-field-btn" onclick="showAddBgFieldPopup()">+ Add Box</button>
+      </div>
+      <div class="background-textareas" id="bgCustomFieldsGrid">
+        <!-- Default fields rendered by JS on load -->
+      </div>
     </div>
 
     <!-- Add field popup -->

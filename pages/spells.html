@@ -3,6 +3,17 @@
     <div class="spells-page">
       <!-- Spellcasting Overview -->
       <div class="section">
+        <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
+        <div class="section-help-panel" onclick="closeHelp(this)">
+          <p><strong>Spellcasting Overview</strong> — your core casting stats, spell slots, and class resources all in one place.</p>
+          <p><strong>Spellcasting Ability</strong> — choose the ability your class uses: INT (Wizard, Artificer), WIS (Cleric, Druid, Ranger), or CHA (Bard, Paladin, Sorcerer, Warlock). This drives the two auto-calculated fields below.</p>
+          <p><strong>Spell Save DC</strong> — auto: 8 + Proficiency Bonus + spellcasting modifier. Enemies roll against this when they resist your spells. Type to override (e.g. magic items that boost it).</p>
+          <p><strong>Spell Attack Bonus</strong> — auto: Proficiency Bonus + spellcasting modifier. Added to d20 rolls for spells that require an attack roll. Type to override.</p>
+          <p><strong>Caster Type</strong> — Prepared (Cleric/Druid/Wizard prepare a subset each day), Known (Bard/Sorcerer/Ranger know a fixed list), or Spellbook (Wizard tracking their book).</p>
+          <p><strong>Spells Prepared</strong> — your maximum number of prepared spells. Usually: spellcasting modifier + character level (half for half-casters). Reference only — doesn't enforce a limit.</p>
+          <p><strong>Spell Slots</strong> — click "+ Add Spell Slot Type" to add slots. Each slot has a name (e.g. "1st Level"), a max count, and a rest type (Long Rest resets most, Short Rest for Warlock Pact Magic). Use the +/− buttons during play to spend and recover slots. Drag the ⠿ handle to reorder. Click the pencil icon to edit name, max, or reset type.</p>
+          <p><strong>Custom Resources</strong> — for class features that aren't spell slots: Ki points, Sorcery Points, Channel Divinity, Bardic Inspiration, Superiority Dice, etc. Same +/− tracking with long or short rest resets.</p>
+        </div>
         <div class="spell-panel-header">
           <h2>Spellcasting</h2>
         </div>
@@ -73,6 +84,13 @@
 
       <!-- Prepared Spells & Cantrips Section -->
       <div class="section">
+        <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
+        <div class="section-help-panel" onclick="closeHelp(this)">
+          <p><strong>Prepared Spells & Cantrips</strong> — a quick-reference table of everything you have marked as prepared or known, grouped by spell level.</p>
+          <p>This view is read-only — it pulls from your Cantrips and Spells lists below. To appear here a spell must be marked <strong>Prepared</strong> in its details, or be a cantrip (which are always available).</p>
+          <p>Columns: Name, Level, Casting Time, Range, Effect/Damage, and a View button to see full details. Use this table during play for a fast overview without scrolling through the full spell lists.</p>
+          <p>To mark a spell as prepared: find it in the Cantrips or Spells section, open its card and tick the Prepared checkbox.</p>
+        </div>
         <h2>Prepared Spells & Cantrips</h2>
         <div class="spells-list-container" id="prepared_spells_list">
           <!-- Prepared spells/cantrips grouped by level will be populated here -->
@@ -81,6 +99,13 @@
 
       <!-- Favorites Section -->
       <div class="section">
+        <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
+        <div class="section-help-panel" onclick="closeHelp(this)">
+          <p><strong>Favorites</strong> — your most-used cantrips and spells pinned at the top for fast access during combat.</p>
+          <p>To favourite a spell: open its card in the Cantrips or Spells section and click the ★ star icon. It will appear here instantly.</p>
+          <p>Favourites are split into two columns — cantrips on the left, levelled spells on the right. They show a compact summary: name, school, casting time, and range. Click any card to see full details.</p>
+          <p>Use this section during combat so you don't have to scroll — just glance here for the spells you cast most often.</p>
+        </div>
         <h2>Favorites</h2>
         <div class="favorites-grid">
           <div class="favorites-cantrips">
@@ -101,12 +126,22 @@
       <div class="spells-lists-grid">
         <!-- Cantrips Section -->
         <div class="section">
+          <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
+          <div class="section-help-panel" onclick="closeHelp(this)">
+            <p><strong>Cantrips</strong> — your at-will spells. Cantrips never use spell slots and can be cast any number of times.</p>
+            <p><strong>+ Add Cantrip</strong> — fill in a blank form with all details manually.</p>
+            <p><strong>Import Cantrips</strong> — search the built-in spell database (482 spells) and add directly. Much faster than manual entry.</p>
+            <p><strong>Filter dropdown</strong> — show All, Prepared, Known, or Favorites only.</p>
+            <p><strong>Search bar</strong> — live search by name as you type. Stacks with the dropdown filter.</p>
+            <p>Each cantrip card shows name, school, and casting info. Expand it to see the full description. Use the ★ to favourite, the pencil to edit, or the bin to delete.</p>
+            <p><strong>Clear All Cantrips</strong> — requires 3 clicks to confirm. Use only when starting fresh.</p>
+          </div>
           <h2>Cantrips</h2>
           <div class="spells-controls">
             <div class="spells-controls-left">
               <button onclick="showSpellForm('cantrip')">+ Add Cantrip</button>
               <button onclick="showImportPopup('cantrip')">Import Cantrips</button>
-              <button onclick="clearAllSpells('cantrip')" class="clear-all-btn">Clear All Cantrips</button>
+              <button onclick="clearAllSpells('cantrip', event)" class="clear-all-btn">Clear All Cantrips</button>
             </div>
             <div class="spell-filter">
               <select id="cantrip_filter" onchange="filterSpells('cantrip')">
@@ -127,12 +162,23 @@
 
         <!-- Spells Section -->
         <div class="section">
+          <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
+          <div class="section-help-panel" onclick="closeHelp(this)">
+            <p><strong>Spells</strong> — your levelled spells (1st–9th level). These cost spell slots to cast.</p>
+            <p><strong>+ Add Spell</strong> — fill in manually: name, level, school, casting time, range, components, duration, damage/effect, save type, attack roll, ritual, concentration, and description.</p>
+            <p><strong>Import Spells</strong> — search the built-in database and add with one click. Includes all PHB spells plus many supplements.</p>
+            <p><strong>Filters</strong> — narrow by level (1st–9th), school (Evocation, Illusion, etc.), and status (Prepared, Known, Ritual, Favorites). All three stack together.</p>
+            <p><strong>Search bar</strong> — live search by name, stacks with all filters.</p>
+            <p><strong>Prepared checkbox</strong> — tick on a spell's card to mark it prepared. Prepared spells appear in the Prepared Spells table at the top.</p>
+            <p><strong>Concentration / Ritual</strong> — flagged on the card as a reminder. Concentration means you can only maintain one at a time.</p>
+            <p><strong>Clear All Spells</strong> — requires 3 clicks. Cannot be undone.</p>
+          </div>
           <h2>Spells</h2>
           <div class="spells-controls">
             <div class="spells-controls-left">
               <button onclick="showSpellForm('spell')">+ Add Spell</button>
               <button onclick="showImportPopup('spell')">Import Spells</button>
-              <button onclick="clearAllSpells('spell')" class="clear-all-btn">Clear All Spells</button>
+              <button onclick="clearAllSpells('spell', event)" class="clear-all-btn">Clear All Spells</button>
             </div>
             <div class="spell-filter">
               <select id="spell_level_filter" onchange="filterSpells('spell')">
@@ -178,6 +224,12 @@
 
       <!-- Spell Notes -->
       <div class="section">
+        <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
+        <div class="section-help-panel" onclick="closeHelp(this)">
+          <p><strong>Spell Notes</strong> — free-text area for anything spell-related that doesn't fit in a card.</p>
+          <p>Good uses: homebrew spell modifications, upcast notes (e.g. "Fireball deals +1d6 per slot above 3rd"), DM rulings on specific spells, material component costs, or reminders about concentration interactions.</p>
+          <p>Saves automatically with your character.</p>
+        </div>
         <h2>Spell Notes</h2>
         <textarea id="spell_notes" class="basic-textarea" 
                   oninput="autosave()" placeholder="Enter additional spell notes, homebrew rules, or spell modifications here..."></textarea>

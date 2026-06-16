@@ -143,8 +143,13 @@ function shortRest() {
   
   currHP.value = newTotalHP;
   updateHPDisplay();
+
+  // Reset spell slots and custom resources marked for short rest
+  if (typeof resetSpellSlots === 'function') resetSpellSlots('short');
+  if (typeof resetCustomResources === 'function') resetCustomResources('short');
+
   autosave();
-  
+
   // Show results
   const rollSummary = rollDetails.join(', ');
   const newCurrentHP = getCurrentHP();
@@ -291,7 +296,12 @@ function longRest() {
   }
   
   updateHPDisplay();
+
+  // Reset spell slots and custom resources marked for long rest
+  if (typeof resetSpellSlots === 'function') resetSpellSlots('long');
+  if (typeof resetCustomResources === 'function') resetCustomResources('long');
+
   autosave();
-  alert("Long rest completed - HP fully restored, death saves reset");
+  alert("Long rest completed - HP fully restored, death saves reset, spell slots restored");
 }
 

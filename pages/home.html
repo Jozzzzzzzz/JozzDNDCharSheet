@@ -3,13 +3,14 @@
   <!-- Hero Section -->
   <div class="hero-section">
     <div class="hero-content">
-      <h1>Welcome to Joz's Homebrew D&D Sheet</h1>
-      <p class="hero-subtitle">The ultimate digital character sheet for D&D 5e. Create, manage, and track your characters with style!</p>
+      <h1>JozzDNDSheet <span id="heroVersion"></span></h1>
+      <p class="hero-subtitle">Started somewhere around August 2025 as a personal project and built session by session into something actually worth using. This is version 1.0 — the point where it stopped being a work in progress and started being a real sheet. It will keep changing, things will get added, stuff will break and get fixed, but this is the line in the sand. Everything from here gets tracked properly.</p>
       <div class="hero-features">
         <span class="feature-badge">Auto-Save</span>
         <span class="feature-badge">Mobile Ready</span>
         <span class="feature-badge">Homebrew Friendly</span>
         <span class="feature-badge">Cloud Sync</span>
+        <button id="changelogJumpLink" class="feature-badge changelog-jump-badge" onclick="scrollToChangelog()" style="display:none;">What's New</button>
       </div>
     </div>
   </div>
@@ -81,41 +82,108 @@
     <!-- Key Features -->
     <div class="home-card features-card">
       <div class="card-header">
-        <h3>⭐ Key Features</h3>
-        <p>Everything you need for D&D character management</p>
+        <h3>⭐ What's in the Sheet</h3>
+        <p>Everything built into 1.0</p>
       </div>
       <div class="features-grid">
         <div class="feature-item">
           <div class="feature-icon">💾</div>
-          <h4>Auto-Save</h4>
-          <p>Everything saves automatically - no lost progress!</p>
+          <div class="feature-text">
+            <h4>Auto-Save</h4>
+            <p>Every field saves as you type. No save button, no lost progress, no drama.</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">☁️</div>
+          <div class="feature-text">
+            <h4>Cloud Sync</h4>
+            <p>Sign in with Google and your characters follow you across every device in real time.</p>
+          </div>
         </div>
         <div class="feature-item">
           <div class="feature-icon">👥</div>
-          <h4>Multiple Characters</h4>
-          <p>Manage unlimited characters for different campaigns</p>
+          <div class="feature-text">
+            <h4>Multiple Characters</h4>
+            <p>Unlimited characters, each fully independent. Pin your favourites for quick access.</p>
+          </div>
         </div>
         <div class="feature-item">
           <div class="feature-icon">📱</div>
-          <h4>Mobile Friendly</h4>
-          <p>Perfect for phones, tablets, and desktop</p>
-        </div>
-        <div class="feature-item">
-          <div class="feature-icon">🎲</div>
-          <h4>Homebrew Ready</h4>
-          <p>Customize for any homebrew content or rules</p>
+          <div class="feature-text">
+            <h4>Works Everywhere</h4>
+            <p>Phone, tablet, desktop. Install it as a PWA and use it offline at the table.</p>
+          </div>
         </div>
         <div class="feature-item">
           <div class="feature-icon">⚔️</div>
-          <h4>Combat Tracker</h4>
-          <p>Track HP, spell slots, and combat actions</p>
+          <div class="feature-text">
+            <h4>Combat Ready</h4>
+            <p>HP, death saves, spell slots, custom resources, actions and reactions — all tracked and reset on rest.</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🔮</div>
+          <div class="feature-text">
+            <h4>Full Spell System</h4>
+            <p>482 spells you can search and add, plus cantrips, prepared spells, favourites and drag-reorder slots.</p>
+          </div>
         </div>
         <div class="feature-item">
           <div class="feature-icon">🎒</div>
-          <h4>Smart Inventory</h4>
-          <p>Weight tracking and organized item management</p>
+          <div class="feature-text">
+            <h4>Smart Inventory</h4>
+            <p>Items, equipment, weapons, storage containers, encumbrance tracking and a currency system with custom coin types.</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">📓</div>
+          <div class="feature-text">
+            <h4>Notes System</h4>
+            <p>10 built-in folders for Quests, NPCs, Lore, Locations and more. Add your own cards and folders as needed.</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🎨</div>
+          <div class="feature-text">
+            <h4>Fully Customisable</h4>
+            <p>Accent colour, dark theme, font choice, background image, text scale, resizable panels. Make it yours.</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🎲</div>
+          <div class="feature-text">
+            <h4>Homebrew Friendly</h4>
+            <p>Custom resources, custom currency, custom containers. Built for real campaigns not just the rulebook.</p>
+          </div>
         </div>
       </div>
+    </div>
+
+    <!-- Suggestion Form -->
+    <div class="home-card suggestion-card">
+      <div class="card-header">
+        <h3>💬 Share Your Thoughts</h3>
+        <p>Got an idea, a request, or something that bugged you? Send it through</p>
+      </div>
+      <form id="suggestionForm" class="suggestion-form">
+        <div class="form-group">
+          <label for="suggestionType">What kind of suggestion?</label>
+          <select id="suggestionType" required>
+            <option value="">Choose a category...</option>
+            <option value="Make it Look Better">Make it Look Better</option>
+            <option value="Add New Feature">Add New Feature</option>
+            <option value="Fix a Problem">Fix a Problem</option>
+            <option value="Make it Easier to Use">Make it Easier to Use</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="suggestionText">Your suggestion:</label>
+          <textarea id="suggestionText" placeholder="Tell us what you'd like to see improved or added..." required></textarea>
+        </div>
+        <button type="submit" class="submit-btn">Send</button>
+        <div id="suggestionStatus" class="status-message"></div>
+      </form>
     </div>
 
     <!-- Tips & Tricks -->
@@ -187,34 +255,23 @@
       </div>
     </div>
 
-    <!-- Suggestion Form -->
-    <div class="home-card suggestion-card">
+    <!-- What's New -->
+    <div class="home-card changelog-card" id="changelogCard">
       <div class="card-header">
-        <h3>💬 Share Your Ideas</h3>
-        <p>Help us improve the character sheet</p>
+        <h3>📋 What's New</h3>
+        <p>Recent updates, fixes, and what's coming next</p>
       </div>
-      <form id="suggestionForm" class="suggestion-form">
-        <div class="form-group">
-          <label for="suggestionType">What kind of suggestion?</label>
-          <select id="suggestionType" required>
-            <option value="">Choose a category...</option>
-            <option value="Make it Look Better">Make it Look Better</option>
-            <option value="Add New Feature">Add New Feature</option>
-            <option value="Fix a Problem">Fix a Problem</option>
-            <option value="Make it Easier to Use">Make it Easier to Use</option>
-            <option value="Other">Other</option>
-          </select>
+      <div id="changelogContent" class="changelog-content"></div>
+      <button id="changelogViewAllBtn" class="changelog-view-all-btn" onclick="toggleChangelogViewAll()" style="display:none;"></button>
+      <div class="changelog-coming-soon">
+        <div class="changelog-coming-header" onclick="this.nextElementSibling.classList.toggle('open')">
+          <span>🔮 Coming Soon</span>
+          <span class="changelog-chevron">▸</span>
         </div>
-        
-        <div class="form-group">
-          <label for="suggestionText">Your suggestion:</label>
-          <textarea id="suggestionText" placeholder="Tell us what you'd like to see improved or added..." required></textarea>
-        </div>
-        
-        <button type="submit" class="submit-btn">Send Suggestion</button>
-        <div id="suggestionStatus" class="status-message"></div>
-      </form>
+        <div id="changelogComingSoon" class="changelog-coming-body"></div>
+      </div>
     </div>
+
   </div>
 </div>
 

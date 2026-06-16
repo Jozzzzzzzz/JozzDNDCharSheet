@@ -1,6 +1,13 @@
 ﻿<div class="page" id="page4">
   <!-- Equipment Section -->
   <div class="section">
+    <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
+    <div class="section-help-panel" onclick="closeHelp(this)">
+      <p><strong>Equipment</strong> — armour, shields, cloaks, and worn gear that affects your defence or combat stats.</p>
+      <p>This list is <strong>shared with the Stats page</strong> — anything added here also appears in the Equipment box on the Stats tab. You only need to enter it once.</p>
+      <p>Each item has a name, type, AC bonus/value, weight (lbs), and optional notes. Use the Notes button to record attunement status, magical properties, or flavour text.</p>
+      <p>Equipment weight is totalled at the bottom and counts toward your encumbrance limit if encumbrance is enabled in Main Inventory.</p>
+    </div>
     <h2>Equipment (Part of Main Inventory)</h2>
     <div class="equipment-controls">
       <button onclick="showEquipmentForm()">+ Add Equipment</button>
@@ -15,6 +22,16 @@
 
   <!-- Main Inventory Section -->
   <div class="section">
+    <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
+    <div class="section-help-panel" onclick="closeHelp(this)">
+      <p><strong>Main Inventory</strong> — everything your character is carrying that isn't worn equipment.</p>
+      <p><strong>Max Weight Capacity</strong> — optional. Set this to your carrying capacity (usually STR score × 15 lbs in 5e). Leave at 0 to disable the limit check.</p>
+      <p><strong>D&D 5e Encumbrance Rules</strong> — tick to enable tier-based encumbrance: Encumbered (STR × 5 lbs, −10 ft speed), Heavily Encumbered (STR × 10 lbs, −20 ft speed, disadvantage on ability checks), Max (STR × 15 lbs, can't move). The status label updates live.</p>
+      <p><strong>Currency</strong> — track Copper, Silver, and Gold here. Add custom currencies (Electrum is shown separately, or add your own homebrew coin). Currency is saved per character.</p>
+      <p><strong>+ Add Item</strong> — opens the item form. Fill in name, type, weight, quantity, and value. Tick Stackable if it's a consumable you buy multiples of (arrows, rations, potions) — stackable items get a + button to record purchases and deduct currency automatically.</p>
+      <p><strong>Filter bar</strong> — type to instantly filter items by name.</p>
+      <p>Total carried weight is shown at the bottom, updating as items are added or removed.</p>
+    </div>
     <h2>Main Inventory</h2>
 
     <div class="inventory-controls">
@@ -108,6 +125,13 @@
   </div>
 
   <div class="section additional-storage-section">
+    <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
+    <div class="section-help-panel" onclick="closeHelp(this)">
+      <p><strong>Additional Storage</strong> — create named containers to organise items separately from your main inventory. Good for: a Bag of Holding, a cart, a campsite chest, a familiar's pack, a shared party stash.</p>
+      <p>Click <strong>+ Add Additional Storage</strong> to create a container. Give it a name and an optional max weight limit (0 = unlimited).</p>
+      <p>Each container gets its own item list, filter bar, and weight total — same as Main Inventory but separate. Items can be moved between containers using the Move dropdown on each item card.</p>
+      <p>Delete a container with the Delete Container button — you'll be asked to confirm. Items inside are removed too, so move them first if you want to keep them.</p>
+    </div>
     <h2>Additional Storage</h2>
     <div class="inventory-controls">
       <button onclick="showAddStoragePopup()">
@@ -118,6 +142,13 @@
 
   <!-- Purchase History Section -->
   <div class="section" id="purchase_history_section">
+    <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
+    <div class="section-help-panel" onclick="closeHelp(this)">
+      <p><strong>Purchase History</strong> — a log of every time you used the + refill button on a stackable item and chose to record a purchase.</p>
+      <p>Each entry shows: date, item name, quantity bought, cost per unit, total cost, and which currency was spent. Useful for tracking how much gold you've spent across a session or campaign.</p>
+      <p>Currency is automatically deducted from your wallet when you confirm a purchase through the refill popup.</p>
+      <p><strong>Clear History</strong> — removes the log entries only. Your items and currency are not affected.</p>
+    </div>
     <h2>Purchase History</h2>
     <div id="purchase_history_list">
       <p style="text-align: center; color: var(--text); opacity: 0.7;">No purchases recorded yet. Use the + button on a stackable item to record a purchase.</p>
