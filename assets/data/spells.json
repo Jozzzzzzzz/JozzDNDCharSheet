@@ -562,7 +562,7 @@
     "classes": [
       "Druid",
       "Ranger",
-      "Sorceror",
+      "Sorcerer",
       "Wizard"
     ],
     "sourceBook": "Kobold Press",
@@ -585,7 +585,7 @@
     "concentration": true,
     "prepared": false,
     "classes": [
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -633,7 +633,7 @@
     "concentration": false,
     "prepared": false,
     "classes": [
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard",
       "Druid"
@@ -1373,7 +1373,7 @@
     "prepared": false,
     "classes": [
       "Bard",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -1399,7 +1399,7 @@
     "classes": [
       "Wizard",
       "Warlock",
-      "Sorceror",
+      "Sorcerer",
       "Bard"
     ],
     "sourceBook": "Deep Magic Extra",
@@ -1424,7 +1424,7 @@
     "classes": [
       "Wizard",
       "Warlock",
-      "Sorceror"
+      "Sorcerer"
     ],
     "sourceBook": "Deep Magic Extra",
     "description": "Deep Magic: clockwork This spell creates a suit of magical studded leather armor (AC 12). It does not grant you proficiency in its use. Casters without the appropriate armor proficiency suffer disadvantage on any ability check, saving throw, or attack roll that involves Strength or Dexterity and cannot cast spells.\n\n**At Higher Levels.** Casting armored shell using a higher-level spell slot creates stronger armor: a chain shirt (AC 13) at level 2, scale mail (AC 14) at level 3, chain mail (AC 16) at level 4, and plate armor (AC 18) at level 5.",
@@ -1770,7 +1770,7 @@
     "prepared": false,
     "classes": [
       "Bard",
-      "Sorceror",
+      "Sorcerer",
       "Wizard"
     ],
     "sourceBook": "Tome of Heroes",
@@ -1869,7 +1869,7 @@
     "classes": [
       "Wizard",
       "Warlock",
-      "Sorceror"
+      "Sorcerer"
     ],
     "sourceBook": "Deep Magic Extra",
     "description": "You emit a soul-shattering wail. Every creature within a 30-foot cone who hears the wail must make a Wisdom saving throw. Those that fail take 6d10 psychic damage and become frightened of you; a frightened creature repeats the saving throw at the end of its turn, ending the effect on itself on a success. Those that succeed take 3d10 psychic damage and aren't frightened. This spell has no effect on constructs and undead.",
@@ -1893,7 +1893,7 @@
     "classes": [
       "Cleric",
       "Paladin",
-      "Sorceror",
+      "Sorcerer",
       "Wizard"
     ],
     "sourceBook": "Warlock",
@@ -1989,7 +1989,7 @@
     "classes": [
       "Bard",
       "Paladin",
-      "Sorceror",
+      "Sorcerer",
       "Wizard"
     ],
     "sourceBook": "Tome of Heroes",
@@ -2127,7 +2127,7 @@
     "classes": [
       "Wizard",
       "Warlock",
-      "Sorceror",
+      "Sorcerer",
       "Druid",
       "Cleric",
       "Bard"
@@ -2220,7 +2220,7 @@
     "concentration": false,
     "prepared": false,
     "classes": [
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -3052,7 +3052,7 @@
     "classes": [
       "Druid",
       "Ranger",
-      "Sorceror",
+      "Sorcerer",
       "Wizard"
     ],
     "sourceBook": "Deep Magic",
@@ -3195,7 +3195,7 @@
     "prepared": false,
     "classes": [
       "Cleric",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -3340,7 +3340,7 @@
     "classes": [
       "Druid",
       "Ranger",
-      "Sorceror",
+      "Sorcerer",
       "Wizard"
     ],
     "sourceBook": "Warlock",
@@ -3474,7 +3474,7 @@
     "concentration": true,
     "prepared": false,
     "classes": [
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -3663,7 +3663,7 @@
     "prepared": false,
     "classes": [
       "Druid",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -3689,7 +3689,7 @@
     "classes": [
       "Bard",
       "Druid",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -4405,7 +4405,7 @@
     "prepared": false,
     "classes": [
       "Wizard",
-      "Sorceror",
+      "Sorcerer",
       "Cleric"
     ],
     "sourceBook": "Warlock",
@@ -4523,7 +4523,7 @@
     "concentration": false,
     "prepared": false,
     "classes": [
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -4853,7 +4853,7 @@
     "concentration": false,
     "prepared": false,
     "classes": [
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -5822,7 +5822,7 @@
       "Bard",
       "Cleric",
       "Druid",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -6104,7 +6104,7 @@
     "prepared": false,
     "classes": [
       "Druid",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -6128,7 +6128,7 @@
     "concentration": false,
     "prepared": false,
     "classes": [
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard",
       "Cleric"
@@ -6785,7 +6785,7 @@
     "prepared": false,
     "classes": [
       "Ranger",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -6809,7 +6809,7 @@
     "concentration": false,
     "prepared": false,
     "classes": [
-      "Sorceror",
+      "Sorcerer",
       "Wizard"
     ],
     "sourceBook": "Tome of Heroes",
@@ -7382,7 +7382,7 @@
     "concentration": true,
     "prepared": false,
     "classes": [
-      "Sorceror",
+      "Sorcerer",
       "Wizard"
     ],
     "sourceBook": "Warlock",
@@ -8036,7 +8036,7 @@
     "prepared": false,
     "classes": [
       "Wizard",
-      "Sorceror"
+      "Sorcerer"
     ],
     "sourceBook": "Kobold Press",
     "description": "You create a ripple of dark energy that destroys everything it touches. You create a 10-foot-radius, 10-foot-deep cylindrical extra-dimensional hole on a horizontal surface of sufficient size. Since it extends into another dimension, the pit has no weight and does not otherwise displace the original underlying material. You can create the pit in the deck of a ship as easily as in a dungeon floor or the ground of a forest. Any creature standing in the original conjured space, or on an expanded space as it grows, must succeed on a Dexterity saving throw to avoid falling in. The sloped pit edges crumble continuously, and any creature adjacent to the pit when it expands must succeed on a Dexterity saving throw to avoid falling in. Creatures subjected to a successful pushing effect (such as by a spell like incapacitated for 2 rounds. When the spell ends, creatures within the pit must make a Constitution saving throw. Those who succeed rise up with the bottom of the pit until they are standing on the original surface. Those who fail also rise up but are stunned for 2 rounds.\n\n**At Higher Levels.** When you cast this spell using a spell slot of 4th level or higher, increase the depth of the pit by 10 feet for each slot level above 3rd.",
@@ -8630,7 +8630,7 @@
     "concentration": true,
     "prepared": false,
     "classes": [
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -8680,7 +8680,7 @@
     "classes": [
       "Bard",
       "Druid",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -9673,7 +9673,7 @@
     "concentration": false,
     "prepared": false,
     "classes": [
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -9698,7 +9698,7 @@
     "prepared": false,
     "classes": [
       "Bard",
-      "Sorceror"
+      "Sorcerer"
     ],
     "sourceBook": "Tome of Heroes",
     "description": "You touch a nonmagical weapon and imbue it with the magic of the fey. Choose one of the following damage types: force, psychic, necrotic, or radiant. Until the spell ends, the weapon becomes a magic weapon and deals an extra 1d4 damage of the chosen type to any target it hits.\n\n**At Higher Levels.** When you cast this spell using a spell slot of 3rd level or higher, you can imbue one additional weapon for each slot level above 2nd.",
@@ -9787,7 +9787,7 @@
     "concentration": false,
     "prepared": false,
     "classes": [
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard",
       "Bard"
@@ -10477,7 +10477,7 @@
     "prepared": false,
     "classes": [
       "Cleric",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -10758,7 +10758,7 @@
     "prepared": false,
     "classes": [
       "Bard",
-      "Sorceror",
+      "Sorcerer",
       "Wizard"
     ],
     "sourceBook": "Deep Magic",
@@ -10907,7 +10907,7 @@
     "classes": [
       "Bard",
       "Druid",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -10933,7 +10933,7 @@
     "classes": [
       "Bard",
       "Cleric",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -11080,7 +11080,7 @@
     "classes": [
       "Wizard",
       "Warlock",
-      "Sorceror"
+      "Sorcerer"
     ],
     "sourceBook": "Deep Magic Extra",
     "description": "Deep Magic: clockwork You cause a handful of gears to orbit the target's body. These shield the spell's target from incoming attacks, granting a +2 bonus to AC and to Dexterity and Constitution saving throws for the duration, without hindering the subject's movement, vision, or outgoing attacks.",
@@ -11199,7 +11199,7 @@
     "classes": [
       "Wizard",
       "Warlock",
-      "Sorceror",
+      "Sorcerer",
       "Ranger",
       "Paladin",
       "Druid",
@@ -11300,7 +11300,7 @@
     "prepared": false,
     "classes": [
       "Bard",
-      "Sorceror",
+      "Sorcerer",
       "Warlock"
     ],
     "sourceBook": "Tome of Heroes",
@@ -11531,7 +11531,7 @@
     "classes": [
       "Druid",
       "Ranger",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -11722,7 +11722,7 @@
     "classes": [
       "Wizard",
       "Warlock",
-      "Sorceror",
+      "Sorcerer",
       "Druid"
     ],
     "sourceBook": "Deep Magic Extra",
@@ -11847,7 +11847,7 @@
     "classes": [
       "Wizard",
       "Warlock",
-      "Sorceror"
+      "Sorcerer"
     ],
     "sourceBook": "Deep Magic Extra",
     "description": "Deep Magic: clockwork You target a construct and summon a plague of invisible spirits to harass it. The target resists the spell and negates its effect with a successful Wisdom saving throw. While the spell remains in effect, the construct has disadvantage on attack rolls, ability checks, and saving throws, and it takes 3d8 force damage at the start of each of its turns as it is magically disassembled by the spirits.\n\n**At Higher Levels.** When you cast this spell using a spell slot of 5th or higher, the damage increases by 1d8 for each slot above 4th.",
@@ -11871,7 +11871,7 @@
     "classes": [
       "Wizard",
       "Warlock",
-      "Sorceror"
+      "Sorcerer"
     ],
     "sourceBook": "Deep Magic Extra",
     "description": "Deep Magic: clockwork You designate a spot within range, and massive gears emerge from the ground at that spot, creating difficult terrain in a 20-foot radius. Creatures that move in the area must make successful Dexterity saving throws after every 10 feet of movement or when they stand up. Failure indicates that the creature falls prone and takes 1d8 points of bludgeoning damage.",
@@ -12222,7 +12222,7 @@
       "Cleric",
       "Druid",
       "Ranger",
-      "Sorceror",
+      "Sorcerer",
       "Wizard"
     ],
     "sourceBook": "Deep Magic",
@@ -12247,7 +12247,7 @@
     "classes": [
       "Druid",
       "Ranger",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -12392,7 +12392,7 @@
     "classes": [
       "Bard",
       "Paladin",
-      "Sorceror",
+      "Sorcerer",
       "Wizard"
     ],
     "sourceBook": "Deep Magic",
@@ -12817,7 +12817,7 @@
     "concentration": true,
     "prepared": false,
     "classes": [
-      "Sorceror",
+      "Sorcerer",
       "Wizard"
     ],
     "sourceBook": "Tome of Heroes",
@@ -12942,7 +12942,7 @@
     "prepared": false,
     "classes": [
       "Wizard",
-      "Sorceror",
+      "Sorcerer",
       "Cleric"
     ],
     "sourceBook": "Deep Magic Extra",
@@ -13452,7 +13452,7 @@
     "prepared": false,
     "classes": [
       "Bard",
-      "Sorceror",
+      "Sorcerer",
       "Wizard"
     ],
     "sourceBook": "Deep Magic",
@@ -13661,7 +13661,7 @@
     "prepared": false,
     "classes": [
       "Wizard",
-      "Sorceror"
+      "Sorcerer"
     ],
     "sourceBook": "Warlock",
     "description": "By means of this spell, you make a target building seem much less important or ostentatious than it is. You can give the target an unremarkable appearance or one that blends in with nearby buildings. By its nature, this spell does not allow you to specify features that would make the building stand out. You also cannot make a building look more opulent to match surrounding buildings. You can make the building appear smaller or larger that its actual size to better fit into its environs. However, these size changes are noticeable with cursory physical inspection as an object will pass through extra illusory space or bump into a seemingly smaller section of the building. A creature can use its action to inspect the building and make an Intelligence (Investigation) check against your spell save DC. If it succeeds, it becomes aware the building has been disguised. In addition to you dispelling inconspicuous facade, the spell ends if the target building is destroyed.",
@@ -13707,7 +13707,7 @@
     "prepared": false,
     "classes": [
       "Cleric",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -14081,7 +14081,7 @@
     "classes": [
       "Bard",
       "Cleric",
-      "Sorceror",
+      "Sorcerer",
       "Wizard"
     ],
     "sourceBook": "Tome of Heroes",
@@ -14152,7 +14152,7 @@
     "prepared": false,
     "classes": [
       "Bard",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -14199,7 +14199,7 @@
     "concentration": false,
     "prepared": false,
     "classes": [
-      "Sorceror"
+      "Sorcerer"
     ],
     "sourceBook": "Kobold Press",
     "description": "Deep Magic: dragon With a sweeping gesture, you cause jagged crystals to burst from the ground and hurtle directly upward. Choose an origin point within the spell's range that you can see. Starting from that point, the crystals burst out of the ground along a 30-foot line. All creatures in that line and up to 100 feet above it take 2d8 thunder damage plus 2d8 piercing damage; a successful Dexterity saving throw negates the piercing damage. A creature that fails the saving throw is impaled by a chunk of crystal that halves the creature's speed, prevents it from flying, and causes it to fall to the ground if it was flying. To remove a crystal, the creature or an ally within 5 feet of it must use an action and make a successful DC 13 Strength check. If the check succeeds, the impaled creature takes 1d8 piercing damage and its speed and flying ability are restored to normal.",
@@ -14223,7 +14223,7 @@
     "classes": [
       "Wizard",
       "Warlock",
-      "Sorceror",
+      "Sorcerer",
       "Bard"
     ],
     "sourceBook": "Deep Magic Extra",
@@ -14532,7 +14532,7 @@
     "classes": [
       "Wizard",
       "Warlock",
-      "Sorceror",
+      "Sorcerer",
       "Druid"
     ],
     "sourceBook": "Deep Magic Extra",
@@ -14787,7 +14787,7 @@
     "classes": [
       "Wizard",
       "Warlock",
-      "Sorceror",
+      "Sorcerer",
       "Druid"
     ],
     "sourceBook": "Deep Magic Extra",
@@ -14885,7 +14885,7 @@
     "classes": [
       "Wizard",
       "Warlock",
-      "Sorceror",
+      "Sorcerer",
       "Druid"
     ],
     "sourceBook": "Deep Magic Extra",
@@ -14932,7 +14932,7 @@
     "classes": [
       "Wizard",
       "Warlock",
-      "Sorceror",
+      "Sorcerer",
       "Druid"
     ],
     "sourceBook": "Deep Magic Extra",
@@ -14957,7 +14957,7 @@
     "classes": [
       "Wizard",
       "Warlock",
-      "Sorceror",
+      "Sorcerer",
       "Druid"
     ],
     "sourceBook": "Deep Magic Extra",
@@ -14982,7 +14982,7 @@
     "classes": [
       "Wizard",
       "Warlock",
-      "Sorceror",
+      "Sorcerer",
       "Druid"
     ],
     "sourceBook": "Deep Magic Extra",
@@ -15007,7 +15007,7 @@
     "classes": [
       "Wizard",
       "Warlock",
-      "Sorceror",
+      "Sorcerer",
       "Druid"
     ],
     "sourceBook": "Deep Magic Extra",
@@ -15032,7 +15032,7 @@
     "classes": [
       "Wizard",
       "Warlock",
-      "Sorceror",
+      "Sorcerer",
       "Druid"
     ],
     "sourceBook": "Deep Magic Extra",
@@ -15057,7 +15057,7 @@
     "classes": [
       "Wizard",
       "Warlock",
-      "Sorceror",
+      "Sorcerer",
       "Druid"
     ],
     "sourceBook": "Deep Magic Extra",
@@ -15244,7 +15244,7 @@
     "classes": [
       "Bard",
       "Cleric",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -15484,7 +15484,7 @@
     "prepared": false,
     "classes": [
       "Bard",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -15586,7 +15586,7 @@
     "prepared": false,
     "classes": [
       "Wizard",
-      "Sorceror"
+      "Sorcerer"
     ],
     "sourceBook": "Deep Magic Extra",
     "description": "Deep Magic: clockwork You sacrifice a willing construct you can see to imbue a willing target with construct traits. The target gains resistance to all nonmagical damage and gains immunity to the blinded, charmed, deafened, frightened, petrified, and poisoned conditions.",
@@ -15609,7 +15609,7 @@
     "prepared": false,
     "classes": [
       "Wizard",
-      "Sorceror",
+      "Sorcerer",
       "Cleric",
       "Bard"
     ],
@@ -15635,7 +15635,7 @@
     "classes": [
       "Wizard",
       "Warlock",
-      "Sorceror",
+      "Sorcerer",
       "Paladin",
       "Cleric"
     ],
@@ -15846,7 +15846,7 @@
     "prepared": false,
     "classes": [
       "Druid",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -15896,7 +15896,7 @@
       "Bard",
       "Cleric",
       "Druid",
-      "Sorceror",
+      "Sorcerer",
       "Wizard"
     ],
     "sourceBook": "Deep Magic",
@@ -16341,7 +16341,7 @@
     "prepared": false,
     "classes": [
       "Wizard",
-      "Sorceror"
+      "Sorcerer"
     ],
     "sourceBook": "Deep Magic Extra",
     "description": "Deep Magic: clockwork You can take control of a construct by voice or mental commands. The construct makes a Wisdom saving throw to resist the spell, and it gets advantage on the saving throw if its CR equals or exceeds your level in the class used to cast this spell. Once a command is given, the construct does everything it can to complete the command. Giving a new command takes an action. Constructs will risk harm, even go into combat, on your orders but will not self-destruct; giving such an order ends the spell.",
@@ -16756,7 +16756,7 @@
     "prepared": false,
     "classes": [
       "Bard",
-      "Sorceror",
+      "Sorcerer",
       "Wizard"
     ],
     "sourceBook": "Warlock",
@@ -17179,7 +17179,7 @@
     "classes": [
       "Bard",
       "Cleric",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -17558,7 +17558,7 @@
       "Bard",
       "Cleric",
       "Paladin",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -17749,7 +17749,7 @@
     "prepared": false,
     "classes": [
       "Wizard",
-      "Sorceror",
+      "Sorcerer",
       "Druid"
     ],
     "sourceBook": "Kobold Press",
@@ -17938,7 +17938,7 @@
     "prepared": false,
     "classes": [
       "Ranger",
-      "Sorceror",
+      "Sorcerer",
       "Wizard"
     ],
     "sourceBook": "Tome of Heroes",
@@ -18182,7 +18182,7 @@
     "concentration": false,
     "prepared": false,
     "classes": [
-      "Sorceror",
+      "Sorcerer",
       "Wizard"
     ],
     "sourceBook": "Tome of Heroes",
@@ -18207,7 +18207,7 @@
     "classes": [
       "Bard",
       "Cleric",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -18255,7 +18255,7 @@
     "concentration": true,
     "prepared": false,
     "classes": [
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -18356,7 +18356,7 @@
     "prepared": false,
     "classes": [
       "Bard",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -18381,7 +18381,7 @@
     "prepared": false,
     "classes": [
       "Wizard",
-      "Sorceror",
+      "Sorcerer",
       "Cleric"
     ],
     "sourceBook": "Deep Magic Extra",
@@ -18431,7 +18431,7 @@
     "classes": [
       "Wizard",
       "Warlock",
-      "Sorceror",
+      "Sorcerer",
       "Bard"
     ],
     "sourceBook": "Warlock",
@@ -19260,7 +19260,7 @@
     "classes": [
       "Bard",
       "Cleric",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -19494,7 +19494,7 @@
     "prepared": false,
     "classes": [
       "Bard",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -19969,7 +19969,7 @@
     "classes": [
       "Wizard",
       "Warlock",
-      "Sorceror"
+      "Sorcerer"
     ],
     "sourceBook": "Deep Magic Extra",
     "description": "Deep Magic: clockwork You create a robe of metal shards, gears, and cogs that provides a base AC of 14 + your Dexterity modifier. As a bonus action while protected by a robe of shards, you can command bits of metal from a fallen foe to be absorbed by your robe; each infusion of metal increases your AC by 1, to a maximum of 18 + Dexterity modifier. You can also use a bonus action to dispel the robe, causing it to explode into a shower of flying metal that does 8d6 slashing damage, +1d6 per point of basic (non-Dexterity) AC above 14, to all creatures within 30 feet of you.",
@@ -19993,7 +19993,7 @@
     "classes": [
       "Cleric",
       "Druid",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -20156,7 +20156,7 @@
     "prepared": false,
     "classes": [
       "Bard",
-      "Sorceror",
+      "Sorcerer",
       "Wizard"
     ],
     "sourceBook": "Tome of Heroes",
@@ -20290,7 +20290,7 @@
     "prepared": false,
     "classes": [
       "Wizard",
-      "Sorceror"
+      "Sorcerer"
     ],
     "sourceBook": "Kobold Press",
     "description": "You draw blood from the corpse of a creature that has been dead for no more than 24 hours and magically fashion it into a spear of frozen blood. This functions as a +1 spear that does cold damage instead of piercing damage. If the spear leaves your hand for more than 1 round, it melts and the spell ends.\n\n**At Higher Levels.** If the spell is cast with a 4th-level spell slot, it creates a +2 spear. A 6th-level spell slot creates a +3 spear.",
@@ -20631,7 +20631,7 @@
     "concentration": false,
     "prepared": false,
     "classes": [
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -20856,7 +20856,7 @@
     "prepared": false,
     "classes": [
       "Wizard",
-      "Sorceror"
+      "Sorcerer"
     ],
     "sourceBook": "Kobold Press",
     "description": "The selfish wish grants the desires of a supplicant in exchange for power. Like a wish for a great increase in Strength may come with an equal reduction in Intelligence). In exchange for casting the selfish wish, the caster also receives an influx of power. The caster receives the following bonuses for 2 minutes: Doubled speed one extra action each round (as haste) Armor class increases by 3",
@@ -20982,7 +20982,7 @@
     "classes": [
       "Wizard",
       "Warlock",
-      "Sorceror"
+      "Sorcerer"
     ],
     "sourceBook": "Warlock",
     "description": "Your flesh and clothing pale and become faded as your body takes on a tiny fragment of the Shadow Realm. For the duration of this spell, you are immune to shadow corruption and have resistance to necrotic damage. In addition, you have advantage on saving throws against effects that reduce your Strength score or hit point maximum, such as a shadow's Strength Drain or the harm spell.",
@@ -21144,7 +21144,7 @@
     "classes": [
       "Wizard",
       "Warlock",
-      "Sorceror"
+      "Sorcerer"
     ],
     "sourceBook": "Deep Magic Extra",
     "description": "By drawing a circle of black chalk up to 15 feet in diameter and chanting for one minute, you open a portal directly into the Shadow Realm. The portal fills the chalk circle and appears as a vortex of inky blackness; nothing can be seen through it. Any object or creature that passes through the portal instantly arrives safely in the Shadow Realm. The portal remains open for one minute or until you lose concentration on it, and it can be used to travel between the Shadow Realm and the chalk circle, in both directions, as many times as desired during the spell's duration. This spell can only be cast as a ritual.",
@@ -21167,7 +21167,7 @@
     "prepared": false,
     "classes": [
       "Wizard",
-      "Sorceror",
+      "Sorcerer",
       "Cleric"
     ],
     "sourceBook": "Kobold Press",
@@ -21192,7 +21192,7 @@
     "classes": [
       "Druid",
       "Ranger",
-      "Sorceror",
+      "Sorcerer",
       "Wizard"
     ],
     "sourceBook": "Kobold Press",
@@ -21238,7 +21238,7 @@
       "Bard",
       "Cleric",
       "Ranger",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -21696,7 +21696,7 @@
     "prepared": false,
     "classes": [
       "Cleric",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -22063,7 +22063,7 @@
     "concentration": false,
     "prepared": false,
     "classes": [
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -22088,7 +22088,7 @@
     "prepared": false,
     "classes": [
       "Bard",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -22160,7 +22160,7 @@
     "prepared": false,
     "classes": [
       "Wizard",
-      "Sorceror",
+      "Sorcerer",
       "Druid",
       "Cleric"
     ],
@@ -22567,7 +22567,7 @@
     "classes": [
       "Wizard",
       "Warlock",
-      "Sorceror"
+      "Sorcerer"
     ],
     "sourceBook": "Deep Magic Extra",
     "description": "You cause a spire of rock to burst out of the ground, floor, or another surface beneath your feet. The spire is as wide as your space, and lifting you, it can rise up to 20 feet in height. When the spire appears, a creature within 5 feet of you must succeed on a Dexterity saving throw or fall prone. As a bonus action on your turn, you can cause the spire to rise or descend up to 20 feet to a maximum height of 40 feet. If you move off of the spire, it immediately collapses back into the ground. When the spire disappears, it leaves the surface from which it sprang unharmed. You can create a new spire as a bonus action for the duration of the spell.",
@@ -22634,7 +22634,7 @@
     "prepared": false,
     "classes": [
       "Bard",
-      "Sorceror",
+      "Sorcerer",
       "Wizard"
     ],
     "sourceBook": "Tome of Heroes",
@@ -22922,7 +22922,7 @@
     "prepared": false,
     "classes": [
       "Druid",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -23072,7 +23072,7 @@
     "prepared": false,
     "classes": [
       "Cleric",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -23437,7 +23437,7 @@
     "classes": [
       "Wizard",
       "Warlock",
-      "Sorceror",
+      "Sorcerer",
       "Druid",
       "Cleric",
       "Bard"
@@ -23531,7 +23531,7 @@
     "prepared": false,
     "classes": [
       "Ranger",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -23840,7 +23840,7 @@
     "prepared": false,
     "classes": [
       "Wizard",
-      "Sorceror"
+      "Sorcerer"
     ],
     "sourceBook": "Kobold Press",
     "description": "Chernobog doesn't care that the Night Cauldron only focuses on one aspect of his dominion. After all, eternal night leads perfectly well to destruction and murder, especially by the desperate fools seeking to survive in the new, lightless world. Having devotees at the forefront of the mayhem suits him, so he allows a small measure of his power to infuse worthy souls. After contacting the Black God, the ritual caster makes a respectful yet forceful demand for him to deposit some of his power into the creature that is the target of the ritual. For Chernobog to comply with this demand, the caster must make a successful DC 20 spellcasting check. If the check fails, the spell fails and the caster and the spell's target become permanently vulnerable to fire; this vulnerability can be ended with remove curse or comparable magic. If the spell succeeds, the target creature gains darkvision (60 feet) and immunity to cold. Chernobog retains the privilege of revoking these gifts if the recipient ever wavers in devotion to him.",
@@ -24126,7 +24126,7 @@
     "prepared": false,
     "classes": [
       "Wizard",
-      "Sorceror"
+      "Sorcerer"
     ],
     "sourceBook": "Deep Magic Extra",
     "description": "Deep Magic: clockwork You speak a word and the target construct can take one action or bonus action on its next turn, but not both. The construct is immune to further tick stops from the same caster for 24 hours.",
@@ -24345,7 +24345,7 @@
     "prepared": false,
     "classes": [
       "Wizard",
-      "Sorceror",
+      "Sorcerer",
       "Cleric",
       "Bard"
     ],
@@ -24442,7 +24442,7 @@
     "prepared": false,
     "classes": [
       "Druid",
-      "Sorceror",
+      "Sorcerer",
       "Wizard"
     ],
     "sourceBook": "Tome of Heroes",
@@ -24543,7 +24543,7 @@
     "classes": [
       "Druid",
       "Ranger",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -24888,7 +24888,7 @@
     "classes": [
       "Bard",
       "Cleric",
-      "Sorceror",
+      "Sorcerer",
       "Warlock",
       "Wizard"
     ],
@@ -25301,7 +25301,7 @@
     "classes": [
       "Wizard",
       "Warlock",
-      "Sorceror"
+      "Sorcerer"
     ],
     "sourceBook": "Warlock",
     "description": "Deep Magic: ley line While bound to a ley line, you draw directly from its power, becoming cloaked in a magical heliotropic fire that sheds dim light in a 10-foot radius. Additionally, each round, including the round it is cast, you may make a ranged spell attack as an action. On a hit, the target takes 6d6 force damage. Every 3 minutes the effect is active, your bond with the ley line is reduced by one step; a bond to a Titanic ley line becomes effectively a Strong, then a Weak, and after 10 minutes, the bond is broken. The strength of the bond is only restored after a long rest; if the bond was broken, it can only be restored at the next weakest level for a week. A bond broken from a Weak ley line cannot be restored for two weeks. Some believe this spell damages ley lines, and there is some evidence to support this claim. Additionally, whenever a creature within 5 feet hits you with a melee attack, the cloak erupts with a heliotropic flare. The attacker takes 3d6 force damage.\n\n**At Higher Levels.** When casting this spell using a spell slot of 6th level, the damage from all effects of the spell increase by 1d6 for each slot level above 6th.",
@@ -26144,7 +26144,7 @@
     "prepared": false,
     "classes": [
       "Druid",
-      "Sorceror",
+      "Sorcerer",
       "Warlock"
     ],
     "sourceBook": "Tome of Heroes",

@@ -302,7 +302,11 @@ const dndClasses = {
       8: ['Antimagic Field', 'Antipathy/Sympathy', 'Clone', 'Demiplane', 'Dominate Monster', 'Feeblemind', 'Incendiary Cloud', 'Maze', 'Mind Blank', 'Power Word Stun', 'Sunburst', 'Telepathy'],
       9: ['Astral Projection', 'Foresight', 'Gate', 'Imprisonment', 'Meteor Swarm', 'Power Word Kill', 'Prismatic Wall', 'Shapechange', 'Time Stop', 'True Polymorph', 'Weird', 'Wish']
     }
-  }
+  },
+  // Third-party classes — spell lists come entirely from spellDatabase classes field
+  'Anti-Paladin':  { cantrips: [], spells: {} },
+  'Herald':        { cantrips: [], spells: {} },
+  'Ritual Caster': { cantrips: [], spells: {} }
 };
 
 function normalizeSpellName(name) {
