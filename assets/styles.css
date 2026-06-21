@@ -4470,10 +4470,9 @@
 }
 
 .admin-campaign-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 6px;
-  flex-shrink: 0;
-  flex-wrap: wrap;
 }
 
 /* Campaign viewer card */
@@ -4486,13 +4485,11 @@
 
 .admin-campaign-card-header {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 10px;
   padding: 12px 14px;
   background: rgba(255,255,255,0.04);
   border-bottom: 1px solid rgba(255,255,255,0.06);
-  flex-wrap: wrap;
 }
 
 .admin-campaign-card-body {
