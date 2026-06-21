@@ -161,9 +161,9 @@
       <!-- Locked state -->
       <div id="adminLockedView" class="admin-locked-view">
         <p class="settings-note">Enter your PIN to unlock.</p>
-        <div class="admin-pin-row">
-          <input id="adminPortalPin" type="password" autocomplete="current-password" placeholder="PIN" class="admin-pin-input">
-          <button type="button" class="settings-action-btn accent-contrast-bg" onclick="unlockAdminPortal()">Unlock</button>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:8px;max-width:400px;">
+          <input id="adminPortalPin" type="password" autocomplete="current-password" placeholder="Enter PIN" style="flex:1;min-width:0;padding:10px 12px;font-size:0.95rem;border-radius:6px;border:1px solid var(--accent-border);background:rgba(255,255,255,0.06);color:inherit;box-sizing:border-box;">
+          <button type="button" class="settings-action-btn accent-contrast-bg" onclick="unlockAdminPortal()" style="width:auto;flex-shrink:0;padding:10px 20px;">Unlock</button>
         </div>
         <div id="adminPortalStatus" class="status-message"></div>
       </div>
