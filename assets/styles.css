@@ -4426,18 +4426,23 @@
 
 .admin-locked-view {
   padding: 8px 0;
+  max-width: 360px;
 }
 
 .admin-pin-row {
   display: flex;
+  flex-direction: column;
   gap: 8px;
-  align-items: center;
   margin-top: 8px;
 }
 
 .admin-pin-input {
-  flex: 1;
-  max-width: 200px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.admin-pin-row .settings-action-btn {
+  width: 100%;
 }
 
 .admin-tabs {
