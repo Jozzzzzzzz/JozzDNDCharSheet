@@ -8,14 +8,14 @@ const fs = require('fs');
 const path = require('path');
 
 const SOURCES = [
-  {
-    url: 'https://raw.githubusercontent.com/open5e/open5e-api/staging/data/v1/wotc-srd/Spell.json',
-    sourceBook: 'SRD 5.1'
-  },
-  {
-    url: 'https://raw.githubusercontent.com/open5e/open5e-api/staging/data/v1/o5e/Spell.json',
-    sourceBook: 'Open5e'
-  }
+  { url: 'https://raw.githubusercontent.com/open5e/open5e-api/staging/data/v1/wotc-srd/Spell.json', sourceBook: 'SRD 5.1' },
+  { url: 'https://raw.githubusercontent.com/open5e/open5e-api/staging/data/v1/o5e/Spell.json',      sourceBook: 'Open5e' },
+  { url: 'https://raw.githubusercontent.com/open5e/open5e-api/staging/data/v1/a5e/Spell.json',      sourceBook: 'A5e' },
+  { url: 'https://raw.githubusercontent.com/open5e/open5e-api/staging/data/v1/dmag/Spell.json',     sourceBook: 'Deep Magic' },
+  { url: 'https://raw.githubusercontent.com/open5e/open5e-api/staging/data/v1/dmag-e/Spell.json',   sourceBook: 'Deep Magic Extra' },
+  { url: 'https://raw.githubusercontent.com/open5e/open5e-api/staging/data/v1/toh/Spell.json',      sourceBook: 'Tome of Heroes' },
+  { url: 'https://raw.githubusercontent.com/open5e/open5e-api/staging/data/v1/warlock/Spell.json',  sourceBook: 'Warlock' },
+  { url: 'https://raw.githubusercontent.com/open5e/open5e-api/staging/data/v1/kp/Spell.json',       sourceBook: 'Kobold Press' },
 ];
 
 const OUT_PATH = path.join(__dirname, '..', 'assets', 'data', 'spells.json');
