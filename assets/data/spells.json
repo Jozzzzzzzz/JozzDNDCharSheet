@@ -16373,28 +16373,6 @@
     "open5eSlug": "meld-into-stone"
   },
   {
-    "name": "Meld Into Stone",
-    "level": 3,
-    "school": "Transmutation",
-    "castingTime": "1 action",
-    "range": "touch",
-    "components": "V, S",
-    "duration": "8 hours",
-    "damage": "6d6 bludgeoning damage",
-    "save": "",
-    "attack": "Ranged Weapon Attack",
-    "ritual": false,
-    "concentration": false,
-    "prepared": false,
-    "classes": [
-      "Druid"
-    ],
-    "sourceBook": "A5e",
-    "description": "Until the spell ends, you meld yourself and your carried equipment into the target stone. Using your movement, you may enter the stone from any point you can touch. No trace of your presence is visible or detectable by nonmagical senses.\n\nWithin the stone, you can't see outside it and have disadvantage on Perception checks made to hear beyond it. You are aware of time passing, and may cast spells upon yourself. You may use your movement only to step out of the target where you entered it, ending the spell.\n\nIf the target is damaged such that its shape changes and you no longer fit within it, you are expelled and take 6d6 bludgeoning damage. Complete destruction of the target, or its transmutation into another substance, expels you and you take 50 bludgeoning damage. When expelled you fall prone into the closest unoccupied space near your entrance point.\n\n**At Higher Levels.** When using a 5th-level spell slot, you may reach out of the target to make spell attacks or ranged weapon attacks without ending the spell. You make these attacks with disadvantage.",
-    "wikiLink": "https://open5e.com/spells/meld-into-stone-a5e",
-    "open5eSlug": "meld-into-stone-a5e"
-  },
-  {
     "name": "Memento Mori",
     "level": 0,
     "school": "Necromancy",
@@ -17661,28 +17639,6 @@
     "description": "A veil of shadows and silence radiates from you, masking you and your companions from detection. For the duration, each creature you choose within 30 feet of you (including you) has a +10 bonus to Dexterity (Stealth) checks and can't be tracked except by magical means. A creature that receives this bonus leaves behind no tracks or other traces of its passage.",
     "wikiLink": "https://open5e.com/spells/pass-without-trace",
     "open5eSlug": "pass-without-trace"
-  },
-  {
-    "name": "Pass Without Trace",
-    "level": 2,
-    "school": "Abjuration",
-    "castingTime": "1 action",
-    "range": "self",
-    "components": "V, S, M",
-    "duration": "Up to 1 hour",
-    "damage": "",
-    "save": "",
-    "attack": "",
-    "ritual": false,
-    "concentration": true,
-    "prepared": false,
-    "classes": [
-      "Druid"
-    ],
-    "sourceBook": "A5e",
-    "description": "You and allies within the area gain advantage and an expertise die on Dexterity (Stealth) checks as an aura of secrecy enshrouds you. Creatures in the area leave behind no evidence of their passage.",
-    "wikiLink": "https://open5e.com/spells/pass-without-trace-a5e",
-    "open5eSlug": "pass-without-trace-a5e"
   },
   {
     "name": "Passwall",
