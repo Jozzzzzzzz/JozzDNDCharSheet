@@ -459,6 +459,7 @@ async function adminLoadCampaigns() {
             <button class="settings-action-btn accent-contrast-bg" onclick="adminEditCampaignDm('${c.id}')">Edit DM</button>
             <button class="settings-action-btn accent-contrast-bg" onclick="adminChangeCampaignPassword('${c.id}')">Change Password</button>
             <button class="settings-action-btn accent-contrast-bg" onclick="adminToggleCampaign('${c.id}', ${!c.active})">${c.active ? 'Deactivate' : 'Activate'}</button>
+            <button class="settings-action-btn admin-delete-btn" id="adminDelBtn_${c.id}" onclick="adminDeleteCampaignStep('${c.id}', '${escapeHtml(c.name)}', this)">Delete</button>
           </div>
         </div>
         <div class="admin-campaign-card-body">
@@ -557,6 +558,45 @@ async function adminToggleCampaign(campaignId, active) {
   }
 }
 
+const _adminDeleteState = {};
+
+function adminDeleteCampaignStep(campaignId, campaignName, btn) {
+  const state = _adminDeleteState[campaignId] || { step: 0 };
+
+  if (state.step === 0) {
+    state.step = 1;
+    btn.textContent = 'Sure?';
+    btn.style.background = 'rgba(200,100,40,0.3)';
+    btn.style.borderColor = 'rgba(200,100,40,0.6)';
+    state.timer = setTimeout(() => {
+      _adminDeleteState[campaignId] = { step: 0 };
+      btn.textContent = 'Delete';
+      btn.style.background = '';
+      btn.style.borderColor = '';
+    }, 4000);
+
+  } else if (state.step === 1) {
+    clearTimeout(state.timer);
+    state.step = 2;
+    btn.textContent = 'Deleting...';
+    btn.disabled = true;
+    _adminDeleteState[campaignId] = state;
+
+    window.db.collection('campaigns').doc(campaignId).delete().then(() => {
+      setAdminCampaignStatus(`"${campaignName}" deleted.`, 'success');
+      adminLoadCampaigns();
+    }).catch(e => {
+      setAdminCampaignStatus('Delete failed: ' + e.message, 'error');
+      btn.textContent = 'Delete';
+      btn.disabled = false;
+      _adminDeleteState[campaignId] = { step: 0 };
+    });
+  }
+
+  _adminDeleteState[campaignId] = state;
+}
+
+window.adminDeleteCampaignStep = adminDeleteCampaignStep;
 window.adminCreateCampaign = adminCreateCampaign;
 window.adminLoadCampaigns = adminLoadCampaigns;
 window.adminEditCampaignDm = adminEditCampaignDm;
