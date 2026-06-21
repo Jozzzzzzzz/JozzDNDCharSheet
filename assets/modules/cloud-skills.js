@@ -101,12 +101,23 @@ function initializeFirebase() {
       window.currentUser = user;
       updateAuthUI();
       if (user) {
-        setSyncStatus('Signed in successfully');
-        handleSignedInUser(user).catch((err) => {
-          console.error('Signed-in user handling error:', err);
-        });
-        // Auto-sync from cloud when user signs in
-        setTimeout(() => syncFromCloud(true), 1000);
+        // Use sessionStorage so full sign-in handling only runs once per browser session.
+        // On refresh the auth state fires again but we skip the heavy Firestore work.
+        const sessionKey = `dndSessionHandled_${user.uid}`;
+        const alreadyHandled = sessionStorage.getItem(sessionKey) === '1';
+
+        if (!alreadyHandled) {
+          sessionStorage.setItem(sessionKey, '1');
+          setSyncStatus('Signed in successfully');
+          handleSignedInUser(user).catch((err) => {
+            console.error('Signed-in user handling error:', err);
+          });
+          setTimeout(() => syncFromCloud(true), 1000);
+        } else {
+          // Refresh/re-render — just restart the live listener, skip the heavy stuff
+          startPresenceHeartbeat(getOrCreateDeviceId());
+          startActiveCharacterListener(window.currentCharacter);
+        }
       } else {
         stopPresenceHeartbeat();
       }
@@ -242,7 +253,7 @@ async function trackSigninAndMaybeNotify(user) {
     // Check if we already notified for this device recently (server-side, survives localStorage clears)
     const lastNotifiedIso = deviceData.notifiedAt || '';
     const lastNotifiedMs = lastNotifiedIso ? new Date(lastNotifiedIso).getTime() : 0;
-    const shouldNotify = (firstEver || newDevice) && (Date.now() - lastNotifiedMs > NOTIFY_COOLDOWN_MS);
+    const shouldNotify = firstEver && (Date.now() - lastNotifiedMs > NOTIFY_COOLDOWN_MS);
 
     let knownDeviceCount = Number(data.knownDeviceCount);
     if (!Number.isFinite(knownDeviceCount)) {
@@ -290,11 +301,10 @@ async function trackSigninAndMaybeNotify(user) {
   const isSupressed = SIGNIN_SUPPRESSED_EMAILS.includes(String(user.email || '').toLowerCase());
   if (!isOwnerEmail(user.email) && !isSupressed && flags.shouldNotify) {
     const userEmail = user.email || 'unknown';
-    const eventLabel = flags.firstEver ? 'First Time' : 'New Device';
-    const subject = `New User Sign-In (${eventLabel}) — ${userEmail}`;
-    const message = `A user signed in with Google.\n\nEmail: ${userEmail}\nUID: ${user.uid}\nDevice: ${deviceId}\nEvent: ${flags.firstEver ? 'first_time' : 'new_device'}\nTime: ${nowIso}`;
+    const subject = `New User Sign-In — ${userEmail}`;
+    const message = `A new user signed in for the first time.\n\nEmail: ${userEmail}\nUID: ${user.uid}\nDevice: ${deviceId}\nTime: ${nowIso}`;
     await sendOwnerNotification(subject, message, {
-      event_type: flags.firstEver ? 'google_signin_first' : 'google_signin_new_device',
+      event_type: 'google_signin_first',
       signed_in_email: userEmail,
       signed_in_uid: user.uid,
       device_id: deviceId
@@ -316,7 +326,7 @@ function onPresenceVisibilityChange() {
 async function sendPresenceHeartbeat() {
   if (!db || !currentUser?.uid) return;
   const now = Date.now();
-  if (now - lastPresenceAt < 45000) return; // throttle
+  if (now - lastPresenceAt < 240000) return; // throttle to max once per 4 minutes
   lastPresenceAt = now;
   const uid = currentUser.uid;
   const deviceId = lastPresenceDevice || getOrCreateDeviceId();
@@ -341,14 +351,8 @@ function startPresenceHeartbeat(deviceId) {
   lastPresenceDevice = deviceId || getOrCreateDeviceId();
   if (presenceTimer) clearInterval(presenceTimer);
   // Timer-based presence
-  presenceTimer = setInterval(sendPresenceHeartbeat, 60000);
-  // Also bump on focus/visibility (attach once)
-  if (!presenceListenersAttached) {
-    presenceListenersAttached = true;
-    window.addEventListener('focus', sendPresenceHeartbeat);
-    document.addEventListener('visibilitychange', onPresenceVisibilityChange);
-  }
-  // Expose for autosave hook
+  presenceTimer = setInterval(sendPresenceHeartbeat, 300000); // every 5 minutes
+  // Expose for compatibility (no longer called from autosave)
   window.presenceHeartbeat = sendPresenceHeartbeat;
   // Kick once immediately
   sendPresenceHeartbeat();
@@ -570,7 +574,7 @@ function scheduleSyncToCloud() {
   cloudSyncTimer = setTimeout(() => {
     cloudSyncTimer = null;
     syncActiveCharacterToCloud();
-  }, 2000);
+  }, 15000); // 15s debounce — reduces write frequency vs previous 2s
 }
 
 async function syncActiveCharacterToCloud() {

@@ -1485,7 +1485,6 @@ function renderPreparedSpells() {
   const colgroup = document.createElement('colgroup');
   colgroup.innerHTML = `
     <col class="pcol-name">
-    <col class="pcol-level">
     <col class="pcol-cast">
     <col class="pcol-range">
     <col class="pcol-damage">
@@ -1496,7 +1495,6 @@ function renderPreparedSpells() {
   const thead = document.createElement('thead');
   thead.innerHTML = `<tr>
     <th>Name</th>
-    <th>Lvl</th>
     <th>Cast Time</th>
     <th>Range</th>
     <th>Effect</th>
@@ -1514,7 +1512,7 @@ function renderPreparedSpells() {
 
       const groupRow = document.createElement('tr');
       groupRow.className = 'prepared-spells-group-row';
-      groupRow.innerHTML = `<td colspan="6">${levelLabel} <span class="prepared-spells-count">(${levelEntries.length})</span></td>`;
+      groupRow.innerHTML = `<td colspan="5">${levelLabel} <span class="prepared-spells-count">(${levelEntries.length})</span></td>`;
       tbody.appendChild(groupRow);
 
       levelEntries.forEach(entry => {
@@ -1526,7 +1524,6 @@ function renderPreparedSpells() {
         tr.className = 'prepared-spells-row';
         tr.innerHTML = `
           <td class="prep-name">${spell.name}</td>
-          <td class="prep-level">${level === '0' ? 'Cantrip' : level}</td>
           <td class="prep-cast">${spell.castingTime || '—'}</td>
           <td class="prep-range">${spell.range || '—'}</td>
           <td class="prep-damage">${damageDisplay}</td>

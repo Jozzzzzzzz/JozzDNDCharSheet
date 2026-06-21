@@ -2712,9 +2712,6 @@ function resetDeleteUI() {
 
 function autosave() {
   try {
-  if (typeof window.presenceHeartbeat === 'function') {
-    window.presenceHeartbeat();
-  }
   // Ensure a character target exists — never create ghost data
   if (!currentCharacter) {
     const characters = getStoredJSON('dndCharacters', []);
