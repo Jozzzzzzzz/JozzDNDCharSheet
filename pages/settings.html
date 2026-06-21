@@ -152,78 +152,66 @@
       </div>
     </div>
 
-    <div class="home-card suggestion-card settings-card">
+    <div class="home-card settings-card admin-portal-card" id="adminPortalCard" style="display: none;">
       <div class="card-header">
-        <h3>Share Your Ideas</h3>
-        <p>Help us improve the character sheet</p>
-      </div>
-      <form id="settingsSuggestionForm" class="suggestion-form" onsubmit="handleSettingsSuggestionSubmit(event)">
-        <div class="form-group">
-          <label for="settingsSuggestionType">What kind of suggestion?</label>
-          <select id="settingsSuggestionType" required>
-            <option value="">Choose a category...</option>
-            <option value="Make it Look Better">Make it Look Better</option>
-            <option value="Add New Feature">Add New Feature</option>
-            <option value="Fix a Problem">Fix a Problem</option>
-            <option value="Make it Easier to Use">Make it Easier to Use</option>
-            <option value="Other">Other</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="settingsSuggestionText">Your suggestion:</label>
-          <textarea id="settingsSuggestionText" placeholder="Tell us what you'd like to see improved or added..." required></textarea>
-        </div>
-        <button type="submit" class="submit-btn">Send Suggestion</button>
-        <div id="settingsSuggestionStatus" class="status-message"></div>
-      </form>
-    </div>
-
-    <div class="home-card settings-card" id="adminPortalCard" style="display: none;">
-      <div class="card-header">
-        <h3>Admin Portal</h3>
-        <p>Owner-only tools</p>
+        <h3>⚙️ Admin Portal</h3>
+        <p>Owner-only tools — campaigns, users, and character management</p>
       </div>
 
-      <div class="settings-controls-stack">
-        <div id="adminLockedView">
-          <p class="settings-note">This section is locked. Enter your PIN to continue.</p>
-          <div class="settings-field">
-            <label for="adminPortalPin">PIN</label>
-            <input id="adminPortalPin" type="password" autocomplete="current-password" placeholder="Enter PIN">
-          </div>
-          <button type="button" class="settings-action-btn accent-contrast-bg" onclick="unlockAdminPortal()">Unlock Admin Portal</button>
-          <div id="adminPortalStatus" class="status-message"></div>
+      <!-- Locked state -->
+      <div id="adminLockedView" class="admin-locked-view">
+        <p class="settings-note">Enter your PIN to unlock.</p>
+        <div class="admin-pin-row">
+          <input id="adminPortalPin" type="password" autocomplete="current-password" placeholder="PIN" class="admin-pin-input">
+          <button type="button" class="settings-action-btn accent-contrast-bg" onclick="unlockAdminPortal()">Unlock</button>
+        </div>
+        <div id="adminPortalStatus" class="status-message"></div>
+      </div>
+
+      <!-- Unlocked state -->
+      <div id="adminUnlockedView" style="display:none;">
+
+        <!-- Admin tab bar -->
+        <div class="admin-tabs">
+          <button class="admin-tab active" data-admin-tab="adminTabCampaigns" onclick="switchAdminTab(this)">Campaigns</button>
+          <button class="admin-tab" data-admin-tab="adminTabUsers" onclick="switchAdminTab(this)">Users</button>
         </div>
 
-        <div id="adminUnlockedView" style="display:none;">
-
-          <!-- Campaign Manager -->
-          <div class="admin-section-header">Campaigns</div>
-          <div class="admin-campaign-form">
-            <input type="text" id="adminCampaignName" placeholder="Campaign name (e.g. Neuertham)" maxlength="80">
-            <input type="text" id="adminCampaignSetting" placeholder="Setting (e.g. Homebrew)" maxlength="60">
-            <input type="text" id="adminCampaignDmEmail" placeholder="DM email (leave blank if not yet known)" maxlength="120">
-            <input type="password" id="adminCampaignPassword" placeholder="DM portal password" maxlength="60">
-            <button type="button" class="settings-action-btn accent-contrast-bg" onclick="adminCreateCampaign()">Create Campaign</button>
+        <!-- Campaigns tab -->
+        <div id="adminTabCampaigns" class="admin-tab-panel">
+          <div class="admin-create-form">
+            <h4 class="admin-form-title">New Campaign</h4>
+            <div class="admin-campaign-form">
+              <input type="text" id="adminCampaignName" placeholder="Campaign name" maxlength="80">
+              <input type="text" id="adminCampaignSetting" placeholder="Setting (e.g. Homebrew)" maxlength="60">
+              <input type="text" id="adminCampaignDmEmail" placeholder="DM email (optional)" maxlength="120">
+              <input type="password" id="adminCampaignPassword" placeholder="DM portal password" maxlength="60">
+              <button type="button" class="settings-action-btn accent-contrast-bg" onclick="adminCreateCampaign()">Create Campaign</button>
+            </div>
+            <div id="adminCampaignStatus" class="status-message"></div>
           </div>
-          <div id="adminCampaignStatus" class="status-message"></div>
-          <div id="adminCampaignList" class="admin-campaign-list"></div>
-          <button type="button" class="settings-action-btn accent-contrast-bg" style="margin-top:8px;" onclick="adminLoadCampaigns()">Refresh Campaigns</button>
 
           <div class="admin-section-divider"></div>
 
-          <!-- User Manager -->
-          <div class="admin-section-header">Users</div>
-          <div class="settings-field">
-            <label for="adminUserSelect">Users</label>
-            <select id="adminUserSelect" onchange="adminSelectUser(this.value)">
+          <div class="admin-list-header">
+            <span class="admin-section-header" style="border:none;padding:0;margin:0;">Your Campaigns</span>
+            <button type="button" class="settings-action-btn accent-contrast-bg" onclick="adminLoadCampaigns()">Refresh</button>
+          </div>
+          <div id="adminCampaignList" class="admin-campaign-list"></div>
+        </div>
+
+        <!-- Users tab -->
+        <div id="adminTabUsers" class="admin-tab-panel" style="display:none;">
+          <div class="admin-user-controls">
+            <select id="adminUserSelect" onchange="adminSelectUser(this.value)" class="admin-user-select">
               <option value="">Select a user...</option>
             </select>
+            <button type="button" class="settings-action-btn accent-contrast-bg" onclick="adminRefreshUsers()">Refresh</button>
           </div>
-          <button type="button" class="settings-action-btn accent-contrast-bg" onclick="adminRefreshUsers()">Refresh User List</button>
           <p id="adminUserMeta" class="settings-note"></p>
           <div id="adminUserCharacters"></div>
         </div>
+
       </div>
     </div>
   </div>

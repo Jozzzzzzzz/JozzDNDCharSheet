@@ -12,6 +12,15 @@ function isOwnerAdminUser() {
   return email === 'vanreejoz33@gmail.com';
 }
 
+function switchAdminTab(btn) {
+  document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.admin-tab-panel').forEach(p => { p.style.display = 'none'; });
+  const panel = document.getElementById(btn.dataset.adminTab);
+  if (panel) panel.style.display = 'block';
+}
+window.switchAdminTab = switchAdminTab;
+
 window.updateAdminPortalVisibility = function updateAdminPortalVisibility() {
   const card = document.getElementById('adminPortalCard');
   if (!card) return;
