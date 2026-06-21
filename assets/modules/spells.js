@@ -96,20 +96,99 @@ function normalizeSpellsDataContainer(data) {
 }
 
 
-// Spell database — loaded async from assets/data/spells.json
+// Spell database — loaded from local spells.json then enriched from Open5e API
 let spellDatabase = {};
 
+// Convert a spell name to an Open5e URL slug
+function spellNameToOpen5eSlug(name) {
+  return name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+}
+
+// Generate an Open5e web link for a spell
+function open5eSpellLink(slugOrName) {
+  const slug = slugOrName.includes(' ') ? spellNameToOpen5eSlug(slugOrName) : slugOrName;
+  return `https://open5e.com/spells/${slug}`;
+}
+
 async function loadSpellDatabase() {
+  // Step 1: load local spells.json as the base (fast, works offline)
   try {
     const resp = await fetch('assets/data/spells.json');
     const spells = await resp.json();
     spellDatabase = {};
     spells.forEach(spell => {
-      if (spell && spell.name) spellDatabase[spell.name] = spell;
+      if (spell && spell.name) {
+        // Upgrade any wikidot links to Open5e on load
+        if (spell.wikiLink && spell.wikiLink.includes('wikidot.com')) {
+          spell.wikiLink = open5eSpellLink(spell.name);
+        }
+        if (!spell.wikiLink) {
+          spell.wikiLink = open5eSpellLink(spell.name);
+        }
+        spellDatabase[spell.name] = spell;
+      }
     });
     applyClassTagsToSpellCatalogs();
   } catch (err) {
-    console.error('Failed to load spell database:', err);
+    console.error('Failed to load local spell database:', err);
+  }
+
+  // Step 2: enrich from Open5e in the background — adds slugs, better descriptions, class lists
+  enrichSpellDatabaseFromOpen5e();
+}
+
+async function enrichSpellDatabaseFromOpen5e() {
+  try {
+    let url = 'https://api.open5e.com/v1/spells/?limit=100&document__slug=wotc-srd';
+    while (url) {
+      const resp = await fetch(url);
+      if (!resp.ok) break;
+      const data = await resp.json();
+      (data.results || []).forEach(s => {
+        if (!s || !s.name) return;
+        const existing = spellDatabase[s.name];
+        const link = `https://open5e.com/spells/${s.slug}`;
+        if (existing) {
+          // Enrich existing entry — preserve user-facing fields, upgrade link + description
+          existing.wikiLink = link;
+          existing.open5eSlug = s.slug;
+          if (s.desc && s.desc.length > (existing.description || '').length) {
+            existing.description = s.desc;
+          }
+          if (s.dnd_class) {
+            const classes = s.dnd_class.split(',').map(c => c.trim()).filter(Boolean);
+            if (classes.length > 0) existing.classes = classes;
+          }
+        } else {
+          // New spell from Open5e not in local JSON — add it
+          spellDatabase[s.name] = {
+            name: s.name,
+            level: typeof s.level_int === 'number' ? s.level_int : parseInt(s.level, 10) || 0,
+            school: s.school || '',
+            castingTime: s.casting_time || '',
+            range: s.range || '',
+            components: s.components || '',
+            duration: s.duration || '',
+            damage: '',
+            save: '',
+            attack: '',
+            ritual: s.ritual === 'yes' || s.ritual === true,
+            concentration: s.concentration === 'yes' || s.concentration === true,
+            prepared: false,
+            classes: s.dnd_class ? s.dnd_class.split(',').map(c => c.trim()).filter(Boolean) : [],
+            sourceBook: s.document__slug || 'SRD',
+            description: s.desc || '',
+            wikiLink: link,
+            open5eSlug: s.slug
+          };
+        }
+      });
+      url = data.next || null;
+    }
+    applyClassTagsToSpellCatalogs();
+  } catch (err) {
+    // Open5e unavailable — local JSON is still the fallback, no user impact
+    console.warn('Open5e enrichment unavailable (offline?):', err.message);
   }
 }
 
@@ -551,7 +630,7 @@ function createSpellFromName(name, level) {
       sourceBook: spellData.sourceBook || inferSourceBookForSpell(name),
       prepared: false,
       description: spellData.description || `${name} - Official D&D 5e spell.`,
-      wikiLink: spellData.wikiLink || `https://dnd5e.wikidot.com/spell:${name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '')}`
+      wikiLink: spellData.wikiLink || open5eSpellLink(name)
     });
   }
   
@@ -573,7 +652,7 @@ function createSpellFromName(name, level) {
     sourceBook: inferSourceBookForSpell(name),
     prepared: false,
     description: `${name} - Official D&D 5e spell. Full description available in Player's Handbook.`,
-    wikiLink: `https://dnd5e.wikidot.com/spell:${name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '')}`
+    wikiLink: open5eSpellLink(name)
   });
 }
 
@@ -1299,19 +1378,17 @@ function showSpellDetails(type, index) {
   document.getElementById('spellDetailConcentration').textContent = spell.concentration ? 'Yes' : 'No';
   document.getElementById('spellDetailDescription').textContent = spell.description;
   
-  // Show/hide wiki link
+  // Source book
+  const sourceBookEl = document.getElementById('spellDetailSourceBook');
+  if (sourceBookEl) sourceBookEl.textContent = spell.sourceBook || '';
+
+  // Open5e link — always show, generate from slug or name
   const wikiLinkRow = document.getElementById('spellDetailWikiLink');
   const wikiLink = document.getElementById('spellWikiLink');
-  
-  if (spell.wikiLink) {
-    wikiLink.href = spell.wikiLink;
-    wikiLinkRow.style.display = 'block';
-  } else {
-    // Generate wiki link from spell name if not provided
-    const generatedLink = `https://dnd5e.wikidot.com/spell:${spell.name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '')}`;
-    wikiLink.href = generatedLink;
-    wikiLinkRow.style.display = 'block';
-  }
+  const link = spell.wikiLink || open5eSpellLink(spell.name);
+  wikiLink.href = link;
+  wikiLink.textContent = 'View on Open5e';
+  wikiLinkRow.style.display = 'block';
   
   showPopup('spellDetailsPopup');
 }

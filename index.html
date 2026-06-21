@@ -276,7 +276,7 @@ function activateRoute() {
 })();
 
 async function bootstrapModularApp() {
-  const scriptVersion = '20260621n-mobile-spells-fix';
+  const scriptVersion = '20260621o-open5e-spells';
   const [chrome, home, settings, stats, background, spells, inventory, notes, popups,
          dmChrome, dmHome, dmPlayers, dmMonsters, dmEncounters, dmNpcs, dmSettings] = await Promise.all([
     loadText('partials/chrome.html'),
