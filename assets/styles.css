@@ -4611,6 +4611,14 @@
   gap: 6px;
 }
 
+/* Override global width:100% on settings-action-btn inside flex admin rows */
+.admin-pin-row .settings-action-btn,
+.admin-user-controls .settings-action-btn,
+.admin-campaign-actions .settings-action-btn {
+  width: auto !important;
+  flex-shrink: 0;
+}
+
 .admin-delete-btn {
   background: rgba(180,40,40,0.15);
   border: 1px solid rgba(180,40,40,0.35);

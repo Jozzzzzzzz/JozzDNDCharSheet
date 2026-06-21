@@ -182,11 +182,11 @@
           <div class="admin-create-form">
             <h4 class="admin-form-title">New Campaign</h4>
             <div class="admin-campaign-form">
-              <input type="text" id="adminCampaignName" placeholder="Campaign name" maxlength="80">
-              <input type="text" id="adminCampaignSetting" placeholder="Setting (e.g. Homebrew)" maxlength="60">
-              <input type="text" id="adminCampaignDmEmail" placeholder="DM email (optional)" maxlength="120">
-              <input type="password" id="adminCampaignPassword" placeholder="DM portal password" maxlength="60">
-              <button type="button" class="settings-action-btn accent-contrast-bg" onclick="adminCreateCampaign()">Create Campaign</button>
+              <input type="text" id="adminCampaignName" placeholder="Campaign name" maxlength="80" style="width:100%;box-sizing:border-box;">
+              <input type="text" id="adminCampaignSetting" placeholder="Setting (e.g. Homebrew)" maxlength="60" style="width:100%;box-sizing:border-box;">
+              <input type="text" id="adminCampaignDmEmail" placeholder="DM email (optional)" maxlength="120" style="width:100%;box-sizing:border-box;">
+              <input type="password" id="adminCampaignPassword" placeholder="DM portal password" maxlength="60" style="width:100%;box-sizing:border-box;">
+              <button type="button" class="settings-action-btn accent-contrast-bg" onclick="adminCreateCampaign()" style="width:100%;">Create Campaign</button>
             </div>
             <div id="adminCampaignStatus" class="status-message"></div>
           </div>
@@ -202,11 +202,11 @@
 
         <!-- Users tab -->
         <div id="adminTabUsers" class="admin-tab-panel" style="display:none;">
-          <div class="admin-user-controls">
-            <select id="adminUserSelect" onchange="adminSelectUser(this.value)" class="admin-user-select">
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+            <select id="adminUserSelect" onchange="adminSelectUser(this.value)" style="flex:1;min-width:0;padding:10px 12px;font-size:0.9rem;border-radius:6px;border:1px solid var(--accent-border);background:rgba(255,255,255,0.06);color:inherit;box-sizing:border-box;">
               <option value="">Select a user...</option>
             </select>
-            <button type="button" class="settings-action-btn accent-contrast-bg" onclick="adminRefreshUsers()">Refresh</button>
+            <button type="button" class="settings-action-btn accent-contrast-bg" onclick="adminRefreshUsers()" style="width:auto;flex-shrink:0;padding:10px 20px;">Refresh</button>
           </div>
           <p id="adminUserMeta" class="settings-note"></p>
           <div id="adminUserCharacters"></div>
