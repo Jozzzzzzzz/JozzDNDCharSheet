@@ -102,6 +102,7 @@ window.initializeApp = function() {
   });
 
   initializeSuggestionForm();
+  if (typeof window.loadCampaignDropdown === 'function') window.loadCampaignDropdown();
 
   const characterInfoSection = document.querySelector('.character-info-section');
   if (characterInfoSection) {

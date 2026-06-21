@@ -2741,7 +2741,11 @@ function autosave() {
     class: val('char_class'),
     subclass: val('char_subclass'),
     level: val('char_level'),
-    campaignId: val('char_campaign') || ''
+    campaignId: (() => {
+      const select = el('char_campaign_select');
+      if (select?.value === '__custom__') return val('char_campaign_custom') || '';
+      return val('char_campaign') || '';
+    })()
   } : existing.characterInfo;
 
   // --- actionTracker ---
@@ -2949,8 +2953,7 @@ function loadData() {
     document.getElementById('char_class').value = data.characterInfo.class || '';
     document.getElementById('char_subclass').value = data.characterInfo.subclass || '';
     document.getElementById('char_level').value = data.characterInfo.level || '';
-    const campaignEl = document.getElementById('char_campaign');
-    if (campaignEl) campaignEl.value = data.characterInfo.campaignId || '';
+    restoreCampaignField(data.characterInfo.campaignId || '');
   }
 
   // Action Tracker
@@ -4443,4 +4446,142 @@ function openSettingsPage() {
     bgRenderPicker();
   });
 }
+
+// ─── Campaign Field ────────────────────────────────────────────────────────
+
+let _campaignCache = []; // { id, name, passwordHash }
+
+async function loadCampaignDropdown() {
+  const select = document.getElementById('char_campaign_select');
+  if (!select) return;
+  const db = window.db;
+  if (!db) return;
+  try {
+    const snap = await db.collection('campaigns').where('active', '==', true).orderBy('name').get();
+    _campaignCache = [];
+    // Reset to base options
+    select.innerHTML = `
+      <option value="">Solo / No Campaign</option>
+      <option value="__custom__">Custom...</option>
+    `;
+    snap.forEach(doc => {
+      const c = doc.data();
+      _campaignCache.push({ id: doc.id, name: c.name, passwordHash: c.passwordHash || '' });
+      const opt = document.createElement('option');
+      opt.value = c.name;
+      opt.textContent = c.name;
+      // Insert before the Custom option
+      select.insertBefore(opt, select.lastElementChild);
+    });
+  } catch (e) {
+    console.warn('Campaign dropdown load failed:', e.message);
+  }
+}
+
+function onCampaignSelectChange(select) {
+  const val = select.value;
+  const customInput = document.getElementById('char_campaign_custom');
+  const passwordRow = document.getElementById('char_campaign_password_row');
+  const hiddenField = document.getElementById('char_campaign');
+  const statusEl = document.getElementById('char_campaign_password_status');
+
+  // Reset
+  if (passwordRow) passwordRow.style.display = 'none';
+  if (statusEl) statusEl.textContent = '';
+  const pwInput = document.getElementById('char_campaign_password');
+  if (pwInput) pwInput.value = '';
+
+  if (val === '__custom__') {
+    if (customInput) customInput.style.display = '';
+    if (hiddenField) hiddenField.value = '';
+    autosave();
+    return;
+  }
+
+  if (customInput) customInput.style.display = 'none';
+
+  if (!val) {
+    // Solo — no campaign
+    if (hiddenField) hiddenField.value = '';
+    autosave();
+    return;
+  }
+
+  // Named campaign — check if it has a password
+  const campaign = _campaignCache.find(c => c.name === val);
+  if (campaign && campaign.passwordHash) {
+    // Has password — show password row, don't save yet
+    if (passwordRow) passwordRow.style.display = 'flex';
+  } else {
+    // No password — join immediately
+    if (hiddenField) hiddenField.value = val;
+    autosave();
+  }
+}
+
+async function verifyCampaignPassword() {
+  const select = document.getElementById('char_campaign_select');
+  const pwInput = document.getElementById('char_campaign_password');
+  const hiddenField = document.getElementById('char_campaign');
+  const statusEl = document.getElementById('char_campaign_password_status');
+
+  const campaignName = select?.value;
+  const password = pwInput?.value || '';
+  if (!campaignName || !password) return;
+
+  const campaign = _campaignCache.find(c => c.name === campaignName);
+  if (!campaign) return;
+
+  const enteredHash = typeof window.sha256Hex === 'function'
+    ? await window.sha256Hex(password)
+    : '';
+
+  if (enteredHash === campaign.passwordHash) {
+    if (hiddenField) hiddenField.value = campaignName;
+    if (statusEl) { statusEl.textContent = '✓ Joined'; statusEl.style.color = '#6e6'; }
+    if (pwInput) pwInput.value = '';
+    const passwordRow = document.getElementById('char_campaign_password_row');
+    if (passwordRow) setTimeout(() => { passwordRow.style.display = 'none'; if (statusEl) statusEl.textContent = ''; }, 1500);
+    autosave();
+  } else {
+    if (statusEl) { statusEl.textContent = 'Incorrect password'; statusEl.style.color = '#e66'; }
+  }
+}
+
+function restoreCampaignField(savedCampaignId) {
+  const select = document.getElementById('char_campaign_select');
+  const customInput = document.getElementById('char_campaign_custom');
+  const hiddenField = document.getElementById('char_campaign');
+  if (!select || !hiddenField) return;
+
+  hiddenField.value = savedCampaignId;
+
+  if (!savedCampaignId) {
+    select.value = '';
+    if (customInput) customInput.style.display = 'none';
+    return;
+  }
+
+  // Check if it matches a known campaign
+  const knownOption = Array.from(select.options).find(o => o.value === savedCampaignId);
+  if (knownOption) {
+    select.value = savedCampaignId;
+    if (customInput) customInput.style.display = 'none';
+  } else {
+    // Custom campaign
+    select.value = '__custom__';
+    if (customInput) { customInput.style.display = ''; customInput.value = savedCampaignId; }
+  }
+}
+
+// Load campaign dropdown when stats page becomes visible
+const _origSwitchTab = window.switchTab;
+window.switchTab = function(btn) {
+  if (_origSwitchTab) _origSwitchTab(btn);
+  if (btn?.dataset?.tab === 'page1') loadCampaignDropdown();
+};
+
+window.onCampaignSelectChange = onCampaignSelectChange;
+window.verifyCampaignPassword = verifyCampaignPassword;
+window.loadCampaignDropdown = loadCampaignDropdown;
 

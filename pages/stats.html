@@ -36,7 +36,18 @@
     </div>
     <div style="grid-column: 1 / -1;">
       <label>Campaign <span style="font-size:0.78em;opacity:0.5;font-weight:400;">— links your character to a DM's campaign</span></label>
-      <input id="char_campaign" oninput="autosave()" placeholder="Campaign name (e.g. Lost Mines of Phandelver)"/>
+      <div class="campaign-field-row">
+        <select id="char_campaign_select" onchange="onCampaignSelectChange(this)">
+          <option value="">Solo / No Campaign</option>
+        </select>
+        <input id="char_campaign_custom" placeholder="Custom campaign name..." style="display:none;" oninput="autosave()"/>
+      </div>
+      <div id="char_campaign_password_row" style="display:none; margin-top:6px;">
+        <input id="char_campaign_password" type="password" placeholder="Campaign password" style="max-width:240px;"/>
+        <button type="button" class="settings-action-btn accent-contrast-bg" style="margin-left:6px;" onclick="verifyCampaignPassword()">Join</button>
+        <span id="char_campaign_password_status" style="font-size:0.8em;margin-left:8px;"></span>
+      </div>
+      <input id="char_campaign" type="hidden"/>
     </div>
   </div>
 </div>
