@@ -5270,12 +5270,11 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
     table-layout: fixed;
   }
 
-  /* Column widths — desktop */
-  .pcol-name    { width: 22%; }
-  .pcol-level   { width: 7%; }
-  .pcol-cast    { width: 18%; }
-  .pcol-range   { width: 14%; }
-  .pcol-damage  { width: 30%; }
+  /* Column widths — desktop (no Lvl column) */
+  .pcol-name    { width: 26%; }
+  .pcol-cast    { width: 20%; }
+  .pcol-range   { width: 16%; }
+  .pcol-damage  { width: 29%; }
   .pcol-actions { width: 9%; }
 
   .prepared-spells-table thead tr {
@@ -5324,7 +5323,7 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
     font-weight: 500;
   }
 
-  .prep-level, .prep-cast, .prep-range {
+  .prep-cast, .prep-range {
     color: #aaa;
   }
 
@@ -5473,18 +5472,19 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
     }
   }
 
-  /* Portrait phones: hide Cast Time, show Name / Lvl / Range / Dmg / View */
+  /* Portrait phones: hide Cast Time and Range, show Name / Effect / View */
   @media (max-width: 768px) and (orientation: portrait) {
     .pcol-cast,
     .prep-cast,
+    .prepared-spells-table th:nth-child(2),
+    .pcol-range,
+    .prep-range,
     .prepared-spells-table th:nth-child(3) {
       display: none;
     }
-    .pcol-name    { width: 30%; }
-    .pcol-level   { width: 9%; }
-    .pcol-range   { width: 20%; }
-    .pcol-damage  { width: 24%; }
-    .pcol-actions { width: 17%; }
+    .pcol-name    { width: 52%; }
+    .pcol-damage  { width: 33%; }
+    .pcol-actions { width: 15%; }
   }
 
   /* Extra small screens - ensure nothing gets squished */
