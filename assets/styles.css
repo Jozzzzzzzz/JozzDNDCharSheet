@@ -4473,6 +4473,88 @@
   display: flex;
   gap: 6px;
   flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+/* Campaign viewer card */
+.admin-campaign-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--accent-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.admin-campaign-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  flex-wrap: wrap;
+}
+
+.admin-campaign-card-body {
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.admin-campaign-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.badge-active { background: rgba(60,180,60,0.2); color: #6e6; border: 1px solid rgba(60,180,60,0.3); }
+.badge-inactive { background: rgba(180,60,60,0.15); color: #e88; border: 1px solid rgba(180,60,60,0.25); }
+
+.admin-campaign-detail-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.85rem;
+  padding: 3px 0;
+  color: rgba(255,255,255,0.75);
+}
+
+.admin-detail-label {
+  color: rgba(255,255,255,0.4);
+  min-width: 110px;
+  flex-shrink: 0;
+  font-size: 0.8rem;
+}
+
+.admin-dm-list { display: flex; flex-direction: column; gap: 3px; }
+.admin-dm-tag { font-size: 0.83rem; color: rgba(255,255,255,0.75); }
+.admin-dm-tag em { color: rgba(255,255,255,0.4); font-style: normal; }
+
+.admin-campaign-players {
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding: 10px 14px;
+}
+
+.admin-campaign-players-list { display: flex; flex-direction: column; gap: 6px; }
+
+.admin-campaign-player-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.admin-campaign-player-name {
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: rgba(255,255,255,0.9);
+  min-width: 120px;
 }
 
 .settings-field {

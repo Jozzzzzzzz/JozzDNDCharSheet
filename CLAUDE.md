@@ -243,6 +243,136 @@ Container item list elements are created with `id="${storage.id}_items"` (in `lo
 - `saveActions()` / `loadActions()` in `actions.js` — write to `dndActions` localStorage key. This is a legacy path; the real save/load goes through `core.js` `page1.actionsData`. The `dndActions` key is harmless but redundant. Do not remove `saveActions()` calls from `actions.js` without also removing the `loadActions()` call in `initializeActions()` — they must stay in sync or actions appear to load from stale data.
 - `dndInventory` localStorage key — similarly legacy. Real inventory data is in `page1.inventoryData` inside the character blob.
 
+## DM Portal
+
+A fully separate portal layer that overlays the player UI. Activated from the home page DM card. All DM logic lives in `assets/modules/dm.js`. DM HTML pages are in `pages/dm-*.html`. The DM chrome (banner + tabs) is in `partials/dm-chrome.html`.
+
+### Architecture
+- **Two DOM roots:** `#dm-chrome-root` and `#dm-pages-root` sit alongside the player roots in `index.html`. Both are `display:none` until `enterDmPortal()` shows them and hides `#chrome-root`, `#pages`, and `#popups-root`.
+- **Exit:** `exitDmPortal()` reverses this — restores `display:''` on player roots, hides DM roots. Session persists so re-entry within 24h is instant.
+- **Tab switching:** `switchDmTab(btn)` / `switchDmTabById(id)` — sets `.dm-tab.active` and shows the matching `.dm-page`. Switching to `dm-players` auto-calls `dmLoadPlayers()`.
+
+### Session (localStorage)
+Key: `dndDmSession`. Shape: `{ uid, email, campaignName, campaignSetting, enteredAt }`. TTL: 24 hours. Functions: `dmSessionLoad()`, `dmSessionSave(data)`, `dmSessionClear()`, `dmSessionValid()`.
+
+On `enterDmPortal()`:
+1. If no valid session → verify approval (Firestore `campaigns` where `dmEmails` contains user email) → save session
+2. Show DM UI, populate banner + dashboard from session
+3. Show pending banner (`#dmPendingBanner`) if email not yet in any campaign's `dmEmails`
+
+### DM Approval Flow
+- **Old (deprecated):** `DM_APPROVED_EMAILS` hardcoded array in `dm.js` — still present as fallback but being phased out
+- **New (active):** Firestore `campaigns/{id}.dmEmails` — you add a DM's email via Admin Portal → Campaigns → Edit DM
+- `isDmApproved(email)` checks the hardcoded array (legacy). Replace with Firestore check once campaign auth is fully wired.
+- `DM_NOTIFICATION_SUPPRESSED` and `DM_NOTIFY_COOLDOWN_MS` prevent spam notifications for owner/test accounts
+
+### DM Request Flow (home page card)
+1. Player-facing card on home page (`#dmPortalCard`) — visible to all
+2. States: not signed in → sign in prompt | signed in + no request → request form | pending → waiting message + dimmed Enter button | approved → Enter DM Screen button
+3. Submit writes to Firestore `dm_requests/{uid}` → sends Formspree notification to owner with exact approval instructions
+4. `renderDmCard()` is called from `showHomePage()` and `updateAuthUI()` in `cloud-skills.js`
+
+### DM Pages
+| Page | File | Status | Key IDs |
+|---|---|---|---|
+| Home | `pages/dm-home.html` | Working | `#dmHomeGreeting`, `#dmHomeCampaignName`, `#dmHomeCampaignSetting` |
+| Players | `pages/dm-players.html` | Working | `#dmPlayersList`, `#dmPlayerSheetPanel`, `#dmPlayerSheetBody` |
+| Monsters | `pages/dm-monsters.html` | Working | `#dmMonsterSearch`, `#dmMonsterCrFilter`, `#dmMonstersList`, `#dmMonsterDetail` |
+| Encounters | `pages/dm-encounters.html` | Working | `#dmCombatantList`, `#dmEncounterName`, `#dmSavedEncounterList` |
+| NPCs | `pages/dm-npcs.html` | Working | `#dmNpcName`, `#dmNpcLootResult`, `#dmNpcList` |
+| Settings | `pages/dm-settings.html` | Working | `#dmSettingsEmail`, `#dmSettingsCampaign`, `#dmSettingsSessionExpiry` |
+
+### DM Data (localStorage)
+- `dndDmSession` — active DM session object
+- `dndDmEncounters` — saved encounter array `[{ id, name, combatants: [...] }]`
+- `dndDmNpcs` — saved NPC array `[{ id, name, race, role, alignment, notes, loot }]`
+- DM notification cooldown per email: `dndDmNotifySent_{email_slug}`
+
+### Monsters (Open5e API)
+`dmLoadMonsters()` paginates `https://api.open5e.com/v1/monsters/?limit=100&document__slug=wotc-srd`. Results cached in `dmAllMonsters`. `dmFilterMonsters()` filters client-side by name/type and CR. `dmShowMonster(slug)` renders a full stat block with Add to Encounter button.
+
+### Encounters
+`dmCombatants` — in-memory array of `{ id, name, maxHp, hp, ac, initiative }`. Saved to localStorage via `dmSaveEncounter()`. `dmLoadEncounter(id)` restores combatants to full HP. Damage/heal via `prompt()`.
+
+### NPC Generator
+Name pools in `DM_NPC_NAMES` (male/female/surname). Traits in `DM_NPC_TRAITS`. Secrets in `DM_NPC_SECRETS`. Loot in `dmRollLoot()` — three tiers: scraps (35%), low-level gear (35%), gold+gem (30%).
+
+### Players Tab
+`dmLoadPlayers()` queries Firestore `collectionGroup('characters')` filtered by `data.characterInfo.campaignId == session.campaignName`. Requires the collectionGroup Firestore rule (owner read). `dmViewPlayerCharacter(uid, charId)` fetches the full doc and renders a read-only stat block panel.
+
+---
+
+## Campaign System
+
+Campaigns are created and managed by the owner (vanreejoz33@gmail.com) via the Admin Portal. Players link their character to a campaign via the Campaign field in Stats → Character Info. DMs gain portal access by being assigned to a campaign.
+
+### Firestore Structure
+```
+campaigns/{campaignId}
+  id: string               — e.g. 'camp_neuertham'
+  name: string             — display name, must match player's campaignId field exactly
+  setting: string          — e.g. 'Homebrew', 'Forgotten Realms'
+  dmEmails: string[]       — emails of assigned DMs (case-insensitive match)
+  passwordHash: string     — SHA-256 of DM portal password (set at creation)
+  active: boolean          — inactive campaigns hidden from player dropdown
+  createdAt: timestamp
+```
+
+### Player Side
+- `characterInfo.campaignId` — free-text field (will become dropdown in future). Saved via `autosave()`, included in Firestore sync automatically.
+- Field ID: `#char_campaign` in `pages/stats.html`, bottom row of Character Info grid spanning full width.
+- Cleared in `clearAllFormFields()`, loaded in `loadData()`.
+- **Case-sensitive** — must match campaign `name` exactly for the DM's Players tab to find the character.
+
+### Admin Portal — Campaign Manager
+In `assets/modules/admin.js`. Loads automatically when admin portal unlocks alongside user list.
+- `adminCreateCampaign()` — creates `campaigns/{camp_timestamp}` doc with hashed password
+- `adminLoadCampaigns()` — fetches all campaigns ordered by `createdAt desc`, renders list
+- `adminEditCampaignDm(campaignId)` — `prompt()` to update `dmEmails` array
+- `adminToggleCampaign(campaignId, active)` — flip active flag
+- Password is SHA-256 hashed via `sha256Hex()` (same function used for admin PIN)
+
+### DM Portal Auth (transition in progress)
+Currently: `DM_APPROVED_EMAILS` hardcoded array gates `enterDmPortal()`.
+Target: check Firestore `campaigns` where `dmEmails` contains user's email — no code deploy needed to approve DMs.
+**TODO:** Replace `isDmApproved()` with a Firestore `campaigns` query in `enterDmPortal()`.
+
+### Firestore Rules Required
+```
+// CollectionGroup — owner reads all characters for Players tab
+match /{path=**}/characters/{charId} {
+  allow read: if isOwnerAdmin();
+}
+// Campaigns — signed-in users read (player dropdown), owner writes
+match /campaigns/{campaignId} {
+  allow read: if isSignedIn();
+  allow write: if isOwnerAdmin();
+}
+```
+
+---
+
+## Admin Portal
+
+Located in `pages/settings.html` (`#adminPortalCard`, hidden unless owner email). Unlocked via SHA-256 PIN stored in Firestore `admin_config/main.portalPinHash`. All logic in `assets/modules/admin.js`.
+
+### Sections (in order, after unlock)
+1. **Campaigns** — create/manage campaigns, assign DMs, activate/deactivate
+2. **Users** — select any user, view their characters, Preview (read-only load) or Import (clone) any character
+
+### Key functions
+- `unlockAdminPortal()` — verifies PIN, shows `#adminUnlockedView`, loads campaigns + users
+- `adminRefreshUsers()` — reads `userProfiles` + `auth_signins` collections, populates `#adminUserSelect`
+- `adminSelectUser(uid)` — shows user meta + character list with Preview/Import buttons
+- `adminPreviewCharacter(uid, charId)` — clones character into local state, disables all inputs, shows `#adminPreviewBanner`
+- `exitAdminPreview()` — restores snapshot, re-enables inputs
+- `adminCreateCampaign()` — creates campaign doc
+- `adminLoadCampaigns()` — renders campaign list with Edit DM / Activate buttons
+- `adminEditCampaignDm(campaignId)` — updates `dmEmails` via prompt
+- `adminToggleCampaign(campaignId, active)` — flips active flag
+
+---
+
 ## Working Efficiently
 
 `assets/modules/core.js` (~3580 lines) is the largest file — never read it whole. Use `grep` to find the relevant function first, then read only that section. `assets/styles.css` is ~130KB — same rule. `assets/data/spells.json` (1122 spells, sourced from Open5e) is the canonical spell reference database — do not edit it directly, regenerate it with `node tools/build-spells.js && node tools/patch-spell-effects.js`.

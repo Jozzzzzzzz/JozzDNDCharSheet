@@ -391,29 +391,131 @@ async function adminLoadCampaigns() {
   const list = document.getElementById('adminCampaignList');
   if (!db || !list) return;
 
+  list.innerHTML = '<p class="settings-note">Loading campaigns...</p>';
+
   try {
     const snap = await db.collection('campaigns').orderBy('createdAt', 'desc').get();
-    if (snap.empty) { list.innerHTML = '<p class="settings-note">No campaigns yet.</p>'; return; }
+    if (snap.empty) { list.innerHTML = '<p class="settings-note">No campaigns yet. Create one above.</p>'; return; }
+
+    // For each campaign, count linked characters via collectionGroup
+    const campaigns = [];
+    snap.forEach(doc => campaigns.push({ id: doc.id, ...doc.data() }));
+
+    // Fetch player counts in parallel
+    const playerCounts = await Promise.all(campaigns.map(async c => {
+      try {
+        const charSnap = await db.collectionGroup('characters')
+          .where('data.characterInfo.campaignId', '==', c.name)
+          .get();
+        return charSnap.size;
+      } catch (_) { return '?'; }
+    }));
+
+    // Fetch DM requests for assigned DMs
+    const dmRequestSnaps = await Promise.all(campaigns.map(async c => {
+      if (!c.dmEmails || !c.dmEmails.length) return [];
+      try {
+        const reqSnap = await db.collection('dm_requests')
+          .where('email', 'in', c.dmEmails)
+          .get();
+        const reqs = [];
+        reqSnap.forEach(d => reqs.push(d.data()));
+        return reqs;
+      } catch (_) { return []; }
+    }));
 
     list.innerHTML = '';
-    snap.forEach(doc => {
-      const c = doc.data();
+    campaigns.forEach((c, i) => {
+      const playerCount = playerCounts[i];
+      const dmReqs = dmRequestSnaps[i] || [];
+      const dmList = (c.dmEmails || []).length
+        ? (c.dmEmails || []).map(email => {
+            const req = dmReqs.find(r => r.email === email);
+            const status = req ? req.status : 'not requested';
+            return `<span class="admin-dm-tag">${escapeHtml(email)} <em>(${status})</em></span>`;
+          }).join('')
+        : '<span class="settings-note">No DM assigned</span>';
+
       const div = document.createElement('div');
-      div.className = 'admin-campaign-row';
+      div.className = 'admin-campaign-card';
       div.innerHTML = `
-        <div class="admin-campaign-info">
-          <span class="admin-campaign-name">${escapeHtml(c.name)}</span>
-          <span class="settings-note">${escapeHtml(c.setting || '—')} · DMs: ${(c.dmEmails || []).join(', ') || 'none'} · ${c.active ? 'Active' : 'Inactive'}</span>
+        <div class="admin-campaign-card-header">
+          <div>
+            <span class="admin-campaign-name">${escapeHtml(c.name)}</span>
+            <span class="admin-campaign-badge ${c.active ? 'badge-active' : 'badge-inactive'}">${c.active ? 'Active' : 'Inactive'}</span>
+          </div>
+          <div class="admin-campaign-actions">
+            <button class="settings-action-btn accent-contrast-bg" onclick="adminViewCampaignPlayers('${c.id}', '${escapeHtml(c.name)}')">View Players</button>
+            <button class="settings-action-btn accent-contrast-bg" onclick="adminEditCampaignDm('${c.id}')">Edit DM</button>
+            <button class="settings-action-btn accent-contrast-bg" onclick="adminChangeCampaignPassword('${c.id}')">Change Password</button>
+            <button class="settings-action-btn accent-contrast-bg" onclick="adminToggleCampaign('${c.id}', ${!c.active})">${c.active ? 'Deactivate' : 'Activate'}</button>
+          </div>
         </div>
-        <div class="admin-campaign-actions">
-          <button class="settings-action-btn accent-contrast-bg" onclick="adminEditCampaignDm('${doc.id}')">Edit DM</button>
-          <button class="settings-action-btn accent-contrast-bg" onclick="adminToggleCampaign('${doc.id}', ${!c.active})">${c.active ? 'Deactivate' : 'Activate'}</button>
+        <div class="admin-campaign-card-body">
+          <div class="admin-campaign-detail-row"><span class="admin-detail-label">Setting</span><span>${escapeHtml(c.setting || '—')}</span></div>
+          <div class="admin-campaign-detail-row"><span class="admin-detail-label">DMs</span><div class="admin-dm-list">${dmList}</div></div>
+          <div class="admin-campaign-detail-row"><span class="admin-detail-label">Linked Players</span><span>${playerCount} character${playerCount === 1 ? '' : 's'}</span></div>
+          <div class="admin-campaign-detail-row"><span class="admin-detail-label">Password</span><span>${c.passwordHash ? '••••••••• (set)' : 'Not set'}</span></div>
         </div>
+        <div id="adminCampaignPlayers_${c.id}" class="admin-campaign-players" style="display:none;"></div>
       `;
       list.appendChild(div);
     });
   } catch (e) {
-    list.innerHTML = `<p class="settings-note">Error loading campaigns: ${escapeHtml(e.message)}</p>`;
+    console.error('adminLoadCampaigns failed:', e);
+    list.innerHTML = `<p class="settings-note">Error: ${escapeHtml(e.message)}</p>`;
+  }
+}
+
+async function adminViewCampaignPlayers(campaignId, campaignName) {
+  const db = window.db;
+  const panel = document.getElementById(`adminCampaignPlayers_${campaignId}`);
+  if (!panel) return;
+
+  if (panel.style.display === 'block') { panel.style.display = 'none'; return; }
+
+  panel.style.display = 'block';
+  panel.innerHTML = '<p class="settings-note">Loading...</p>';
+
+  try {
+    const snap = await db.collectionGroup('characters')
+      .where('data.characterInfo.campaignId', '==', campaignName)
+      .get();
+
+    if (snap.empty) {
+      panel.innerHTML = '<p class="settings-note">No characters linked to this campaign yet.</p>';
+      return;
+    }
+
+    const rows = [];
+    snap.forEach(doc => {
+      const d = doc.data() || {};
+      const info = d?.data?.characterInfo || {};
+      rows.push(`
+        <div class="admin-campaign-player-row">
+          <span class="admin-campaign-player-name">${escapeHtml(info.name || 'Unnamed')}</span>
+          <span class="settings-note">${escapeHtml([info.race, info.class, info.subclass, info.level ? 'Lv ' + info.level : ''].filter(Boolean).join(' · '))}</span>
+        </div>
+      `);
+    });
+
+    panel.innerHTML = `<div class="admin-campaign-players-list">${rows.join('')}</div>`;
+  } catch (e) {
+    panel.innerHTML = `<p class="settings-note">Error: ${escapeHtml(e.message)}</p>`;
+  }
+}
+
+async function adminChangeCampaignPassword(campaignId) {
+  const password = prompt('Enter new DM portal password for this campaign:');
+  if (!password || !password.trim()) return;
+  const db = window.db;
+  if (!db) return;
+  try {
+    const hash = await sha256Hex(password.trim());
+    await db.collection('campaigns').doc(campaignId).update({ passwordHash: hash });
+    setAdminCampaignStatus('Password updated.', 'success');
+  } catch (e) {
+    setAdminCampaignStatus('Error: ' + e.message, 'error');
   }
 }
 
@@ -449,3 +551,5 @@ window.adminCreateCampaign = adminCreateCampaign;
 window.adminLoadCampaigns = adminLoadCampaigns;
 window.adminEditCampaignDm = adminEditCampaignDm;
 window.adminToggleCampaign = adminToggleCampaign;
+window.adminViewCampaignPlayers = adminViewCampaignPlayers;
+window.adminChangeCampaignPassword = adminChangeCampaignPassword;
