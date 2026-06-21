@@ -6,9 +6,25 @@
 // the Home button until they visit the home page.
 // ============================================================
 
-const CHANGELOG_LATEST_VERSION = '1.0';
+const CHANGELOG_LATEST_VERSION = '1.01';
 
 const CHANGELOG = [
+  {
+    version: '1.01',
+    date: '2026-06-21',
+    title: 'v1.01 — Mini Patch',
+    updates: [
+      'DM Portal foundation added — request access from the home page, DM screen with its own nav, tabs, and session management',
+      'Background text fields now expand after 800 characters instead of 450',
+    ],
+    fixes: [
+      'Autosave no longer creates a ghost blank character if triggered before any character is selected',
+      'Cloud merge now correctly keeps local data when timestamps are equal — cloud only wins if strictly newer',
+      'Snapshot echo suppression window extended from 10s to 30s to cover slow networks',
+      'Cloud sync now refuses to write an empty character list to localStorage — prevents data wipe on bad sync response',
+      'Sign-in notification spam fixed for test accounts',
+    ],
+  },
   {
     version: '1.0',
     date: '2026-06-17',

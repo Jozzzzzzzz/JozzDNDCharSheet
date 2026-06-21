@@ -108,6 +108,8 @@
 <div id="chrome-root"></div>
 <div id="pages"></div>
 <div id="popups-root"></div>
+<div id="dm-chrome-root" style="display:none;"></div>
+<div id="dm-pages-root" style="display:none;"></div>
 
 <script>
 async function loadText(path) {
@@ -274,8 +276,9 @@ function activateRoute() {
 })();
 
 async function bootstrapModularApp() {
-  const scriptVersion = '20260617e-v1-home-polish';
-  const [chrome, home, settings, stats, background, spells, inventory, notes, popups] = await Promise.all([
+  const scriptVersion = '20260621i-v101-patch';
+  const [chrome, home, settings, stats, background, spells, inventory, notes, popups,
+         dmChrome, dmHome, dmPlayers, dmMonsters, dmEncounters, dmNpcs, dmSettings] = await Promise.all([
     loadText('partials/chrome.html'),
     loadText('pages/home.html'),
     loadText('pages/settings.html'),
@@ -284,13 +287,24 @@ async function bootstrapModularApp() {
     loadText('pages/spells.html'),
     loadText('pages/inventory.html'),
     loadText('pages/notes.html'),
-    loadText('partials/popups.html')
+    loadText('partials/popups.html'),
+    loadText('partials/dm-chrome.html'),
+    loadText('pages/dm-home.html'),
+    loadText('pages/dm-players.html'),
+    loadText('pages/dm-monsters.html'),
+    loadText('pages/dm-encounters.html'),
+    loadText('pages/dm-npcs.html'),
+    loadText('pages/dm-settings.html')
   ]);
 
   document.getElementById('chrome-root').innerHTML = chrome;
   const pagesRoot = document.getElementById('pages');
   pagesRoot.innerHTML = [home, settings, stats, background, spells, inventory, notes].join('\n');
   document.getElementById('popups-root').innerHTML = popups;
+
+  // DM portal roots (hidden until DM enters portal)
+  document.getElementById('dm-chrome-root').innerHTML = dmChrome;
+  document.getElementById('dm-pages-root').innerHTML = [dmHome, dmPlayers, dmMonsters, dmEncounters, dmNpcs, dmSettings].join('\n');
 
   const scriptOrder = [
     'assets/banner-messages.js',
@@ -304,6 +318,7 @@ async function bootstrapModularApp() {
     'assets/modules/inventory.js',
     'assets/modules/spells.js',
     'assets/modules/admin.js',
+    'assets/modules/dm.js',
     'assets/changelog.js',
     'assets/app.js'
   ];

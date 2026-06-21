@@ -1,0 +1,42 @@
+<div class="dm-page" id="dm-encounters" style="display:none;">
+  <div class="dm-page-header">
+    <h2>Encounters</h2>
+    <p class="dm-page-subtitle">Build and run combat encounters</p>
+  </div>
+
+  <div class="dm-encounter-layout">
+
+    <!-- Builder panel -->
+    <div class="dm-card dm-encounter-builder">
+      <div class="dm-card-header">
+        <h3>Encounter Builder</h3>
+        <button class="dm-action-btn" onclick="dmClearEncounter()">Clear</button>
+      </div>
+      <div class="dm-encounter-name-row">
+        <input type="text" id="dmEncounterName" placeholder="Encounter name (e.g. Goblin Ambush)" maxlength="80">
+        <button class="dm-action-btn dm-save-btn" onclick="dmSaveEncounter()">Save</button>
+      </div>
+      <div class="dm-add-combatant-row">
+        <input type="text" id="dmCombatantName" placeholder="Combatant name" maxlength="60">
+        <input type="number" id="dmCombatantHp" placeholder="Max HP" min="1" max="9999" style="width:90px;">
+        <input type="number" id="dmCombatantAc" placeholder="AC" min="1" max="99" style="width:70px;">
+        <input type="number" id="dmCombatantCount" placeholder="×" min="1" max="20" style="width:55px;" value="1" title="How many of this combatant">
+        <button class="dm-action-btn" onclick="dmAddCombatant()">Add</button>
+      </div>
+      <div id="dmCombatantList" class="dm-combatant-list">
+        <p class="dm-empty-state">No combatants yet. Add monsters or players above.</p>
+      </div>
+    </div>
+
+    <!-- Saved encounters -->
+    <div class="dm-card dm-saved-encounters">
+      <div class="dm-card-header">
+        <h3>Saved Encounters</h3>
+      </div>
+      <div id="dmSavedEncounterList" class="dm-saved-encounter-list">
+        <p class="dm-empty-state">No saved encounters.</p>
+      </div>
+    </div>
+
+  </div>
+</div>

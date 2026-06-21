@@ -1,0 +1,27 @@
+<!-- DM Portal Chrome — separate nav shown only when DM portal is active -->
+<div id="dmPortalChrome" style="display:none;">
+
+  <!-- Pending approval warning — shown when email not yet in DM_APPROVED_EMAILS -->
+  <div id="dmPendingBanner" class="dm-pending-top-banner" style="display:none;">
+    ⏳ You are using the DM Screen in <strong>pending mode</strong>. Contact <strong>Jozsua</strong> to get full approval — some features may be limited until then.
+  </div>
+
+  <!-- DM Screen Banner -->
+  <div class="dm-screen-banner">
+    <span class="dm-screen-icon">⚔️</span>
+    <span class="dm-screen-title">DM SCREEN</span>
+    <span class="dm-screen-campaign" id="dmScreenCampaignLabel"></span>
+    <button class="dm-exit-btn" onclick="exitDmPortal()" title="Exit DM Portal">✕ Exit DM Screen</button>
+  </div>
+
+  <!-- DM Tab Bar -->
+  <div class="dm-tabs">
+    <button class="dm-tab active" data-dm-tab="dm-home" onclick="switchDmTab(this)">Home</button>
+    <button class="dm-tab" data-dm-tab="dm-players" onclick="switchDmTab(this)">Players</button>
+    <button class="dm-tab" data-dm-tab="dm-monsters" onclick="switchDmTab(this)">Monsters</button>
+    <button class="dm-tab" data-dm-tab="dm-encounters" onclick="switchDmTab(this)">Encounters</button>
+    <button class="dm-tab" data-dm-tab="dm-npcs" onclick="switchDmTab(this)">NPCs</button>
+    <button class="dm-tab" data-dm-tab="dm-settings" onclick="switchDmTab(this)">Settings</button>
+  </div>
+
+</div>

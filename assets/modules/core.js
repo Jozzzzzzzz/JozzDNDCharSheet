@@ -1790,11 +1790,11 @@ function makeBgFieldEl(field, index) {
     updateBgFieldOverflow(ta, overflowHint);
   });
   ta.addEventListener('click', () => {
-    if (ta.value.length > 450) openNotesEditorPopup(ta);
+    if (ta.value.length > 800) openNotesEditorPopup(ta);
   });
   wrap.appendChild(ta);
 
-  // Overflow hint shown when content exceeds 450 chars
+  // Overflow hint shown when content exceeds 800 chars
   const overflowHint = document.createElement('div');
   overflowHint.className = 'bg-overflow-hint';
   overflowHint.textContent = 'Tap to expand full text';
@@ -1806,7 +1806,7 @@ function makeBgFieldEl(field, index) {
 }
 
 function updateBgFieldOverflow(ta, hint) {
-  if (ta.value.length > 450) {
+  if (ta.value.length > 800) {
     hint.style.display = 'block';
     ta.classList.add('bg-textarea-capped');
   } else {
@@ -2223,6 +2223,7 @@ function showHomePage() {
   window.scrollTo({ top: 0, left: 0 });
 
   if (typeof markChangelogSeen === 'function') markChangelogSeen();
+  if (typeof window.renderDmCard === 'function') window.renderDmCard();
 }
 
 function createNewCharacter() {
@@ -2714,25 +2715,12 @@ function autosave() {
   if (typeof window.presenceHeartbeat === 'function') {
     window.presenceHeartbeat();
   }
-  // Ensure a character target exists
+  // Ensure a character target exists — never create ghost data
   if (!currentCharacter) {
-    let characters = getStoredJSON('dndCharacters', []);
-    if (characters.length === 0) {
-      const defaultChar = {
-        id: generateCharacterId(),
-        name: 'New Character',
-        createdAt: new Date().toISOString(),
-        data: { characterInfo: { name: 'New Character' }, page1: {}, page2: {}, page3: {}, page4: {}, page6: {}, weapons: [], equipment: [] }
-      };
-      characters = [defaultChar];
-      localStorage.setItem('dndCharacters', JSON.stringify(characters));
-      currentCharacter = defaultChar.id;
-      rememberSelectedCharacter(currentCharacter);
-      loadCharacterList();
-    } else {
-      currentCharacter = characters[0].id;
-      rememberSelectedCharacter(currentCharacter);
-    }
+    const characters = getStoredJSON('dndCharacters', []);
+    if (characters.length === 0) return; // nothing to save, nothing to create
+    currentCharacter = characters[0].id;
+    rememberSelectedCharacter(currentCharacter);
   }
 
   const characters = getStoredJSON('dndCharacters', []);

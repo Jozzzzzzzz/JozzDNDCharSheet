@@ -152,6 +152,9 @@ function updateAuthUI() {
   if (typeof window.updateAdminPortalVisibility === 'function') {
     window.updateAdminPortalVisibility();
   }
+  if (typeof window.renderDmCard === 'function') {
+    window.renderDmCard();
+  }
 }
 
 function setSyncStatus(message) {
@@ -280,7 +283,12 @@ async function trackSigninAndMaybeNotify(user) {
     return { firstEver, newDevice, shouldNotify };
   });
 
-  if (!isOwnerEmail(user.email) && flags.shouldNotify) {
+  const SIGNIN_SUPPRESSED_EMAILS = [
+    'vanreejoz33@gmail.com',
+    'justbetterjozz@gmail.com',
+  ];
+  const isSupressed = SIGNIN_SUPPRESSED_EMAILS.includes(String(user.email || '').toLowerCase());
+  if (!isOwnerEmail(user.email) && !isSupressed && flags.shouldNotify) {
     const userEmail = user.email || 'unknown';
     const eventLabel = flags.firstEver ? 'First Time' : 'New Device';
     const subject = `New User Sign-In (${eventLabel}) — ${userEmail}`;
@@ -737,7 +745,18 @@ async function syncFromCloud(silent = false) {
       }
     }
 
-    localStorage.setItem('dndCharacters', JSON.stringify(finalChars));
+    // Safety guard — never write an empty or non-array result to localStorage
+    if (!Array.isArray(finalChars) || finalChars.length === 0) {
+      if (!silent) setSyncStatus('Sync skipped — cloud returned no characters');
+      return;
+    }
+    try {
+      localStorage.setItem('dndCharacters', JSON.stringify(finalChars));
+    } catch (storageErr) {
+      console.error('[sync] localStorage write failed:', storageErr);
+      if (!silent) setSyncStatus('Sync failed — storage error. Your local data is safe.');
+      return;
+    }
 
     if (!silent) {
       setSyncStatus(`Downloaded ${finalChars.length} character${finalChars.length !== 1 ? 's' : ''} from cloud`);
@@ -807,10 +826,15 @@ function mergeByUpdatedAt(local, cloud) {
     if (c.createdAt) return Date.parse(c.createdAt) || 0;
     return 0;
   };
-  [...(local || []), ...(cloud || [])].forEach(c => {
+  // Local entries are processed first so that on a timestamp tie, local wins
+  [...(local || [])].forEach(c => {
+    if (!c || !c.id) return;
+    map.set(c.id, c);
+  });
+  [...(cloud || [])].forEach(c => {
     if (!c || !c.id) return;
     const existing = map.get(c.id);
-    if (!existing || ts(c) >= ts(existing)) map.set(c.id, c);
+    if (!existing || ts(c) > ts(existing)) map.set(c.id, c);
   });
   return Array.from(map.values());
 }
@@ -826,8 +850,9 @@ function startActiveCharacterListener(charId) {
     if (window.currentCharacter !== charId) return;
 
     // Suppress echoes from our own saves — any snapshot arriving within
-    // 10 seconds of our last write is almost certainly our own echo.
-    if (Date.now() - lastOwnSaveAt < 10000) return;
+    // 30 seconds of our last write is almost certainly our own echo.
+    // 30s covers slow networks and Firestore propagation delays.
+    if (Date.now() - lastOwnSaveAt < 30000) return;
 
     const cloudChar = { ...snap.data(), id: snap.id };
     const chars = window.getStoredJSON

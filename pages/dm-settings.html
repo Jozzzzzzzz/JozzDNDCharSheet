@@ -1,0 +1,36 @@
+<div class="dm-page" id="dm-settings" style="display:none;">
+  <div class="dm-page-header">
+    <h2>DM Settings</h2>
+    <p class="dm-page-subtitle">Portal preferences and account</p>
+  </div>
+
+  <div class="dm-settings-grid">
+
+    <div class="dm-card">
+      <div class="dm-card-header">
+        <h3>Account</h3>
+      </div>
+      <div class="dm-settings-field">
+        <span class="dm-stat-label">Signed in as</span>
+        <span class="dm-stat-value" id="dmSettingsEmail">—</span>
+      </div>
+      <div class="dm-settings-field">
+        <span class="dm-stat-label">Campaign</span>
+        <span class="dm-stat-value" id="dmSettingsCampaign">—</span>
+      </div>
+      <div class="dm-settings-field">
+        <span class="dm-stat-label">Session</span>
+        <span class="dm-stat-value" id="dmSettingsSessionExpiry">Active (24h from entry)</span>
+      </div>
+      <button class="dm-action-btn dm-danger-btn" style="margin-top:16px;" onclick="exitDmPortal()">Exit DM Screen</button>
+    </div>
+
+    <div class="dm-card">
+      <div class="dm-card-header">
+        <h3>Display</h3>
+      </div>
+      <p class="dm-note">The DM portal inherits your theme, accent colour and font from the main app settings. Change them from the player side and reload.</p>
+    </div>
+
+  </div>
+</div>

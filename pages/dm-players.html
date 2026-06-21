@@ -1,0 +1,17 @@
+<div class="dm-page" id="dm-players" style="display:none;">
+  <div class="dm-page-header">
+    <h2>Players</h2>
+    <p class="dm-page-subtitle">Characters linked to your campaign</p>
+  </div>
+
+  <div class="dm-card">
+    <div class="dm-card-header">
+      <h3>Campaign Characters</h3>
+      <button class="dm-action-btn" onclick="dmLoadPlayers()">Refresh</button>
+    </div>
+    <p class="dm-note">Players who set your campaign name on their character sheet will appear here. This feature requires campaign linking — coming in the next update.</p>
+    <div id="dmPlayersList" class="dm-players-list">
+      <p class="dm-empty-state">No players loaded yet. Hit Refresh to check.</p>
+    </div>
+  </div>
+</div>
