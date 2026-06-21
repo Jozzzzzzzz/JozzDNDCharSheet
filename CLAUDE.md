@@ -35,7 +35,8 @@ All JS lives in `assets/`. Files are loaded **in this exact order** via dynamic 
 | `assets/modules/health.js` | HP display, death saves, potion use, short/long rest | ~292 |
 | `assets/modules/actions.js` | Combat actions/reactions tracking | ~270 |
 | `assets/modules/inventory.js` | Inventory CRUD, equipment, storage containers, coin tracking, portrait upload/remove (`removePortrait`), settings dropdown | ~1180 |
-| `assets/modules/spells.js` | Spell list, spell slots (with drag-reorder), custom resources, favorites, prepared spells table, spell search, sync panels. Loads spell reference data async from `assets/data/spells.json` via `loadSpellDatabase()` at boot | ~1440 |
+| `assets/modules/spells.js` | Spell list, spell slots (with drag-reorder), custom resources, favorites, prepared spells table, spell search, sync panels. Loads spell reference data async from `assets/data/spells.json` via `loadSpellDatabase()` at boot, then enriches from Open5e API in background | ~1440 |
+| `assets/modules/dm.js` | DM Portal — access request flow, session management (24h localStorage session), portal enter/exit, tab switching, monster browser (Open5e API), encounter builder, NPC generator, loot tables. All DM data saved to localStorage under `dndDmEncounters` and `dndDmNpcs` | ~500 |
 | `assets/modules/admin.js` | Owner-only admin portal: user list, character import/preview via Firestore. Depends on `escapeHtml`, `getStoredJSON`, `loadCharacterList`, `loadData` from `core.js` | ~230 |
 | `assets/app.js` | Boot entry point: `window.initializeApp`, `showWeaponsPopup`, `addWeapon`, `manualSave`. Also seeds default bg fields and calls `initNotesPage()` on first boot. | ~150 |
 
@@ -167,13 +168,23 @@ Stored as a JSON array under `dndBgCustoms` in localStorage. Each entry: `{ id, 
 ## Spells Page
 
 ### Spell data shape
-Every spell object is normalised through `normalizeSpellRecord()` on load — all fields are guaranteed to exist as strings/booleans even if missing from saved data. Fields: `name`, `level`, `school`, `castingTime`, `range`, `components`, `duration`, `damage`, `save`, `attack`, `ritual`, `concentration`, `prepared`, `classes`, `sourceBook`, `description`, `wikiLink`.
+Every spell object is normalised through `normalizeSpellRecord()` on load — all fields are guaranteed to exist as strings/booleans even if missing from saved data. Fields: `name`, `level`, `school`, `castingTime`, `range`, `components`, `duration`, `damage`, `save`, `attack`, `ritual`, `concentration`, `prepared`, `classes`, `sourceBook`, `description`, `wikiLink`, `open5eSlug`.
+
+### Spell database
+`assets/data/spells.json` — 1122 unique spells from all Open5e sources (SRD 5.1, Deep Magic, A5e, Tome of Heroes, Deep Magic Extra, Warlock, Kobold Press, Open5e originals). Zero duplicates. All `wikiLink` fields point to `open5e.com/spells/{slug}`. Rebuild with `node tools/build-spells.js && node tools/patch-spell-effects.js`.
+
+`loadSpellDatabase()` in `spells.js`:
+1. Loads `spells.json` immediately (fast, works offline)
+2. Calls `enrichSpellDatabaseFromOpen5e()` in the background — fetches SRD spells from Open5e API, upgrades descriptions and class lists, adds any new spells not in the local file
+3. Upgrades any wikidot.com links in the local file to open5e.com on load
+
+**Never use wikidot.com links anywhere.** All spell links must point to `open5e.com`. The helper `open5eSpellLink(nameOrSlug)` in `spells.js` generates the correct URL. `loadData()` in `core.js` migrates any wikidot links still saved in a user's localStorage spell objects to Open5e on first character load.
 
 ### Spell slot drag-reorder
 `updateSpellSlots()` renders each slot row with a `⠿` drag handle. HTML5 drag-and-drop reorders `manualSpellSlots` array in place and calls `autosave()`. The order in the array is what gets saved — no extra field needed.
 
 ### Prepared spells table
-`renderPreparedSpells()` renders a `<table class="prepared-spells-table">` with 6 columns (Name, Lvl, Cast Time, Range, Damage, View button) and `colspan="6"` on group header rows. Uses `table-layout: fixed` with explicit `<col>` widths. Damage column uses `white-space: normal` to wrap — do not change to `nowrap`.
+`renderPreparedSpells()` renders a `<table class="prepared-spells-table">` with 5 columns (Name, Cast Time, Range, Effect, View button) and `colspan="5"` on group header rows. The Lvl column was removed — level is already shown in the group header row (e.g. "3rd Level"). Uses `table-layout: fixed` with explicit `<col>` widths. Effect column uses `white-space: normal` to wrap — do not change to `nowrap`. On portrait mobile, Cast Time and Range hide to leave room for Name and Effect.
 
 ### Spell search
 `filterSpells('cantrip')` reads `#cantrip_search` and `filterSpells('spell')` reads `#spell_search`. Both inputs use `oninput` so filtering is live. Search stacks with the existing dropdown filters.
@@ -234,7 +245,7 @@ Container item list elements are created with `id="${storage.id}_items"` (in `lo
 
 ## Working Efficiently
 
-`assets/modules/core.js` (~3580 lines) is the largest file — never read it whole. Use `grep` to find the relevant function first, then read only that section. `assets/styles.css` is ~130KB — same rule. `assets/data/spells.json` (482 spells, 365KB) is the canonical spell reference database — edit it directly to add or fix spells, no JS changes needed.
+`assets/modules/core.js` (~3580 lines) is the largest file — never read it whole. Use `grep` to find the relevant function first, then read only that section. `assets/styles.css` is ~130KB — same rule. `assets/data/spells.json` (1122 spells, sourced from Open5e) is the canonical spell reference database — do not edit it directly, regenerate it with `node tools/build-spells.js && node tools/patch-spell-effects.js`.
 
 To locate any function:
 ```
