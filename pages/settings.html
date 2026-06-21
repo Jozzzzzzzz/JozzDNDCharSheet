@@ -196,6 +196,24 @@
         </div>
 
         <div id="adminUnlockedView" style="display:none;">
+
+          <!-- Campaign Manager -->
+          <div class="admin-section-header">Campaigns</div>
+          <div class="admin-campaign-form">
+            <input type="text" id="adminCampaignName" placeholder="Campaign name (e.g. Neuertham)" maxlength="80">
+            <input type="text" id="adminCampaignSetting" placeholder="Setting (e.g. Homebrew)" maxlength="60">
+            <input type="text" id="adminCampaignDmEmail" placeholder="DM email (leave blank if not yet known)" maxlength="120">
+            <input type="password" id="adminCampaignPassword" placeholder="DM portal password" maxlength="60">
+            <button type="button" class="settings-action-btn accent-contrast-bg" onclick="adminCreateCampaign()">Create Campaign</button>
+          </div>
+          <div id="adminCampaignStatus" class="status-message"></div>
+          <div id="adminCampaignList" class="admin-campaign-list"></div>
+          <button type="button" class="settings-action-btn accent-contrast-bg" style="margin-top:8px;" onclick="adminLoadCampaigns()">Refresh Campaigns</button>
+
+          <div class="admin-section-divider"></div>
+
+          <!-- User Manager -->
+          <div class="admin-section-header">Users</div>
           <div class="settings-field">
             <label for="adminUserSelect">Users</label>
             <select id="adminUserSelect" onchange="adminSelectUser(this.value)">

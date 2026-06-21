@@ -74,7 +74,7 @@ async function unlockAdminPortal() {
     const unlocked = document.getElementById('adminUnlockedView');
     if (locked) locked.style.display = 'none';
     if (unlocked) unlocked.style.display = 'block';
-    await adminRefreshUsers();
+    await Promise.all([adminRefreshUsers(), adminLoadCampaigns()]);
   } catch (e) {
     console.error(e);
     setAdminPortalStatus('Admin portal error. Check console.', 'error');
@@ -337,3 +337,115 @@ function exitAdminPreview() {
 }
 
 window.exitAdminPreview = exitAdminPreview;
+
+// ─── Campaign Manager ──────────────────────────────────────────────────────
+
+function setAdminCampaignStatus(msg, type) {
+  const el = document.getElementById('adminCampaignStatus');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = `status-message ${type || 'info'}`;
+  el.style.display = 'block';
+  if (type !== 'error') setTimeout(() => { el.style.display = 'none'; }, 5000);
+}
+
+async function adminCreateCampaign() {
+  const db = window.db;
+  if (!db) { setAdminCampaignStatus('Not connected.', 'error'); return; }
+
+  const name = (document.getElementById('adminCampaignName')?.value || '').trim();
+  const setting = (document.getElementById('adminCampaignSetting')?.value || '').trim();
+  const dmEmail = (document.getElementById('adminCampaignDmEmail')?.value || '').trim().toLowerCase();
+  const password = (document.getElementById('adminCampaignPassword')?.value || '').trim();
+
+  if (!name) { setAdminCampaignStatus('Campaign name is required.', 'error'); return; }
+
+  const passwordHash = password ? await sha256Hex(password) : '';
+  const id = 'camp_' + Date.now();
+
+  try {
+    await db.collection('campaigns').doc(id).set({
+      id,
+      name,
+      setting: setting || '',
+      dmEmails: dmEmail ? [dmEmail] : [],
+      passwordHash,
+      active: true,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    setAdminCampaignStatus(`Campaign "${name}" created.`, 'success');
+    document.getElementById('adminCampaignName').value = '';
+    document.getElementById('adminCampaignSetting').value = '';
+    document.getElementById('adminCampaignDmEmail').value = '';
+    document.getElementById('adminCampaignPassword').value = '';
+    await adminLoadCampaigns();
+  } catch (e) {
+    console.error('adminCreateCampaign failed:', e);
+    setAdminCampaignStatus('Error: ' + (e.message || 'unknown'), 'error');
+  }
+}
+
+async function adminLoadCampaigns() {
+  const db = window.db;
+  const list = document.getElementById('adminCampaignList');
+  if (!db || !list) return;
+
+  try {
+    const snap = await db.collection('campaigns').orderBy('createdAt', 'desc').get();
+    if (snap.empty) { list.innerHTML = '<p class="settings-note">No campaigns yet.</p>'; return; }
+
+    list.innerHTML = '';
+    snap.forEach(doc => {
+      const c = doc.data();
+      const div = document.createElement('div');
+      div.className = 'admin-campaign-row';
+      div.innerHTML = `
+        <div class="admin-campaign-info">
+          <span class="admin-campaign-name">${escapeHtml(c.name)}</span>
+          <span class="settings-note">${escapeHtml(c.setting || '—')} · DMs: ${(c.dmEmails || []).join(', ') || 'none'} · ${c.active ? 'Active' : 'Inactive'}</span>
+        </div>
+        <div class="admin-campaign-actions">
+          <button class="settings-action-btn accent-contrast-bg" onclick="adminEditCampaignDm('${doc.id}')">Edit DM</button>
+          <button class="settings-action-btn accent-contrast-bg" onclick="adminToggleCampaign('${doc.id}', ${!c.active})">${c.active ? 'Deactivate' : 'Activate'}</button>
+        </div>
+      `;
+      list.appendChild(div);
+    });
+  } catch (e) {
+    list.innerHTML = `<p class="settings-note">Error loading campaigns: ${escapeHtml(e.message)}</p>`;
+  }
+}
+
+async function adminEditCampaignDm(campaignId) {
+  const db = window.db;
+  if (!db) return;
+  const email = prompt('Enter DM email (leave blank to clear):');
+  if (email === null) return; // cancelled
+  const clean = email.trim().toLowerCase();
+  try {
+    await db.collection('campaigns').doc(campaignId).update({
+      dmEmails: clean ? [clean] : []
+    });
+    setAdminCampaignStatus('DM updated.', 'success');
+    await adminLoadCampaigns();
+  } catch (e) {
+    setAdminCampaignStatus('Error: ' + e.message, 'error');
+  }
+}
+
+async function adminToggleCampaign(campaignId, active) {
+  const db = window.db;
+  if (!db) return;
+  try {
+    await db.collection('campaigns').doc(campaignId).update({ active });
+    await adminLoadCampaigns();
+  } catch (e) {
+    setAdminCampaignStatus('Error: ' + e.message, 'error');
+  }
+}
+
+window.adminCreateCampaign = adminCreateCampaign;
+window.adminLoadCampaigns = adminLoadCampaigns;
+window.adminEditCampaignDm = adminEditCampaignDm;
+window.adminToggleCampaign = adminToggleCampaign;
