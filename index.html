@@ -276,7 +276,7 @@ function activateRoute() {
 })();
 
 async function bootstrapModularApp() {
-  const scriptVersion = '20260621r-spells-classes-fixed';
+  const scriptVersion = '20260621s-wikidot-migration';
   const [chrome, home, settings, stats, background, spells, inventory, notes, popups,
          dmChrome, dmHome, dmPlayers, dmMonsters, dmEncounters, dmNpcs, dmSettings] = await Promise.all([
     loadText('partials/chrome.html'),

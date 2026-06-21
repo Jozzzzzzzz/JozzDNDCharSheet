@@ -3288,7 +3288,16 @@ function loadData() {
     
     // Load spells data
     spellsData = normalizeSpellData(page3Data.spellsData);
-    
+
+    // Migrate any saved spells that still have wikidot links → Open5e
+    if (typeof open5eSpellLink === 'function') {
+      [...(spellsData.cantrips || []), ...(spellsData.spells || [])].forEach(spell => {
+        if (spell.wikiLink && spell.wikiLink.includes('wikidot.com')) {
+          spell.wikiLink = open5eSpellLink(spell.name);
+        }
+      });
+    }
+
     // Load favorites data
     favoritesData = normalizeFavoritesData(page3Data.favoritesData);
     
