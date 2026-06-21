@@ -32,7 +32,11 @@
     </div>
     <div>
       <label>Level</label>
-              <input id="char_level" oninput="updateProficiencyBonus(); autosave()" type="number" min="1" placeholder="Level"/>
+      <input id="char_level" oninput="updateProficiencyBonus(); autosave()" type="number" min="1" placeholder="Level"/>
+    </div>
+    <div style="grid-column: 1 / -1;">
+      <label>Campaign <span style="font-size:0.78em;opacity:0.5;font-weight:400;">— links your character to a DM's campaign</span></label>
+      <input id="char_campaign" oninput="autosave()" placeholder="Campaign name (e.g. Lost Mines of Phandelver)"/>
     </div>
   </div>
 </div>

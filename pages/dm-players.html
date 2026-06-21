@@ -1,7 +1,7 @@
 <div class="dm-page" id="dm-players" style="display:none;">
   <div class="dm-page-header">
     <h2>Players</h2>
-    <p class="dm-page-subtitle">Characters linked to your campaign</p>
+    <p class="dm-page-subtitle" id="dmPlayersSubtitle">Characters linked to your campaign</p>
   </div>
 
   <div class="dm-card">
@@ -9,9 +9,18 @@
       <h3>Campaign Characters</h3>
       <button class="dm-action-btn" onclick="dmLoadPlayers()">Refresh</button>
     </div>
-    <p class="dm-note">Players who set your campaign name on their character sheet will appear here. This feature requires campaign linking — coming in the next update.</p>
+    <p class="dm-note">Players must enter your exact campaign name in <strong>Stats → Character Info → Campaign</strong>. It is case-sensitive.</p>
     <div id="dmPlayersList" class="dm-players-list">
-      <p class="dm-empty-state">No players loaded yet. Hit Refresh to check.</p>
+      <p class="dm-empty-state">Hit Refresh to load players.</p>
     </div>
+  </div>
+
+  <!-- Character sheet read-only panel -->
+  <div id="dmPlayerSheetPanel" class="dm-card dm-player-sheet-panel" style="display:none;">
+    <div class="dm-card-header">
+      <h3>Character Sheet (Read Only)</h3>
+      <button class="dm-action-btn" onclick="document.getElementById('dmPlayerSheetPanel').style.display='none'">Close</button>
+    </div>
+    <div id="dmPlayerSheetBody"></div>
   </div>
 </div>

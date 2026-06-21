@@ -335,6 +335,14 @@ function switchDmTab(btn) {
   document.querySelectorAll('.dm-page').forEach(p => { p.style.display = 'none'; });
   const page = document.getElementById(target);
   if (page) page.style.display = 'block';
+
+  // Auto-load players when switching to that tab
+  if (target === 'dm-players') {
+    const session = dmSessionLoad();
+    const subtitle = document.getElementById('dmPlayersSubtitle');
+    if (subtitle && session?.campaignName) subtitle.textContent = `Campaign: ${session.campaignName}`;
+    dmLoadPlayers();
+  }
 }
 
 function switchDmTabById(id) {
@@ -708,10 +716,123 @@ function dmClearAllNpcs() {
   dmRenderNpcList();
 }
 
-function dmLoadPlayers() {
+async function dmLoadPlayers() {
   const list = document.getElementById('dmPlayersList');
-  if (list) list.innerHTML = '<p class="dm-empty-state">Campaign linking coming in the next update.</p>';
+  if (!list) return;
+
+  const session = dmSessionLoad();
+  const campaignName = session?.campaignName || '';
+  if (!campaignName) {
+    list.innerHTML = '<p class="dm-empty-state">No campaign name in your session. Exit and re-enter the DM portal to refresh.</p>';
+    return;
+  }
+
+  const db = window.db;
+  if (!db) {
+    list.innerHTML = '<p class="dm-empty-state">Not connected to cloud.</p>';
+    return;
+  }
+
+  list.innerHTML = '<p class="dm-empty-state">Loading players...</p>';
+
+  try {
+    // Query all characters subcollection docs where campaignId matches
+    const snap = await db.collectionGroup('characters')
+      .where('data.characterInfo.campaignId', '==', campaignName)
+      .get();
+
+    if (snap.empty) {
+      list.innerHTML = `<p class="dm-empty-state">No characters linked to "<strong>${escapeHtml(campaignName)}</strong>" yet. Players need to enter this exact campaign name in their Character Info → Campaign field.</p>`;
+      return;
+    }
+
+    const cards = [];
+    snap.forEach(doc => {
+      const d = doc.data() || {};
+      const info = d?.data?.characterInfo || {};
+      cards.push({
+        uid: doc.ref.parent.parent.id,
+        charId: doc.id,
+        name: info.name || 'Unnamed',
+        race: info.race || '',
+        cls: info.class || '',
+        subclass: info.subclass || '',
+        level: info.level || '',
+        campaign: info.campaignId || '',
+        updatedAt: d.updatedAt || null
+      });
+    });
+
+    cards.sort((a, b) => a.name.localeCompare(b.name));
+
+    list.innerHTML = cards.map(c => `
+      <div class="dm-player-card">
+        <div class="dm-player-info">
+          <span class="dm-player-name">${escapeHtml(c.name)}</span>
+          <span class="dm-player-meta">${[c.race, c.cls, c.subclass, c.level ? 'Lv ' + c.level : ''].filter(Boolean).join(' · ')}</span>
+        </div>
+        <button class="dm-action-btn" onclick="dmViewPlayerCharacter('${c.uid}','${c.charId}')">View Sheet</button>
+      </div>
+    `).join('');
+
+  } catch (e) {
+    console.error('dmLoadPlayers failed:', e);
+    if (e.code === 'permission-denied') {
+      list.innerHTML = '<p class="dm-empty-state">Permission denied — Firestore rules need a collectionGroup rule for <code>characters</code>. See CLAUDE.md.</p>';
+    } else {
+      list.innerHTML = `<p class="dm-empty-state">Error: ${escapeHtml(e.message)}</p>`;
+    }
+  }
 }
+
+async function dmViewPlayerCharacter(uid, charId) {
+  const db = window.db;
+  if (!db) return;
+  try {
+    const doc = await db.collection('userData').doc(uid).collection('characters').doc(charId).get();
+    if (!doc.exists) return;
+    const d = doc.data() || {};
+    const info = d?.data?.characterInfo || {};
+    const p1 = d?.data?.page1 || {};
+
+    // Build a read-only summary popup
+    const panel = document.getElementById('dmPlayerSheetPanel');
+    const body = document.getElementById('dmPlayerSheetBody');
+    if (!panel || !body) return;
+
+    const abilities = ['str','dex','con','int','wis','cha'];
+    const abilityRows = abilities.map(ab => {
+      const score = p1.abilities?.[ab] || '—';
+      const bonus = p1.abilities?.[`${ab}_bonus`] || '—';
+      return `<div class="dm-sb-ability"><div class="dm-sb-ab-name">${ab.toUpperCase()}</div><div class="dm-sb-ab-score">${score}<br><span style="font-size:0.8em;opacity:0.6;">${bonus}</span></div></div>`;
+    }).join('');
+
+    body.innerHTML = `
+      <div class="dm-player-sheet">
+        <div class="dm-player-sheet-header">
+          <h3>${escapeHtml(info.name || 'Unnamed')}</h3>
+          <p>${[info.race, info.class, info.subclass, info.level ? 'Level ' + info.level : ''].filter(Boolean).join(' · ')}</p>
+          <p style="opacity:0.45;font-size:0.8em;">${escapeHtml(info.background || '')}</p>
+        </div>
+        <div class="dm-sb-abilities" style="margin:14px 0;">${abilityRows}</div>
+        <div class="dm-player-sheet-stats">
+          <div class="dm-stat-row"><span class="dm-stat-label">AC</span><span class="dm-stat-value">${p1.combatStats?.ac || '—'}</span></div>
+          <div class="dm-stat-row"><span class="dm-stat-label">HP</span><span class="dm-stat-value">${p1.health?.currentHp || '—'} / ${p1.health?.maxHp || '—'}</span></div>
+          <div class="dm-stat-row"><span class="dm-stat-label">Speed</span><span class="dm-stat-value">${p1.combatStats?.speed || '—'}</span></div>
+          <div class="dm-stat-row"><span class="dm-stat-label">Initiative</span><span class="dm-stat-value">${p1.combatStats?.initiative || '—'}</span></div>
+          <div class="dm-stat-row"><span class="dm-stat-label">Passive Perception</span><span class="dm-stat-value">${p1.combatStats?.passive_perception || '—'}</span></div>
+          <div class="dm-stat-row"><span class="dm-stat-label">Prof Bonus</span><span class="dm-stat-value">${p1.combatStats?.prof_bonus || '—'}</span></div>
+        </div>
+      </div>
+    `;
+    panel.style.display = 'block';
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } catch (e) {
+    console.error('dmViewPlayerCharacter failed:', e);
+  }
+}
+
+window.dmViewPlayerCharacter = dmViewPlayerCharacter;
 
 window.dmRollNpcName = dmRollNpcName;
 window.dmGenerateNpc = dmGenerateNpc;

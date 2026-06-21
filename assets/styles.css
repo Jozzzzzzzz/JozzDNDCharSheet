@@ -7681,6 +7681,32 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 .dm-settings-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
 .dm-settings-field { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.88rem; }
 
+/* ── Players tab ── */
+.dm-players-list { display: flex; flex-direction: column; gap: 8px; }
+
+.dm-player-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+}
+
+.dm-player-info { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+.dm-player-name { font-weight: 700; font-size: 0.95rem; color: rgba(255,255,255,0.9); }
+.dm-player-meta { font-size: 0.78rem; color: rgba(255,255,255,0.4); }
+
+.dm-player-sheet-panel { margin-top: 16px; }
+
+.dm-player-sheet-header { margin-bottom: 12px; }
+.dm-player-sheet-header h3 { margin: 0 0 4px 0; color: #e88; font-size: 1.1rem; }
+.dm-player-sheet-header p { margin: 2px 0; font-size: 0.85rem; color: rgba(255,255,255,0.6); }
+
+.dm-player-sheet-stats { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .dm-home-grid { grid-template-columns: 1fr; }

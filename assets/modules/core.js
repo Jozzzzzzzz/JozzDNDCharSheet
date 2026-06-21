@@ -2394,7 +2394,7 @@ function loadCharacterList() {
 // Clear all form fields to prevent old character data from persisting
 function clearAllFormFields() {
   // Clear character info fields
-  const charInfoFields = ['char_name', 'char_race', 'char_background', 'char_class', 'char_subclass', 'char_level'];
+  const charInfoFields = ['char_name', 'char_race', 'char_background', 'char_class', 'char_subclass', 'char_level', 'char_campaign'];
   charInfoFields.forEach(id => {
     const element = document.getElementById(id);
     if (element) element.value = '';
@@ -2740,7 +2740,8 @@ function autosave() {
     background: val('char_background'),
     class: val('char_class'),
     subclass: val('char_subclass'),
-    level: val('char_level')
+    level: val('char_level'),
+    campaignId: val('char_campaign') || ''
   } : existing.characterInfo;
 
   // --- actionTracker ---
@@ -2948,6 +2949,8 @@ function loadData() {
     document.getElementById('char_class').value = data.characterInfo.class || '';
     document.getElementById('char_subclass').value = data.characterInfo.subclass || '';
     document.getElementById('char_level').value = data.characterInfo.level || '';
+    const campaignEl = document.getElementById('char_campaign');
+    if (campaignEl) campaignEl.value = data.characterInfo.campaignId || '';
   }
 
   // Action Tracker
