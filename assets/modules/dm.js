@@ -96,44 +96,101 @@ async function renderDmCard() {
 
   if (!user) {
     body.innerHTML = `
-      <p class="settings-note">Want to run campaigns as a Dungeon Master? Sign in with Google first, then submit a DM access request.</p>
+      <p class="settings-note">Want to run a campaign as a Dungeon Master? Sign in with Google first, then enter your campaign's DM control password.</p>
       <button type="button" class="settings-action-btn accent-contrast-bg" onclick="signInWithGoogle()">Sign in with Google</button>
     `;
     return;
   }
 
-  // Local approval check — no Firestore read needed for the gate
-  if (isDmApproved(user.email)) {
-    const session = dmSessionLoad();
-    body.innerHTML = `
-      <div class="dm-granted-banner">
-        <span class="dm-granted-icon">⚔️</span>
-        <div>
-          <p class="dm-granted-title">DM Portal Access Granted</p>
-          <p class="settings-note">Welcome, ${escapeHtml(user.displayName || user.email)}.</p>
-        </div>
+  // Signed in — show campaign picker + DM password gate
+  body.innerHTML = `
+    <p class="settings-note">Signed in as <strong>${escapeHtml(user.displayName || user.email)}</strong>. Choose a campaign and enter its DM control password to take control.</p>
+    <div class="dm-request-form">
+      <div class="settings-field">
+        <label for="dmEnterCampaignSelect">Campaign</label>
+        <select id="dmEnterCampaignSelect" style="width:100%;box-sizing:border-box;">
+          <option value="">Loading campaigns…</option>
+        </select>
       </div>
-      <button type="button" class="settings-action-btn dm-enter-btn accent-contrast-bg" onclick="enterDmPortal()">Enter DM Screen →</button>
-    `;
-    return;
-  }
-
-  // Check if they already submitted a request (purely for UX — shows pending state)
-  const status = await getDmRequestStatus(user.uid);
-
-  if (status && status.status === 'pending') {
-    body.innerHTML = `
-      <div class="dm-pending-banner">
-        <p class="dm-pending-title">Request Submitted ⏳</p>
-        <p class="settings-note">Your DM access request for <strong>${escapeHtml(status.campaignName || 'your campaign')}</strong> is under review. Contact <strong>Jozsua</strong> to follow up.</p>
+      <div class="settings-field">
+        <label for="dmEnterPassword">DM Control Password</label>
+        <input type="password" id="dmEnterPassword" placeholder="DM password for this campaign" maxlength="60" style="width:100%;box-sizing:border-box;">
       </div>
-      <button type="button" class="settings-action-btn dm-enter-btn" style="margin-top:10px;opacity:0.7;" onclick="enterDmPortal()">Enter DM Screen (Pending Mode)</button>
-    `;
-    return;
-  }
-
-  body.innerHTML = dmRequestFormHtml(user);
+      <button type="button" class="settings-action-btn dm-enter-btn accent-contrast-bg" onclick="dmEnterWithPassword()">Take Control →</button>
+      <div id="dmEnterStatus" class="status-message"></div>
+    </div>
+  `;
+  populateDmCampaignSelect();
 }
+
+async function populateDmCampaignSelect() {
+  const select = document.getElementById('dmEnterCampaignSelect');
+  if (!select) return;
+  const db = window.db;
+  if (!db) { select.innerHTML = '<option value="">Connecting…</option>'; return; }
+  try {
+    const snap = await db.collection('campaigns').where('active', '==', true).get();
+    const campaigns = [];
+    snap.forEach(doc => { const c = doc.data(); campaigns.push({ id: doc.id, name: c.name, setting: c.setting || '' }); });
+    campaigns.sort((a, b) => a.name.localeCompare(b.name));
+    if (!campaigns.length) {
+      select.innerHTML = '<option value="">No active campaigns</option>';
+      return;
+    }
+    select.innerHTML = '<option value="">Choose a campaign…</option>' +
+      campaigns.map(c => `<option value="${escapeHtml(c.id)}" data-setting="${escapeHtml(c.setting)}">${escapeHtml(c.name)}</option>`).join('');
+  } catch (e) {
+    select.innerHTML = '<option value="">Load failed</option>';
+    console.warn('DM campaign list load failed:', e.message);
+  }
+}
+
+async function dmEnterWithPassword() {
+  const user = window.currentUser;
+  if (!user) return;
+  const select = document.getElementById('dmEnterCampaignSelect');
+  const pwInput = document.getElementById('dmEnterPassword');
+  const statusEl = document.getElementById('dmEnterStatus');
+  const setStatus = (msg, type) => {
+    if (!statusEl) return;
+    statusEl.textContent = msg;
+    statusEl.className = `status-message ${type || 'info'}`;
+    statusEl.style.display = 'block';
+  };
+
+  const campaignId = select?.value;
+  const password = pwInput?.value || '';
+  if (!campaignId) { setStatus('Choose a campaign first.', 'error'); return; }
+
+  const db = window.db;
+  if (!db) { setStatus('Not connected. Try again in a moment.', 'error'); return; }
+
+  try {
+    const doc = await db.collection('campaigns').doc(campaignId).get();
+    if (!doc.exists) { setStatus('Campaign not found.', 'error'); return; }
+    const c = doc.data();
+    const dmHash = c.dmPasswordHash || '';
+
+    if (!dmHash) {
+      setStatus('This campaign has no DM password set. Ask the owner to set one in the Admin Portal.', 'error');
+      return;
+    }
+    const enteredHash = typeof window.sha256Hex === 'function' ? await window.sha256Hex(password) : '';
+    if (enteredHash !== dmHash) {
+      setStatus('Incorrect DM password.', 'error');
+      return;
+    }
+
+    // Verified — save session and enter
+    dmSessionSave({ uid: user.uid, email: user.email, campaignName: c.name, campaignSetting: c.setting || '' });
+    enterDmPortal();
+  } catch (e) {
+    setStatus('Error: ' + (e?.message || 'unknown'), 'error');
+  }
+}
+
+window.populateDmCampaignSelect = populateDmCampaignSelect;
+window.dmEnterWithPassword = dmEnterWithPassword;
 
 function dmRequestFormHtml(user) {
   return `
@@ -247,15 +304,12 @@ async function enterDmPortal() {
   const user = window.currentUser;
   if (!user) return;
 
-  // If no valid session, check they at least submitted a request (pending or approved)
+  // Entry requires a valid session — created by dmEnterWithPassword() after the
+  // DM password is verified. Without one, send the user back to the gate.
   if (!dmSessionValid()) {
-    const status = await getDmRequestStatus(user.uid).catch(() => null);
-    const hasPendingOrApproved = isDmApproved(user.email) || (status && (status.status === 'pending' || status.status === 'approved'));
-    if (!hasPendingOrApproved) {
-      alert('Please submit a DM access request first.');
-      return;
-    }
-    dmSessionSave({ uid: user.uid, email: user.email, campaignName: status?.campaignName || '', campaignSetting: status?.campaignSetting || '' });
+    alert('Enter your campaign DM password first.');
+    if (typeof renderDmCard === 'function') renderDmCard();
+    return;
   }
 
   const session = dmSessionLoad();
@@ -270,9 +324,9 @@ async function enterDmPortal() {
   document.getElementById('dm-pages-root').style.display = 'block';
   document.getElementById('dmPortalChrome').style.display = 'block';
 
-  // Show pending banner if email not yet in approved list
+  // Access is gated by the DM password now — no pending state
   const pendingBanner = document.getElementById('dmPendingBanner');
-  if (pendingBanner) pendingBanner.style.display = isDmApproved(user.email) ? 'none' : 'block';
+  if (pendingBanner) pendingBanner.style.display = 'none';
 
   // Populate banner
   const label = document.getElementById('dmScreenCampaignLabel');

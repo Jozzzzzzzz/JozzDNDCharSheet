@@ -381,11 +381,13 @@ async function adminCreateCampaign() {
   const name = (document.getElementById('adminCampaignName')?.value || '').trim();
   const setting = (document.getElementById('adminCampaignSetting')?.value || '').trim();
   const dmEmail = (document.getElementById('adminCampaignDmEmail')?.value || '').trim().toLowerCase();
+  const dmPassword = (document.getElementById('adminCampaignDmPassword')?.value || '').trim();
   const password = (document.getElementById('adminCampaignPassword')?.value || '').trim();
 
   if (!name) { setAdminCampaignStatus('Campaign name is required.', 'error'); return; }
 
   const passwordHash = password ? await sha256Hex(password) : '';
+  const dmPasswordHash = dmPassword ? await sha256Hex(dmPassword) : '';
   const id = 'camp_' + Date.now();
 
   try {
@@ -395,6 +397,7 @@ async function adminCreateCampaign() {
       setting: setting || '',
       dmEmails: dmEmail ? [dmEmail] : [],
       passwordHash,
+      dmPasswordHash,
       active: true,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
@@ -403,6 +406,7 @@ async function adminCreateCampaign() {
     document.getElementById('adminCampaignName').value = '';
     document.getElementById('adminCampaignSetting').value = '';
     document.getElementById('adminCampaignDmEmail').value = '';
+    document.getElementById('adminCampaignDmPassword').value = '';
     document.getElementById('adminCampaignPassword').value = '';
     await adminLoadCampaigns();
   } catch (e) {
@@ -472,7 +476,8 @@ async function adminLoadCampaigns() {
           <div class="admin-campaign-actions">
             <button class="settings-action-btn accent-contrast-bg" onclick="adminViewCampaignPlayers('${c.id}', '${escapeHtml(c.name)}')">View Players</button>
             <button class="settings-action-btn accent-contrast-bg" onclick="adminEditCampaignDm('${c.id}')">Edit DM</button>
-            <button class="settings-action-btn accent-contrast-bg" onclick="adminChangeCampaignPassword('${c.id}')">Change Password</button>
+            <button class="settings-action-btn accent-contrast-bg" onclick="adminChangeCampaignPassword('${c.id}', 'dm')">DM Password</button>
+            <button class="settings-action-btn accent-contrast-bg" onclick="adminChangeCampaignPassword('${c.id}', 'player')">Player Password</button>
             <button class="settings-action-btn accent-contrast-bg" onclick="adminToggleCampaign('${c.id}', ${!c.active})">${c.active ? 'Deactivate' : 'Activate'}</button>
             <button class="settings-action-btn admin-delete-btn" id="adminDelBtn_${c.id}" onclick="adminDeleteCampaignStep('${c.id}', '${escapeHtml(c.name)}', this)">Delete</button>
           </div>
@@ -481,7 +486,8 @@ async function adminLoadCampaigns() {
           <div class="admin-campaign-detail-row"><span class="admin-detail-label">Setting</span><span>${escapeHtml(c.setting || '—')}</span></div>
           <div class="admin-campaign-detail-row"><span class="admin-detail-label">DMs</span><div class="admin-dm-list">${dmList}</div></div>
           <div class="admin-campaign-detail-row"><span class="admin-detail-label">Linked Players</span><span>${playerCount} character${playerCount === 1 ? '' : 's'}</span></div>
-          <div class="admin-campaign-detail-row"><span class="admin-detail-label">Password</span><span>${c.passwordHash ? '••••••••• (set)' : 'Not set'}</span></div>
+          <div class="admin-campaign-detail-row"><span class="admin-detail-label">DM Password</span><span>${c.dmPasswordHash ? '••••••••• (set)' : 'Not set'}</span></div>
+          <div class="admin-campaign-detail-row"><span class="admin-detail-label">Player Password</span><span>${c.passwordHash ? '••••••••• (set)' : 'Not set'}</span></div>
         </div>
         <div id="adminCampaignPlayers_${c.id}" class="admin-campaign-players" style="display:none;"></div>
       `;
@@ -531,15 +537,19 @@ async function adminViewCampaignPlayers(campaignId, campaignName) {
   }
 }
 
-async function adminChangeCampaignPassword(campaignId) {
-  const password = prompt('Enter new DM portal password for this campaign:');
-  if (!password || !password.trim()) return;
+async function adminChangeCampaignPassword(campaignId, which) {
+  const isDm = which === 'dm';
+  const label = isDm ? 'DM control password (DM uses to take control)' : 'player join password (players enter to join)';
+  const field = isDm ? 'dmPasswordHash' : 'passwordHash';
+  const password = prompt(`Enter new ${label} for this campaign:\n(Leave blank to remove it)`);
+  if (password === null) return; // cancelled
   const db = window.db;
   if (!db) return;
   try {
-    const hash = await sha256Hex(password.trim());
-    await db.collection('campaigns').doc(campaignId).update({ passwordHash: hash });
-    setAdminCampaignStatus('Password updated.', 'success');
+    const hash = password.trim() ? await sha256Hex(password.trim()) : '';
+    await db.collection('campaigns').doc(campaignId).update({ [field]: hash });
+    await adminLoadCampaigns();
+    setAdminCampaignStatus(`${isDm ? 'DM' : 'Player'} password ${hash ? 'updated' : 'removed'}.`, 'success');
   } catch (e) {
     setAdminCampaignStatus('Error: ' + e.message, 'error');
   }

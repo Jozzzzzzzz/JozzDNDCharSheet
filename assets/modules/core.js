@@ -4462,16 +4462,20 @@ async function loadCampaignDropdown() {
     return;
   }
   try {
-    const snap = await db.collection('campaigns').where('active', '==', true).orderBy('name').get();
+    // No orderBy — sorting on the client avoids needing a composite Firestore index
+    const snap = await db.collection('campaigns').where('active', '==', true).get();
     _campaignCache = [];
+    snap.forEach(doc => {
+      const c = doc.data();
+      _campaignCache.push({ id: doc.id, name: c.name, passwordHash: c.passwordHash || '', dmPasswordHash: c.dmPasswordHash || '' });
+    });
+    _campaignCache.sort((a, b) => a.name.localeCompare(b.name));
     // Reset to base options
     select.innerHTML = `
       <option value="">Solo / No Campaign</option>
       <option value="__custom__">Custom...</option>
     `;
-    snap.forEach(doc => {
-      const c = doc.data();
-      _campaignCache.push({ id: doc.id, name: c.name, passwordHash: c.passwordHash || '' });
+    _campaignCache.forEach(c => {
       const opt = document.createElement('option');
       opt.value = c.name;
       opt.textContent = c.name;

@@ -6,9 +6,23 @@
 // the Home button until they visit the home page.
 // ============================================================
 
-const CHANGELOG_LATEST_VERSION = '1.02';
+const CHANGELOG_LATEST_VERSION = '1.03';
 
 const CHANGELOG = [
+  {
+    version: '1.03',
+    date: '2026-06-22',
+    title: 'v1.03 — Two-Password Campaigns',
+    updates: [
+      'Campaigns now have two separate passwords: a DM control password (DM enters to take control of the campaign) and a player join password (players enter to join from their character sheet)',
+      'DM portal entry redesigned — pick your campaign from a dropdown and enter the DM control password to take control. No more access-request approval step',
+      'Admin portal campaign manager now has separate "DM Password" and "Player Password" buttons, and the create form takes both passwords',
+      'DMs can still change the player join password from the DM portal Settings tab',
+    ],
+    fixes: [
+      'Campaigns now reliably appear in the player join dropdown — removed the Firestore sort that silently required a missing index',
+    ],
+  },
   {
     version: '1.02',
     date: '2026-06-22',
