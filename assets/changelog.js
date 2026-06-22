@@ -6,9 +6,23 @@
 // the Home button until they visit the home page.
 // ============================================================
 
-const CHANGELOG_LATEST_VERSION = '1.01';
+const CHANGELOG_LATEST_VERSION = '1.02';
 
 const CHANGELOG = [
+  {
+    version: '1.02',
+    date: '2026-06-22',
+    title: 'v1.02 — Admin & Campaign Update',
+    updates: [
+      'DM portal Settings tab now has a Campaign Password section — DMs can change the player join password for their campaign directly from the portal',
+      'Admin portal campaign manager now supports changing campaign join passwords alongside existing DM assignment and activate/deactivate controls',
+    ],
+    fixes: [
+      'Admin preview mode no longer disables Export, Import, and Save buttons — those remain usable while previewing a character',
+      'Autosave now exits early during admin preview so viewing another player\'s sheet cannot overwrite your own data',
+      'Campaign dropdown now loads correctly on sign-in even when Firebase wasn\'t fully ready on first page load',
+    ],
+  },
   {
     version: '1.01',
     date: '2026-06-21',

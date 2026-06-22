@@ -842,6 +842,41 @@ window.dmDeleteNpc = dmDeleteNpc;
 window.dmClearAllNpcs = dmClearAllNpcs;
 window.dmLoadPlayers = dmLoadPlayers;
 
+async function dmChangeCampaignPassword() {
+  const session = dmSessionLoad();
+  if (!session?.campaignName) return;
+  const db = window.db;
+  if (!db) return;
+
+  const statusEl = document.getElementById('dmCampaignPasswordStatus');
+  const setStatus = (msg, ok) => {
+    if (!statusEl) return;
+    statusEl.textContent = msg;
+    statusEl.style.color = ok ? '#6e6' : '#e66';
+  };
+
+  const newPw = prompt(`New player join password for "${session.campaignName}":\n(Leave blank to remove password)`);
+  if (newPw === null) return; // cancelled
+
+  try {
+    const snap = await db.collection('campaigns').where('name', '==', session.campaignName).limit(1).get();
+    if (snap.empty) { setStatus('Campaign not found.', false); return; }
+    const docRef = snap.docs[0].ref;
+    if (newPw.trim() === '') {
+      await docRef.update({ passwordHash: '' });
+      setStatus('Password removed.', true);
+    } else {
+      const hash = await sha256Hex(newPw.trim());
+      await docRef.update({ passwordHash: hash });
+      setStatus('Password updated.', true);
+    }
+    setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 3000);
+  } catch (e) {
+    setStatus('Error: ' + e.message, false);
+  }
+}
+window.dmChangeCampaignPassword = dmChangeCampaignPassword;
+
 // ─── Auth hook ─────────────────────────────────────────────────────────────
 
 window.renderDmCard = renderDmCard;

@@ -314,13 +314,28 @@ async function adminPreviewCharacter(uid, charId) {
 
 window.adminPreviewCharacter = adminPreviewCharacter;
 
+// IDs of buttons that should remain clickable during admin preview
+const ADMIN_PREVIEW_ALLOWED = new Set([
+  'exportBtn', 'importBtn', 'manualSaveBtn'
+]);
+
+// CSS classes of buttons to keep enabled (export, import, save, backup tools)
+const ADMIN_PREVIEW_ALLOWED_CLASSES = ['settings-import-label', 'import-label'];
+
 function disableEditingForAdminPreview(on) {
   const root = document.getElementById('pages');
   if (!root) return;
-  root.querySelectorAll('input, textarea, select, button').forEach(el => {
+  root.querySelectorAll('input, textarea, select, button, label').forEach(el => {
     if (el.closest('#adminPreviewBanner')) return;
     if (el.closest('.tabs') || el.closest('.header-bar')) return;
     if (el.id === 'adminPortalPin') return;
+    // Allow export/import/save buttons to remain usable
+    if (ADMIN_PREVIEW_ALLOWED.has(el.id)) return;
+    if (ADMIN_PREVIEW_ALLOWED_CLASSES.some(c => el.classList.contains(c))) return;
+    // Keep export, import, save buttons in settings enabled
+    const txt = el.textContent?.trim();
+    if (txt === 'Export Character' || txt === 'Import Character' || txt === 'Save Data') return;
+
     if (on) {
       el.dataset.prevDisabled = el.disabled ? '1' : '0';
       el.disabled = true;

@@ -2712,6 +2712,8 @@ function resetDeleteUI() {
 
 function autosave() {
   try {
+  // Never write during admin preview — viewing someone else's sheet
+  if (window.__adminPreviewActive) return;
   // Ensure a character target exists — never create ghost data
   if (!currentCharacter) {
     const characters = getStoredJSON('dndCharacters', []);
@@ -4455,7 +4457,10 @@ async function loadCampaignDropdown() {
   const select = document.getElementById('char_campaign_select');
   if (!select) return;
   const db = window.db;
-  if (!db) return;
+  if (!db) {
+    // db not ready yet — updateAuthUI will call us again once Firebase initialises
+    return;
+  }
   try {
     const snap = await db.collection('campaigns').where('active', '==', true).orderBy('name').get();
     _campaignCache = [];
