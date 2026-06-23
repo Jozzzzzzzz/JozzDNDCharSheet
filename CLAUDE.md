@@ -2,6 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Working With Jozsua
+
+- The repo owner is **Jozsua** (Jozsua Van Ree, vanreejoz33@gmail.com — also the app's owner/admin email). Address him as **"Jozsua"** in responses.
+- **Never `git push` or `firebase deploy` without asking first**, unless he already said "push"/"deploy"/"ship it" in the active request. Committing locally is fine; publishing is the gated step.
+- **Pre-push checklist** — when a push is requested or imminent, scan what changed this session and handle these before pushing:
+  1. **Version bump?** If any JS/HTML/CSS changed, bump `CHANGELOG_LATEST_VERSION` in `assets/changelog.js`, add a changelog entry (updates/fixes from the session), and bump `scriptVersion` in `index.html`.
+  2. **Firestore deploy?** If `firestore.rules` or `firestore.indexes.json` changed, they must be deployed — editing the files alone does nothing. Ask before deploying.
+  3. Then commit, and ask before `git push`.
+
 ## What This Is
 
 A vanilla HTML/CSS/JS D&D 5e character sheet PWA. No build system, no bundler, no package manager. Open `index.html` directly in a browser or serve it with any static file server.
