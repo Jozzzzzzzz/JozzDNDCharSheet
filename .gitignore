@@ -1,0 +1,15 @@
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+*-debug.log
+
+# Firebase service account keys — NEVER commit these (full database access)
+*serviceAccount*.json
+*service-account*.json
+*-firebase-adminsdk-*.json
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
