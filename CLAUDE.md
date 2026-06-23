@@ -338,17 +338,38 @@ Target: check Firestore `campaigns` where `dmEmails` contains user's email — n
 **TODO:** Replace `isDmApproved()` with a Firestore `campaigns` query in `enterDmPortal()`.
 
 ### Firestore Rules Required
+The full ruleset now lives in `firestore.rules` at the repo root (deployed via `firebase deploy --only firestore:rules`, or pasted into Firebase Console → Firestore → Rules). `firebase.json` points at it. Key rules: collectionGroup `characters` read for owner+signed-in (DM Players tab), `campaigns` read for signed-in / write for owner, and the `joinRequests` subcollection rules below.
+
+### Campaign Join Approval (v1.04+)
+
+Joining a campaign is a **two-gate** flow: password first, then DM approval. The hard constraint driving the design: **only a player can write their own character doc** — a DM cannot flip another player's `campaignId`. So approval is brokered through a request subcollection that each side writes to within its own permissions.
+
 ```
-// CollectionGroup — owner reads all characters for Players tab
-match /{path=**}/characters/{charId} {
-  allow read: if isOwnerAdmin();
-}
-// Campaigns — signed-in users read (player dropdown), owner writes
-match /campaigns/{campaignId} {
-  allow read: if isSignedIn();
-  allow write: if isOwnerAdmin();
+campaigns/{id}/joinRequests/{uid}
+  uid, charId, charName, campaignId, campaignName
+  status: 'pending' | 'approved' | 'denied'
+  requestedAt
+```
+
+Flow:
+1. **Player** enters join password (`verifyCampaignPassword` in `core.js`) → on success **creates** `joinRequests/{their uid}` with `status:'pending'`, locks the campaign picker (`setCampaignFieldLocked`), and starts `startJoinRequestListener()` (onSnapshot on their own request doc). Their `characterInfo.campaignId` stays blank.
+2. **DM** (`dmLoadPendingPlayers` in `dm.js`) or **owner** (`adminViewCampaignPlayers` in `admin.js`) sees pending requests → Approve sets `status:'approved'`, Deny sets `status:'denied'`.
+3. **Player's listener** fires: `approved` → `applyApprovedCampaign(name)` sets `campaignId` + autosaves (this is what makes them appear on the roster, since the roster query filters on `data.characterInfo.campaignId == campaignName`); `denied` or **doc deleted** → clears `campaignId` back to blank.
+4. **Remove** (DM `dmRemovePlayer` / admin `adminRemovePlayer`) = **delete** the request doc. The player's listener sees `!snap.exists` → clears their campaign. Offline players are reconciled on next load: `restoreCampaignField` re-attaches the listener for an already-joined character, so a deleted request clears them immediately on reconnect.
+
+Key globals: `_joinRequestUnsub` (listener handle), `_campaignCache` (holds `{id, name, passwordHash, dmPasswordHash}`), DM session now carries `campaignId` (needed because join-request paths key off campaign **id**, while the roster query keys off campaign **name**). `dmCurrentCampaignId()` reads it.
+
+joinRequests rules (in `firestore.rules`):
+```
+match /joinRequests/{uid} {
+  allow create, delete: if isSignedIn() && request.auth.uid == uid;   // player owns their request
+  allow read: if (request.auth.uid == uid) || isOwnerAdmin() || isCampaignDm(campaignId);
+  allow update: if isOwnerAdmin() || isCampaignDm(campaignId);        // approve / deny
 }
 ```
+`isCampaignDm()` checks the signed-in email against the campaign's `dmEmails` array.
+
+**Gotcha:** approving an *offline* player only flips the request to `approved`; their `campaignId` (and thus roster appearance) updates when they next reconnect and their listener runs. This is inherent to the "player owns their doc" model — do not try to write the player's character doc from the DM/admin side, it will be denied by rules.
 
 ---
 

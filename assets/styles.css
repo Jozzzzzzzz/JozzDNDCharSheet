@@ -7981,6 +7981,7 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 .dm-player-info { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
 .dm-player-name { font-weight: 700; font-size: 0.95rem; color: rgba(255,255,255,0.9); }
 .dm-player-meta { font-size: 0.78rem; color: rgba(255,255,255,0.4); }
+.dm-player-actions { display: flex; gap: 8px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
 
 .dm-player-sheet-panel { margin-top: 16px; }
 

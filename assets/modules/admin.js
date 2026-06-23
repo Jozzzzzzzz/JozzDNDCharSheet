@@ -510,32 +510,99 @@ async function adminViewCampaignPlayers(campaignId, campaignName) {
   panel.innerHTML = '<p class="settings-note">Loading...</p>';
 
   try {
-    const snap = await db.collectionGroup('characters')
-      .where('data.characterInfo.campaignId', '==', campaignName)
-      .get();
-
-    if (snap.empty) {
-      panel.innerHTML = '<p class="settings-note">No characters linked to this campaign yet.</p>';
-      return;
-    }
-
-    const rows = [];
-    snap.forEach(doc => {
-      const d = doc.data() || {};
-      const info = d?.data?.characterInfo || {};
-      rows.push(`
+    // Pending join requests
+    const pendSnap = await db.collection('campaigns').doc(campaignId)
+      .collection('joinRequests').where('status', '==', 'pending').get();
+    const pendRows = [];
+    pendSnap.forEach(doc => {
+      const r = doc.data() || {};
+      pendRows.push(`
         <div class="admin-campaign-player-row">
-          <span class="admin-campaign-player-name">${escapeHtml(info.name || 'Unnamed')}</span>
-          <span class="settings-note">${escapeHtml([info.race, info.class, info.subclass, info.level ? 'Lv ' + info.level : ''].filter(Boolean).join(' · '))}</span>
+          <span class="admin-campaign-player-name">${escapeHtml(r.charName || 'Unnamed')} <em class="settings-note">(pending)</em></span>
+          <span>
+            <button class="settings-action-btn accent-contrast-bg" onclick="adminApproveJoin('${campaignId}','${doc.id}','${escapeHtml(campaignName)}')">Approve</button>
+            <button class="settings-action-btn admin-delete-btn" onclick="adminDenyJoin('${campaignId}','${doc.id}','${escapeHtml(campaignName)}')">Deny</button>
+          </span>
         </div>
       `);
     });
 
-    panel.innerHTML = `<div class="admin-campaign-players-list">${rows.join('')}</div>`;
+    // Approved roster
+    const snap = await db.collectionGroup('characters')
+      .where('data.characterInfo.campaignId', '==', campaignName)
+      .get();
+    const rows = [];
+    snap.forEach(doc => {
+      const d = doc.data() || {};
+      const info = d?.data?.characterInfo || {};
+      const uid = doc.ref.parent.parent.id;
+      rows.push(`
+        <div class="admin-campaign-player-row">
+          <span class="admin-campaign-player-name">${escapeHtml(info.name || 'Unnamed')}</span>
+          <span class="settings-note">${escapeHtml([info.race, info.class, info.subclass, info.level ? 'Lv ' + info.level : ''].filter(Boolean).join(' · '))}</span>
+          <button class="settings-action-btn admin-delete-btn" onclick="adminRemovePlayer('${campaignId}','${uid}','${escapeHtml(campaignName)}')">Remove</button>
+        </div>
+      `);
+    });
+
+    const pendHtml = pendRows.length
+      ? `<h5 class="settings-note" style="margin:6px 0;">Pending (${pendRows.length})</h5>${pendRows.join('')}`
+      : '';
+    const rosterHtml = rows.length
+      ? `<h5 class="settings-note" style="margin:10px 0 6px;">Players (${rows.length})</h5>${rows.join('')}`
+      : '<p class="settings-note">No approved players yet.</p>';
+
+    panel.innerHTML = `<div class="admin-campaign-players-list">${pendHtml}${rosterHtml}</div>`;
   } catch (e) {
     panel.innerHTML = `<p class="settings-note">Error: ${escapeHtml(e.message)}</p>`;
   }
 }
+
+async function adminApproveJoin(campaignId, uid, campaignName) {
+  const db = window.db;
+  if (!db) return;
+  try {
+    await db.collection('campaigns').doc(campaignId)
+      .collection('joinRequests').doc(uid).update({ status: 'approved' });
+    setAdminCampaignStatus('Player approved.', 'success');
+    setTimeout(() => adminViewCampaignPlayers(campaignId, campaignName), 100);
+    setTimeout(() => adminViewCampaignPlayers(campaignId, campaignName), 1600);
+  } catch (e) {
+    setAdminCampaignStatus('Approve failed: ' + e.message, 'error');
+  }
+}
+
+async function adminDenyJoin(campaignId, uid, campaignName) {
+  const db = window.db;
+  if (!db) return;
+  try {
+    await db.collection('campaigns').doc(campaignId)
+      .collection('joinRequests').doc(uid).update({ status: 'denied' });
+    setAdminCampaignStatus('Request denied.', 'success');
+    setTimeout(() => adminViewCampaignPlayers(campaignId, campaignName), 100);
+  } catch (e) {
+    setAdminCampaignStatus('Deny failed: ' + e.message, 'error');
+  }
+}
+
+async function adminRemovePlayer(campaignId, uid, campaignName) {
+  if (!confirm('Remove this player from the campaign? Their campaign field will clear and they can request to re-join.')) return;
+  const db = window.db;
+  if (!db) return;
+  try {
+    // Deleting the request doc signals the player's app to clear their campaignId
+    await db.collection('campaigns').doc(campaignId)
+      .collection('joinRequests').doc(uid).delete();
+    setAdminCampaignStatus('Player removed.', 'success');
+    setTimeout(() => adminViewCampaignPlayers(campaignId, campaignName), 100);
+  } catch (e) {
+    setAdminCampaignStatus('Remove failed: ' + e.message, 'error');
+  }
+}
+
+window.adminApproveJoin = adminApproveJoin;
+window.adminDenyJoin = adminDenyJoin;
+window.adminRemovePlayer = adminRemovePlayer;
 
 async function adminChangeCampaignPassword(campaignId, which) {
   const isDm = which === 'dm';

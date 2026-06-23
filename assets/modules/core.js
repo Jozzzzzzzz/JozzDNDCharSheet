@@ -4516,58 +4516,148 @@ function onCampaignSelectChange(select) {
     return;
   }
 
-  // Named campaign — check if it has a password
+  // Named campaign — always require the password, then request to join (pending)
   const campaign = _campaignCache.find(c => c.name === val);
-  if (campaign && campaign.passwordHash) {
-    // Has password — show password row, don't save yet
-    if (passwordRow) passwordRow.style.display = 'flex';
-  } else {
-    // No password — join immediately
-    if (hiddenField) hiddenField.value = val;
-    autosave();
+  if (passwordRow) passwordRow.style.display = 'flex';
+  if (!campaign || !campaign.passwordHash) {
+    // No password set on the campaign — still requires DM approval
+    if (statusEl) { statusEl.textContent = 'No password set — enter blank and Join to request.'; statusEl.style.color = ''; }
   }
 }
 
 async function verifyCampaignPassword() {
   const select = document.getElementById('char_campaign_select');
   const pwInput = document.getElementById('char_campaign_password');
-  const hiddenField = document.getElementById('char_campaign');
   const statusEl = document.getElementById('char_campaign_password_status');
 
   const campaignName = select?.value;
   const password = pwInput?.value || '';
-  if (!campaignName || !password) return;
+  if (!campaignName) return;
 
   const campaign = _campaignCache.find(c => c.name === campaignName);
   if (!campaign) return;
 
-  const enteredHash = typeof window.sha256Hex === 'function'
-    ? await window.sha256Hex(password)
-    : '';
-
-  if (enteredHash === campaign.passwordHash) {
-    if (hiddenField) hiddenField.value = campaignName;
-    if (statusEl) { statusEl.textContent = '✓ Joined'; statusEl.style.color = '#6e6'; }
-    if (pwInput) pwInput.value = '';
-    const passwordRow = document.getElementById('char_campaign_password_row');
-    if (passwordRow) setTimeout(() => { passwordRow.style.display = 'none'; if (statusEl) statusEl.textContent = ''; }, 1500);
-    autosave();
-  } else {
-    if (statusEl) { statusEl.textContent = 'Incorrect password'; statusEl.style.color = '#e66'; }
+  // Verify password (if the campaign has one)
+  if (campaign.passwordHash) {
+    const enteredHash = typeof window.sha256Hex === 'function'
+      ? await window.sha256Hex(password)
+      : '';
+    if (enteredHash !== campaign.passwordHash) {
+      if (statusEl) { statusEl.textContent = 'Incorrect password'; statusEl.style.color = '#e66'; }
+      return;
+    }
   }
+
+  // Password OK → submit a join request (DM must approve before joining)
+  const user = window.currentUser;
+  const db = window.db;
+  if (!user || !db) {
+    if (statusEl) { statusEl.textContent = 'Sign in to join a campaign.'; statusEl.style.color = '#e66'; }
+    return;
+  }
+
+  try {
+    const charName = (document.getElementById('char_name')?.value || 'Unnamed').trim();
+    await db.collection('campaigns').doc(campaign.id)
+      .collection('joinRequests').doc(user.uid).set({
+        uid: user.uid,
+        charId: currentCharacter || '',
+        charName,
+        campaignId: campaign.id,
+        campaignName: campaign.name,
+        status: 'pending',
+        requestedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+    if (pwInput) pwInput.value = '';
+    if (statusEl) { statusEl.textContent = '⏳ Request sent — waiting for DM approval'; statusEl.style.color = '#dca54a'; }
+    // Lock the dropdown while pending and start watching for approval
+    setCampaignFieldLocked(true);
+    startJoinRequestListener(campaign.id, user.uid, campaign.name);
+  } catch (e) {
+    console.error('Join request failed:', e);
+    if (statusEl) { statusEl.textContent = 'Error: ' + (e.message || 'could not send request'); statusEl.style.color = '#e66'; }
+  }
+}
+
+// Lock/unlock the campaign picker so a pending/joined player can't change it
+function setCampaignFieldLocked(locked) {
+  const select = document.getElementById('char_campaign_select');
+  const customInput = document.getElementById('char_campaign_custom');
+  const pwRow = document.getElementById('char_campaign_password_row');
+  if (select) select.disabled = locked;
+  if (customInput) customInput.disabled = locked;
+  if (pwRow && locked) pwRow.style.display = 'none';
+}
+
+let _joinRequestUnsub = null;
+function startJoinRequestListener(campaignId, uid, campaignName) {
+  const db = window.db;
+  if (!db) return;
+  if (_joinRequestUnsub) { _joinRequestUnsub(); _joinRequestUnsub = null; }
+  const ref = db.collection('campaigns').doc(campaignId).collection('joinRequests').doc(uid);
+  _joinRequestUnsub = ref.onSnapshot(snap => {
+    const statusEl = document.getElementById('char_campaign_password_status');
+    if (!snap.exists) {
+      // Request removed by DM (denied or kicked) → reset to blank, unlock
+      stopJoinRequestListener();
+      applyApprovedCampaign('');
+      if (statusEl) { statusEl.textContent = 'Removed from campaign. You can request again.'; statusEl.style.color = '#e66'; }
+      return;
+    }
+    const data = snap.data() || {};
+    if (data.status === 'approved') {
+      stopJoinRequestListener();
+      applyApprovedCampaign(campaignName);
+      if (statusEl) { statusEl.textContent = '✓ Joined ' + campaignName; statusEl.style.color = '#6e6'; }
+    } else if (data.status === 'denied') {
+      stopJoinRequestListener();
+      applyApprovedCampaign('');
+      if (statusEl) { statusEl.textContent = 'Request denied by DM.'; statusEl.style.color = '#e66'; }
+    } else {
+      // still pending
+      setCampaignFieldLocked(true);
+      if (statusEl) { statusEl.textContent = '⏳ Waiting for DM approval'; statusEl.style.color = '#dca54a'; }
+    }
+  }, err => console.warn('joinRequest listener error:', err.message));
+}
+
+function stopJoinRequestListener() {
+  if (_joinRequestUnsub) { _joinRequestUnsub(); _joinRequestUnsub = null; }
+}
+
+// Commit an approved (or cleared) campaign onto the character + persist
+function applyApprovedCampaign(campaignName) {
+  const hiddenField = document.getElementById('char_campaign');
+  const select = document.getElementById('char_campaign_select');
+  if (hiddenField) hiddenField.value = campaignName || '';
+  if (campaignName) {
+    setCampaignFieldLocked(true);
+    if (select) { const opt = Array.from(select.options).find(o => o.value === campaignName); if (opt) select.value = campaignName; }
+  } else {
+    setCampaignFieldLocked(false);
+    if (select) select.value = '';
+  }
+  autosave();
 }
 
 function restoreCampaignField(savedCampaignId) {
   const select = document.getElementById('char_campaign_select');
   const customInput = document.getElementById('char_campaign_custom');
   const hiddenField = document.getElementById('char_campaign');
+  const statusEl = document.getElementById('char_campaign_password_status');
   if (!select || !hiddenField) return;
 
+  stopJoinRequestListener();
+  setCampaignFieldLocked(false);
+  if (statusEl) statusEl.textContent = '';
   hiddenField.value = savedCampaignId;
 
   if (!savedCampaignId) {
     select.value = '';
     if (customInput) customInput.style.display = 'none';
+    // No approved campaign — check for an outstanding pending request to resume
+    resumePendingJoinIfAny();
     return;
   }
 
@@ -4576,10 +4666,41 @@ function restoreCampaignField(savedCampaignId) {
   if (knownOption) {
     select.value = savedCampaignId;
     if (customInput) customInput.style.display = 'none';
+    // Already joined → lock so the player can't change/leave on their own
+    setCampaignFieldLocked(true);
+    if (statusEl) { statusEl.textContent = '✓ Joined ' + savedCampaignId; statusEl.style.color = '#6e6'; }
+    // Keep watching the join request so a DM removal/denial reflects here too,
+    // and reconcile if the request was deleted while we were offline.
+    const joined = _campaignCache.find(c => c.name === savedCampaignId);
+    const user = window.currentUser;
+    if (joined && user) startJoinRequestListener(joined.id, user.uid, joined.name);
   } else {
-    // Custom campaign
+    // Custom campaign (free-text, no DM gate)
     select.value = '__custom__';
     if (customInput) { customInput.style.display = ''; customInput.value = savedCampaignId; }
+  }
+}
+
+// On load, if this player has a pending/approved request for any campaign, resume it
+async function resumePendingJoinIfAny() {
+  const user = window.currentUser;
+  const db = window.db;
+  if (!user || !db || !Array.isArray(_campaignCache) || !_campaignCache.length) return;
+  for (const c of _campaignCache) {
+    try {
+      const snap = await db.collection('campaigns').doc(c.id)
+        .collection('joinRequests').doc(user.uid).get();
+      if (snap.exists) {
+        startJoinRequestListener(c.id, user.uid, c.name);
+        // Reflect the right name in the dropdown while pending
+        const sel = document.getElementById('char_campaign_select');
+        if (sel && snap.data()?.status !== 'approved') {
+          const opt = Array.from(sel.options).find(o => o.value === c.name);
+          if (opt) { sel.value = c.name; setCampaignFieldLocked(true); }
+        }
+        return;
+      }
+    } catch (_) { /* ignore per-campaign read errors */ }
   }
 }
 

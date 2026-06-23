@@ -1,0 +1,98 @@
+rules_version = '2';
+
+// =====================================================================
+// Jozz D&D Character Sheet — Firestore Security Rules
+// =====================================================================
+// Deploy with:  firebase deploy --only firestore:rules
+// or paste this whole file into Firebase Console → Firestore → Rules.
+//
+// Model:
+//  - A user owns userData/{their uid} and everything under it.
+//  - The owner-admin (vanreejoz33) can read everything for the admin
+//    portal and the DM Players tab (collectionGroup reads).
+//  - Campaigns are readable by any signed-in user (for the join dropdown)
+//    and writable only by the owner-admin.
+//  - Join requests live under campaigns/{id}/joinRequests/{uid}:
+//      * a player may create / read / delete THEIR OWN request
+//      * the owner-admin (and assigned DMs) may read all requests and
+//        update their status (approve / deny)
+// =====================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwnerAdmin() {
+      return isSignedIn() && request.auth.token.email == 'vanreejoz33@gmail.com';
+    }
+
+    // True if the signed-in user's email is in this campaign's dmEmails list
+    function isCampaignDm(campaignId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/campaigns/$(campaignId))
+        && request.auth.token.email in
+           get(/databases/$(database)/documents/campaigns/$(campaignId)).data.dmEmails;
+    }
+
+    // ---- User data (prefs + characters subcollection) ----
+    match /userData/{uid} {
+      allow read, write: if isSignedIn() && request.auth.uid == uid;
+      allow read: if isOwnerAdmin();
+
+      match /characters/{charId} {
+        allow read, write: if isSignedIn() && request.auth.uid == uid;
+        allow read: if isOwnerAdmin();
+      }
+    }
+
+    // ---- collectionGroup read of all characters (DM Players tab + admin) ----
+    // A DM needs to read characters linked to their campaign; owner reads all.
+    match /{path=**}/characters/{charId} {
+      allow read: if isOwnerAdmin() || isSignedIn();
+    }
+
+    // ---- User profiles (display names) ----
+    match /userProfiles/{uid} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == uid;
+      allow read: if isOwnerAdmin();
+    }
+
+    // ---- Sign-in history / presence ----
+    match /auth_signins/{uid} {
+      allow read, write: if isSignedIn() && request.auth.uid == uid;
+      allow read: if isOwnerAdmin();
+    }
+
+    // ---- Campaigns ----
+    match /campaigns/{campaignId} {
+      allow read: if isSignedIn();
+      allow write: if isOwnerAdmin();
+
+      // Join requests: campaigns/{id}/joinRequests/{uid}
+      match /joinRequests/{uid} {
+        // A player manages their own request; owner & assigned DMs can read all
+        allow create, delete: if isSignedIn() && request.auth.uid == uid;
+        allow read: if (isSignedIn() && request.auth.uid == uid)
+                       || isOwnerAdmin() || isCampaignDm(campaignId);
+        // Approve / deny: owner or assigned DM updates status
+        allow update: if isOwnerAdmin() || isCampaignDm(campaignId);
+      }
+    }
+
+    // ---- Admin config (portal PIN hash) ----
+    match /admin_config/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isOwnerAdmin();
+    }
+
+    // ---- DM access requests (legacy) ----
+    match /dm_requests/{uid} {
+      allow create, read: if isSignedIn() && request.auth.uid == uid;
+      allow read, write: if isOwnerAdmin();
+    }
+  }
+}

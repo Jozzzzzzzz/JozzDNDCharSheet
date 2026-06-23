@@ -182,7 +182,7 @@ async function dmEnterWithPassword() {
     }
 
     // Verified — save session and enter
-    dmSessionSave({ uid: user.uid, email: user.email, campaignName: c.name, campaignSetting: c.setting || '' });
+    dmSessionSave({ uid: user.uid, email: user.email, campaignId, campaignName: c.name, campaignSetting: c.setting || '' });
     enterDmPortal();
   } catch (e) {
     setStatus('Error: ' + (e?.message || 'unknown'), 'error');
@@ -787,6 +787,9 @@ async function dmLoadPlayers() {
     return;
   }
 
+  // Load pending join requests in parallel
+  dmLoadPendingPlayers();
+
   list.innerHTML = '<p class="dm-empty-state">Loading players...</p>';
 
   try {
@@ -825,7 +828,10 @@ async function dmLoadPlayers() {
           <span class="dm-player-name">${escapeHtml(c.name)}</span>
           <span class="dm-player-meta">${[c.race, c.cls, c.subclass, c.level ? 'Lv ' + c.level : ''].filter(Boolean).join(' · ')}</span>
         </div>
-        <button class="dm-action-btn" onclick="dmViewPlayerCharacter('${c.uid}','${c.charId}')">View Sheet</button>
+        <div class="dm-player-actions">
+          <button class="dm-action-btn" onclick="dmViewPlayerCharacter('${c.uid}','${c.charId}')">View Sheet</button>
+          <button class="dm-action-btn dm-danger-btn" onclick="dmRemovePlayer('${c.uid}','${escapeHtml(c.name)}',this)">Remove</button>
+        </div>
       </div>
     `).join('');
 
@@ -838,6 +844,112 @@ async function dmLoadPlayers() {
     }
   }
 }
+
+// ─── Pending join requests (approve / deny / remove) ───────────────────────
+
+function dmCurrentCampaignId() {
+  return dmSessionLoad()?.campaignId || '';
+}
+
+async function dmLoadPendingPlayers() {
+  const card = document.getElementById('dmPendingCard');
+  const list = document.getElementById('dmPendingList');
+  if (!list) return;
+  const db = window.db;
+  const campaignId = dmCurrentCampaignId();
+  if (!db || !campaignId) { if (card) card.style.display = 'none'; return; }
+
+  try {
+    const snap = await db.collection('campaigns').doc(campaignId)
+      .collection('joinRequests').where('status', '==', 'pending').get();
+    if (snap.empty) { if (card) card.style.display = 'none'; list.innerHTML = ''; return; }
+
+    const rows = [];
+    snap.forEach(doc => { const r = doc.data() || {}; rows.push({ uid: doc.id, name: r.charName || 'Unnamed' }); });
+    rows.sort((a, b) => a.name.localeCompare(b.name));
+
+    if (card) card.style.display = '';
+    list.innerHTML = rows.map(r => `
+      <div class="dm-player-card">
+        <div class="dm-player-info">
+          <span class="dm-player-name">${escapeHtml(r.name)}</span>
+          <span class="dm-player-meta">Waiting for approval</span>
+        </div>
+        <div class="dm-player-actions">
+          <button class="dm-action-btn accent-contrast-bg" onclick="dmApproveJoin('${r.uid}',this)">Approve</button>
+          <button class="dm-action-btn dm-danger-btn" onclick="dmDenyJoin('${r.uid}',this)">Deny</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    console.error('dmLoadPendingPlayers failed:', e);
+    if (card) card.style.display = '';
+    list.innerHTML = `<p class="dm-empty-state">Error: ${escapeHtml(e.message)}</p>`;
+  }
+}
+
+async function dmApproveJoin(uid, btn) {
+  const db = window.db;
+  const campaignId = dmCurrentCampaignId();
+  if (!db || !campaignId) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Approving…'; }
+  try {
+    await db.collection('campaigns').doc(campaignId)
+      .collection('joinRequests').doc(uid).update({ status: 'approved' });
+    // Refresh both panels after a short beat (player completes the join on their end)
+    dmLoadPendingPlayers();
+    setTimeout(() => dmLoadPlayers(), 1500);
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Approve'; }
+    alert('Approve failed: ' + e.message);
+  }
+}
+
+async function dmDenyJoin(uid, btn) {
+  const db = window.db;
+  const campaignId = dmCurrentCampaignId();
+  if (!db || !campaignId) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Denying…'; }
+  try {
+    // Mark denied so the player's listener shows the message, then it self-clears
+    await db.collection('campaigns').doc(campaignId)
+      .collection('joinRequests').doc(uid).update({ status: 'denied' });
+    dmLoadPendingPlayers();
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Deny'; }
+    alert('Deny failed: ' + e.message);
+  }
+}
+
+const _dmRemoveState = {};
+async function dmRemovePlayer(uid, name, btn) {
+  // Two-step confirm
+  if (!_dmRemoveState[uid]) {
+    _dmRemoveState[uid] = true;
+    if (btn) { btn.textContent = 'Sure?'; }
+    setTimeout(() => { _dmRemoveState[uid] = false; if (btn) btn.textContent = 'Remove'; }, 4000);
+    return;
+  }
+  _dmRemoveState[uid] = false;
+  const db = window.db;
+  const campaignId = dmCurrentCampaignId();
+  if (!db || !campaignId) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Removing…'; }
+  try {
+    // Deleting the request doc signals the player's app to clear their campaignId.
+    await db.collection('campaigns').doc(campaignId)
+      .collection('joinRequests').doc(uid).delete();
+    dmLoadPlayers();
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Remove'; }
+    alert('Remove failed: ' + e.message);
+  }
+}
+
+window.dmLoadPendingPlayers = dmLoadPendingPlayers;
+window.dmApproveJoin = dmApproveJoin;
+window.dmDenyJoin = dmDenyJoin;
+window.dmRemovePlayer = dmRemovePlayer;
 
 async function dmViewPlayerCharacter(uid, charId) {
   const db = window.db;

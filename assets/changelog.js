@@ -6,9 +6,25 @@
 // the Home button until they visit the home page.
 // ============================================================
 
-const CHANGELOG_LATEST_VERSION = '1.03';
+const CHANGELOG_LATEST_VERSION = '1.04';
 
 const CHANGELOG = [
+  {
+    version: '1.04',
+    date: '2026-06-23',
+    title: 'v1.04 — Campaign Join Approval',
+    updates: [
+      'Joining a campaign now requires DM approval: enter the join password to send a request, then the DM (or owner) approves it before you are linked',
+      'While waiting, your campaign picker locks and shows a "Pending DM approval" status; once approved it switches to "Joined"',
+      'DM portal Players tab now has a "Pending Players" panel with Approve / Deny buttons for each request',
+      'DMs and the owner can now Remove a player from a campaign — this clears the player\'s campaign field and lets them request to re-join',
+      'Admin portal campaign view mirrors all of this: pending list with Approve/Deny and a Remove button per linked player',
+      'Once joined, the player\'s campaign field is locked so they cannot silently change or leave it',
+    ],
+    fixes: [
+      'A player removed while offline is reconciled automatically the next time they open their sheet',
+    ],
+  },
   {
     version: '1.03',
     date: '2026-06-22',
