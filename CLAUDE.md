@@ -103,6 +103,17 @@ auth_signins/{uid}                      — sign-in history and per-device prese
 
 **Rules:** the `characters` subcollection requires an explicit `match /characters/{charId}` rule in Firestore security rules — without it subcollection writes are denied even if the parent `userData/{uid}` rule allows writes.
 
+#### Firebase CLI (rules/index deploys)
+The Firebase CLI (`firebase-tools`) is installed globally and logged in as the owner account. The repo is linked to the `dndcharproject` project via `.firebaserc`, and `firebase.json` points at `firestore.rules`. This means security rules and indexes are deployed from the command line, **not** by pasting into the Firebase Console.
+
+- **Rules live in `firestore.rules`** at the repo root — this is the source of truth. Edit it, then deploy.
+- Deploy rules: `firebase deploy --only firestore:rules` (compiles + checks for errors before publishing).
+- Deploy indexes: `firebase deploy --only firestore:indexes`.
+- Editing `firestore.rules` in the repo does **nothing** until it's deployed — the live rules are on Google's servers.
+- `firebase login` requires the owner's browser/Google auth and can't be automated; the token persists on the machine once done.
+- `.gitignore` excludes service-account keys (`*serviceAccount*.json` etc.) and firebase debug logs — never commit those.
+- **Deploying is an outward-facing publish step — ask before running `firebase deploy` unless already authorized in the request** (same rule as `git push`).
+
 #### Cloud sync flow
 1. **Edit → save:** every field change debounces through `scheduleAutosave()` (400 ms) → `autosave()` writes localStorage + stamps `updatedAt` → `scheduleSyncToCloud()` (2 s debounce) → writes **only** the active character's Firestore doc.
 2. **Boot → pull:** `syncFromCloud(true)` runs 1 s after sign-in. Reads all docs from the `characters` subcollection, merges with local by `updatedAt` (newer wins per character), then restores the last-selected character.
