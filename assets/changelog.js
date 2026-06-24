@@ -6,9 +6,22 @@
 // the Home button until they visit the home page.
 // ============================================================
 
-const CHANGELOG_LATEST_VERSION = '1.04';
+const CHANGELOG_LATEST_VERSION = '1.05';
 
 const CHANGELOG = [
+  {
+    version: '1.05',
+    date: '2026-06-24',
+    title: 'v1.05 — DM Portal Polish',
+    updates: [
+      'The Dungeon Master Portal now sits right under your character list on the home page',
+      'New sections are taking shape in the DM Portal — more coming soon',
+      'Clearer, friendlier messages throughout the DM and Admin areas',
+    ],
+    fixes: [
+      'Player lists in the DM and Admin areas now load reliably',
+    ],
+  },
   {
     version: '1.04',
     date: '2026-06-23',

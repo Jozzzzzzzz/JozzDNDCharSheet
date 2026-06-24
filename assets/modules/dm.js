@@ -1,5 +1,33 @@
 // DM Portal — access request, session management, and portal pages logic
 
+// ─── Friendly error/status messages ────────────────────────────────────────
+// Turns raw Firestore/network errors into plain-English explanations so the
+// DM and Admin portals never show cryptic red error text. Shared via window.
+function friendlyFirebaseError(e) {
+  const code = (e && e.code) ? String(e.code) : '';
+  const msg = (e && e.message) ? String(e.message) : String(e || '');
+  const low = (code + ' ' + msg).toLowerCase();
+
+  if (low.includes('index') && (low.includes('not ready') || low.includes('building'))) {
+    return '⏳ Setting things up — the database is finishing a one-time setup for this view. Try again in a few minutes (this only happens once).';
+  }
+  if (low.includes('requires') && low.includes('index')) {
+    return '⏳ This view needs a quick one-time database setup. It usually finishes within a few minutes — try again shortly.';
+  }
+  if (code === 'permission-denied' || low.includes('permission')) {
+    return '🔒 You don\'t have access to this. If you just set up a campaign, make sure the security rules are deployed.';
+  }
+  if (code === 'unavailable' || low.includes('offline') || low.includes('network')) {
+    return '📡 Can\'t reach the cloud right now — check your internet connection and try again.';
+  }
+  if (code === 'unauthenticated' || low.includes('unauthenticated')) {
+    return '👤 You\'re signed out. Sign in again and retry.';
+  }
+  // Fallback — still readable, no raw stack
+  return 'Something went wrong loading this. Try again in a moment.';
+}
+window.friendlyFirebaseError = friendlyFirebaseError;
+
 // ─── Approved DMs ──────────────────────────────────────────────────────────
 // Add a DM's email here to grant access. No Firestore change needed.
 const DM_APPROVED_EMAILS = [
@@ -837,11 +865,7 @@ async function dmLoadPlayers() {
 
   } catch (e) {
     console.error('dmLoadPlayers failed:', e);
-    if (e.code === 'permission-denied') {
-      list.innerHTML = '<p class="dm-empty-state">Permission denied — Firestore rules need a collectionGroup rule for <code>characters</code>. See CLAUDE.md.</p>';
-    } else {
-      list.innerHTML = `<p class="dm-empty-state">Error: ${escapeHtml(e.message)}</p>`;
-    }
+    list.innerHTML = `<p class="dm-empty-state">${escapeHtml(friendlyFirebaseError(e))}</p>`;
   }
 }
 
@@ -884,7 +908,7 @@ async function dmLoadPendingPlayers() {
   } catch (e) {
     console.error('dmLoadPendingPlayers failed:', e);
     if (card) card.style.display = '';
-    list.innerHTML = `<p class="dm-empty-state">Error: ${escapeHtml(e.message)}</p>`;
+    list.innerHTML = `<p class="dm-empty-state">${escapeHtml(friendlyFirebaseError(e))}</p>`;
   }
 }
 
@@ -901,7 +925,7 @@ async function dmApproveJoin(uid, btn) {
     setTimeout(() => dmLoadPlayers(), 1500);
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = 'Approve'; }
-    alert('Approve failed: ' + e.message);
+    alert(friendlyFirebaseError(e));
   }
 }
 
@@ -917,7 +941,7 @@ async function dmDenyJoin(uid, btn) {
     dmLoadPendingPlayers();
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = 'Deny'; }
-    alert('Deny failed: ' + e.message);
+    alert(friendlyFirebaseError(e));
   }
 }
 
@@ -942,7 +966,7 @@ async function dmRemovePlayer(uid, name, btn) {
     dmLoadPlayers();
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = 'Remove'; }
-    alert('Remove failed: ' + e.message);
+    alert(friendlyFirebaseError(e));
   }
 }
 

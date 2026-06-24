@@ -554,8 +554,14 @@ async function adminViewCampaignPlayers(campaignId, campaignName) {
 
     panel.innerHTML = `<div class="admin-campaign-players-list">${pendHtml}${rosterHtml}</div>`;
   } catch (e) {
-    panel.innerHTML = `<p class="settings-note">Error: ${escapeHtml(e.message)}</p>`;
+    panel.innerHTML = `<p class="settings-note">${escapeHtml(adminFriendlyError(e))}</p>`;
   }
+}
+
+// Plain-English error helper (reuses the DM portal's if loaded)
+function adminFriendlyError(e) {
+  if (typeof window.friendlyFirebaseError === 'function') return window.friendlyFirebaseError(e);
+  return (e && e.message) ? e.message : 'Something went wrong. Try again.';
 }
 
 async function adminApproveJoin(campaignId, uid, campaignName) {
@@ -568,7 +574,7 @@ async function adminApproveJoin(campaignId, uid, campaignName) {
     setTimeout(() => adminViewCampaignPlayers(campaignId, campaignName), 100);
     setTimeout(() => adminViewCampaignPlayers(campaignId, campaignName), 1600);
   } catch (e) {
-    setAdminCampaignStatus('Approve failed: ' + e.message, 'error');
+    setAdminCampaignStatus(adminFriendlyError(e), 'error');
   }
 }
 
@@ -581,7 +587,7 @@ async function adminDenyJoin(campaignId, uid, campaignName) {
     setAdminCampaignStatus('Request denied.', 'success');
     setTimeout(() => adminViewCampaignPlayers(campaignId, campaignName), 100);
   } catch (e) {
-    setAdminCampaignStatus('Deny failed: ' + e.message, 'error');
+    setAdminCampaignStatus(adminFriendlyError(e), 'error');
   }
 }
 
@@ -596,7 +602,7 @@ async function adminRemovePlayer(campaignId, uid, campaignName) {
     setAdminCampaignStatus('Player removed.', 'success');
     setTimeout(() => adminViewCampaignPlayers(campaignId, campaignName), 100);
   } catch (e) {
-    setAdminCampaignStatus('Remove failed: ' + e.message, 'error');
+    setAdminCampaignStatus(adminFriendlyError(e), 'error');
   }
 }
 

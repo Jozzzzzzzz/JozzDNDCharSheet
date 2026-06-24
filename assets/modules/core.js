@@ -4576,7 +4576,10 @@ async function verifyCampaignPassword() {
     startJoinRequestListener(campaign.id, user.uid, campaign.name);
   } catch (e) {
     console.error('Join request failed:', e);
-    if (statusEl) { statusEl.textContent = 'Error: ' + (e.message || 'could not send request'); statusEl.style.color = '#e66'; }
+    const friendly = (typeof window.friendlyFirebaseError === 'function')
+      ? window.friendlyFirebaseError(e)
+      : (e.message || 'Could not send request.');
+    if (statusEl) { statusEl.textContent = friendly; statusEl.style.color = '#e66'; }
   }
 }
 

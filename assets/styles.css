@@ -3574,6 +3574,7 @@
 }
 
 /* Full-width cards */
+.character-manager-card,
 .changelog-card,
 .features-card,
 .tips-card,
@@ -3581,16 +3582,17 @@
   grid-column: 1 / -1;
 }
 
-/* Card order — row 1: manager + quick start + share thoughts (3 col)
-                row 2: what's in the sheet (full width)
-                row 3: dm portal (full width)
-                row 4: what's new (full width)
-                row 5: tips (full width) */
+/* Card order — row 1: character manager (char list)
+                row 2: dm portal (full width, directly under the char list)
+                row 3: quick start + share thoughts
+                row 4: what's in the sheet (full width)
+                row 5: what's new (full width)
+                row 6: tips (full width) */
 .character-manager-card { order: 1; }
-.quick-start-card       { order: 2; }
-.suggestion-card        { order: 3; }
-.features-card          { order: 4; }
-.dm-portal-card         { order: 5; }
+.dm-portal-card         { order: 2; }
+.quick-start-card       { order: 3; }
+.suggestion-card        { order: 4; }
+.features-card          { order: 5; }
 .changelog-card         { order: 6; }
 .tips-card              { order: 7; }
 
@@ -7735,6 +7737,24 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   font-size: 0.83rem;
   color: rgba(255,255,255,0.45);
   margin: 0 0 12px 0;
+}
+
+.dm-coming-soon-list {
+  margin: 4px 0 16px 0;
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dm-coming-soon-list li {
+  font-size: 0.88rem;
+  color: rgba(255,255,255,0.7);
+  line-height: 1.4;
+}
+
+.dm-coming-soon-list li strong {
+  color: var(--accent-text, #e0b870);
 }
 
 .dm-empty-state {
