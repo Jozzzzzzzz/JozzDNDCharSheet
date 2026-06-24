@@ -272,8 +272,11 @@ A fully separate portal layer that overlays the player UI. Activated from the ho
 - **Exit:** `exitDmPortal()` reverses this — restores `display:''` on player roots, hides DM roots. Session persists so re-entry within 24h is instant.
 - **Tab switching:** `switchDmTab(btn)` / `switchDmTabById(id)` — sets `.dm-tab.active` and shows the matching `.dm-page`. Switching to `dm-players` auto-calls `dmLoadPlayers()`.
 
+### Friendly error messages
+`friendlyFirebaseError(e)` (in `dm.js`, on `window`) turns raw Firestore/network errors into plain-English strings (index-building, permission-denied, offline, unauthenticated, plus a generic fallback). Used across DM + Admin data-loading paths so portals never show raw error codes. `admin.js` has a thin `adminFriendlyError(e)` wrapper that delegates to it if loaded (dm.js loads before admin.js). When adding new Firestore reads/writes in the portals, surface failures through these, not `e.message`.
+
 ### Session (localStorage)
-Key: `dndDmSession`. Shape: `{ uid, email, campaignName, campaignSetting, enteredAt }`. TTL: 24 hours. Functions: `dmSessionLoad()`, `dmSessionSave(data)`, `dmSessionClear()`, `dmSessionValid()`.
+Key: `dndDmSession`. Shape: `{ uid, email, campaignId, campaignName, campaignSetting, enteredAt }`. TTL: 24 hours. Functions: `dmSessionLoad()`, `dmSessionSave(data)`, `dmSessionClear()`, `dmSessionValid()`. **Note:** `campaignId` was added because join-request paths key off the campaign **id** while the roster query keys off campaign **name** — `dmCurrentCampaignId()` reads it. Old sessions without `campaignId` need a re-enter to populate it.
 
 On `enterDmPortal()`:
 1. If no valid session → verify approval (Firestore `campaigns` where `dmEmails` contains user email) → save session
@@ -293,14 +296,26 @@ On `enterDmPortal()`:
 4. `renderDmCard()` is called from `showHomePage()` and `updateAuthUI()` in `cloud-skills.js`
 
 ### DM Pages
+Tab order (in `partials/dm-chrome.html`): Home · Lore · Players · Player Spells & Actions · Monsters · Encounters · NPCs · Notes · Settings.
+
 | Page | File | Status | Key IDs |
 |---|---|---|---|
 | Home | `pages/dm-home.html` | Working | `#dmHomeGreeting`, `#dmHomeCampaignName`, `#dmHomeCampaignSetting` |
-| Players | `pages/dm-players.html` | Working | `#dmPlayersList`, `#dmPlayerSheetPanel`, `#dmPlayerSheetBody` |
+| Lore | `pages/dm-lore.html` | **Placeholder** (Coming Soon shell) | — |
+| Players | `pages/dm-players.html` | Working | `#dmPlayersList`, `#dmPendingCard`, `#dmPendingList`, `#dmPlayerSheetPanel`, `#dmPlayerSheetBody` |
+| Player Spells & Actions | `pages/dm-spells.html` | **Placeholder** (Coming Soon shell) | — |
 | Monsters | `pages/dm-monsters.html` | Working | `#dmMonsterSearch`, `#dmMonsterCrFilter`, `#dmMonstersList`, `#dmMonsterDetail` |
 | Encounters | `pages/dm-encounters.html` | Working | `#dmCombatantList`, `#dmEncounterName`, `#dmSavedEncounterList` |
 | NPCs | `pages/dm-npcs.html` | Working | `#dmNpcName`, `#dmNpcLootResult`, `#dmNpcList` |
+| Notes | `pages/dm-notes.html` | **Placeholder** (Coming Soon shell) | — |
 | Settings | `pages/dm-settings.html` | Working | `#dmSettingsEmail`, `#dmSettingsCampaign`, `#dmSettingsSessionExpiry` |
+
+**Adding a DM page is a 3-place sync** (all must match or the tab won't load/switch):
+1. Create `pages/dm-<name>.html` with `<div class="dm-page" id="dm-<name>" style="display:none;">…</div>`.
+2. `index.html` — add it to the `loadText()` array, the destructured variable list, **and** the `dm-pages-root` inject array (order must line up across all three).
+3. `partials/dm-chrome.html` — add a `<button class="dm-tab" data-dm-tab="dm-<name>" onclick="switchDmTab(this)">Label</button>`.
+
+`switchDmTab()` is generic — it shows/hides any `.dm-page` by the button's `data-dm-tab` id, so no JS change is needed for a new page unless it has on-open load logic (like Players' `dmLoadPlayers()`). Placeholder pages use the `.dm-coming-soon-list` style.
 
 ### DM Data (localStorage)
 - `dndDmSession` — active DM session object
@@ -459,8 +474,9 @@ The changelog file is `assets/changelog.js`. Version lives in `CHANGELOG_LATEST_
 
 ### Home page grid layout
 - `.home-grid` uses `repeat(3, 1fr)` at base — three equal columns on desktop
-- Row 1: `.character-manager-card` (order 1) + `.quick-start-card` (order 2) + `.suggestion-card` (order 3)
-- Row 2+: `.features-card`, `.changelog-card`, `.tips-card` — all `grid-column: 1 / -1` (full width)
+- Card order (CSS `order`, ~line 3591): `.character-manager-card` (1) → `.dm-portal-card` (2) → `.quick-start-card` (3) → `.suggestion-card` (4) → `.features-card` (5) → `.changelog-card` (6) → `.tips-card` (7)
+- **Full-width set** (`grid-column: 1 / -1`, ~line 3577): `.character-manager-card`, `.dm-portal-card`, `.features-card`, `.changelog-card`, `.tips-card`. As of v1.05 the character manager and DM portal are both full-width so the DM portal sits as its own row directly under the char list.
+- Only `.quick-start-card` + `.suggestion-card` remain in the 3-col flow (they pair on a row below the DM portal).
 - At 1024px: drops to 2 columns, `.suggestion-card` goes `grid-column: 1 / -1` so it sits below the pair
 - At 768px: single column, everything stacks in order
-- Do not add `grid-template-columns` to `.home-grid` elsewhere — the cascade is intentional and breakpoints are set in three places only: base rule (~line 3509), 1024px media query (~line 3595), 768px media query (~line 4764)
+- Do not add `grid-template-columns` to `.home-grid` elsewhere — the cascade is intentional and breakpoints are set in three places only: base rule (~line 3509), 1024px media query (~line 3647), 768px media query (~line 4764)
