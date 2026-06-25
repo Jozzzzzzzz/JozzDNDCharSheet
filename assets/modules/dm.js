@@ -243,7 +243,8 @@ async function dmEnterWithPassword() {
 
 // Owner override — enter any campaign's DM portal without the DM password.
 // Gated to the owner email; used from the Admin Portal campaign list.
-async function dmEnterAsOwner(campaignId) {
+// mode: 'view' (read-only, default) or 'edit' (full control).
+async function dmEnterAsOwner(campaignId, mode) {
   const user = window.currentUser;
   if (!user) { dmToast('Sign in first.', 'error'); return; }
   const ownerEmail = (typeof OWNER_EMAIL === 'string' && OWNER_EMAIL) || 'vanreejoz33@gmail.com';
@@ -257,7 +258,8 @@ async function dmEnterAsOwner(campaignId) {
     const doc = await db.collection('campaigns').doc(campaignId).get();
     if (!doc.exists) { dmToast('Campaign not found.', 'error'); return; }
     const c = doc.data();
-    dmSessionSave({ uid: user.uid, email: user.email, campaignId, campaignName: c.name, campaignSetting: c.setting || '', ownerOverride: true, viewOnly: true });
+    const viewOnly = mode !== 'edit';
+    dmSessionSave({ uid: user.uid, email: user.email, campaignId, campaignName: c.name, campaignSetting: c.setting || '', ownerOverride: true, viewOnly });
     enterDmPortal();
   } catch (e) {
     dmToast(friendlyFirebaseError(e), 'error');
@@ -301,9 +303,14 @@ async function enterDmPortal() {
   if (chrome) chrome.classList.toggle('dm-view-only', viewOnly);
   if (pagesRoot) pagesRoot.classList.toggle('dm-view-only', viewOnly);
 
-  // Populate banner
+  // Populate banner — flag owner override mode (view vs edit) so it's obvious
   const label = document.getElementById('dmScreenCampaignLabel');
-  if (label) label.textContent = (session?.campaignName || '') + (viewOnly ? '  ·  VIEW ONLY' : '');
+  if (label) {
+    let suffix = '';
+    if (viewOnly) suffix = '  ·  VIEW ONLY';
+    else if (session?.ownerOverride) suffix = '  ·  OWNER EDIT';
+    label.textContent = (session?.campaignName || '') + suffix;
+  }
 
   // Populate settings tab info
   const settingsEmail = document.getElementById('dmSettingsEmail');

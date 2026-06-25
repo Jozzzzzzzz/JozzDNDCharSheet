@@ -474,7 +474,8 @@ async function adminLoadCampaigns() {
             <span class="admin-campaign-badge ${c.active ? 'badge-active' : 'badge-inactive'}">${c.active ? 'Active' : 'Inactive'}</span>
           </div>
           <div class="admin-campaign-actions">
-            <button class="settings-action-btn accent-contrast-bg" onclick="dmEnterAsOwner('${c.id}')">Enter as DM</button>
+            <button class="settings-action-btn accent-contrast-bg" onclick="dmEnterAsOwner('${c.id}', 'view')">Enter as DM (View)</button>
+            <button class="settings-action-btn accent-contrast-bg" onclick="dmEnterAsOwner('${c.id}', 'edit')">Enter as DM (Edit)</button>
             <button class="settings-action-btn accent-contrast-bg" onclick="adminViewCampaignPlayers('${c.id}', '${escapeHtml(c.name)}')">View Players</button>
             <button class="settings-action-btn accent-contrast-bg" onclick="adminEditCampaignDm('${c.id}')">Edit DM</button>
             <button class="settings-action-btn accent-contrast-bg" onclick="adminChangeCampaignPassword('${c.id}', 'dm')">DM Password</button>

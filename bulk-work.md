@@ -101,11 +101,11 @@ password, saves a session with `ownerOverride: true` and calls `enterDmPortal()`
 Wired an **"Enter as DM"** button on each Admin Portal campaign card (admin.js).
 The admin portal is already owner-only, so the button is owner-exclusive. Works on
 active AND inactive campaigns (reads the doc directly).
-**View-only:** owner entry sets `viewOnly:true` on the session → `enterDmPortal` adds
-`.dm-view-only` to the DM chrome + pages root, which disables interactive controls
-(buttons/inputs) while keeping tab navigation, monster browsing, and Exit usable. The
-banner shows "· VIEW ONLY". Cleared on exit. (Also bumped scriptVersion to
-`20260625a-dm-revamp` so the new code loads without a hard refresh.)
+**Two modes:** `dmEnterAsOwner(cid, mode)` — `'view'` (read-only, `.dm-view-only`
+disables controls, banner "· VIEW ONLY") or `'edit'` (full control, banner
+"· OWNER EDIT"). Admin campaign card shows both **"Enter as DM (View)"** and
+**"Enter as DM (Edit)"** buttons. View keeps tab nav/monster browse/Exit usable.
+Cleared on exit. scriptVersion bumped to `20260625b-dm-revamp`.
 
 ## 6. IMPROVEMENTS COMPLETED
 - **Theming foundation:** Added `--accent-rgb` (R,G,B triplet) to `:root` default, `setAccentDerivedColors()` (core.js), and the early-boot inline script (index.html). Fixes a latent bug where `rgba(var(--accent-rgb,...))` always used fallbacks, and enables accent-tinted translucency.
