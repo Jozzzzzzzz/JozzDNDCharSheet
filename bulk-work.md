@@ -156,7 +156,7 @@ Legend: [ ] todo · [~] in progress · [x] done · [!] blocked/needs Jozsua
 ### Interactions & motion
 - [x] Consistent hover/transition language (no `transition: all`)
 - [x] Page/tab switch transition (added `.dm-page` fade-in)
-- [ ] Replace prompt/alert/confirm with in-app UI (Q3) — NEXT
+- [x] Replace prompt/alert/confirm with in-app UI — built `dmModal()` (promise-based prompt/confirm) + `dmToast()`, themed to player popup language. Swapped ALL 8 native dialogs (damage/heal/clearNPCs/password/3 approve-deny-remove errors/enter guard). Zero native dialogs remain.
 
 ### Responsiveness
 - [x] Add 1024px breakpoint handling for DM layouts
@@ -164,9 +164,10 @@ Legend: [ ] todo · [~] in progress · [x] done · [!] blocked/needs Jozsua
 - [ ] Verify tab bar wrap on mobile (now wraps like player tabs)
 
 ### Cleanup / architecture
-- [ ] Remove/flag dead code: `dm_requests` flow (`submitDmRequest`, `dmRequestFormHtml`, `getDmRequestStatus`, `isDmApproved`, `DM_APPROVED_EMAILS`, `dmShouldNotifyForRequest`) — superseded by password+approval model
-- [ ] Verify `dmPendingBanner` still needed (always hidden now)
-- [ ] Confirm `firestore.rules` read scope (Q2)
+- [x] Removed dead `dm_requests` flow: `submitDmRequest`, `dmRequestFormHtml`, `setDmStatus`, `getDmRequestStatus`, `isDmApproved`, `DM_APPROVED_EMAILS`, `DM_NOTIFICATION_SUPPRESSED`, `DM_NOTIFY_COOLDOWN_MS`, `dmShouldNotifyForRequest` (~150 lines)
+- [x] Removed `dmPendingBanner` from dm-chrome.html + its enterDmPortal reference + `.dm-pending-*` CSS
+- [x] Improved DM home dashboard: live player count (`dmLoadHomePlayerCount`)
+- [ ] Confirm `firestore.rules` read scope (Q2) — STILL OPEN, flagged for Jozsua
 
 ### Finish
 - [ ] Syntax check all changed JS
@@ -179,15 +180,23 @@ Legend: [ ] todo · [~] in progress · [x] done · [!] blocked/needs Jozsua
 ---
 
 ## 10. PROGRESS LOG
-- **2026-06-25 (start):** Read all DM JS/HTML/CSS + player reference patterns. Identified the hardcoded-red theme as the #1 consistency issue and the missing `--accent-rgb` as a quick enabling fix. Scaffolded this journal. Next: implement theming foundation.
+- **2026-06-25 (start):** Full audit of DM JS/HTML/CSS + player patterns. Found the hardcoded-red theme as the #1 issue, missing `--accent-rgb` as the enabling fix. Scaffolded journal.
+- **2026-06-25 (session 1):** Implemented in order:
+  1. `--accent-rgb` added to `:root`, `setAccentDerivedColors` (core.js), early-boot (index.html).
+  2. Full DM CSS reskin → accent system (tabs as pills, cards as sections, themed buttons/inputs/stat-blocks/combatants/players/npcs). Kept warm danger tint only on the DM SCREEN banner + exit as a mode cue. Added `.dm-page` fade, 1024px breakpoint, mobile combatant fix, shared input rule w/ focus ring.
+  3. Removed the entire dead `dm_requests` flow (~150 lines) + pending banner + `.dm-pending-*` CSS.
+  4. Built `dmModal()` + `dmToast()` in-app dialog system (themed to player popups); replaced ALL 8 native `prompt/alert/confirm` calls.
+  5. Wired live player count on the DM home dashboard.
+  - Checkpoint commits made locally (NOT pushed). All JS syntax-checked, all 13 DM assets serve 200.
 
 ---
 
 ## ⭐ CURRENT FOCUS
-Theming foundation — add `--accent-rgb`, then convert the DM CSS from hardcoded red to the accent variable system. This is the single biggest "same app" win.
+Core revamp complete (theming + dialogs + cleanup + dashboard). Remaining: docs (CLAUDE.md), changelog draft, and a browser eyeball pass by Jozsua. The placeholder tabs (Lore/Spells/Notes) inherit the new theme automatically — verified they serve, but worth a visual check.
 
 ## ▶ NEXT ACTIONS (resume here)
-1. Add `--accent-rgb` in `setAccentDerivedColors()` (core.js ~606) + early-boot script (index.html).
-2. Rewrite the DM CSS block (styles.css ~7464–8023 + ~3599–3646) to use `--accent*` vars.
-3. Work tab-by-tab through HTML to align components.
-4. Keep checking items off section 9; log decisions in section 5; surface blockers in section 7.
+1. Update CLAUDE.md: DM is now accent-themed; document `dmModal`/`dmToast`; note `dm_requests` flow removed; `--accent-rgb` now set.
+2. Draft a vague public changelog entry (DON'T bump version yet / don't push).
+3. **Jozsua to decide:** Q1 (keep red DM banner? — currently yes), Q2 (tighten character read rule? — NOT done, needs rules redeploy), Q3 (in-app dialogs — DONE, default taken).
+4. Visual QA in browser: enter DM portal, check each tab with a couple of accent colors + light/dark.
+5. When Jozsua approves → run pre-push checklist, then push + (if rules touched) deploy.

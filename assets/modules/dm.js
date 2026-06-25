@@ -28,35 +28,74 @@ function friendlyFirebaseError(e) {
 }
 window.friendlyFirebaseError = friendlyFirebaseError;
 
-// ─── Approved DMs ──────────────────────────────────────────────────────────
-// Add a DM's email here to grant access. No Firestore change needed.
-const DM_APPROVED_EMAILS = [
-  // 'example@gmail.com',
-];
-
-// Emails that should never trigger DM request notifications (owner + test accounts)
-const DM_NOTIFICATION_SUPPRESSED = [
-  'vanreejoz33@gmail.com',
-  'justbetterjozz@gmail.com',
-];
-
-// Cooldown: don't re-notify for the same email within 24 hours
-const DM_NOTIFY_COOLDOWN_MS = 24 * 60 * 60 * 1000;
-
-function dmShouldNotifyForRequest(email) {
-  const key = `dndDmNotifySent_${String(email).toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
-  if (DM_NOTIFICATION_SUPPRESSED.includes(String(email || '').toLowerCase())) return false;
-  try {
-    const last = parseInt(localStorage.getItem(key) || '0', 10);
-    if (Date.now() - last < DM_NOTIFY_COOLDOWN_MS) return false;
-    localStorage.setItem(key, String(Date.now()));
-  } catch { /* ignore */ }
-  return true;
+// ─── In-app modal + toast (replaces native prompt/alert/confirm) ────────────
+// Themed to match the player popup language. Promise-based so call sites read
+// like `const v = await dmModal({...})`. Resolves null on cancel.
+function dmEnsureModalRoot() {
+  let root = document.getElementById('dmModalRoot');
+  if (root) return root;
+  root = document.createElement('div');
+  root.id = 'dmModalRoot';
+  document.body.appendChild(root);
+  return root;
 }
 
-function isDmApproved(email) {
-  return DM_APPROVED_EMAILS.includes(String(email || '').toLowerCase().trim());
+function dmModal(opts) {
+  // opts: { title, message, input (bool), placeholder, value, confirmText,
+  //         cancelText, danger (bool), inputType }
+  const o = opts || {};
+  return new Promise(resolve => {
+    const root = dmEnsureModalRoot();
+    const backdrop = document.createElement('div');
+    backdrop.className = 'dm-modal-backdrop';
+
+    const wantsInput = !!o.input;
+    backdrop.innerHTML = `
+      <div class="dm-modal" role="dialog" aria-modal="true">
+        ${o.title ? `<h3 class="dm-modal-title">${escapeHtml(o.title)}</h3>` : ''}
+        ${o.message ? `<p class="dm-modal-message">${escapeHtml(o.message)}</p>` : ''}
+        ${wantsInput ? `<input class="dm-modal-input" type="${escapeHtml(o.inputType || 'text')}" placeholder="${escapeHtml(o.placeholder || '')}" value="${escapeHtml(o.value || '')}">` : ''}
+        <div class="dm-modal-actions">
+          <button class="dm-action-btn dm-modal-cancel">${escapeHtml(o.cancelText || 'Cancel')}</button>
+          <button class="dm-action-btn ${o.danger ? 'dm-danger-btn' : 'accent-contrast-bg'} dm-modal-confirm">${escapeHtml(o.confirmText || 'OK')}</button>
+        </div>
+      </div>
+    `;
+    root.appendChild(backdrop);
+    requestAnimationFrame(() => backdrop.classList.add('show'));
+
+    const input = backdrop.querySelector('.dm-modal-input');
+    if (input) { input.focus(); input.select(); }
+
+    const close = (result) => {
+      backdrop.classList.remove('show');
+      setTimeout(() => backdrop.remove(), 200);
+      resolve(result);
+    };
+
+    backdrop.querySelector('.dm-modal-cancel').onclick = () => close(null);
+    backdrop.querySelector('.dm-modal-confirm').onclick = () =>
+      close(wantsInput ? (input ? input.value : '') : true);
+    backdrop.onclick = (e) => { if (e.target === backdrop) close(null); };
+    backdrop.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') close(null);
+      if (e.key === 'Enter' && wantsInput) { e.preventDefault(); close(input ? input.value : ''); }
+    });
+  });
 }
+
+function dmToast(message, type) {
+  const root = dmEnsureModalRoot();
+  const t = document.createElement('div');
+  t.className = `dm-toast dm-toast-${type || 'info'}`;
+  t.textContent = message;
+  root.appendChild(t);
+  requestAnimationFrame(() => t.classList.add('show'));
+  setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 3200);
+}
+
+window.dmModal = dmModal;
+window.dmToast = dmToast;
 
 // ─── Session ───────────────────────────────────────────────────────────────
 
@@ -79,21 +118,6 @@ function dmSessionValid() {
   const s = dmSessionLoad();
   if (!s || !s.enteredAt) return false;
   return (Date.now() - s.enteredAt) < DM_SESSION_TTL;
-}
-
-// ─── Auth / Request status ─────────────────────────────────────────────────
-
-async function getDmRequestStatus(uid) {
-  const db = window.db;
-  if (!db || !uid) return null;
-  try {
-    const snap = await db.collection('dm_requests').doc(uid).get();
-    if (!snap.exists) return null;
-    return snap.data() || null;
-  } catch (e) {
-    console.error('DM request status check failed:', e);
-    return null;
-  }
 }
 
 // ─── Home card render ──────────────────────────────────────────────────────
@@ -220,112 +244,6 @@ async function dmEnterWithPassword() {
 window.populateDmCampaignSelect = populateDmCampaignSelect;
 window.dmEnterWithPassword = dmEnterWithPassword;
 
-function dmRequestFormHtml(user) {
-  return `
-    <p class="settings-note">Signed in as <strong>${escapeHtml(user.displayName || '')} (${escapeHtml(user.email)})</strong>. Fill in your campaign details to request DM access.</p>
-    <div class="dm-request-form">
-      <div class="settings-field">
-        <label for="dmCampaignName">Campaign Name</label>
-        <input type="text" id="dmCampaignName" placeholder="e.g. The Lost Mines of Phandelver" maxlength="100">
-      </div>
-      <div class="settings-field">
-        <label for="dmCampaignSetting">Campaign Setting</label>
-        <select id="dmCampaignSetting">
-          <option value="">Choose a setting...</option>
-          <option value="Forgotten Realms">Forgotten Realms</option>
-          <option value="Homebrew">Homebrew World</option>
-          <option value="Eberron">Eberron</option>
-          <option value="Ravenloft">Ravenloft</option>
-          <option value="Wildemount">Wildemount</option>
-          <option value="Spelljammer">Spelljammer</option>
-          <option value="Other">Other</option>
-        </select>
-      </div>
-      <div class="settings-field">
-        <label for="dmPlayerCount">Approx. Player Count</label>
-        <input type="number" id="dmPlayerCount" min="1" max="10" placeholder="e.g. 4">
-      </div>
-      <div class="settings-field">
-        <label for="dmNotes">Notes (optional)</label>
-        <textarea id="dmNotes" placeholder="Anything about your campaign or group..." rows="3" maxlength="500"></textarea>
-      </div>
-      <button type="button" class="settings-action-btn accent-contrast-bg" onclick="submitDmRequest()">Submit DM Access Request</button>
-      <div id="dmRequestStatus" class="status-message"></div>
-    </div>
-  `;
-}
-
-function setDmStatus(msg, type) {
-  const el = document.getElementById('dmRequestStatus');
-  if (!el) return;
-  el.textContent = msg;
-  el.className = `status-message ${type || 'info'}`;
-  el.style.display = 'block';
-  if (type !== 'error') setTimeout(() => { el.style.display = 'none'; }, 6000);
-}
-
-async function submitDmRequest() {
-  const user = window.currentUser;
-  if (!user) { setDmStatus('Please sign in first.', 'error'); return; }
-
-  const campaignName = (document.getElementById('dmCampaignName')?.value || '').trim();
-  const campaignSetting = document.getElementById('dmCampaignSetting')?.value || '';
-  const playerCount = parseInt(document.getElementById('dmPlayerCount')?.value || '0', 10);
-  const notes = (document.getElementById('dmNotes')?.value || '').trim();
-
-  if (!campaignName) { setDmStatus('Please enter a campaign name.', 'error'); return; }
-  if (!campaignSetting) { setDmStatus('Please choose a campaign setting.', 'error'); return; }
-  if (!playerCount || playerCount < 1) { setDmStatus('Please enter a player count.', 'error'); return; }
-
-  const db = window.db;
-  if (!db) { setDmStatus('Not connected. Try again in a moment.', 'error'); return; }
-
-  try {
-    await db.collection('dm_requests').doc(user.uid).set({
-      uid: user.uid,
-      email: user.email,
-      displayName: user.displayName || '',
-      campaignName,
-      campaignSetting,
-      playerCount,
-      notes,
-      status: 'pending',
-      submittedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      reviewedAt: null
-    });
-
-    if (typeof sendOwnerNotification === 'function' && dmShouldNotifyForRequest(user.email)) {
-      const emailBody =
-        `New DM Access Request\n` +
-        `${'─'.repeat(40)}\n` +
-        `Name:     ${user.displayName || '(no display name)'}\n` +
-        `Email:    ${user.email}\n` +
-        `${'─'.repeat(40)}\n` +
-        `Campaign: ${campaignName}\n` +
-        `Setting:  ${campaignSetting}\n` +
-        `Players:  ${playerCount}\n` +
-        `Notes:    ${notes || '(none)'}\n` +
-        `${'─'.repeat(40)}\n` +
-        `To approve: open assets/modules/dm.js and add\n` +
-        `  '${user.email}'\n` +
-        `to the DM_APPROVED_EMAILS array, then push.\n` +
-        `The user is currently in PENDING mode.`;
-      sendOwnerNotification('DM Access Request — ' + (user.displayName || user.email), emailBody, { type: 'dm_request' });
-    }
-
-    await renderDmCard();
-  } catch (e) {
-    console.error('DM request submit failed:', e);
-    if (e && e.code === 'permission-denied') {
-      setDmStatus('Permission denied — Firestore rules need a dm_requests rule. Check console.', 'error');
-    } else {
-      setDmStatus('Error: ' + (e?.message || 'unknown'), 'error');
-    }
-  }
-}
-
-window.submitDmRequest = submitDmRequest;
-
 // ─── Portal enter / exit ───────────────────────────────────────────────────
 
 async function enterDmPortal() {
@@ -335,7 +253,7 @@ async function enterDmPortal() {
   // Entry requires a valid session — created by dmEnterWithPassword() after the
   // DM password is verified. Without one, send the user back to the gate.
   if (!dmSessionValid()) {
-    alert('Enter your campaign DM password first.');
+    dmToast('Enter your campaign DM password first.', 'info');
     if (typeof renderDmCard === 'function') renderDmCard();
     return;
   }
@@ -351,10 +269,6 @@ async function enterDmPortal() {
   document.getElementById('dm-chrome-root').style.display = 'block';
   document.getElementById('dm-pages-root').style.display = 'block';
   document.getElementById('dmPortalChrome').style.display = 'block';
-
-  // Access is gated by the DM password now — no pending state
-  const pendingBanner = document.getElementById('dmPendingBanner');
-  if (pendingBanner) pendingBanner.style.display = 'none';
 
   // Populate banner
   const label = document.getElementById('dmScreenCampaignLabel');
@@ -378,6 +292,9 @@ async function enterDmPortal() {
   if (homeSetting) homeSetting.textContent = session?.campaignSetting || '—';
   const greeting = document.getElementById('dmHomeGreeting');
   if (greeting) greeting.textContent = `Welcome back, ${user.displayName || user.email}.`;
+
+  // Live player count for the dashboard
+  dmLoadHomePlayerCount();
 
   // Load saved encounters + NPCs
   dmRenderSavedEncounters();
@@ -594,18 +511,24 @@ function dmRenderCombatants() {
   `).join('');
 }
 
-function dmDamage(id) {
-  const amt = parseInt(prompt('Damage amount:') || '0', 10);
-  if (!amt) return;
+async function dmDamage(id) {
   const c = dmCombatants.find(x => x.id === id);
-  if (c) { c.hp = Math.max(0, c.hp - amt); dmRenderCombatants(); }
+  if (!c) return;
+  const val = await dmModal({ title: `Damage ${c.name}`, input: true, inputType: 'number', placeholder: 'Amount', confirmText: 'Apply', danger: true });
+  const amt = parseInt(val || '0', 10);
+  if (!amt) return;
+  c.hp = Math.max(0, c.hp - amt);
+  dmRenderCombatants();
 }
 
-function dmHeal(id) {
-  const amt = parseInt(prompt('Heal amount:') || '0', 10);
-  if (!amt) return;
+async function dmHeal(id) {
   const c = dmCombatants.find(x => x.id === id);
-  if (c) { c.hp = Math.min(c.maxHp, c.hp + amt); dmRenderCombatants(); }
+  if (!c) return;
+  const val = await dmModal({ title: `Heal ${c.name}`, input: true, inputType: 'number', placeholder: 'Amount', confirmText: 'Apply' });
+  const amt = parseInt(val || '0', 10);
+  if (!amt) return;
+  c.hp = Math.min(c.maxHp, c.hp + amt);
+  dmRenderCombatants();
 }
 
 function dmSetInit(id, val) {
@@ -792,10 +715,30 @@ function dmDeleteNpc(id) {
   dmRenderNpcList();
 }
 
-function dmClearAllNpcs() {
-  if (!confirm('Clear all saved NPCs?')) return;
+async function dmClearAllNpcs() {
+  const ok = await dmModal({ title: 'Clear all NPCs?', message: 'This removes every saved NPC for good.', confirmText: 'Clear all', danger: true });
+  if (!ok) return;
   localStorage.removeItem('dndDmNpcs');
   dmRenderNpcList();
+  dmToast('All NPCs cleared.', 'success');
+}
+
+async function dmLoadHomePlayerCount() {
+  const el = document.getElementById('dmHomeCampaignPlayers');
+  if (!el) return;
+  const db = window.db;
+  const campaignName = dmSessionLoad()?.campaignName || '';
+  if (!db || !campaignName) { el.textContent = '—'; return; }
+  el.textContent = '…';
+  try {
+    const snap = await db.collectionGroup('characters')
+      .where('data.characterInfo.campaignId', '==', campaignName)
+      .get();
+    el.textContent = String(snap.size);
+  } catch (e) {
+    el.textContent = '—';
+    console.warn('home player count failed:', e.message);
+  }
 }
 
 async function dmLoadPlayers() {
@@ -925,7 +868,7 @@ async function dmApproveJoin(uid, btn) {
     setTimeout(() => dmLoadPlayers(), 1500);
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = 'Approve'; }
-    alert(friendlyFirebaseError(e));
+    dmToast(friendlyFirebaseError(e), 'error');
   }
 }
 
@@ -941,7 +884,7 @@ async function dmDenyJoin(uid, btn) {
     dmLoadPendingPlayers();
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = 'Deny'; }
-    alert(friendlyFirebaseError(e));
+    dmToast(friendlyFirebaseError(e), 'error');
   }
 }
 
@@ -966,7 +909,7 @@ async function dmRemovePlayer(uid, name, btn) {
     dmLoadPlayers();
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = 'Remove'; }
-    alert(friendlyFirebaseError(e));
+    dmToast(friendlyFirebaseError(e), 'error');
   }
 }
 
@@ -1038,31 +981,30 @@ async function dmChangeCampaignPassword() {
   const db = window.db;
   if (!db) return;
 
-  const statusEl = document.getElementById('dmCampaignPasswordStatus');
-  const setStatus = (msg, ok) => {
-    if (!statusEl) return;
-    statusEl.textContent = msg;
-    statusEl.style.color = ok ? '#6e6' : '#e66';
-  };
-
-  const newPw = prompt(`New player join password for "${session.campaignName}":\n(Leave blank to remove password)`);
+  const newPw = await dmModal({
+    title: 'Player Join Password',
+    message: `Set a new join password for "${session.campaignName}". Leave blank to remove it.`,
+    input: true,
+    inputType: 'password',
+    placeholder: 'New join password',
+    confirmText: 'Save'
+  });
   if (newPw === null) return; // cancelled
 
   try {
     const snap = await db.collection('campaigns').where('name', '==', session.campaignName).limit(1).get();
-    if (snap.empty) { setStatus('Campaign not found.', false); return; }
+    if (snap.empty) { dmToast('Campaign not found.', 'error'); return; }
     const docRef = snap.docs[0].ref;
     if (newPw.trim() === '') {
       await docRef.update({ passwordHash: '' });
-      setStatus('Password removed.', true);
+      dmToast('Join password removed.', 'success');
     } else {
       const hash = await sha256Hex(newPw.trim());
       await docRef.update({ passwordHash: hash });
-      setStatus('Password updated.', true);
+      dmToast('Join password updated.', 'success');
     }
-    setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 3000);
   } catch (e) {
-    setStatus('Error: ' + e.message, false);
+    dmToast(friendlyFirebaseError(e), 'error');
   }
 }
 window.dmChangeCampaignPassword = dmChangeCampaignPassword;

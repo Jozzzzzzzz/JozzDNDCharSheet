@@ -3628,20 +3628,6 @@
   margin: 0 0 2px 0;
 }
 
-.dm-pending-banner {
-  background: rgba(200, 160, 40, 0.1);
-  border: 1px solid rgba(200, 160, 40, 0.35);
-  border-radius: 8px;
-  padding: 14px 16px;
-}
-
-.dm-pending-title {
-  font-weight: 700;
-  font-size: 0.95rem;
-  color: #c8a028;
-  margin: 0 0 4px 0;
-}
-
 .dm-enter-btn {
   margin-top: 4px;
 }
@@ -7477,19 +7463,6 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
    mode is visually distinct without clashing with the accent theme. */
 :root { --dm-danger: 200, 70, 70; }
 
-/* ── DM Pending Top Banner ── */
-.dm-pending-top-banner {
-  background: rgba(180, 130, 0, 0.18);
-  border-bottom: 1px solid rgba(200, 160, 40, 0.4);
-  color: #d4a820;
-  font-size: 0.83rem;
-  padding: 8px 16px;
-  text-align: center;
-  line-height: 1.5;
-}
-
-.dm-pending-top-banner strong { color: #e8c040; }
-
 /* ── DM Screen Banner (mode identity — keeps a warm danger tint) ── */
 .dm-screen-banner {
   display: flex;
@@ -8083,3 +8056,100 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   #dm-pages-root { padding: 16px 12px; }
   .dm-add-combatant-row input { flex: 1 1 calc(50% - 6px); min-width: 0; width: auto; }
 }
+
+/* ── DM Modal + Toast (in-app prompt/confirm/notify) ── */
+.dm-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.dm-modal-backdrop.show { opacity: 1; }
+
+.dm-modal {
+  background: var(--popup-bg);
+  border: 2px solid var(--accent-border);
+  border-radius: 10px;
+  padding: 22px;
+  width: min(90vw, 420px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.55);
+  transform: scale(0.9);
+  transition: transform 0.2s cubic-bezier(0.4,0,0.2,1);
+}
+
+.dm-modal-backdrop.show .dm-modal { transform: scale(1); }
+
+.dm-modal-title {
+  margin: 0 0 8px 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent-text);
+}
+
+.dm-modal-message {
+  margin: 0 0 14px 0;
+  font-size: 0.88rem;
+  color: rgba(255,255,255,0.7);
+  line-height: 1.45;
+}
+
+.dm-modal-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--accent-border);
+  border-radius: 6px;
+  padding: 9px 11px;
+  color: rgba(255,255,255,0.92);
+  font-size: 0.92rem;
+  font-family: inherit;
+  margin-bottom: 16px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dm-modal-input:focus {
+  outline: none;
+  border-color: var(--accent-text);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.dm-modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.dm-modal-actions .dm-action-btn { min-width: 90px; text-align: center; }
+
+/* Toast */
+.dm-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translate(-50%, 16px);
+  background: var(--popup-bg);
+  border: 1px solid var(--accent-border);
+  border-left: 4px solid var(--accent-text);
+  border-radius: 8px;
+  padding: 12px 18px;
+  color: rgba(255,255,255,0.92);
+  font-size: 0.88rem;
+  font-weight: 500;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+  z-index: 2100;
+  opacity: 0;
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.4,0,0.2,1);
+  max-width: min(90vw, 420px);
+}
+
+.dm-toast.show { opacity: 1; transform: translate(-50%, 0); }
+.dm-toast-success { border-left-color: #4CAF50; }
+.dm-toast-error { border-left-color: #f44336; }
+.dm-toast-info { border-left-color: var(--accent-text); }
