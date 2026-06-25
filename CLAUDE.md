@@ -45,7 +45,7 @@ All JS lives in `assets/`. Files are loaded **in this exact order** via dynamic 
 | `assets/modules/actions.js` | Combat actions/reactions tracking | ~270 |
 | `assets/modules/inventory.js` | Inventory CRUD, equipment, storage containers, coin tracking, portrait upload/remove (`removePortrait`), settings dropdown | ~1180 |
 | `assets/modules/spells.js` | Spell list, spell slots (with drag-reorder), custom resources, favorites, prepared spells table, spell search, sync panels. Loads spell reference data async from `assets/data/spells.json` via `loadSpellDatabase()` at boot, then enriches from Open5e API in background | ~1440 |
-| `assets/modules/dm.js` | DM Portal — access request flow, session management (24h localStorage session), portal enter/exit, tab switching, monster browser (Open5e API), encounter builder, NPC generator, loot tables. All DM data saved to localStorage under `dndDmEncounters` and `dndDmNpcs` | ~500 |
+| `assets/modules/dm.js` | DM Portal — password-gated entry, 24h session, portal enter/exit, tab switching, monster browser (Open5e API), encounter builder, NPC generator, loot tables, players/pending approval, in-app dialogs (`dmModal`/`dmToast`), `friendlyFirebaseError`. DM data in localStorage `dndDmEncounters`/`dndDmNpcs` | ~900 |
 | `assets/modules/admin.js` | Owner-only admin portal: user list, character import/preview via Firestore. Depends on `escapeHtml`, `getStoredJSON`, `loadCharacterList`, `loadData` from `core.js` | ~230 |
 | `assets/app.js` | Boot entry point: `window.initializeApp`, `showWeaponsPopup`, `addWeapon`, `manualSave`. Also seeds default bg fields and calls `initNotesPage()` on first boot. | ~150 |
 
@@ -278,22 +278,19 @@ A fully separate portal layer that overlays the player UI. Activated from the ho
 ### Session (localStorage)
 Key: `dndDmSession`. Shape: `{ uid, email, campaignId, campaignName, campaignSetting, enteredAt }`. TTL: 24 hours. Functions: `dmSessionLoad()`, `dmSessionSave(data)`, `dmSessionClear()`, `dmSessionValid()`. **Note:** `campaignId` was added because join-request paths key off the campaign **id** while the roster query keys off campaign **name** — `dmCurrentCampaignId()` reads it. Old sessions without `campaignId` need a re-enter to populate it.
 
-On `enterDmPortal()`:
-1. If no valid session → verify approval (Firestore `campaigns` where `dmEmails` contains user email) → save session
-2. Show DM UI, populate banner + dashboard from session
-3. Show pending banner (`#dmPendingBanner`) if email not yet in any campaign's `dmEmails`
+### DM access model (current — password gated)
+Access is gated by the **campaign DM control password** (`campaigns/{id}.dmPasswordHash`), NOT an email-approval/request flow.
+1. Home card (`#dmPortalCard`, `renderDmCard()`): signed-out → sign-in prompt; signed-in → campaign dropdown + DM password field (`dmEnterWithPassword()`); valid 24h session → "Enter DM Screen" button.
+2. `dmEnterWithPassword()` verifies the entered password's SHA-256 against `dmPasswordHash`, saves the session, calls `enterDmPortal()`.
+3. `enterDmPortal()` just needs a valid session (no approval check) → shows DM UI, populates banner/dashboard, loads live player count.
+4. `renderDmCard()` is called from `showHomePage()` and `updateAuthUI()` in `cloud-skills.js`.
 
-### DM Approval Flow
-- **Old (deprecated):** `DM_APPROVED_EMAILS` hardcoded array in `dm.js` — still present as fallback but being phased out
-- **New (active):** Firestore `campaigns/{id}.dmEmails` — you add a DM's email via Admin Portal → Campaigns → Edit DM
-- `isDmApproved(email)` checks the hardcoded array (legacy). Replace with Firestore check once campaign auth is fully wired.
-- `DM_NOTIFICATION_SUPPRESSED` and `DM_NOTIFY_COOLDOWN_MS` prevent spam notifications for owner/test accounts
+**Removed (2026-06-25 revamp):** the old `dm_requests` flow — `submitDmRequest`, `dmRequestFormHtml`, `getDmRequestStatus`, `isDmApproved`, `DM_APPROVED_EMAILS`, the notification cooldown helpers, and `#dmPendingBanner`. The `dm_requests` Firestore collection + its rule are now unused (left in `firestore.rules` harmlessly; can be removed later).
 
-### DM Request Flow (home page card)
-1. Player-facing card on home page (`#dmPortalCard`) — visible to all
-2. States: not signed in → sign in prompt | signed in + no request → request form | pending → waiting message + dimmed Enter button | approved → Enter DM Screen button
-3. Submit writes to Firestore `dm_requests/{uid}` → sends Formspree notification to owner with exact approval instructions
-4. `renderDmCard()` is called from `showHomePage()` and `updateAuthUI()` in `cloud-skills.js`
+### DM theming + in-app dialogs (2026-06-25 revamp)
+- **The DM portal is now fully accent-themed** — it uses the same `--accent*` / `--panel-bg` / `--card-bg` variables as the character sheet, the same `.tabs` pill style, `.section`-style cards, button language, transitions, and breakpoints. Do NOT reintroduce hardcoded colours in DM CSS. The ONLY deliberate exception is the sticky DM SCREEN banner + Exit button, which keep a warm danger tint via `--dm-danger` (200,70,70) as a "you're in DM mode" cue.
+- **`--accent-rgb`** (R,G,B triplet, no `rgba()`) is now set by `setAccentDerivedColors()` (core.js) and the early-boot script (index.html), with a `:root` default. Use `rgba(var(--accent-rgb), <alpha>)` for accent-tinted fills. (Previously referenced in CSS but never set — was silently falling back.)
+- **In-app dialogs:** `dmModal(opts)` (promise-based; `{title, message, input, inputType, placeholder, value, confirmText, cancelText, danger}` → resolves the input string / `true` / `null` on cancel) and `dmToast(msg, type)` replace ALL native `prompt/alert/confirm` in the DM side. Themed to the player popup language (`.dm-modal*`, `.dm-toast*`). Use these, not native dialogs, for any new DM interaction.
 
 ### DM Pages
 Tab order (in `partials/dm-chrome.html`): Home · Lore · Players · Player Spells & Actions · Monsters · Encounters · NPCs · Notes · Settings.
@@ -367,10 +364,8 @@ In `assets/modules/admin.js`. Loads automatically when admin portal unlocks alon
 - `adminToggleCampaign(campaignId, active)` — flip active flag
 - Password is SHA-256 hashed via `sha256Hex()` (same function used for admin PIN)
 
-### DM Portal Auth (transition in progress)
-Currently: `DM_APPROVED_EMAILS` hardcoded array gates `enterDmPortal()`.
-Target: check Firestore `campaigns` where `dmEmails` contains user's email — no code deploy needed to approve DMs.
-**TODO:** Replace `isDmApproved()` with a Firestore `campaigns` query in `enterDmPortal()`.
+### DM Portal Auth (resolved 2026-06-25)
+DM entry is gated by the per-campaign **DM control password** (`campaigns/{id}.dmPasswordHash`), verified in `dmEnterWithPassword()`. The old `DM_APPROVED_EMAILS` / `isDmApproved()` / `dm_requests` approval flow has been removed. `dmEmails` on a campaign is still used by the Firestore rules' `isCampaignDm()` to let an assigned DM read/update join requests.
 
 ### Firestore Rules Required
 The full ruleset now lives in `firestore.rules` at the repo root (deployed via `firebase deploy --only firestore:rules`, or pasted into Firebase Console → Firestore → Rules). `firebase.json` points at it. Key rules: collectionGroup `characters` read for owner+signed-in (DM Players tab), `campaigns` read for signed-in / write for owner, and the `joinRequests` subcollection rules below.

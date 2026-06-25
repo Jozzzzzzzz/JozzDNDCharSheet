@@ -115,6 +115,21 @@ CSS uses `rgba(var(--accent-rgb, 255,215,0), …)` in ~4 places (player side too
 
 ---
 
+## 7b. DRAFT CHANGELOG (ready when Jozsua approves — NOT yet in changelog.js, NOT pushed)
+Suggested as **v1.06 — DM Portal Revamp**. Public wording kept simple/non-spoilery:
+```
+updates:
+  - The Dungeon Master Portal now matches your character sheet — same theme,
+    colours, and styling throughout, so it feels like one app
+  - The DM Portal now follows your chosen accent colour everywhere
+  - Smoother pop-ups and messages across the DM tools (no more browser prompts)
+  - Live player count on the DM dashboard
+fixes:
+  - Tidied up the DM Portal under the hood for a cleaner, more reliable experience
+```
+When approving: bump `CHANGELOG_LATEST_VERSION` + `scriptVersion`, add entry, then push.
+**No Firestore deploy needed** unless we also do Q2 (tighten read rule).
+
 ## 8. IDEAS FOR LATER (not this pass)
 - Build out Lore / Player Spells & Actions / Notes placeholder tabs into real features.
 - DM Notes could reuse the player folder/card notes system (`NOTES_DEFAULT_FOLDERS` engine).
