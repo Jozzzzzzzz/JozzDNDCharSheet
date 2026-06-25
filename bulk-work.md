@@ -140,6 +140,109 @@ When approving: bump `CHANGELOG_LATEST_VERSION` + `scriptVersion`, add entry, th
 
 ---
 
+## 8b. ⭐ ACCESS-CONTROL + DATA-OWNERSHIP REDESIGN (the big plan)
+Agreed with Jozsua 2026-06-25. This replaces the leaky collectionGroup read model
+with a campaign-scoped "players publish into the campaign" model. Build incrementally.
+
+### The problem it solves
+All character data lives under `userData/{uid}` (player-owned). DMs currently reach
+ACROSS ownership via a collectionGroup query, which Firestore rules can't authorize
+per-campaign → so the rule is "any signed-in user can read any character" (the leak).
+
+### The principle
+Data flows TO where the authorized people already are. Players **publish** a copy of
+their sheet INTO the campaign they belong to. DMs/owner read within their own campaign
+— a scoped read rules CAN authorize cleanly. No cross-ownership queries.
+
+### Target Firestore structure
+```
+campaigns/{cid}
+  name, setting, status: 'pending'|'active'|'inactive'
+  ownerEmail            ← the host/admin who approved it (you)
+  dmEmails[]            ← assigned DM(s)
+  dmPasswordHash        ← DM takes control
+  passwordHash          ← player join password
+  createdAt
+  members/{uid}         ← roster + join state
+      uid, charName, status: 'pending'|'approved', requestedAt, approvedAt
+  sheets/{uid}          ← player's CURRENT published sheet (latest manual Save)
+      data{...}, charName, publishedAt
+      versions/{ts}     ← immutable snapshot per manual Save (date+time stamped)
+          data{...}, savedAt, label?
+campaign_requests/{cid or uid}  ← "I want to run a campaign" → owner approves → creates campaigns/{cid}
+```
+
+### Roles
+- **Owner/host (you, vanreejoz33):** approves campaign requests; can edit ANY campaign
+  (name, dmEmails, dmPassword, player password, members). `isOwner()`.
+- **DM:** runs an approved campaign; approves player join requests; pulls + views player
+  sheets + version history. `isCampaignDm(cid)` (email in `dmEmails`).
+- **Player:** uses sheet solo; requests to join (player password); on approval, their
+  manual Saves publish into `campaigns/{cid}/sheets/{uid}`.
+
+### Decisions locked (Jozsua)
+- **Versioning = manual Save only.** The Save button writes BOTH `sheets/{uid}` (current)
+  and `sheets/{uid}/versions/{ts}` (immutable, date+time stamped). No autosave versions.
+- **DM pulls, not live.** DM Players tab gets a **"Pull latest sheets"** button that reads
+  `campaigns/{cid}/sheets/*` for approved members. No live listener.
+- **History is append-only** — versions can't be edited/deleted (rule `update,delete: if false`).
+
+### Rules shape (works because reads are single-campaign-scoped, not wildcard)
+```
+function isOwner() { return signedIn && email == OWNER; }
+function isCampaignDm(cid) { return email in get(campaigns/$(cid)).data.dmEmails; }
+function isSelf(uid) { return request.auth.uid == uid; }
+function isApprovedMember(cid, uid) {
+  return get(campaigns/$(cid)/members/$(uid)).data.status == 'approved';
+}
+
+match /campaigns/{cid} {
+  allow read: if isSignedIn();                     // dropdown
+  allow write: if isOwner() || isCampaignDm(cid);  // settings (owner can edit all)
+
+  match /members/{uid} {
+    allow read: if isOwner() || isCampaignDm(cid) || isSelf(uid);
+    allow create, update: if isSelf(uid) || isCampaignDm(cid) || isOwner();
+    allow delete: if isCampaignDm(cid) || isOwner();
+  }
+  match /sheets/{uid} {
+    allow read: if isOwner() || isCampaignDm(cid) || isSelf(uid);
+    allow write: if isSelf(uid) && isApprovedMember(cid, uid);
+    match /versions/{vid} {
+      allow read: if isOwner() || isCampaignDm(cid) || isSelf(uid);
+      allow create: if isSelf(uid);
+      allow update, delete: if false;   // immutable history
+    }
+  }
+}
+// Then collectionGroup characters read → tighten to owner-only (DMs no longer need it).
+```
+
+### Migration / compatibility
+- `characterInfo.campaignId` (existing) stays as the player's "which campaign am I in" marker.
+- Existing join-request flow (`campaigns/{id}/joinRequests`) folds into `members/{uid}`
+  (status pending→approved). Can keep joinRequests as-is short-term and add members later.
+- Publishing is ADDITIVE: manual Save still writes the player's own doc as today, PLUS
+  the campaign copy if they're an approved member. Solo players unaffected.
+
+### Build stages (each independently shippable, nothing breaks mid-way)
+1. **Rules + structure scaffolding** — add the campaigns subcollection rules (deploy).
+2. **Publish-on-Save** — when an approved player hits Save, also write
+   `campaigns/{cid}/sheets/{uid}` + `versions/{ts}`. (Player side, core.js manualSave.)
+3. **DM "Pull latest sheets"** — Players tab button reads campaign sheets instead of the
+   collectionGroup query. Then tighten the collectionGroup rule to owner-only.
+4. **Version history viewer** — DM player panel gets a date/time list of past saves.
+5. **Campaign request → owner approval** — formalize "request to run a campaign" →
+   `campaign_requests` → owner approves → creates the campaign.
+6. **Owner edit-anything** — Admin campaign editor covers name/dm/dmPassword/playerPassword/members.
+
+### Open sub-questions (revisit per stage)
+- Sheet size: a full character blob per version — fine for manual-save cadence; monitor doc size (1MB Firestore limit, our sheets are far under).
+- Pruning: cap versions (e.g. keep last 50) later if needed.
+- Home-server future: this structure maps cleanly to any backend later (campaigns own the data), so it doesn't lock us to Firestore.
+
+---
+
 ## 9. MASSIVE CHECKLIST
 Legend: [ ] todo · [~] in progress · [x] done · [!] blocked/needs Jozsua
 
@@ -184,13 +287,21 @@ Legend: [ ] todo · [~] in progress · [x] done · [!] blocked/needs Jozsua
 - [x] Improved DM home dashboard: live player count (`dmLoadHomePlayerCount`)
 - [ ] Confirm `firestore.rules` read scope (Q2) — STILL OPEN, flagged for Jozsua
 
-### Finish
-- [ ] Syntax check all changed JS
-- [ ] Smoke test (serve, load each DM tab)
-- [ ] Draft changelog entry (vague public wording)
-- [ ] Update CLAUDE.md if architecture changed
-- [ ] Local commit checkpoints
-- [ ] STOP — do not push/deploy; hand back to Jozsua
+### Finish (revamp pass)
+- [x] Syntax check all changed JS
+- [x] Smoke test (serve, load each DM tab)
+- [x] Draft changelog entry (in §7b — v1.06, vague wording)
+- [x] Update CLAUDE.md
+- [x] Local commit checkpoints (3 commits, unpushed)
+- [x] STOP — not pushed/deployed; handed back to Jozsua
+
+### Access-control redesign (§8b) — NOT STARTED, design approved
+- [ ] Stage 1: campaigns subcollection rules (members/sheets/versions) + deploy
+- [ ] Stage 2: publish-on-Save (approved player Save → campaign sheet + version)
+- [ ] Stage 3: DM "Pull latest sheets" button → read campaign sheets; tighten collectionGroup rule to owner-only
+- [ ] Stage 4: version history viewer in DM player panel
+- [ ] Stage 5: campaign request → owner approval → creates campaign
+- [ ] Stage 6: owner edit-anything in Admin campaign editor
 
 ---
 
@@ -207,11 +318,17 @@ Legend: [ ] todo · [~] in progress · [x] done · [!] blocked/needs Jozsua
 ---
 
 ## ⭐ CURRENT FOCUS
-Core revamp complete (theming + dialogs + cleanup + dashboard). Remaining: docs (CLAUDE.md), changelog draft, and a browser eyeball pass by Jozsua. The placeholder tabs (Lore/Spells/Notes) inherit the new theme automatically — verified they serve, but worth a visual check.
+Two tracks now:
+- **Track A — Revamp (DONE, unpushed):** theming + dialogs + cleanup + dashboard. 3 local commits. Awaiting Jozsua's browser eyeball + push decision.
+- **Track B — Access-control redesign (DESIGNED, see §8b):** approved by Jozsua. Build incrementally in 6 stages. NOT started.
 
 ## ▶ NEXT ACTIONS (resume here)
-1. Update CLAUDE.md: DM is now accent-themed; document `dmModal`/`dmToast`; note `dm_requests` flow removed; `--accent-rgb` now set.
-2. Draft a vague public changelog entry (DON'T bump version yet / don't push).
-3. **Jozsua to decide:** Q1 (keep red DM banner? — currently yes), Q2 (tighten character read rule? — NOT done, needs rules redeploy), Q3 (in-app dialogs — DONE, default taken).
-4. Visual QA in browser: enter DM portal, check each tab with a couple of accent colors + light/dark.
-5. When Jozsua approves → run pre-push checklist, then push + (if rules touched) deploy.
+1. **Jozsua:** hard-refresh + eyeball the DM portal (the revamp changes ARE in your local files; pushing is only for GitHub backup). Decide Q1 (red banner keep/drop) + when to push Track A.
+2. When ready → run pre-push checklist (bump version v1.06, finalize changelog), push Track A.
+3. Then start Track B Stage 1 (campaigns subcollection rules) — this is the real security fix; the current "any signed-in user can read any character" leak is Low–Moderate risk (read-only, signed-in users only, requires dev-tools) and closes when Track B Stage 3 lands.
+4. Build Track B stages 1→6, deploying rules as needed (ask before each deploy).
+
+## KNOWN ISSUE (until Track B Stage 3)
+`firestore.rules` line ~54: `allow read: if isOwnerAdmin() || isSignedIn()` on the
+characters collectionGroup lets any signed-in user read any character via a manual
+query. Read-only, no creds exposed. Accepted short-term; fixed by the redesign.
