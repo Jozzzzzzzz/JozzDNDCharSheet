@@ -172,6 +172,7 @@
     --card-bg: rgba(32, 28, 20, 0.82);
     --border: 1px solid #555;
     --accent: #b0b8c1;
+    --accent-rgb: 176, 184, 193;
     --accent-border: rgba(176, 184, 193, 0.5);
     --accent-muted: rgba(158, 163, 168, 0.55);
     --accent-contrast: #111111;
@@ -3608,7 +3609,7 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  background: rgba(var(--accent-rgb, 120, 80, 200), 0.12);
+  background: rgba(var(--accent-rgb), 0.12);
   border: 1px solid var(--accent-border);
   border-radius: 8px;
   padding: 14px 16px;
@@ -7463,7 +7464,18 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 
 /* ═══════════════════════════════════════════════════════════════
    DM PORTAL
+   ───────────────────────────────────────────────────────────────
+   Themed to match the character sheet: uses the same accent variable
+   system (--accent*, --panel-bg, --card-bg), component patterns
+   (.section / .tabs / .header-btn), spacing rhythm and transitions.
+   The only deliberate "DM identity" cue is a warm danger tint on the
+   sticky DM SCREEN banner + Exit button, so you always know you're in
+   DM mode. Everything else follows your chosen accent colour.
    ═══════════════════════════════════════════════════════════════ */
+
+/* DM "danger" identity tint — used ONLY for the mode banner/exit so DM
+   mode is visually distinct without clashing with the accent theme. */
+:root { --dm-danger: 200, 70, 70; }
 
 /* ── DM Pending Top Banner ── */
 .dm-pending-top-banner {
@@ -7478,14 +7490,14 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 
 .dm-pending-top-banner strong { color: #e8c040; }
 
-/* ── DM Screen Banner ── */
+/* ── DM Screen Banner (mode identity — keeps a warm danger tint) ── */
 .dm-screen-banner {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: linear-gradient(135deg, rgba(120,40,40,0.95), rgba(60,20,20,0.98));
-  border-bottom: 2px solid rgba(200,60,60,0.5);
-  padding: 8px 16px;
+  background: linear-gradient(135deg, rgba(var(--dm-danger), 0.9), rgba(40, 16, 16, 0.97));
+  border-bottom: 2px solid rgba(var(--dm-danger), 0.5);
+  padding: 10px 16px;
   position: sticky;
   top: 0;
   z-index: 100;
@@ -7500,14 +7512,14 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   font-weight: 900;
   font-size: 0.85rem;
   letter-spacing: 0.15em;
-  color: #e88;
+  color: #f4c0c0;
   text-transform: uppercase;
   flex-shrink: 0;
 }
 
 .dm-screen-campaign {
   font-size: 0.85rem;
-  color: rgba(255,255,255,0.55);
+  color: rgba(255,255,255,0.7);
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
@@ -7515,50 +7527,65 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 }
 
 .dm-exit-btn {
-  background: rgba(200,60,60,0.2);
-  border: 1px solid rgba(200,60,60,0.4);
-  color: #e88;
-  padding: 4px 12px;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.25);
+  color: #fff;
+  padding: 5px 13px;
   border-radius: 6px;
   font-size: 0.8rem;
+  font-family: inherit;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.3s cubic-bezier(0.4,0,0.2,1);
 }
 
 .dm-exit-btn:hover {
-  background: rgba(200,60,60,0.4);
-  border-color: rgba(200,60,60,0.7);
+  background: rgba(255,255,255,0.22);
+  border-color: rgba(255,255,255,0.45);
+  transform: translateY(-1px);
 }
 
-/* ── DM Tab Bar ── */
+/* ── DM Tab Bar (mirrors the player .tabs pill style + accent) ── */
 .dm-tabs {
   display: flex;
-  gap: 2px;
-  padding: 6px 12px 0;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 8px 12px;
   background: var(--panel-bg);
   border-bottom: 1px solid var(--accent-border);
-  overflow-x: auto;
+  position: sticky;
+  top: 0;
+  z-index: 99;
 }
 
 .dm-tab {
-  background: transparent;
-  border: none;
-  border-bottom: 3px solid transparent;
-  color: rgba(255,255,255,0.5);
-  padding: 8px 16px;
-  font-size: 0.9rem;
-  cursor: pointer;
+  background: var(--accent-muted);
+  color: var(--text-light);
+  border: 1px solid var(--accent-border);
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  font-weight: 500;
   white-space: nowrap;
-  transition: color 0.2s ease, border-color 0.2s ease;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.3s cubic-bezier(0.4,0,0.2,1);
 }
 
-.dm-tab:hover { color: rgba(255,255,255,0.85); }
+.dm-tab:hover {
+  background: var(--accent-soft);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0,0,0,0.25);
+}
 
 .dm-tab.active {
-  color: #e88;
-  border-bottom-color: #e88;
+  background: var(--accent-soft);
+  color: var(--accent-text);
   font-weight: 600;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
 }
 
 /* ── DM Pages ── */
@@ -7568,6 +7595,13 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   margin: 0 auto;
 }
 
+.dm-page { animation: dm-page-fade 0.28s ease; }
+
+@keyframes dm-page-fade {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 .dm-page-header {
   margin-bottom: 20px;
 }
@@ -7575,39 +7609,46 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 .dm-page-header h2 {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #e88;
+  color: var(--accent-text);
   margin: 0 0 4px 0;
 }
 
 .dm-page-subtitle {
   font-size: 0.85rem;
-  color: rgba(255,255,255,0.45);
+  color: rgba(255,255,255,0.5);
   margin: 0;
 }
 
-/* ── DM Cards ── */
+/* ── DM Cards (mirror .section: panel bg, 2px accent border, hover shadow) ── */
 .dm-card {
   background: var(--card-bg);
-  border: 1px solid var(--accent-border);
+  border: 2px solid var(--accent-border);
   border-radius: 10px;
   padding: 16px;
   margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dm-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
 }
 
 .dm-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   margin-bottom: 14px;
   padding-bottom: 10px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  border-bottom: 1px solid var(--accent-border);
 }
 
 .dm-card-header h3 {
   margin: 0;
   font-size: 1rem;
   font-weight: 700;
-  color: rgba(255,255,255,0.9);
+  color: var(--accent-text);
 }
 
 .dm-card-header h4 {
@@ -7654,8 +7695,8 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   border-bottom: 1px solid rgba(255,255,255,0.05);
 }
 
-.dm-stat-label { color: rgba(255,255,255,0.45); }
-.dm-stat-value { color: rgba(255,255,255,0.9); font-weight: 600; }
+.dm-stat-label { color: rgba(255,255,255,0.5); }
+.dm-stat-value { color: rgba(255,255,255,0.92); font-weight: 600; }
 
 .dm-quicknav-grid {
   display: grid;
@@ -7669,53 +7710,66 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   align-items: center;
   gap: 6px;
   padding: 14px 8px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(var(--accent-rgb), 0.06);
+  border: 1px solid var(--accent-border);
   border-radius: 8px;
-  color: rgba(255,255,255,0.8);
+  color: rgba(255,255,255,0.85);
   font-size: 0.85rem;
+  font-family: inherit;
   cursor: pointer;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.3s cubic-bezier(0.4,0,0.2,1);
 }
 
 .dm-quicknav-btn:hover {
-  background: rgba(200,60,60,0.15);
-  border-color: rgba(200,60,60,0.35);
+  background: var(--accent-soft);
+  border-color: var(--accent-text);
+  transform: translateY(-2px);
 }
 
 .dm-qn-icon { font-size: 1.5rem; }
 
 /* ── Shared DM UI ── */
 .dm-action-btn {
-  background: rgba(200,60,60,0.18);
-  border: 1px solid rgba(200,60,60,0.35);
-  color: #e88;
-  padding: 6px 14px;
+  background: var(--accent-muted);
+  border: 1px solid var(--accent-border);
+  color: var(--text-light);
+  padding: 7px 14px;
   border-radius: 6px;
   font-size: 0.83rem;
+  font-family: inherit;
+  font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.3s cubic-bezier(0.4,0,0.2,1);
 }
 
 .dm-action-btn:hover {
-  background: rgba(200,60,60,0.32);
-  border-color: rgba(200,60,60,0.6);
+  background: var(--accent-soft);
+  border-color: var(--accent-text);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0,0,0,0.25);
 }
 
 .dm-save-btn {
-  background: rgba(60,160,60,0.18);
-  border-color: rgba(60,160,60,0.35);
-  color: #8e8;
+  background: rgba(60,160,60,0.2);
+  border-color: rgba(60,160,60,0.4);
+  color: #8fe08f;
 }
 
 .dm-save-btn:hover {
-  background: rgba(60,160,60,0.3);
-  border-color: rgba(60,160,60,0.6);
+  background: rgba(60,160,60,0.32);
+  border-color: rgba(60,160,60,0.65);
 }
 
 .dm-danger-btn {
-  background: rgba(200,60,60,0.25);
-  border-color: rgba(200,60,60,0.5);
+  background: rgba(var(--dm-danger), 0.18);
+  border-color: rgba(var(--dm-danger), 0.4);
+  color: #f0a0a0;
+}
+
+.dm-danger-btn:hover {
+  background: rgba(var(--dm-danger), 0.3);
+  border-color: rgba(var(--dm-danger), 0.6);
 }
 
 .dm-icon-btn {
@@ -7725,17 +7779,17 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   font-size: 0.9rem;
   padding: 4px 6px;
   border-radius: 4px;
-  color: rgba(255,255,255,0.5);
+  color: rgba(255,255,255,0.55);
   transition: color 0.2s ease, background-color 0.2s ease;
 }
 
-.dm-icon-btn:hover { color: rgba(255,255,255,0.9); background: rgba(255,255,255,0.08); }
+.dm-icon-btn:hover { color: var(--accent-text); background: var(--accent-soft); }
 
-.dm-remove-btn:hover { color: #e66; }
+.dm-remove-btn:hover { color: #f0a0a0; background: rgba(var(--dm-danger), 0.15); }
 
 .dm-note {
   font-size: 0.83rem;
-  color: rgba(255,255,255,0.45);
+  color: rgba(255,255,255,0.5);
   margin: 0 0 12px 0;
 }
 
@@ -7754,15 +7808,45 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 }
 
 .dm-coming-soon-list li strong {
-  color: var(--accent-text, #e0b870);
+  color: var(--accent-text);
 }
 
 .dm-empty-state {
-  color: rgba(255,255,255,0.3);
+  color: rgba(255,255,255,0.35);
   font-size: 0.85rem;
   font-style: italic;
   text-align: center;
   padding: 20px 0;
+}
+
+/* Shared DM input styling — one place, inherited by all DM fields */
+.dm-search-bar input[type="text"],
+.dm-search-bar select,
+.dm-encounter-name-row input,
+.dm-add-combatant-row input,
+.dm-field-row input,
+.dm-field-row select,
+.dm-field-row textarea {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--accent-border);
+  border-radius: 6px;
+  padding: 7px 10px;
+  color: rgba(255,255,255,0.92);
+  font-size: 0.88rem;
+  font-family: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dm-search-bar input[type="text"]:focus,
+.dm-search-bar select:focus,
+.dm-encounter-name-row input:focus,
+.dm-add-combatant-row input:focus,
+.dm-field-row input:focus,
+.dm-field-row select:focus,
+.dm-field-row textarea:focus {
+  outline: none;
+  border-color: var(--accent-text);
+  box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
 .dm-search-bar {
@@ -7772,25 +7856,7 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   flex-wrap: wrap;
 }
 
-.dm-search-bar input[type="text"] {
-  flex: 1;
-  min-width: 160px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.15);
-  border-radius: 6px;
-  padding: 7px 10px;
-  color: rgba(255,255,255,0.9);
-  font-size: 0.88rem;
-}
-
-.dm-search-bar select {
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.15);
-  border-radius: 6px;
-  padding: 7px 10px;
-  color: rgba(255,255,255,0.9);
-  font-size: 0.88rem;
-}
+.dm-search-bar input[type="text"] { flex: 1; min-width: 160px; }
 
 /* ── Monsters ── */
 .dm-monsters-list { display: flex; flex-direction: column; gap: 4px; max-height: 420px; overflow-y: auto; }
@@ -7799,6 +7865,7 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 10px;
   padding: 8px 10px;
   border-radius: 6px;
   cursor: pointer;
@@ -7807,20 +7874,21 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 }
 
 .dm-monster-row:hover {
-  background: rgba(200,60,60,0.1);
-  border-color: rgba(200,60,60,0.25);
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
 }
 
-.dm-monster-name { font-weight: 600; font-size: 0.9rem; color: rgba(255,255,255,0.9); }
-.dm-monster-meta { font-size: 0.78rem; color: rgba(255,255,255,0.4); }
+.dm-monster-name { font-weight: 600; font-size: 0.9rem; color: rgba(255,255,255,0.92); }
+.dm-monster-meta { font-size: 0.78rem; color: rgba(255,255,255,0.45); text-align: right; }
 
 /* Monster stat block */
 .dm-monster-detail {
   background: var(--card-bg);
-  border: 1px solid rgba(200,60,60,0.3);
+  border: 2px solid var(--accent-border);
   border-radius: 10px;
   padding: 16px;
   margin-top: 16px;
+  animation: dm-page-fade 0.28s ease;
 }
 
 .dm-monster-detail-header {
@@ -7830,22 +7898,26 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   margin-bottom: 12px;
 }
 
-.dm-monster-detail-header h3 { margin: 0; color: #e88; }
+.dm-monster-detail-header h3 { margin: 0; color: var(--accent-text); }
 
 .dm-close-detail-btn {
   background: transparent;
-  border: 1px solid rgba(255,255,255,0.2);
-  color: rgba(255,255,255,0.5);
+  border: 1px solid var(--accent-border);
+  color: rgba(255,255,255,0.6);
   padding: 4px 10px;
   border-radius: 5px;
   cursor: pointer;
   font-size: 0.8rem;
+  font-family: inherit;
+  transition: color 0.2s ease, border-color 0.2s ease;
 }
+
+.dm-close-detail-btn:hover { color: var(--accent-text); border-color: var(--accent-text); }
 
 .dm-stat-block { font-size: 0.87rem; line-height: 1.6; }
 .dm-sb-meta { color: rgba(255,255,255,0.55); font-style: italic; margin-bottom: 8px; }
-.dm-sb-divider { border: none; border-top: 1px solid rgba(200,60,60,0.3); margin: 10px 0; }
-.dm-sb-row { padding: 2px 0; color: rgba(255,255,255,0.8); }
+.dm-sb-divider { border: none; border-top: 1px solid var(--accent-border); margin: 10px 0; }
+.dm-sb-row { padding: 2px 0; color: rgba(255,255,255,0.82); }
 .dm-sb-row strong { color: rgba(255,255,255,0.55); margin-right: 6px; }
 
 .dm-sb-abilities {
@@ -7855,17 +7927,23 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   margin: 8px 0;
 }
 
-.dm-sb-ability { text-align: center; }
-.dm-sb-ab-name { font-size: 0.72rem; color: rgba(255,255,255,0.45); font-weight: 700; letter-spacing: 0.05em; }
-.dm-sb-ab-score { font-size: 0.85rem; color: rgba(255,255,255,0.85); font-weight: 600; }
+.dm-sb-ability {
+  text-align: center;
+  background: rgba(var(--accent-rgb), 0.06);
+  border: 1px solid var(--accent-border);
+  border-radius: 6px;
+  padding: 6px 2px;
+}
+.dm-sb-ab-name { font-size: 0.72rem; color: var(--accent-text); font-weight: 700; letter-spacing: 0.05em; }
+.dm-sb-ab-score { font-size: 0.85rem; color: rgba(255,255,255,0.88); font-weight: 600; }
 
 .dm-sb-trait {
   margin: 6px 0;
-  color: rgba(255,255,255,0.75);
+  color: rgba(255,255,255,0.78);
   line-height: 1.5;
 }
 
-.dm-sb-trait strong { color: rgba(255,255,255,0.9); }
+.dm-sb-trait strong { color: var(--accent-text); }
 
 /* ── Encounters ── */
 .dm-encounter-layout { display: grid; grid-template-columns: 1fr 320px; gap: 16px; }
@@ -7876,30 +7954,13 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   margin-bottom: 10px;
 }
 
-.dm-encounter-name-row input {
-  flex: 1;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.15);
-  border-radius: 6px;
-  padding: 7px 10px;
-  color: rgba(255,255,255,0.9);
-  font-size: 0.88rem;
-}
+.dm-encounter-name-row input { flex: 1; }
 
 .dm-add-combatant-row {
   display: flex;
   gap: 6px;
   margin-bottom: 12px;
   flex-wrap: wrap;
-}
-
-.dm-add-combatant-row input {
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.15);
-  border-radius: 6px;
-  padding: 6px 8px;
-  color: rgba(255,255,255,0.9);
-  font-size: 0.85rem;
 }
 
 .dm-add-combatant-row input[placeholder="Combatant name"] { flex: 1; min-width: 120px; }
@@ -7911,27 +7972,30 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(var(--accent-rgb), 0.05);
+  border: 1px solid var(--accent-border);
   border-radius: 7px;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
-.dm-combatant-init { display: flex; align-items: center; gap: 4px; font-size: 0.75rem; color: rgba(255,255,255,0.4); }
-.dm-combatant-init input { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: 4px; padding: 3px 4px; color: rgba(255,255,255,0.9); text-align: center; }
+.dm-combatant-row:hover { border-color: var(--accent-text); }
+
+.dm-combatant-init { display: flex; align-items: center; gap: 4px; font-size: 0.75rem; color: rgba(255,255,255,0.45); }
+.dm-combatant-init input { background: rgba(255,255,255,0.08); border: 1px solid var(--accent-border); border-radius: 4px; padding: 3px 4px; color: rgba(255,255,255,0.9); text-align: center; font-family: inherit; }
 .dm-combatant-info { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.dm-combatant-name { font-weight: 600; font-size: 0.9rem; color: rgba(255,255,255,0.9); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dm-combatant-ac { font-size: 0.75rem; color: rgba(255,255,255,0.4); }
+.dm-combatant-name { font-weight: 600; font-size: 0.9rem; color: rgba(255,255,255,0.92); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dm-combatant-ac { font-size: 0.75rem; color: rgba(255,255,255,0.45); }
 
 .dm-combatant-hp { display: flex; align-items: center; gap: 6px; }
-.dm-hp-btn { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 4px; color: rgba(255,255,255,0.7); width: 24px; height: 24px; cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; transition: background-color 0.15s ease; }
-.dm-hp-btn:hover { background: rgba(255,255,255,0.16); }
-.dm-hp-display { font-size: 0.88rem; font-weight: 600; color: #8e8; min-width: 60px; text-align: center; }
-.dm-hp-low { color: #e84; }
-.dm-hp-dead { color: #e44; }
+.dm-hp-btn { background: var(--accent-soft); border: 1px solid var(--accent-border); border-radius: 4px; color: var(--accent-text); width: 26px; height: 26px; cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; transition: background-color 0.15s ease, border-color 0.15s ease; }
+.dm-hp-btn:hover { background: var(--accent-muted); border-color: var(--accent-text); }
+.dm-hp-display { font-size: 0.88rem; font-weight: 600; color: #8fe08f; min-width: 60px; text-align: center; }
+.dm-hp-low { color: #e8a44a; }
+.dm-hp-dead { color: #e85a5a; }
 
 .dm-saved-encounter-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
-.dm-saved-encounter-name { flex: 1; font-size: 0.9rem; font-weight: 600; color: rgba(255,255,255,0.85); }
-.dm-saved-encounter-count { font-size: 0.78rem; color: rgba(255,255,255,0.35); }
+.dm-saved-encounter-name { flex: 1; font-size: 0.9rem; font-weight: 600; color: rgba(255,255,255,0.88); }
+.dm-saved-encounter-count { font-size: 0.78rem; color: rgba(255,255,255,0.4); }
 
 /* ── NPCs ── */
 .dm-npc-layout { display: grid; grid-template-columns: 1fr 300px; gap: 16px; }
@@ -7944,27 +8008,15 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   gap: 4px;
 }
 
-.dm-field-row label { font-size: 0.8rem; color: rgba(255,255,255,0.45); }
-
-.dm-field-row input,
-.dm-field-row select,
-.dm-field-row textarea {
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.15);
-  border-radius: 6px;
-  padding: 7px 10px;
-  color: rgba(255,255,255,0.9);
-  font-size: 0.88rem;
-  font-family: inherit;
-}
+.dm-field-row label { font-size: 0.8rem; color: rgba(255,255,255,0.5); }
 
 .dm-field-row textarea { resize: vertical; }
 
 .dm-name-row { display: flex; gap: 6px; align-items: center; }
 .dm-name-row input { flex: 1; }
 
-.dm-npc-loot { border-top: 1px solid rgba(255,255,255,0.07); padding-top: 10px; margin-top: 4px; }
-.dm-loot-result { font-size: 0.88rem; color: rgba(255,255,255,0.75); padding: 8px 0; }
+.dm-npc-loot { border-top: 1px solid var(--accent-border); padding-top: 10px; margin-top: 4px; }
+.dm-loot-result { font-size: 0.88rem; color: rgba(255,255,255,0.78); padding: 8px 0; }
 
 .dm-npc-row {
   display: flex;
@@ -7975,14 +8027,14 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 }
 
 .dm-npc-info { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.dm-npc-name { font-weight: 700; font-size: 0.92rem; color: rgba(255,255,255,0.9); }
-.dm-npc-meta { font-size: 0.78rem; color: rgba(255,255,255,0.4); }
-.dm-npc-notes { font-size: 0.8rem; color: rgba(255,255,255,0.55); white-space: pre-wrap; }
-.dm-npc-loot { font-size: 0.78rem; color: #8e8; }
+.dm-npc-name { font-weight: 700; font-size: 0.92rem; color: rgba(255,255,255,0.92); }
+.dm-npc-meta { font-size: 0.78rem; color: rgba(255,255,255,0.45); }
+.dm-npc-notes { font-size: 0.8rem; color: rgba(255,255,255,0.6); white-space: pre-wrap; }
+.dm-npc-loot { font-size: 0.78rem; color: #8fe08f; }
 
 /* ── DM Settings ── */
 .dm-settings-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
-.dm-settings-field { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.88rem; }
+.dm-settings-field { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.88rem; }
 
 /* ── Players tab ── */
 .dm-players-list { display: flex; flex-direction: column; gap: 8px; }
@@ -7993,25 +8045,33 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   justify-content: space-between;
   gap: 12px;
   padding: 10px 12px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(var(--accent-rgb), 0.05);
+  border: 1px solid var(--accent-border);
   border-radius: 8px;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
+.dm-player-card:hover { border-color: var(--accent-text); }
+
 .dm-player-info { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
-.dm-player-name { font-weight: 700; font-size: 0.95rem; color: rgba(255,255,255,0.9); }
-.dm-player-meta { font-size: 0.78rem; color: rgba(255,255,255,0.4); }
+.dm-player-name { font-weight: 700; font-size: 0.95rem; color: rgba(255,255,255,0.92); }
+.dm-player-meta { font-size: 0.78rem; color: rgba(255,255,255,0.45); }
 .dm-player-actions { display: flex; gap: 8px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
 
 .dm-player-sheet-panel { margin-top: 16px; }
 
 .dm-player-sheet-header { margin-bottom: 12px; }
-.dm-player-sheet-header h3 { margin: 0 0 4px 0; color: #e88; font-size: 1.1rem; }
+.dm-player-sheet-header h3 { margin: 0 0 4px 0; color: var(--accent-text); font-size: 1.1rem; }
 .dm-player-sheet-header p { margin: 2px 0; font-size: 0.85rem; color: rgba(255,255,255,0.6); }
 
 .dm-player-sheet-stats { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
 
 /* ── Responsive ── */
+@media (max-width: 1024px) {
+  .dm-encounter-layout { grid-template-columns: 1fr 280px; }
+  .dm-npc-layout { grid-template-columns: 1fr 260px; }
+}
+
 @media (max-width: 768px) {
   .dm-home-grid { grid-template-columns: 1fr; }
   .dm-coming-list { grid-template-columns: 1fr; }
@@ -8020,4 +8080,6 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   .dm-settings-grid { grid-template-columns: 1fr; }
   .dm-sb-abilities { grid-template-columns: repeat(3,1fr); }
   .dm-quicknav-grid { grid-template-columns: repeat(2,1fr); }
+  #dm-pages-root { padding: 16px 12px; }
+  .dm-add-combatant-row input { flex: 1 1 calc(50% - 6px); min-width: 0; width: auto; }
 }

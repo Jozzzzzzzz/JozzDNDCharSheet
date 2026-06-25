@@ -603,6 +603,7 @@ function setAccentDerivedColors(color) {
     ? `rgb(${lighten(r, 0.65)}, ${lighten(g, 0.65)}, ${lighten(b, 0.65)})`
     : color;
 
+  document.documentElement.style.setProperty('--accent-rgb', `${r}, ${g}, ${b}`);
   document.documentElement.style.setProperty('--accent-border', borderColor);
   document.documentElement.style.setProperty('--accent-soft', softColor);
   document.documentElement.style.setProperty('--accent-muted', mutedColor);
