@@ -384,6 +384,10 @@ function switchDmTab(btn) {
     if (subtitle && session?.campaignName) subtitle.textContent = `Campaign: ${session.campaignName}`;
     dmLoadPlayers();
   }
+  // Auto-load the spell overview when switching to that tab
+  if (target === 'dm-spells' && typeof dmLoadPlayerSpells === 'function') {
+    dmLoadPlayerSpells();
+  }
 }
 
 function switchDmTabById(id) {
@@ -959,6 +963,104 @@ window.dmLoadPendingPlayers = dmLoadPendingPlayers;
 window.dmApproveJoin = dmApproveJoin;
 window.dmDenyJoin = dmDenyJoin;
 window.dmRemovePlayer = dmRemovePlayer;
+
+// ─── Player Spells overview (matrix table with overlap highlighting) ────────
+async function dmLoadPlayerSpells() {
+  const wrap = document.getElementById('dmSpellsTableWrap');
+  const legend = document.getElementById('dmSpellsLegend');
+  if (!wrap) return;
+
+  const session = dmSessionLoad();
+  const campaignName = session?.campaignName || '';
+  const db = window.db;
+  if (!db || !campaignName) { wrap.innerHTML = '<p class="dm-empty-state">No campaign in session.</p>'; return; }
+
+  wrap.innerHTML = '<p class="dm-empty-state">Loading player spells…</p>';
+
+  try {
+    const snap = await db.collectionGroup('characters')
+      .where('data.characterInfo.campaignId', '==', campaignName)
+      .get();
+
+    if (snap.empty) {
+      wrap.innerHTML = `<p class="dm-empty-state">No characters linked to "<strong>${escapeHtml(campaignName)}</strong>" yet.</p>`;
+      if (legend) legend.style.display = 'none';
+      return;
+    }
+
+    // Build: players[], and a map of spellName -> { level, byPlayer:Set }
+    const players = [];
+    const spellMap = new Map(); // key: lowercased name
+
+    snap.forEach(doc => {
+      const d = doc.data() || {};
+      const info = d?.data?.characterInfo || {};
+      const sd = d?.data?.page3?.spellsData || {};
+      const pName = info.name || 'Unnamed';
+      const pIdx = players.length;
+      players.push({ name: pName, cls: info.class || '' });
+
+      const ingest = (arr, isCantrip) => {
+        (Array.isArray(arr) ? arr : []).forEach(sp => {
+          const name = (sp && sp.name ? String(sp.name) : '').trim();
+          if (!name) return;
+          const key = name.toLowerCase();
+          // Level: cantrips = 0; otherwise use record level (number-ish) or 0
+          let lvl = isCantrip ? 0 : parseInt(sp.level, 10);
+          if (isNaN(lvl)) lvl = isCantrip ? 0 : 1;
+          if (!spellMap.has(key)) spellMap.set(key, { name, level: lvl, byPlayer: new Set() });
+          spellMap.get(key).byPlayer.add(pIdx);
+        });
+      };
+      ingest(sd.cantrips, true);
+      ingest(sd.spells, false);
+    });
+
+    if (!spellMap.size) {
+      wrap.innerHTML = '<p class="dm-empty-state">Linked characters have no spells recorded yet.</p>';
+      if (legend) legend.style.display = 'none';
+      return;
+    }
+
+    // Group spells by level, sort within level by name
+    const byLevel = {};
+    spellMap.forEach(rec => { (byLevel[rec.level] = byLevel[rec.level] || []).push(rec); });
+    Object.values(byLevel).forEach(list => list.sort((a, b) => a.name.localeCompare(b.name)));
+    const levels = Object.keys(byLevel).map(Number).sort((a, b) => a - b);
+
+    const lvlLabel = (l) => l === 0 ? 'Cantrips' : `Level ${l}`;
+    const colCount = players.length + 1;
+
+    let html = '<table class="dm-spells-table"><thead><tr>'
+      + '<th class="dm-spells-name-col">Spell</th>'
+      + players.map(p => `<th title="${escapeHtml(p.cls)}">${escapeHtml(p.name)}</th>`).join('')
+      + '</tr></thead><tbody>';
+
+    levels.forEach(l => {
+      html += `<tr class="dm-spells-group"><td colspan="${colCount}">${lvlLabel(l)}</td></tr>`;
+      byLevel[l].forEach(rec => {
+        const count = rec.byPlayer.size;
+        const overlapClass = count >= 3 ? 'dm-overlap-3' : (count === 2 ? 'dm-overlap-2' : '');
+        html += `<tr class="${overlapClass}">`;
+        html += `<td class="dm-spells-name-col">${escapeHtml(rec.name)}${count > 1 ? ` <span class="dm-spells-count">×${count}</span>` : ''}</td>`;
+        players.forEach((p, i) => {
+          html += `<td class="dm-spells-cell">${rec.byPlayer.has(i) ? '<span class="dm-spells-yes">●</span>' : ''}</td>`;
+        });
+        html += '</tr>';
+      });
+    });
+
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+    if (legend) legend.style.display = 'flex';
+
+  } catch (e) {
+    console.error('dmLoadPlayerSpells failed:', e);
+    wrap.innerHTML = `<p class="dm-empty-state">${escapeHtml(friendlyFirebaseError(e))}</p>`;
+    if (legend) legend.style.display = 'none';
+  }
+}
+window.dmLoadPlayerSpells = dmLoadPlayerSpells;
 
 async function dmViewPlayerCharacter(uid, charId) {
   const db = window.db;

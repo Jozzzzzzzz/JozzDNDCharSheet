@@ -107,6 +107,22 @@ disables controls, banner "· VIEW ONLY") or `'edit'` (full control, banner
 **"Enter as DM (Edit)"** buttons. View keeps tab nav/monster browse/Exit usable.
 Cleared on exit. scriptVersion bumped to `20260625b-dm-revamp`.
 
+## 6c. PLAYER-DATA SAFETY GUARANTEE (verified 2026-06-25)
+Audited dm.js: every character-data access is a `.get()` (READ-ONLY). The DM side
+NEVER writes to a player's character doc. The only DM writes target campaign data
+(`campaigns/.../joinRequests` for approve/deny/remove, `campaigns` doc for password).
+So nothing on the DM side — including owner Edit mode — can alter a player's sheet.
+Keep it that way: DM features read characters, write only campaign-scoped data.
+
+## 6d. DM PLAYER SPELLS OVERVIEW (built 2026-06-25)
+`dm-spells.html` + `dmLoadPlayerSpells()` (dm.js). Reads each linked character's
+`data.page3.spellsData` (cantrips + spells), builds a matrix table: rows = unique
+spells grouped by level (Cantrips, Level 1…9), columns = each player, ● where known.
+**Overlap highlighting:** spells known by 2 players get an amber row tint, 3+ get a
+red tint, with a ×N count and a legend. Auto-loads on tab switch + manual Load/Refresh.
+Read-only (collectionGroup get). CSS: `.dm-spells-table`, `.dm-overlap-2/3`, sticky
+name column + header.
+
 ## 6. IMPROVEMENTS COMPLETED
 - **Theming foundation:** Added `--accent-rgb` (R,G,B triplet) to `:root` default, `setAccentDerivedColors()` (core.js), and the early-boot inline script (index.html). Fixes a latent bug where `rgba(var(--accent-rgb,...))` always used fallbacks, and enables accent-tinted translucency.
 - **Full DM CSS reskin (the big win):** Rewrote the entire DM CSS block (~7464–8023) + entry-state block to use the accent variable system instead of hardcoded red.

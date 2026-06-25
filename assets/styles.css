@@ -8177,3 +8177,70 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 .dm-toast-success { border-left-color: #4CAF50; }
 .dm-toast-error { border-left-color: #f44336; }
 .dm-toast-info { border-left-color: var(--accent-text); }
+
+/* ── DM Player Spells overview table ── */
+.dm-spells-legend {
+  display: flex;
+  gap: 18px;
+  margin-bottom: 12px;
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.6);
+}
+.dm-spells-legend-item { display: flex; align-items: center; gap: 6px; }
+.dm-spells-swatch { width: 14px; height: 14px; border-radius: 3px; display: inline-block; border: 1px solid rgba(255,255,255,0.15); }
+
+.dm-spells-table-wrap { overflow-x: auto; }
+
+.dm-spells-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.dm-spells-table th {
+  text-align: center;
+  padding: 8px 6px;
+  color: var(--accent-text);
+  font-weight: 700;
+  border-bottom: 2px solid var(--accent-border);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  background: var(--card-bg);
+}
+
+.dm-spells-table th.dm-spells-name-col,
+.dm-spells-table td.dm-spells-name-col {
+  text-align: left;
+  position: sticky;
+  left: 0;
+  background: var(--card-bg);
+  z-index: 1;
+  min-width: 160px;
+}
+
+.dm-spells-table td {
+  padding: 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.85);
+}
+
+.dm-spells-cell { text-align: center; width: 70px; }
+.dm-spells-yes { color: var(--accent-text); font-size: 0.9rem; }
+.dm-spells-count { font-size: 0.72rem; color: rgba(255,255,255,0.5); }
+
+.dm-spells-group td {
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--accent-text);
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 6px 8px;
+}
+
+/* Overlap highlight rows + legend swatches share these tints */
+.dm-overlap-2, .dm-spells-swatch.dm-overlap-2 { background: rgba(230, 170, 60, 0.16); }
+.dm-overlap-3, .dm-spells-swatch.dm-overlap-3 { background: rgba(220, 90, 90, 0.20); }
+.dm-spells-table tr.dm-overlap-2 td.dm-spells-name-col { background: rgba(230, 170, 60, 0.16); }
+.dm-spells-table tr.dm-overlap-3 td.dm-spells-name-col { background: rgba(220, 90, 90, 0.20); }

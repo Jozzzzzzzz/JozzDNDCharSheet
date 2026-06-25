@@ -1,21 +1,21 @@
 <div class="dm-page" id="dm-spells" style="display:none;">
   <div class="dm-page-header">
     <h2>Player Spells &amp; Actions</h2>
-    <p class="dm-page-subtitle">See what your players can actually do in a fight</p>
+    <p class="dm-page-subtitle">Every spell your players know, side by side</p>
   </div>
 
   <div class="dm-card">
     <div class="dm-card-header">
-      <h3>🚧 Coming Soon</h3>
+      <h3>Spell Overview</h3>
+      <button class="dm-action-btn" onclick="dmLoadPlayerSpells()">Load / Refresh</button>
     </div>
-    <p class="dm-note">A DM-side overview of every player's combat options — so you're never caught off guard by a spell or ability you forgot they had.</p>
-    <ul class="dm-coming-soon-list">
-      <li><strong>Spell lists per player</strong> — prepared spells, slots remaining, save DCs</li>
-      <li><strong>Actions &amp; reactions</strong> — each character's attacks, special abilities, and reactions</li>
-      <li><strong>Resources at a glance</strong> — ki points, rages, sorcery points, channel divinity, etc.</li>
-      <li><strong>Quick reference</strong> — tap a spell/ability to see its full effect without leaving the screen</li>
-      <li><strong>Live sync</strong> — pulls straight from each linked player's character sheet</li>
-    </ul>
-    <p class="dm-note">Placeholder for now — this will read from the same character data the Players tab already uses.</p>
+    <p class="dm-note">Pulls each linked player's cantrips and spells into one table. Spells known by more than one player are highlighted so you can spot overlaps at a glance.</p>
+    <div id="dmSpellsLegend" class="dm-spells-legend" style="display:none;">
+      <span class="dm-spells-legend-item"><span class="dm-spells-swatch dm-overlap-2"></span> 2 players</span>
+      <span class="dm-spells-legend-item"><span class="dm-spells-swatch dm-overlap-3"></span> 3+ players</span>
+    </div>
+    <div id="dmSpellsTableWrap" class="dm-spells-table-wrap">
+      <p class="dm-empty-state">Hit “Load / Refresh” to build the spell table.</p>
+    </div>
   </div>
 </div>

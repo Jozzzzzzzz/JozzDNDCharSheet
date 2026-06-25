@@ -277,7 +277,7 @@ function activateRoute() {
 })();
 
 async function bootstrapModularApp() {
-  const scriptVersion = '20260625b-dm-revamp';
+  const scriptVersion = '20260625c-dm-revamp';
   const [chrome, home, settings, stats, background, spells, inventory, notes, popups,
          dmChrome, dmHome, dmLore, dmPlayers, dmSpells, dmMonsters, dmEncounters, dmNpcs, dmNotes, dmSettings] = await Promise.all([
     loadText('partials/chrome.html'),
