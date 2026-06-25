@@ -241,6 +241,30 @@ async function dmEnterWithPassword() {
   }
 }
 
+// Owner override — enter any campaign's DM portal without the DM password.
+// Gated to the owner email; used from the Admin Portal campaign list.
+async function dmEnterAsOwner(campaignId) {
+  const user = window.currentUser;
+  if (!user) { dmToast('Sign in first.', 'error'); return; }
+  const ownerEmail = (typeof OWNER_EMAIL === 'string' && OWNER_EMAIL) || 'vanreejoz33@gmail.com';
+  if (String(user.email || '').toLowerCase() !== ownerEmail.toLowerCase()) {
+    dmToast('Owner only.', 'error');
+    return;
+  }
+  const db = window.db;
+  if (!db) { dmToast('Not connected.', 'error'); return; }
+  try {
+    const doc = await db.collection('campaigns').doc(campaignId).get();
+    if (!doc.exists) { dmToast('Campaign not found.', 'error'); return; }
+    const c = doc.data();
+    dmSessionSave({ uid: user.uid, email: user.email, campaignId, campaignName: c.name, campaignSetting: c.setting || '', ownerOverride: true });
+    enterDmPortal();
+  } catch (e) {
+    dmToast(friendlyFirebaseError(e), 'error');
+  }
+}
+window.dmEnterAsOwner = dmEnterAsOwner;
+
 window.populateDmCampaignSelect = populateDmCampaignSelect;
 window.dmEnterWithPassword = dmEnterWithPassword;
 

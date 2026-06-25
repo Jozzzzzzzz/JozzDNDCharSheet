@@ -94,6 +94,15 @@ CSS uses `rgba(var(--accent-rgb, 255,215,0), …)` in ~4 places (player side too
 
 ---
 
+## 6b. OWNER "ENTER AS DM" OVERRIDE (added 2026-06-25)
+Jozsua had no way to enter a campaign's DM portal without knowing that campaign's
+DM password. Added `dmEnterAsOwner(campaignId)` (dm.js) — owner-gated, skips the
+password, saves a session with `ownerOverride: true` and calls `enterDmPortal()`.
+Wired an **"Enter as DM"** button on each Admin Portal campaign card (admin.js).
+The admin portal is already owner-only, so the button is owner-exclusive. Works on
+active AND inactive campaigns (reads the doc directly). Lets you fully test the DM
+side (approve players, view roster) on your own.
+
 ## 6. IMPROVEMENTS COMPLETED
 - **Theming foundation:** Added `--accent-rgb` (R,G,B triplet) to `:root` default, `setAccentDerivedColors()` (core.js), and the early-boot inline script (index.html). Fixes a latent bug where `rgba(var(--accent-rgb,...))` always used fallbacks, and enables accent-tinted translucency.
 - **Full DM CSS reskin (the big win):** Rewrote the entire DM CSS block (~7464–8023) + entry-state block to use the accent variable system instead of hardcoded red.
