@@ -8057,6 +8057,30 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   .dm-add-combatant-row input { flex: 1 1 calc(50% - 6px); min-width: 0; width: auto; }
 }
 
+/* ── DM View-Only mode (owner "Enter as DM") ── */
+/* Disable interactive controls inside the DM pages, but keep navigation
+   (tabs + exit live in the chrome, outside #dm-pages-root) usable. Inputs
+   stay readable; buttons that act are blocked. */
+#dm-pages-root.dm-view-only button:not(.dm-close-detail-btn),
+#dm-pages-root.dm-view-only input,
+#dm-pages-root.dm-view-only select,
+#dm-pages-root.dm-view-only textarea {
+  pointer-events: none;
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Keep monster rows browsable (they're view actions, not edits) */
+#dm-pages-root.dm-view-only .dm-monster-row,
+#dm-pages-root.dm-view-only .dm-quicknav-btn {
+  pointer-events: auto;
+  opacity: 1;
+  cursor: pointer;
+}
+
+/* DM SCREEN banner shows a clear view-only chip */
+.dm-screen-banner .dm-screen-campaign { font-weight: 600; }
+
 /* ── DM Modal + Toast (in-app prompt/confirm/notify) ── */
 .dm-modal-backdrop {
   position: fixed;

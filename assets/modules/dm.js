@@ -257,7 +257,7 @@ async function dmEnterAsOwner(campaignId) {
     const doc = await db.collection('campaigns').doc(campaignId).get();
     if (!doc.exists) { dmToast('Campaign not found.', 'error'); return; }
     const c = doc.data();
-    dmSessionSave({ uid: user.uid, email: user.email, campaignId, campaignName: c.name, campaignSetting: c.setting || '', ownerOverride: true });
+    dmSessionSave({ uid: user.uid, email: user.email, campaignId, campaignName: c.name, campaignSetting: c.setting || '', ownerOverride: true, viewOnly: true });
     enterDmPortal();
   } catch (e) {
     dmToast(friendlyFirebaseError(e), 'error');
@@ -294,9 +294,16 @@ async function enterDmPortal() {
   document.getElementById('dm-pages-root').style.display = 'block';
   document.getElementById('dmPortalChrome').style.display = 'block';
 
+  // View-only mode (owner "Enter as DM") — disable interactive controls + flag the banner
+  const chrome = document.getElementById('dmPortalChrome');
+  const pagesRoot = document.getElementById('dm-pages-root');
+  const viewOnly = !!session?.viewOnly;
+  if (chrome) chrome.classList.toggle('dm-view-only', viewOnly);
+  if (pagesRoot) pagesRoot.classList.toggle('dm-view-only', viewOnly);
+
   // Populate banner
   const label = document.getElementById('dmScreenCampaignLabel');
-  if (label) label.textContent = session?.campaignName || '';
+  if (label) label.textContent = (session?.campaignName || '') + (viewOnly ? '  ·  VIEW ONLY' : '');
 
   // Populate settings tab info
   const settingsEmail = document.getElementById('dmSettingsEmail');
@@ -342,6 +349,10 @@ function exitDmPortal() {
   document.getElementById('dm-chrome-root').style.display = 'none';
   document.getElementById('dm-pages-root').style.display = 'none';
   document.getElementById('dmPortalChrome').style.display = 'none';
+
+  // Clear view-only state so a later real DM entry isn't stuck read-only
+  document.getElementById('dmPortalChrome')?.classList.remove('dm-view-only');
+  document.getElementById('dm-pages-root')?.classList.remove('dm-view-only');
 
   window.__dmPortalActive = false;
   // Session persists — re-entry within 24h skips the approval check
