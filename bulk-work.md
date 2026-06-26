@@ -272,6 +272,79 @@ match /campaigns/{cid} {
 
 ---
 
+## 8c. ⭐ TRACK C — FULL OPEN5E INTEGRATION (design, approved 2026-06-26)
+Goal (Jozsua): use **everything Open5e offers**, with an **in-app source picker** to
+choose which publishers show. Restore point tagged: `pre-open5e-checkpoint` (commit
+55e5cb3) → `git reset --hard pre-open5e-checkpoint` to undo all Track C work.
+
+### ★ HARD SAFETY INVARIANT (must hold at every stage)
+Open5e is REFERENCE DATA ONLY. It is the catalogue players/DMs pick FROM. It must
+NEVER write to, migrate, transform, or re-fetch a saved character. A character's
+spells/items live as self-contained copies in `data.page3.spellsData` etc. The
+existing enrichment already obeys this (`enrichSpellDatabaseFromOpen5e` only mutates
+the in-memory `spellDatabase`, never the character blob — and falls back to local
+`spells.json` when offline, "no user impact"). KEEP THIS: enrich the catalogue,
+never the saved character. No player needs to do anything; ignoring the new tools =
+zero change for them.
+
+### Current state (what we have)
+- Player spells: local `spells.json` (1122, all sources) + live SRD-only enrich.
+- DM monsters: live fetch every open, **SRD-only**, **no cache**.
+- Links → open5e.com. That's it. ~2 of ~14 endpoints, SRD slice only.
+
+### Open5e v1 endpoints (confirmed live 2026-06-26)
+spells, spelllist, monsters, documents (=sources), backgrounds, planes, sections,
+feats, conditions, races, classes, magicitems, weapons, armor.
+Each supports `?document__slug=<source>` filtering and pagination (`next`).
+
+### Target architecture
+**NEW shared module `assets/modules/open5e.js`** — single cached reference layer all
+tools draw from (replaces scattered per-feature fetches).
+- `open5eGet(resource, {sources})` → cached fetch w/ pagination.
+- **Cache:** localStorage (small sets) / IndexedDB (monsters etc. are large). Keyed by
+  resource+sources+version. TTL + manual refresh. Works offline once cached.
+- **Source picker:** `dndOpen5eSources` localStorage pref (array of document slugs).
+  A UI PREFERENCE — NOT character data. Defaults to SRD.
+- Exposes: `getSpells()`, `getMonsters()`, `getMagicItems()`, `getFeats()`,
+  `getRaces()`, `getClasses()`, `getBackgrounds()`, `getConditions()`,
+  `getWeapons()`, `getArmor()`, `getSections()`, `listSources()`.
+
+### Where each piece goes / who it affects
+| Addition | Location | Affects |
+|---|---|---|
+| `open5e.js` shared module + cache | new file, index.html load order | infra only |
+| Source picker (which publishers) | DM Settings (+ maybe player Settings) | a pref, never char data |
+| Monster browser: cache + all sources | DM Monsters tab | DMs |
+| Magic items / feats / races / etc. browsers | new DM tabs/sections | DMs |
+| Spell catalogue expansion | player Spells browse list | players see MORE to pick; existing picks unchanged |
+| Offline cache | localStorage/IndexedDB | everyone — faster + resilient |
+
+### What it will NOT do
+- ❌ modify/migrate/re-fetch any saved character
+- ❌ change save/load behaviour
+- ❌ require players to act
+- ❌ break when Open5e is offline (cache + local `spells.json` fallback)
+
+### Build stages (each: local commit, syntax-check, reversible)
+1. **`open5e.js` shared module + cache** — no UI change. Pure infra.
+2. **Migrate existing fetches** (DM monsters, spell enrich) to use it — behaviour
+   IDENTICAL, just centralized + cached. Prove nothing breaks before expanding.
+3. **Source picker UI** (DM Settings) + wire `dndOpen5eSources`.
+4. **Monsters: all selected sources + cache** (the big immediate DM win).
+5. **Add content types one at a time:** magic items → feats → races/classes →
+   backgrounds/conditions → weapons/armor → sections (rules reference).
+6. **Player spell catalogue** honors source picker (additive; saved spells untouched).
+
+### Open questions to resolve per stage
+- Cache store: localStorage caps ~5MB; full monster set across all sources may exceed
+  it → use IndexedDB for the big resources. Decide at Stage 1.
+- Stale handling: version stamp + "Refresh data" button per resource.
+- Source list: fetch `documents` endpoint to populate the picker dynamically (so new
+  Open5e publishers appear automatically).
+- Where new DM browsers live: extra DM tabs vs. sub-sections of existing tabs (TBD w/ Jozsua).
+
+---
+
 ## 9. MASSIVE CHECKLIST
 Legend: [ ] todo · [~] in progress · [x] done · [!] blocked/needs Jozsua
 
@@ -324,6 +397,15 @@ Legend: [ ] todo · [~] in progress · [x] done · [!] blocked/needs Jozsua
 - [x] Local commit checkpoints (3 commits, unpushed)
 - [x] STOP — not pushed/deployed; handed back to Jozsua
 
+### Track C — full Open5e integration (§8c) — DESIGN DONE, build NOT started
+- [ ] Stage 1: `open5e.js` shared module + cache (no UI change)
+- [ ] Stage 2: migrate existing monster + spell fetches to it (identical behaviour)
+- [ ] Stage 3: source picker UI (DM Settings) + `dndOpen5eSources` pref
+- [ ] Stage 4: monsters across all selected sources + cache
+- [ ] Stage 5: add content types (items/feats/races/classes/backgrounds/conditions/weapons/armor/sections)
+- [ ] Stage 6: player spell catalogue honors source picker (saved spells untouched)
+- [ ] Verify SAFETY INVARIANT after each stage (no writes to character blobs)
+
 ### Access-control redesign (§8b) — NOT STARTED, design approved
 - [ ] Stage 1: campaigns subcollection rules (members/sheets/versions) + deploy
 - [ ] Stage 2: publish-on-Save (approved player Save → campaign sheet + version)
@@ -347,7 +429,11 @@ Legend: [ ] todo · [~] in progress · [x] done · [!] blocked/needs Jozsua
 ---
 
 ## ⭐ CURRENT FOCUS
-Two tracks now:
+Restore point tagged `pre-open5e-checkpoint` (commit 55e5cb3). Track C (full Open5e)
+is DESIGNED in §8c, build NOT started — awaiting Jozsua's go on Stage 1. Admin PIN
+changed to a new value by Jozsua via console (done).
+
+Three tracks now:
 - **Track A — Revamp (DONE, unpushed):** theming + dialogs + cleanup + dashboard. 3 local commits. Awaiting Jozsua's browser eyeball + push decision.
 - **Track B — Access-control redesign (DESIGNED, see §8b):** approved by Jozsua. Build incrementally in 6 stages. NOT started.
 
