@@ -469,7 +469,7 @@ campaigns/{cid}/sheets/{uid}/versions/{ts}  — immutable history (manual Save o
 **Stages:** (1) shared cached module (no UI change) → (2) migrate existing monster+spell fetches to it (identical behaviour) → (3) source picker UI → (4) monsters across all sources + cache → (5) add content types one at a time → (6) player spell catalogue honors picker (saved spells untouched).
 
 ### Restore points
-- Local zip snapshots per release live OUTSIDE the repo in `C:/GitHubNeverDelete/_backups/` (gitignored by location), each with a README of what shipped.
+- Local zip snapshots per release live OUTSIDE the repo in `C:\GitHubNeverDelete\Repos\JozzDNDSheet Backups\` (a sibling of the repo under `Repos\`, so it's never in the git tree), each with a README of what shipped.
 - Git tag `pre-open5e-checkpoint` (commit 55e5cb3) marks the pre-Track-C state.
 
 ## End-of-Session Changelog Checklist
@@ -492,7 +492,13 @@ The changelog file is `assets/changelog.js`. Version lives in `CHANGELOG_LATEST_
 ### Versioning & backup logic (set 2026-06-26)
 - The **repo folder name is just `JozzDNDSheet`** — NO version number in the folder (it never changes). The version number lives ONLY in the app (`CHANGELOG_LATEST_VERSION`).
 - **The version ticks up on every What's New / changelog entry** — 1 changelog entry = 1 version bump = 1 backup.
-- On each version bump, make a **local-only dated zip** in `C:/GitHubNeverDelete/_backups/JozzDNDSheet_v<ver>_<YYYY-MM-DD>.zip` (outside the repo, never committed) with a README of what shipped. See "Roadmap / Restore points" above.
+- On each version bump, make a **local-only dated zip** at `C:\GitHubNeverDelete\Repos\JozzDNDSheet Backups\JozzDNDSheet_v<ver>_<YYYY-MM-DD>.zip` (sibling of the repo, never committed) with a README of what shipped. See "Roadmap / Restore points" above. **How to build it:** a protection hook blocks deletes/overwrites on `backup`-named paths, so build the zip in TEMP and `Move-Item` it into the Backups folder (don't `Compress-Archive -Force` directly onto the target).
+- **`node tools/update-changelog.js` now does the backup automatically** — after writing the changelog it prompts `Create backup zip now? [Y/n]` (default yes) and builds the dated zip + README itself. The `bumpVersion` helper preserves the zero-padded `MAJOR.MINOR` scheme (`1.06 → 1.07`, not `1.6.x`); `patch`/`minor` both step the padded minor, `major` bumps the first and resets to `00`. Any non-padded version falls back to semver behaviour.
+
+### Character data backup (owner-only)
+- `tools/backup-all-chars.js` is a **browser-console** script (NOT run with node — same paste-into-console pattern as `seed-campaign.js`). Run it on the **live site while signed in as the owner**. It defines + auto-runs `backupAllChars()`.
+- What it does: reads EVERY user's characters via `db.collectionGroup('characters')` (authorized by the owner read rule in `firestore.rules`), resolves uid → username via `userProfiles`, writes one JSON per character named `username_charname_level_date.json`, packs them into `AllChars_backup_<date>.zip` (JSZip loaded from CDN), and downloads it. You then move/extract the zip into `C:\GitHubNeverDelete\Backup Chars` (browsers can't write to `C:\` directly).
+- **Track B dependency:** this relies on the currently over-permissive collectionGroup read. When Track B tightens that read to owner-only, keep `isOwnerAdmin()` in the path or this tool breaks for the owner too.
 
 ### Changelog system notes
 - `CHANGELOG_LATEST_VERSION` in `changelog.js` is the single source of truth for the current version number
