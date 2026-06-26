@@ -444,6 +444,34 @@ grep -rn "function targetName" assets/
 - `FONT_OPTIONS` — array in `core.js` defining available font choices. Must stay in sync with the `fontMap` in `index.html` early-boot script and the `<select>` in `pages/settings.html`.
 - `manualSpellSlots` — array of spell slot objects; order in the array is the display order. Drag-reorder mutates this array directly.
 
+## Roadmap / Planned Work (designed, not yet built)
+
+These two efforts were designed and approved but not yet implemented (the `bulk-work.md` dev journal that held them was retired at v1.06 — content folded here). Build incrementally; each stage should be a commit + syntax-check + reversible.
+
+### Track B — Access-control + data-ownership redesign
+**Problem:** all character data lives under `userData/{uid}` (player-owned); DMs read across ownership via a collectionGroup query, which Firestore rules can't authorize per-campaign. So the current rule is over-permissive: **any signed-in user can read any character** (read-only, low–moderate risk — requires dev tools, no creds exposed, no write).
+
+**Fix (principle):** data flows TO where authorized people already are. Players **publish** a copy of their sheet INTO their campaign; DMs/owner read within their own campaign (a scoped read rules CAN authorize). Target structure:
+```
+campaigns/{cid}/members/{uid}     — roster + join status (pending/approved)
+campaigns/{cid}/sheets/{uid}      — player's CURRENT published sheet (on manual Save)
+campaigns/{cid}/sheets/{uid}/versions/{ts}  — immutable history (manual Save only)
+```
+**Decisions:** versioning = **manual Save only** (Save writes current + an immutable timestamped version); DM **pulls** sheets with a button (not live); history append-only (`update,delete: if false`); owner can edit any campaign. Then tighten the collectionGroup characters read to owner-only.
+**Stages:** (1) campaigns subcollection rules + deploy → (2) publish-on-Save → (3) DM "Pull latest sheets" + tighten read rule → (4) version history viewer → (5) campaign request→owner approval → (6) owner edit-anything in Admin.
+
+### Track C — Full Open5e integration (everything + in-app source picker)
+**Goal:** use all of Open5e (spells, monsters, magicitems, feats, races, classes, backgrounds, conditions, weapons, armor, sections, documents) with an in-app picker for which publishers/sources to include.
+
+**★ SAFETY INVARIANT:** Open5e is REFERENCE DATA ONLY — the catalogue people pick FROM. It must NEVER write to / migrate / re-fetch a saved character. A character's spells/items are self-contained copies in `data.page3.spellsData` etc. The existing `enrichSpellDatabaseFromOpen5e()` already obeys this (mutates only the in-memory catalogue; falls back to local `spells.json` offline). Keep it: enrich the catalogue, never the saved character. Ignoring the new tools = zero change for any player.
+
+**Architecture:** new `assets/modules/open5e.js` — one cached reference layer all tools draw from. Source picker = `dndOpen5eSources` localStorage pref (a UI pref, NOT character data). Cache in localStorage/IndexedDB (monsters are large → IndexedDB) for speed + offline.
+**Stages:** (1) shared cached module (no UI change) → (2) migrate existing monster+spell fetches to it (identical behaviour) → (3) source picker UI → (4) monsters across all sources + cache → (5) add content types one at a time → (6) player spell catalogue honors picker (saved spells untouched).
+
+### Restore points
+- Local zip snapshots per release live OUTSIDE the repo in `C:/GitHubNeverDelete/_backups/` (gitignored by location), each with a README of what shipped.
+- Git tag `pre-open5e-checkpoint` (commit 55e5cb3) marks the pre-Track-C state.
+
 ## End-of-Session Changelog Checklist
 
 **IMPORTANT — always do this before the session ends or when the user mentions pushing, deploying, or finishing up.**
