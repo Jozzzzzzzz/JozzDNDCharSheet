@@ -489,6 +489,11 @@ Also offer to draft the bullet points yourself — you know exactly what changed
 
 The changelog file is `assets/changelog.js`. Version lives in `CHANGELOG_LATEST_VERSION`. New entries go at the top of the `CHANGELOG` array. The script at `tools/update-changelog.js` handles the write automatically.
 
+### Versioning & backup logic (set 2026-06-26)
+- The **repo folder name is just `JozzDNDSheet`** — NO version number in the folder (it never changes). The version number lives ONLY in the app (`CHANGELOG_LATEST_VERSION`).
+- **The version ticks up on every What's New / changelog entry** — 1 changelog entry = 1 version bump = 1 backup.
+- On each version bump, make a **local-only dated zip** in `C:/GitHubNeverDelete/_backups/JozzDNDSheet_v<ver>_<YYYY-MM-DD>.zip` (outside the repo, never committed) with a README of what shipped. See "Roadmap / Restore points" above.
+
 ### Changelog system notes
 - `CHANGELOG_LATEST_VERSION` in `changelog.js` is the single source of truth for the current version number
 - The hero title in `pages/home.html` has a `<span id="heroVersion">` — populated by `initChangelog()` on page load, always stays in sync with the version constant
