@@ -6,9 +6,24 @@
 // the Home button until they visit the home page.
 // ============================================================
 
-const CHANGELOG_LATEST_VERSION = '1.05';
+const CHANGELOG_LATEST_VERSION = '1.06';
 
 const CHANGELOG = [
+  {
+    version: '1.06',
+    date: '2026-06-26',
+    title: 'v1.06 — DM Portal Revamp',
+    updates: [
+      'The DM Portal now fully matches your character sheet — same theme, colours, and styling everywhere, so it feels like one app',
+      'It follows your chosen accent colour throughout',
+      'New "Player Spells & Actions" view shows every player\'s spells in one table, highlighting any overlaps',
+      'Smoother in-app pop-ups and messages across the DM tools',
+      'Owners can now drop into any campaign to view or manage it',
+    ],
+    fixes: [
+      'Tidied the DM Portal under the hood for a cleaner, more reliable experience',
+    ],
+  },
   {
     version: '1.05',
     date: '2026-06-24',
