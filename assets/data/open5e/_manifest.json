@@ -1,0 +1,73 @@
+{
+  "builtAt": "2026-06-26T22:09:55.190Z",
+  "source": "https://raw.githubusercontent.com/open5e/open5e-api/staging/data/v1",
+  "types": {
+    "monsters": {
+      "file": "monsters.json",
+      "count": 2799,
+      "sizeKb": 8325,
+      "sources": [
+        "wotc-srd:322",
+        "tob:391",
+        "tob2:383",
+        "tob3:397",
+        "cc:356",
+        "menagerie:586",
+        "blackflag:360",
+        "taldorei:4"
+      ]
+    },
+    "magicitems": {
+      "file": "magicitems.json",
+      "count": 1618,
+      "sizeKb": 1739,
+      "sources": [
+        "wotc-srd:237",
+        "a5e:546",
+        "toh:29",
+        "taldorei:1",
+        "vom:805"
+      ]
+    },
+    "spells": {
+      "file": "spells.json",
+      "count": 1435,
+      "sizeKb": 1871,
+      "sources": [
+        "wotc-srd:319",
+        "o5e:2",
+        "a5e:371",
+        "dmag:514",
+        "dmag-e:64",
+        "toh:91",
+        "warlock:43",
+        "kp:31"
+      ]
+    },
+    "conditions": {
+      "file": "conditions.json",
+      "count": 15,
+      "sizeKb": 8,
+      "sources": [
+        "wotc-srd:15"
+      ]
+    },
+    "weapons": {
+      "file": "weapons.json",
+      "count": 68,
+      "sizeKb": 23,
+      "sources": [
+        "wotc-srd:37",
+        "toh:31"
+      ]
+    },
+    "armor": {
+      "file": "armor.json",
+      "count": 18,
+      "sizeKb": 7,
+      "sources": [
+        "wotc-srd:18"
+      ]
+    }
+  }
+}

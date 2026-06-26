@@ -6030,15 +6030,33 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   }
 }
   
-  .spell-description {
+  .spell-summary {
     margin-top: 15px;
+    padding: 12px 14px;
+    background: #2a2a2a;
+    border-left: 3px solid var(--accent-text);
+    border-radius: 6px;
+    font-size: 0.95em;
+    line-height: 1.5;
+  }
+
+  .spell-summary-upcast {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--accent-border);
+    font-size: 0.9em;
+    color: var(--accent-text);
+  }
+
+  .spell-description {
+    margin-top: 12px;
     padding: 10px;
     background: #2a2a2a;
     border-radius: 4px;
     max-height: 200px;
     overflow-y: auto;
   }
-  
+
   /* Add/Edit Spell Popup */
   #spellFormPopup {
     max-width: 700px;
@@ -6807,6 +6825,20 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   .class-level-row input {
     width: 60px;
     text-align: center;
+  }
+
+  .spell-source-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 7px;
+    font-size: 0.72em;
+    font-weight: 600;
+    border-radius: 10px;
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-border);
+    color: var(--accent-text);
+    vertical-align: middle;
+    white-space: nowrap;
   }
 
   .remove-class-btn {

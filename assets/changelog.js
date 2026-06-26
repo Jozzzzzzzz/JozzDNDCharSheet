@@ -6,9 +6,24 @@
 // the Home button until they visit the home page.
 // ============================================================
 
-const CHANGELOG_LATEST_VERSION = '1.06';
+const CHANGELOG_LATEST_VERSION = '1.07';
 
 const CHANGELOG = [
+  {
+    version: '1.07',
+    date: '2026-06-27',
+    title: 'v1.07 — All Spells & Smart Summaries',
+    updates: [
+      'Importing spells now includes every spell from all supported rulebooks — Deep Magic, Tome of Heroes, A5e, Warlock, Kobold Press and more — not just the SRD',
+      'Each spell now shows which book it comes from with a small source badge',
+      'Spell details now open with a short, easy-to-read summary of how the spell works instead of a wall of text',
+      'Upcasting ("at higher levels") info is kept and shown on its own clear line in the summary',
+      'Every spell links straight to its full entry on Open5e for the complete rules text',
+    ],
+    fixes: [
+      'Spell data now refreshes properly after an update instead of loading an old cached copy',
+    ],
+  },
   {
     version: '1.06',
     date: '2026-06-26',

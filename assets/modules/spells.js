@@ -46,6 +46,7 @@ const SPELL_RECORD_FIELD_ORDER = [
   'prepared',
   'classes',
   'sourceBook',
+  'summary',
   'description',
   'wikiLink'
 ];
@@ -76,6 +77,7 @@ function normalizeSpellRecord(spell, fallback = {}) {
     prepared: Boolean(source.prepared ?? base.prepared ?? false),
     classes: [...new Set(mergedClasses)],
     sourceBook: String(source.sourceBook ?? base.sourceBook ?? ''),
+    summary: String(source.summary ?? base.summary ?? ''),
     description: String(source.description ?? base.description ?? ''),
     wikiLink: String(source.wikiLink ?? base.wikiLink ?? '')
   };
@@ -113,7 +115,10 @@ function open5eSpellLink(slugOrName) {
 async function loadSpellDatabase() {
   // Step 1: load local spells.json as the base (fast, works offline)
   try {
-    const resp = await fetch('assets/data/spells.json');
+    // Cache-bust the data file the same way scripts are, so updated spell data
+    // (e.g. new summaries) isn't served stale from the browser cache.
+    const dataVersion = (typeof window !== 'undefined' && window.__SCRIPT_VERSION__) || Date.now();
+    const resp = await fetch(`assets/data/spells.json?v=${dataVersion}`);
     const spells = await resp.json();
     spellDatabase = {};
     spells.forEach(spell => {
@@ -454,7 +459,7 @@ function showImportPopup(type) {
   
   // Add first class selection
   addClassLevel();
-  
+
   showPopup('importSpellsPopup');
 }
 
@@ -1326,8 +1331,11 @@ function createSpellItem(spell, type, index) {
   const isFav = isFavorited(actionType, spell.name);
   
   const spellInfo = document.createElement('div');
+  const sourceBadge = spell.sourceBook
+    ? `<span class="spell-source-badge" title="From ${escapeHtml(spell.sourceBook)}">${escapeHtml(spell.sourceBook)}</span>`
+    : '';
   spellInfo.innerHTML = `
-    <strong>${spell.name}</strong>
+    <strong>${spell.name}</strong>${sourceBadge}
     <span style="color: #888; font-size: 0.9em;">
       ${spell.school} • ${spell.castingTime} • ${spell.range}
       ${spell.damage ? ` • ${spell.damage}` : ''}
@@ -1380,8 +1388,46 @@ function showSpellDetails(type, index) {
   document.getElementById('spellDetailAttack').textContent = spell.attack || 'None';
   document.getElementById('spellDetailRitual').textContent = spell.ritual ? 'Yes' : 'No';
   document.getElementById('spellDetailConcentration').textContent = spell.concentration ? 'Yes' : 'No';
-  document.getElementById('spellDetailDescription').textContent = spell.description;
-  
+
+  // Show the short accurate summary as the in-app text. The full official
+  // description is intentionally NOT shown here (it's long) — the Open5e link
+  // below is the source of truth for the complete spell text.
+  const summaryEl = document.getElementById('spellDetailSummary');
+  const descEl = document.getElementById('spellDetailDescription');
+  const hasSummary = spell.summary && spell.summary.trim();
+  if (summaryEl) {
+    if (hasSummary) {
+      // Summary may carry an "Upcast:" line after a newline — render it as its
+      // own styled line rather than collapsing the break.
+      const [mainText, ...rest] = spell.summary.split('\n');
+      const upcastText = rest.join(' ').trim();
+      summaryEl.innerHTML = '';
+      const mainSpan = document.createElement('div');
+      mainSpan.textContent = mainText;
+      summaryEl.appendChild(mainSpan);
+      if (upcastText) {
+        const upSpan = document.createElement('div');
+        upSpan.className = 'spell-summary-upcast';
+        upSpan.textContent = upcastText;
+        summaryEl.appendChild(upSpan);
+      }
+      summaryEl.style.display = 'block';
+    } else {
+      summaryEl.textContent = '';
+      summaryEl.style.display = 'none';
+    }
+  }
+  if (descEl) {
+    // Fall back to the full description only if a spell somehow has no summary.
+    if (hasSummary) {
+      descEl.style.display = 'none';
+      descEl.textContent = '';
+    } else {
+      descEl.textContent = spell.description || '';
+      descEl.style.display = spell.description ? 'block' : 'none';
+    }
+  }
+
   // Source book
   const sourceBookEl = document.getElementById('spellDetailSourceBook');
   if (sourceBookEl) sourceBookEl.textContent = spell.sourceBook || '';
@@ -1439,8 +1485,11 @@ function createPreparedSpellItem(spell, actionType, indexToUse) {
   const isFav = isFavorited(actionType, spell.name);
 
   const spellInfo = document.createElement('div');
+  const sourceBadge = spell.sourceBook
+    ? `<span class="spell-source-badge" title="From ${escapeHtml(spell.sourceBook)}">${escapeHtml(spell.sourceBook)}</span>`
+    : '';
   spellInfo.innerHTML = `
-    <strong>${spell.name}</strong>
+    <strong>${spell.name}</strong>${sourceBadge}
     <span style="color: #888; font-size: 0.9em;">
       ${spell.school} • ${spell.castingTime} • ${spell.range}
       ${spell.damage ? ` • ${spell.damage}` : ''}
