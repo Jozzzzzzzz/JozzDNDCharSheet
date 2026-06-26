@@ -77,6 +77,42 @@ function formatEntry(version, date, title, updates, fixes) {
   return `  {\n    version: '${version}',\n    date: '${date}',\n    title: '${title.replace(/'/g, "\\'")}',\n${updatesJs}\n${fixesJs}\n  }`;
 }
 
+// Read the full CHANGELOG array out of assets/changelog.js so the backup README
+// can list the complete version history, not just this release. changelog.js is
+// our own file (const CHANGELOG = [...]); we evaluate it in an isolated scope.
+function readFullChangelog() {
+  try {
+    const src = fs.readFileSync(CHANGELOG_PATH, 'utf8');
+    // Pull just the CHANGELOG array literal and return it.
+    const m = src.match(/const\s+CHANGELOG\s*=\s*(\[[\s\S]*?\n\]);/);
+    if (!m) return [];
+    // eslint-disable-next-line no-new-func
+    return new Function(`return ${m[1]};`)();
+  } catch {
+    return [];
+  }
+}
+
+// Render the entire version history as markdown for the backup README.
+function buildVersionHistory() {
+  const history = readFullChangelog();
+  if (!history.length) return [];
+  const lines = ['## Full version history', ''];
+  history.forEach(entry => {
+    lines.push(`### v${entry.version}${entry.title ? ` — ${entry.title.replace(/^v[\d.]+\s*—\s*/, '')}` : ''}${entry.date ? `  (${entry.date})` : ''}`);
+    if (Array.isArray(entry.updates) && entry.updates.length) {
+      lines.push('', '**New:**');
+      entry.updates.forEach(u => lines.push(`- ${u}`));
+    }
+    if (Array.isArray(entry.fixes) && entry.fixes.length) {
+      lines.push('', '**Fixed:**');
+      entry.fixes.forEach(f => lines.push(`- ${f}`));
+    }
+    lines.push('');
+  });
+  return lines;
+}
+
 function buildBackupReadme(version, date, title, updates, fixes) {
   const lines = [];
   lines.push(`# JozzDNDSheet — Backup v${version} (${date})`);
@@ -107,6 +143,11 @@ function buildBackupReadme(version, date, title, updates, fixes) {
     lines.push('_No changelog bullets recorded for this entry._');
     lines.push('');
   }
+
+  // Full version history — every known change across all versions, so each
+  // backup zip is self-documenting.
+  buildVersionHistory().forEach(l => lines.push(l));
+
   lines.push('## Restore');
   lines.push('');
   lines.push('Unzip into an empty folder and open `index.html`, or serve it:');
