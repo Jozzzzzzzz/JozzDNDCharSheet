@@ -72,7 +72,7 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if isOwnerAdmin();
 
-      // Join requests: campaigns/{id}/joinRequests/{uid}
+      // Join requests: campaigns/{id}/joinRequests/{uid}  (LEGACY — kept during transition)
       match /joinRequests/{uid} {
         // A player manages their own request; owner & assigned DMs can read all
         allow create, delete: if isSignedIn() && request.auth.uid == uid;
@@ -80,6 +80,22 @@ service cloud.firestore {
                        || isOwnerAdmin() || isCampaignDm(campaignId);
         // Approve / deny: owner or assigned DM updates status
         allow update: if isOwnerAdmin() || isCampaignDm(campaignId);
+      }
+
+      // Membership: campaigns/{id}/members/{uid}
+      // A member doc is a player's grant of read-access to the DM/owner.
+      // It is the SOURCE OF TRUTH for the campaign roster (not the player's
+      // own character doc), so a DM/owner can remove a player instantly even
+      // while that player is offline.
+      match /members/{uid} {
+        // Player joins (create) and leaves (delete) their OWN membership,
+        // and reads their own to know they're in.
+        allow create, delete: if isSignedIn() && request.auth.uid == uid;
+        allow read: if (isSignedIn() && request.auth.uid == uid)
+                       || isOwnerAdmin() || isCampaignDm(campaignId);
+        // DM / owner can remove (delete) any member; owner can add/write anyone.
+        allow delete: if isOwnerAdmin() || isCampaignDm(campaignId);
+        allow write:  if isOwnerAdmin();
       }
     }
 

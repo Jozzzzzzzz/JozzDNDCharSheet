@@ -4,20 +4,12 @@
     <p class="dm-page-subtitle" id="dmPlayersSubtitle">Characters linked to your campaign</p>
   </div>
 
-  <div class="dm-card" id="dmPendingCard" style="display:none;">
-    <div class="dm-card-header">
-      <h3>Pending Players</h3>
-    </div>
-    <p class="dm-note">Players who entered the join password and are waiting for your approval.</p>
-    <div id="dmPendingList" class="dm-players-list"></div>
-  </div>
-
   <div class="dm-card">
     <div class="dm-card-header">
       <h3>Campaign Characters</h3>
       <button class="dm-action-btn" onclick="dmLoadPlayers()">Refresh</button>
     </div>
-    <p class="dm-note">Players must enter your exact campaign name in <strong>Stats → Character Info → Campaign</strong>. It is case-sensitive.</p>
+    <p class="dm-note">Players join from <strong>Settings → Campaign Access</strong> using your campaign password. Joining grants you read-only view access to their sheet.</p>
     <div id="dmPlayersList" class="dm-players-list">
       <p class="dm-empty-state">Hit Refresh to load players.</p>
     </div>

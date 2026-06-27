@@ -804,36 +804,35 @@ async function dmLoadPlayers() {
     return;
   }
 
-  // Load pending join requests in parallel
-  dmLoadPendingPlayers();
+  const campaignId = dmCurrentCampaignId();
+  if (!campaignId) {
+    list.innerHTML = '<p class="dm-empty-state">No campaign id in your session. Exit and re-enter the DM portal to refresh.</p>';
+    return;
+  }
 
   list.innerHTML = '<p class="dm-empty-state">Loading players...</p>';
 
   try {
-    // Query all characters subcollection docs where campaignId matches
-    const snap = await db.collectionGroup('characters')
-      .where('data.characterInfo.campaignId', '==', campaignName)
-      .get();
+    // Roster source of truth: campaigns/{id}/members (a scoped, authorized read).
+    // Each member doc is a player's grant of view access. Removing a player =
+    // deleting their member doc, which works instantly even if they're offline.
+    const snap = await db.collection('campaigns').doc(campaignId).collection('members').get();
 
     if (snap.empty) {
-      list.innerHTML = `<p class="dm-empty-state">No characters linked to "<strong>${escapeHtml(campaignName)}</strong>" yet. Players need to enter this exact campaign name in their Character Info → Campaign field.</p>`;
+      list.innerHTML = `<p class="dm-empty-state">No players have joined "<strong>${escapeHtml(campaignName)}</strong>" yet. Players join from Settings → Campaign Access using the campaign password.</p>`;
       return;
     }
 
     const cards = [];
     snap.forEach(doc => {
-      const d = doc.data() || {};
-      const info = d?.data?.characterInfo || {};
+      const m = doc.data() || {};
       cards.push({
-        uid: doc.ref.parent.parent.id,
-        charId: doc.id,
-        name: info.name || 'Unnamed',
-        race: info.race || '',
-        cls: info.class || '',
-        subclass: info.subclass || '',
-        level: info.level || '',
-        campaign: info.campaignId || '',
-        updatedAt: d.updatedAt || null
+        uid: m.uid || doc.id,
+        charId: m.charId || '',
+        name: m.charName || 'Unnamed',
+        race: m.race || '',
+        cls: m.class || '',
+        level: m.level || ''
       });
     });
 
@@ -843,10 +842,10 @@ async function dmLoadPlayers() {
       <div class="dm-player-card">
         <div class="dm-player-info">
           <span class="dm-player-name">${escapeHtml(c.name)}</span>
-          <span class="dm-player-meta">${[c.race, c.cls, c.subclass, c.level ? 'Lv ' + c.level : ''].filter(Boolean).join(' · ')}</span>
+          <span class="dm-player-meta">${[c.race, c.cls, c.level ? 'Lv ' + c.level : ''].filter(Boolean).join(' · ')}</span>
         </div>
         <div class="dm-player-actions">
-          <button class="dm-action-btn" onclick="dmViewPlayerCharacter('${c.uid}','${c.charId}')">View Sheet</button>
+          ${c.charId ? `<button class="dm-action-btn" onclick="dmViewPlayerCharacter('${c.uid}','${c.charId}')">View Sheet</button>` : ''}
           <button class="dm-action-btn dm-danger-btn" onclick="dmRemovePlayer('${c.uid}','${escapeHtml(c.name)}',this)">Remove</button>
         </div>
       </div>
@@ -858,80 +857,10 @@ async function dmLoadPlayers() {
   }
 }
 
-// ─── Pending join requests (approve / deny / remove) ───────────────────────
+// ─── Campaign membership (roster + remove) ─────────────────────────────────
 
 function dmCurrentCampaignId() {
   return dmSessionLoad()?.campaignId || '';
-}
-
-async function dmLoadPendingPlayers() {
-  const card = document.getElementById('dmPendingCard');
-  const list = document.getElementById('dmPendingList');
-  if (!list) return;
-  const db = window.db;
-  const campaignId = dmCurrentCampaignId();
-  if (!db || !campaignId) { if (card) card.style.display = 'none'; return; }
-
-  try {
-    const snap = await db.collection('campaigns').doc(campaignId)
-      .collection('joinRequests').where('status', '==', 'pending').get();
-    if (snap.empty) { if (card) card.style.display = 'none'; list.innerHTML = ''; return; }
-
-    const rows = [];
-    snap.forEach(doc => { const r = doc.data() || {}; rows.push({ uid: doc.id, name: r.charName || 'Unnamed' }); });
-    rows.sort((a, b) => a.name.localeCompare(b.name));
-
-    if (card) card.style.display = '';
-    list.innerHTML = rows.map(r => `
-      <div class="dm-player-card">
-        <div class="dm-player-info">
-          <span class="dm-player-name">${escapeHtml(r.name)}</span>
-          <span class="dm-player-meta">Waiting for approval</span>
-        </div>
-        <div class="dm-player-actions">
-          <button class="dm-action-btn accent-contrast-bg" onclick="dmApproveJoin('${r.uid}',this)">Approve</button>
-          <button class="dm-action-btn dm-danger-btn" onclick="dmDenyJoin('${r.uid}',this)">Deny</button>
-        </div>
-      </div>
-    `).join('');
-  } catch (e) {
-    console.error('dmLoadPendingPlayers failed:', e);
-    if (card) card.style.display = '';
-    list.innerHTML = `<p class="dm-empty-state">${escapeHtml(friendlyFirebaseError(e))}</p>`;
-  }
-}
-
-async function dmApproveJoin(uid, btn) {
-  const db = window.db;
-  const campaignId = dmCurrentCampaignId();
-  if (!db || !campaignId) return;
-  if (btn) { btn.disabled = true; btn.textContent = 'Approving…'; }
-  try {
-    await db.collection('campaigns').doc(campaignId)
-      .collection('joinRequests').doc(uid).update({ status: 'approved' });
-    // Refresh both panels after a short beat (player completes the join on their end)
-    dmLoadPendingPlayers();
-    setTimeout(() => dmLoadPlayers(), 1500);
-  } catch (e) {
-    if (btn) { btn.disabled = false; btn.textContent = 'Approve'; }
-    dmToast(friendlyFirebaseError(e), 'error');
-  }
-}
-
-async function dmDenyJoin(uid, btn) {
-  const db = window.db;
-  const campaignId = dmCurrentCampaignId();
-  if (!db || !campaignId) return;
-  if (btn) { btn.disabled = true; btn.textContent = 'Denying…'; }
-  try {
-    // Mark denied so the player's listener shows the message, then it self-clears
-    await db.collection('campaigns').doc(campaignId)
-      .collection('joinRequests').doc(uid).update({ status: 'denied' });
-    dmLoadPendingPlayers();
-  } catch (e) {
-    if (btn) { btn.disabled = false; btn.textContent = 'Deny'; }
-    dmToast(friendlyFirebaseError(e), 'error');
-  }
 }
 
 const _dmRemoveState = {};
@@ -949,9 +878,12 @@ async function dmRemovePlayer(uid, name, btn) {
   if (!db || !campaignId) return;
   if (btn) { btn.disabled = true; btn.textContent = 'Removing…'; }
   try {
-    // Deleting the request doc signals the player's app to clear their campaignId.
+    // Delete the member doc — the roster reads members, so the player is gone
+    // immediately regardless of whether they're online. Their own app clears its
+    // campaign indicator on next load when it sees no member doc.
     await db.collection('campaigns').doc(campaignId)
-      .collection('joinRequests').doc(uid).delete();
+      .collection('members').doc(uid).delete();
+    dmToast(name + ' removed.', 'success');
     dmLoadPlayers();
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = 'Remove'; }
@@ -959,9 +891,6 @@ async function dmRemovePlayer(uid, name, btn) {
   }
 }
 
-window.dmLoadPendingPlayers = dmLoadPendingPlayers;
-window.dmApproveJoin = dmApproveJoin;
-window.dmDenyJoin = dmDenyJoin;
 window.dmRemovePlayer = dmRemovePlayer;
 
 // ─── Player Spells overview (matrix table with overlap highlighting) ────────
@@ -1071,6 +1000,14 @@ async function dmViewPlayerCharacter(uid, charId) {
     const d = doc.data() || {};
     const info = d?.data?.characterInfo || {};
     const p1 = d?.data?.page1 || {};
+    const savedAt = (() => {
+      const ts = d.updatedAt;
+      if (!ts) return '';
+      try {
+        const dt = (typeof ts.toDate === 'function') ? ts.toDate() : new Date(ts);
+        return 'Last saved ' + dt.toLocaleString();
+      } catch (_) { return ''; }
+    })();
 
     // Build a read-only summary popup
     const panel = document.getElementById('dmPlayerSheetPanel');
@@ -1090,6 +1027,7 @@ async function dmViewPlayerCharacter(uid, charId) {
           <h3>${escapeHtml(info.name || 'Unnamed')}</h3>
           <p>${[info.race, info.class, info.subclass, info.level ? 'Level ' + info.level : ''].filter(Boolean).join(' · ')}</p>
           <p style="opacity:0.45;font-size:0.8em;">${escapeHtml(info.background || '')}</p>
+          ${savedAt ? `<p style="opacity:0.5;font-size:0.75em;margin-top:4px;">🕒 ${escapeHtml(savedAt)}</p>` : ''}
         </div>
         <div class="dm-sb-abilities" style="margin:14px 0;">${abilityRows}</div>
         <div class="dm-player-sheet-stats">

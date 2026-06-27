@@ -113,12 +113,35 @@ function isActiveNow(ts) {
   } catch (_) { return false; }
 }
 
+// Short relative time, e.g. "2m ago", "3d ago". Falls back to '' if unknown.
+function timeAgo(ts) {
+  try {
+    if (!ts) return '';
+    const d = typeof ts.toDate === 'function' ? ts.toDate() : new Date(ts);
+    if (!d || Number.isNaN(d.getTime())) return '';
+    const secs = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000));
+    if (secs < 60) return 'just now';
+    const mins = Math.floor(secs / 60);
+    if (mins < 60) return mins + 'm ago';
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return hrs + 'h ago';
+    const days = Math.floor(hrs / 24);
+    if (days < 30) return days + 'd ago';
+    const months = Math.floor(days / 30);
+    if (months < 12) return months + 'mo ago';
+    return Math.floor(months / 12) + 'y ago';
+  } catch (_) { return ''; }
+}
+
 async function adminRefreshUsers() {
   if (!window.__adminPortalUnlocked) return;
   const db = window.db;
   if (!db) return;
-  const select = document.getElementById('adminUserSelect');
-  if (!select) return;
+  const grid = document.getElementById('adminUserGrid');
+  if (!grid) return;
+
+  const meta = document.getElementById('adminUserMeta');
+  if (meta) meta.textContent = 'Loading users…';
 
   const [profilesSnap, signinsSnap] = await Promise.all([
     db.collection('userProfiles').get(),
@@ -141,25 +164,72 @@ async function adminRefreshUsers() {
 
   const users = Object.values(byUid)
     .filter(u => (u.email || '').trim().length > 0)
-    .sort((a, b) => String(a.email).localeCompare(String(b.email)));
+    .sort((a, b) => {
+      // Active users first, then by email
+      const aActive = isActiveNow(a.lastSeenAt) ? 0 : 1;
+      const bActive = isActiveNow(b.lastSeenAt) ? 0 : 1;
+      if (aActive !== bActive) return aActive - bActive;
+      return String(a.email).localeCompare(String(b.email));
+    });
 
   window.__adminUsers = users;
   window.__adminUsersByUid = byUid;
 
-  select.innerHTML = '<option value="">Select a user...</option>';
-  users.forEach(u => {
-    const label = `${u.nickname ? u.nickname + ' - ' : ''}${u.email}`;
-    const opt = document.createElement('option');
-    opt.value = u.uid;
-    opt.textContent = label;
-    select.appendChild(opt);
-  });
+  renderAdminUserGrid(users);
 
-  const meta = document.getElementById('adminUserMeta');
-  if (meta) meta.textContent = `Loaded ${users.length} users.`;
+  if (meta) {
+    const activeCount = users.filter(u => isActiveNow(u.lastSeenAt)).length;
+    meta.textContent = `${users.length} user${users.length === 1 ? '' : 's'}` +
+      (activeCount ? ` · ${activeCount} active now` : '');
+  }
+
+  // Clear any previously-shown character list
+  const out = document.getElementById('adminUserCharacters');
+  if (out) out.innerHTML = '';
 }
 
 window.adminRefreshUsers = adminRefreshUsers;
+
+// Render the user card grid from a list of user objects.
+function renderAdminUserGrid(users) {
+  const grid = document.getElementById('adminUserGrid');
+  if (!grid) return;
+  if (!users.length) {
+    grid.innerHTML = '<p class="settings-note">No users found.</p>';
+    return;
+  }
+  grid.innerHTML = users.map(u => {
+    const active = isActiveNow(u.lastSeenAt);
+    const name = u.nickname || (u.email || '').split('@')[0] || 'User';
+    const seen = active ? 'Active now' : (timeAgo(u.lastSeenAt) ? 'Seen ' + timeAgo(u.lastSeenAt) : 'Never seen');
+    const devices = u.knownDeviceCount || 0;
+    return `
+      <button type="button" class="admin-user-card" data-uid="${escapeHtml(u.uid)}" onclick="adminSelectUser('${escapeHtml(u.uid)}')">
+        <div class="admin-user-card-top">
+          <span class="admin-user-dot ${active ? 'is-active' : ''}" title="${active ? 'Active now' : 'Offline'}"></span>
+          <span class="admin-user-name">${escapeHtml(name)}</span>
+        </div>
+        <span class="admin-user-email">${escapeHtml(u.email || u.uid)}</span>
+        <div class="admin-user-card-meta">
+          <span>🖥 ${devices} device${devices === 1 ? '' : 's'}</span>
+          <span>🕒 ${escapeHtml(seen)}</span>
+        </div>
+      </button>`;
+  }).join('');
+}
+
+// Live filter the grid by name/email substring.
+function adminFilterUsers(query) {
+  const users = window.__adminUsers || [];
+  const q = (query || '').trim().toLowerCase();
+  if (!q) { renderAdminUserGrid(users); return; }
+  const filtered = users.filter(u =>
+    String(u.email || '').toLowerCase().includes(q) ||
+    String(u.nickname || '').toLowerCase().includes(q));
+  renderAdminUserGrid(filtered);
+}
+
+window.adminFilterUsers = adminFilterUsers;
 
 async function adminLoadUserChars(uid) {
   const db = window.db;
@@ -173,29 +243,43 @@ async function adminLoadUserChars(uid) {
 }
 
 async function adminSelectUser(uid) {
-  const meta = document.getElementById('adminUserMeta');
   const out = document.getElementById('adminUserCharacters');
   if (out) out.innerHTML = '';
-  if (!uid) {
-    if (meta) meta.textContent = '';
-    return;
-  }
+  if (!uid) return;
+
+  // Highlight the selected card
+  document.querySelectorAll('.admin-user-card').forEach(c =>
+    c.classList.toggle('is-selected', c.dataset.uid === uid));
 
   const user = window.__adminUsersByUid[uid] || { uid };
-  const active = isActiveNow(user.lastSeenAt) ? 'Active now' : 'Not active';
-  if (meta) {
-    meta.textContent = `${user.email || uid} | ${user.nickname || 'no nickname'} | Devices: ${user.knownDeviceCount || 0} | Last sign-in: ${formatTs(user.lastSignInAt)} | ${active}`;
-  }
+  const active = isActiveNow(user.lastSeenAt);
 
   const db = window.db;
   if (!db || !out) return;
 
+  out.innerHTML = '<p class="settings-note">Loading characters…</p>';
+
   try {
     const chars = await adminLoadUserChars(uid);
+
+    // Header for the selected user, shown above their characters.
+    const header = `
+      <div class="admin-user-detail-header">
+        <h4>${escapeHtml(user.nickname || (user.email || '').split('@')[0] || 'User')}</h4>
+        <div class="admin-user-detail-chips">
+          <span class="admin-chip ${active ? 'is-active' : ''}">${active ? '● Active now' : '○ Offline'}</span>
+          <span class="admin-chip">${escapeHtml(user.email || uid)}</span>
+          <span class="admin-chip">🖥 ${user.knownDeviceCount || 0} device${(user.knownDeviceCount || 0) === 1 ? '' : 's'}</span>
+          <span class="admin-chip">🕒 Last sign-in: ${escapeHtml(formatTs(user.lastSignInAt) || '—')}</span>
+          <span class="admin-chip">${chars.length} character${chars.length === 1 ? '' : 's'}</span>
+        </div>
+      </div>`;
+
     if (!chars.length) {
-      out.innerHTML = '<p class="settings-note">No characters found for this user.</p>';
+      out.innerHTML = header + '<p class="settings-note">No characters found for this user.</p>';
       return;
     }
+    out.innerHTML = header;
 
     const container = document.createElement('div');
     chars.forEach(c => {
@@ -512,49 +596,26 @@ async function adminViewCampaignPlayers(campaignId, campaignName) {
   panel.innerHTML = '<p class="settings-note">Loading...</p>';
 
   try {
-    // Pending join requests
-    const pendSnap = await db.collection('campaigns').doc(campaignId)
-      .collection('joinRequests').where('status', '==', 'pending').get();
-    const pendRows = [];
-    pendSnap.forEach(doc => {
-      const r = doc.data() || {};
-      pendRows.push(`
-        <div class="admin-campaign-player-row">
-          <span class="admin-campaign-player-name">${escapeHtml(r.charName || 'Unnamed')} <em class="settings-note">(pending)</em></span>
-          <span>
-            <button class="settings-action-btn accent-contrast-bg" onclick="adminApproveJoin('${campaignId}','${doc.id}','${escapeHtml(campaignName)}')">Approve</button>
-            <button class="settings-action-btn admin-delete-btn" onclick="adminDenyJoin('${campaignId}','${doc.id}','${escapeHtml(campaignName)}')">Deny</button>
-          </span>
-        </div>
-      `);
-    });
-
-    // Approved roster
-    const snap = await db.collectionGroup('characters')
-      .where('data.characterInfo.campaignId', '==', campaignName)
-      .get();
+    // Roster source of truth: campaigns/{id}/members (matches the DM portal).
+    const snap = await db.collection('campaigns').doc(campaignId).collection('members').get();
     const rows = [];
     snap.forEach(doc => {
-      const d = doc.data() || {};
-      const info = d?.data?.characterInfo || {};
-      const uid = doc.ref.parent.parent.id;
+      const m = doc.data() || {};
+      const uid = m.uid || doc.id;
       rows.push(`
         <div class="admin-campaign-player-row">
-          <span class="admin-campaign-player-name">${escapeHtml(info.name || 'Unnamed')}</span>
-          <span class="settings-note">${escapeHtml([info.race, info.class, info.subclass, info.level ? 'Lv ' + info.level : ''].filter(Boolean).join(' · '))}</span>
+          <span class="admin-campaign-player-name">${escapeHtml(m.charName || 'Unnamed')}</span>
+          <span class="settings-note">${escapeHtml([m.race, m.class, m.level ? 'Lv ' + m.level : ''].filter(Boolean).join(' · '))}</span>
           <button class="settings-action-btn admin-delete-btn" onclick="adminRemovePlayer('${campaignId}','${uid}','${escapeHtml(campaignName)}')">Remove</button>
         </div>
       `);
     });
 
-    const pendHtml = pendRows.length
-      ? `<h5 class="settings-note" style="margin:6px 0;">Pending (${pendRows.length})</h5>${pendRows.join('')}`
-      : '';
     const rosterHtml = rows.length
       ? `<h5 class="settings-note" style="margin:10px 0 6px;">Players (${rows.length})</h5>${rows.join('')}`
-      : '<p class="settings-note">No approved players yet.</p>';
+      : '<p class="settings-note">No players have joined yet.</p>';
 
-    panel.innerHTML = `<div class="admin-campaign-players-list">${pendHtml}${rosterHtml}</div>`;
+    panel.innerHTML = `<div class="admin-campaign-players-list">${rosterHtml}</div>`;
   } catch (e) {
     panel.innerHTML = `<p class="settings-note">${escapeHtml(adminFriendlyError(e))}</p>`;
   }
@@ -566,41 +627,15 @@ function adminFriendlyError(e) {
   return (e && e.message) ? e.message : 'Something went wrong. Try again.';
 }
 
-async function adminApproveJoin(campaignId, uid, campaignName) {
-  const db = window.db;
-  if (!db) return;
-  try {
-    await db.collection('campaigns').doc(campaignId)
-      .collection('joinRequests').doc(uid).update({ status: 'approved' });
-    setAdminCampaignStatus('Player approved.', 'success');
-    setTimeout(() => adminViewCampaignPlayers(campaignId, campaignName), 100);
-    setTimeout(() => adminViewCampaignPlayers(campaignId, campaignName), 1600);
-  } catch (e) {
-    setAdminCampaignStatus(adminFriendlyError(e), 'error');
-  }
-}
-
-async function adminDenyJoin(campaignId, uid, campaignName) {
-  const db = window.db;
-  if (!db) return;
-  try {
-    await db.collection('campaigns').doc(campaignId)
-      .collection('joinRequests').doc(uid).update({ status: 'denied' });
-    setAdminCampaignStatus('Request denied.', 'success');
-    setTimeout(() => adminViewCampaignPlayers(campaignId, campaignName), 100);
-  } catch (e) {
-    setAdminCampaignStatus(adminFriendlyError(e), 'error');
-  }
-}
-
 async function adminRemovePlayer(campaignId, uid, campaignName) {
-  if (!confirm('Remove this player from the campaign? Their campaign field will clear and they can request to re-join.')) return;
+  if (!confirm('Remove this player from the campaign? Their campaign indicator clears and they can re-join with the password.')) return;
   const db = window.db;
   if (!db) return;
   try {
-    // Deleting the request doc signals the player's app to clear their campaignId
+    // Delete the member doc — the roster reads members, so the player is removed
+    // instantly even while offline. Their own app clears its indicator next load.
     await db.collection('campaigns').doc(campaignId)
-      .collection('joinRequests').doc(uid).delete();
+      .collection('members').doc(uid).delete();
     setAdminCampaignStatus('Player removed.', 'success');
     setTimeout(() => adminViewCampaignPlayers(campaignId, campaignName), 100);
   } catch (e) {
@@ -608,8 +643,6 @@ async function adminRemovePlayer(campaignId, uid, campaignName) {
   }
 }
 
-window.adminApproveJoin = adminApproveJoin;
-window.adminDenyJoin = adminDenyJoin;
 window.adminRemovePlayer = adminRemovePlayer;
 
 async function adminChangeCampaignPassword(campaignId, which) {

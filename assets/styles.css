@@ -4392,21 +4392,31 @@
 }
 
 /* ── Campaign Field ── */
-.campaign-field-row {
+/* ── Campaign Access (Settings) + Stats indicator ── */
+.campaign-indicator-box {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.92em;
+}
+
+.campaign-join-controls {
   display: flex;
   gap: 8px;
   align-items: center;
-}
-
-.campaign-field-row select { flex: 1; }
-.campaign-field-row input  { flex: 1; }
-
-#char_campaign_password_row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
   flex-wrap: wrap;
 }
+.campaign-join-controls select { flex: 1 1 160px; }
+.campaign-join-controls input  { flex: 1 1 160px; }
+
+.campaign-joined-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.campaign-joined-name { flex: 1 1 auto; }
 
 /* ── Admin Portal Layout ── */
 .admin-portal-card {
@@ -4466,6 +4476,130 @@
 
 .admin-tab-panel {
   padding: 4px 0;
+}
+
+/* ── Admin Users tab: toolbar + card grid ── */
+.admin-users-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.admin-users-toolbar input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  border-radius: 6px;
+  border: 1px solid var(--accent-border);
+  background: rgba(255,255,255,0.06);
+  color: inherit;
+  box-sizing: border-box;
+}
+.admin-users-toolbar button {
+  width: auto;
+  flex-shrink: 0;
+  padding: 10px 20px;
+}
+
+.admin-user-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.admin-user-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--accent-border);
+  background: var(--card-bg);
+  color: inherit;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+}
+.admin-user-card:hover {
+  background: var(--accent-soft);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+}
+.admin-user-card.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+  background: var(--accent-soft);
+}
+
+.admin-user-card-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.admin-user-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+  flex-shrink: 0;
+}
+.admin-user-dot.is-active {
+  background: #4ccf6a;
+  box-shadow: 0 0 6px rgba(76,207,106,0.7);
+}
+.admin-user-name {
+  font-weight: 600;
+  font-size: 0.98em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-user-email {
+  font-size: 0.8em;
+  opacity: 0.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-user-card-meta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 0.78em;
+  opacity: 0.75;
+  margin-top: 2px;
+}
+
+/* Selected-user detail header above the character list */
+.admin-user-detail-header {
+  margin: 4px 0 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--accent-border);
+}
+.admin-user-detail-header h4 {
+  margin: 0 0 8px;
+  font-size: 1.05em;
+}
+.admin-user-detail-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.admin-chip {
+  font-size: 0.76em;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--accent-border);
+  opacity: 0.9;
+}
+.admin-chip.is-active {
+  background: rgba(76,207,106,0.16);
+  border-color: rgba(76,207,106,0.5);
+  color: #6fe089;
+  opacity: 1;
 }
 
 .admin-create-form {

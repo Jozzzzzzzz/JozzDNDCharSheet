@@ -2400,6 +2400,7 @@ function clearAllFormFields() {
     const element = document.getElementById(id);
     if (element) element.value = '';
   });
+  if (typeof updateCampaignIndicator === 'function') updateCampaignIndicator('');
 
   // Clear ability scores and bonuses
   const abilityFields = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
@@ -2744,11 +2745,7 @@ function autosave() {
     class: val('char_class'),
     subclass: val('char_subclass'),
     level: val('char_level'),
-    campaignId: (() => {
-      const select = el('char_campaign_select');
-      if (select?.value === '__custom__') return val('char_campaign_custom') || '';
-      return val('char_campaign') || '';
-    })()
+    campaignId: val('char_campaign') || ''
   } : existing.characterInfo;
 
   // --- actionTracker ---
@@ -4454,14 +4451,10 @@ function openSettingsPage() {
 
 let _campaignCache = []; // { id, name, passwordHash }
 
-async function loadCampaignDropdown() {
-  const select = document.getElementById('char_campaign_select');
-  if (!select) return;
+// Fetch the active-campaign list into _campaignCache. Returns the cache.
+async function loadCampaignCache() {
   const db = window.db;
-  if (!db) {
-    // db not ready yet — updateAuthUI will call us again once Firebase initialises
-    return;
-  }
+  if (!db) return _campaignCache;
   try {
     // No orderBy — sorting on the client avoids needing a composite Firestore index
     const snap = await db.collection('campaigns').where('active', '==', true).get();
@@ -4471,251 +4464,262 @@ async function loadCampaignDropdown() {
       _campaignCache.push({ id: doc.id, name: c.name, passwordHash: c.passwordHash || '', dmPasswordHash: c.dmPasswordHash || '' });
     });
     _campaignCache.sort((a, b) => a.name.localeCompare(b.name));
-    // Reset to base options
-    select.innerHTML = `
-      <option value="">Solo / No Campaign</option>
-      <option value="__custom__">Custom...</option>
-    `;
-    _campaignCache.forEach(c => {
-      const opt = document.createElement('option');
-      opt.value = c.name;
-      opt.textContent = c.name;
-      // Insert before the Custom option
-      select.insertBefore(opt, select.lastElementChild);
-    });
   } catch (e) {
-    console.warn('Campaign dropdown load failed:', e.message);
+    console.warn('Campaign cache load failed:', e.message);
   }
+  return _campaignCache;
 }
 
-function onCampaignSelectChange(select) {
-  const val = select.value;
-  const customInput = document.getElementById('char_campaign_custom');
-  const passwordRow = document.getElementById('char_campaign_password_row');
-  const hiddenField = document.getElementById('char_campaign');
-  const statusEl = document.getElementById('char_campaign_password_status');
+// Kept for external callers (cloud-skills updateAuthUI, app.js boot). Loads the
+// campaign cache and (re)renders the Settings → Campaign Access card.
+async function loadCampaignDropdown() {
+  await loadCampaignCache();
+  renderCampaignSettings();
+}
 
-  // Reset
-  if (passwordRow) passwordRow.style.display = 'none';
-  if (statusEl) statusEl.textContent = '';
-  const pwInput = document.getElementById('char_campaign_password');
-  if (pwInput) pwInput.value = '';
+// ─── Settings → Campaign Access (members-doc based) ─────────────────────────
+//
+// Membership model: joining a campaign writes campaigns/{cid}/members/{uid},
+// which is a read-access GRANT to the DM/owner and the SOURCE OF TRUTH for the
+// roster. The player's own characterInfo.campaignId mirrors the joined name so
+// the Stats indicator + offline reconciliation work. A DM/owner removing a
+// player deletes the member doc; the player's app clears campaignId on next load
+// when it sees no member doc. Joining changes nothing else about the sheet.
 
-  if (val === '__custom__') {
-    if (customInput) customInput.style.display = '';
-    if (hiddenField) hiddenField.value = '';
-    autosave();
+function _currentJoinedCampaignName() {
+  // The hidden field is the saved campaignId (a campaign NAME). Falls back to
+  // the saved character data so it works before the stats page is interacted.
+  const hidden = document.getElementById('char_campaign');
+  if (hidden && hidden.value) return hidden.value;
+  return '';
+}
+
+// Render the Settings → Campaign Access card based on auth + joined state.
+function renderCampaignSettings() {
+  const body = document.getElementById('campaignSettingsBody');
+  if (!body) return;
+  const user = window.currentUser;
+
+  if (!user) {
+    body.innerHTML = '<p class="settings-note">Sign in to join a campaign.</p>';
     return;
   }
 
-  if (customInput) customInput.style.display = 'none';
-
-  if (!val) {
-    // Solo — no campaign
-    if (hiddenField) hiddenField.value = '';
-    autosave();
+  const joined = _currentJoinedCampaignName();
+  if (joined) {
+    body.innerHTML = `
+      <p class="settings-note">Your DM has view access to this character's sheet.</p>
+      <div class="campaign-joined-row">
+        <span class="campaign-joined-name">In campaign: <strong>${escapeHtml(joined)}</strong></span>
+        <button class="settings-action-btn admin-delete-btn" onclick="leaveCampaign(this)">Leave Campaign</button>
+      </div>
+      <p id="campaignSettingsStatus" class="settings-note"></p>`;
     return;
   }
 
-  // Named campaign — always require the password, then request to join (pending)
-  const campaign = _campaignCache.find(c => c.name === val);
-  if (passwordRow) passwordRow.style.display = 'flex';
-  if (!campaign || !campaign.passwordHash) {
-    // No password set on the campaign — still requires DM approval
-    if (statusEl) { statusEl.textContent = 'No password set — enter blank and Join to request.'; statusEl.style.color = ''; }
-  }
+  // Not joined — show campaign picker + password
+  const options = _campaignCache.map(c =>
+    `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('');
+  body.innerHTML = `
+    <p class="settings-note">If your DM uses this app, join their campaign to give them read-only view access to this character's sheet. It changes nothing else.</p>
+    <div class="campaign-join-controls">
+      <select id="campaignJoinSelect">
+        <option value="">Select a campaign…</option>
+        ${options}
+      </select>
+      <input id="campaignJoinPassword" type="password" placeholder="Campaign password" autocomplete="off"/>
+      <button class="settings-action-btn accent-contrast-bg" onclick="joinCampaign(this)">Join</button>
+    </div>
+    <p id="campaignSettingsStatus" class="settings-note"></p>`;
 }
 
-async function verifyCampaignPassword() {
-  const select = document.getElementById('char_campaign_select');
-  const pwInput = document.getElementById('char_campaign_password');
-  const statusEl = document.getElementById('char_campaign_password_status');
+function _setCampaignStatus(msg, color) {
+  const el = document.getElementById('campaignSettingsStatus');
+  if (el) { el.textContent = msg || ''; el.style.color = color || ''; }
+}
 
-  const campaignName = select?.value;
+// Join a campaign from Settings: verify password → write member doc + set campaignId.
+async function joinCampaign(btn) {
+  const select = document.getElementById('campaignJoinSelect');
+  const pwInput = document.getElementById('campaignJoinPassword');
+  const campaignName = select?.value || '';
   const password = pwInput?.value || '';
-  if (!campaignName) return;
+  if (!campaignName) { _setCampaignStatus('Pick a campaign first.', '#e66'); return; }
+
+  const user = window.currentUser;
+  const db = window.db;
+  if (!user || !db) { _setCampaignStatus('Sign in to join a campaign.', '#e66'); return; }
 
   const campaign = _campaignCache.find(c => c.name === campaignName);
-  if (!campaign) return;
+  if (!campaign) { _setCampaignStatus('Campaign not found — try again.', '#e66'); return; }
 
   // Verify password (if the campaign has one)
   if (campaign.passwordHash) {
-    const enteredHash = typeof window.sha256Hex === 'function'
-      ? await window.sha256Hex(password)
-      : '';
+    const enteredHash = typeof window.sha256Hex === 'function' ? await window.sha256Hex(password) : '';
     if (enteredHash !== campaign.passwordHash) {
-      if (statusEl) { statusEl.textContent = 'Incorrect password'; statusEl.style.color = '#e66'; }
+      _setCampaignStatus('Incorrect password.', '#e66');
       return;
     }
   }
 
-  // Password OK → submit a join request (DM must approve before joining)
+  if (btn) { btn.disabled = true; btn.textContent = 'Joining…'; }
+  try {
+    const info = {
+      uid: user.uid,
+      charId: currentCharacter || '',
+      charName: (document.getElementById('char_name')?.value || 'Unnamed').trim(),
+      race: document.getElementById('char_race')?.value || '',
+      class: document.getElementById('char_class')?.value || '',
+      level: document.getElementById('char_level')?.value || '',
+      campaignId: campaign.id,
+      campaignName: campaign.name,
+      joinedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    await db.collection('campaigns').doc(campaign.id)
+      .collection('members').doc(user.uid).set(info);
+    // Mark migrated so a future missing member doc is read as a removal.
+    try { localStorage.setItem(_membershipMigrationKey(user.uid, currentCharacter || '', campaign.name), '1'); } catch (_) {}
+
+    // Mirror onto the character so the Stats indicator + reconciliation work.
+    const hidden = document.getElementById('char_campaign');
+    if (hidden) hidden.value = campaign.name;
+    autosave();
+    updateCampaignIndicator(campaign.name);
+    renderCampaignSettings();
+    _setCampaignStatus('✓ Joined ' + campaign.name, '#6e6');
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Join'; }
+    const friendly = (typeof window.friendlyFirebaseError === 'function')
+      ? window.friendlyFirebaseError(e) : (e.message || 'Could not join.');
+    _setCampaignStatus(friendly, '#e66');
+  }
+}
+
+// Leave a campaign from Settings: delete member doc + clear campaignId.
+async function leaveCampaign(btn) {
   const user = window.currentUser;
   const db = window.db;
-  if (!user || !db) {
-    if (statusEl) { statusEl.textContent = 'Sign in to join a campaign.'; statusEl.style.color = '#e66'; }
-    return;
+  const joinedName = _currentJoinedCampaignName();
+  if (!user || !db || !joinedName) { clearJoinedCampaign(); return; }
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Leaving…'; }
+  const campaign = _campaignCache.find(c => c.name === joinedName);
+  try {
+    if (campaign) {
+      await db.collection('campaigns').doc(campaign.id)
+        .collection('members').doc(user.uid).delete();
+      try { localStorage.removeItem(_membershipMigrationKey(user.uid, currentCharacter || '', joinedName)); } catch (_) {}
+    }
+    clearJoinedCampaign();
+    renderCampaignSettings();
+    _setCampaignStatus('You left ' + joinedName + '.', '');
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Leave Campaign'; }
+    const friendly = (typeof window.friendlyFirebaseError === 'function')
+      ? window.friendlyFirebaseError(e) : (e.message || 'Could not leave.');
+    _setCampaignStatus(friendly, '#e66');
   }
+}
+
+// Clear the joined campaign locally (used by Leave and by reconciliation).
+function clearJoinedCampaign() {
+  const hidden = document.getElementById('char_campaign');
+  if (hidden) hidden.value = '';
+  autosave();
+  updateCampaignIndicator('');
+}
+
+// Update the passive Stats-page campaign indicator. Shown only when joined.
+function updateCampaignIndicator(campaignName) {
+  const box = document.getElementById('char_campaign_indicator');
+  const nameEl = document.getElementById('char_campaign_indicator_name');
+  if (!box) return;
+  if (campaignName) {
+    if (nameEl) nameEl.textContent = campaignName;
+    box.style.display = '';
+  } else {
+    box.style.display = 'none';
+  }
+}
+
+// Called from loadData() with the saved campaignId (a campaign NAME, or '').
+// Sets the hidden field + Stats indicator, then reconciles against the member
+// doc in the background (so a DM/owner removal made while offline clears here).
+function restoreCampaignField(savedCampaignId) {
+  const hiddenField = document.getElementById('char_campaign');
+  if (hiddenField) hiddenField.value = savedCampaignId || '';
+  updateCampaignIndicator(savedCampaignId || '');
+  renderCampaignSettings();
+  if (savedCampaignId) reconcileMembership(savedCampaignId);
+}
+
+// Background reconcile for a character that thinks it's in `campaignName`.
+//
+// Data-safety design:
+//  - Players who joined under the OLD joinRequests system have a saved
+//    campaignId but NO member doc. We must NOT kick them. So the FIRST time we
+//    see a missing member doc for a given (uid, charId, campaign) we MIGRATE:
+//    create the member doc and drop a one-time local marker.
+//  - After that marker exists, a missing member doc means a genuine DM/owner
+//    removal → clear the campaign locally. The marker prevents the indicator
+//    from resurrecting a removed player.
+function _membershipMigrationKey(uid, charId, campaignName) {
+  return 'dndCampaignMigrated_' + uid + '_' + (charId || '') + '_' + campaignName;
+}
+
+async function reconcileMembership(campaignName) {
+  const user = window.currentUser;
+  const db = window.db;
+  if (!user || !db) return;
+  // Make sure the cache is populated so we can resolve name → id.
+  if (!_campaignCache.length) { try { await loadCampaignCache(); } catch (_) {} }
+  const campaign = _campaignCache.find(c => c.name === campaignName);
+  if (!campaign) return; // unknown/inactive campaign — leave the saved value alone
+
+  const charId = currentCharacter || '';
+  const migKey = _membershipMigrationKey(user.uid, charId, campaignName);
 
   try {
-    const charName = (document.getElementById('char_name')?.value || 'Unnamed').trim();
-    await db.collection('campaigns').doc(campaign.id)
-      .collection('joinRequests').doc(user.uid).set({
-        uid: user.uid,
-        charId: currentCharacter || '',
-        charName,
-        campaignId: campaign.id,
-        campaignName: campaign.name,
-        status: 'pending',
-        requestedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-
-    if (pwInput) pwInput.value = '';
-    if (statusEl) { statusEl.textContent = '⏳ Request sent — waiting for DM approval'; statusEl.style.color = '#dca54a'; }
-    // Lock the dropdown while pending and start watching for approval
-    setCampaignFieldLocked(true);
-    startJoinRequestListener(campaign.id, user.uid, campaign.name);
-  } catch (e) {
-    console.error('Join request failed:', e);
-    const friendly = (typeof window.friendlyFirebaseError === 'function')
-      ? window.friendlyFirebaseError(e)
-      : (e.message || 'Could not send request.');
-    if (statusEl) { statusEl.textContent = friendly; statusEl.style.color = '#e66'; }
-  }
-}
-
-// Lock/unlock the campaign picker so a pending/joined player can't change it
-function setCampaignFieldLocked(locked) {
-  const select = document.getElementById('char_campaign_select');
-  const customInput = document.getElementById('char_campaign_custom');
-  const pwRow = document.getElementById('char_campaign_password_row');
-  if (select) select.disabled = locked;
-  if (customInput) customInput.disabled = locked;
-  if (pwRow && locked) pwRow.style.display = 'none';
-}
-
-let _joinRequestUnsub = null;
-function startJoinRequestListener(campaignId, uid, campaignName) {
-  const db = window.db;
-  if (!db) return;
-  if (_joinRequestUnsub) { _joinRequestUnsub(); _joinRequestUnsub = null; }
-  const ref = db.collection('campaigns').doc(campaignId).collection('joinRequests').doc(uid);
-  _joinRequestUnsub = ref.onSnapshot(snap => {
-    const statusEl = document.getElementById('char_campaign_password_status');
-    if (!snap.exists) {
-      // Request removed by DM (denied or kicked) → reset to blank, unlock
-      stopJoinRequestListener();
-      applyApprovedCampaign('');
-      if (statusEl) { statusEl.textContent = 'Removed from campaign. You can request again.'; statusEl.style.color = '#e66'; }
+    const ref = db.collection('campaigns').doc(campaign.id).collection('members').doc(user.uid);
+    const snap = await ref.get();
+    if (snap.exists) {
+      // Already a member — make sure the migration marker is set so a later
+      // removal is recognised as a removal, not a fresh migration.
+      try { localStorage.setItem(migKey, '1'); } catch (_) {}
       return;
     }
-    const data = snap.data() || {};
-    if (data.status === 'approved') {
-      stopJoinRequestListener();
-      applyApprovedCampaign(campaignName);
-      if (statusEl) { statusEl.textContent = '✓ Joined ' + campaignName; statusEl.style.color = '#6e6'; }
-    } else if (data.status === 'denied') {
-      stopJoinRequestListener();
-      applyApprovedCampaign('');
-      if (statusEl) { statusEl.textContent = 'Request denied by DM.'; statusEl.style.color = '#e66'; }
-    } else {
-      // still pending
-      setCampaignFieldLocked(true);
-      if (statusEl) { statusEl.textContent = '⏳ Waiting for DM approval'; statusEl.style.color = '#dca54a'; }
+
+    // No member doc.
+    const alreadyMigrated = (() => { try { return localStorage.getItem(migKey) === '1'; } catch (_) { return false; } })();
+    if (!alreadyMigrated) {
+      // First run for this character+campaign → migrate the legacy join forward.
+      await ref.set({
+        uid: user.uid,
+        charId,
+        charName: (document.getElementById('char_name')?.value || 'Unnamed').trim(),
+        race: document.getElementById('char_race')?.value || '',
+        class: document.getElementById('char_class')?.value || '',
+        level: document.getElementById('char_level')?.value || '',
+        campaignId: campaign.id,
+        campaignName: campaign.name,
+        joinedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        migrated: true
+      });
+      try { localStorage.setItem(migKey, '1'); } catch (_) {}
+      return;
     }
-  }, err => console.warn('joinRequest listener error:', err.message));
+
+    // Marker present + no member doc → genuine DM/owner removal. Clear locally.
+    try { localStorage.removeItem(migKey); } catch (_) {}
+    clearJoinedCampaign();
+    renderCampaignSettings();
+    _setCampaignStatus('You were removed from ' + campaignName + '.', '#e66');
+  } catch (_) { /* offline / transient — keep the saved value, retry next load */ }
 }
 
-function stopJoinRequestListener() {
-  if (_joinRequestUnsub) { _joinRequestUnsub(); _joinRequestUnsub = null; }
-}
-
-// Commit an approved (or cleared) campaign onto the character + persist
-function applyApprovedCampaign(campaignName) {
-  const hiddenField = document.getElementById('char_campaign');
-  const select = document.getElementById('char_campaign_select');
-  if (hiddenField) hiddenField.value = campaignName || '';
-  if (campaignName) {
-    setCampaignFieldLocked(true);
-    if (select) { const opt = Array.from(select.options).find(o => o.value === campaignName); if (opt) select.value = campaignName; }
-  } else {
-    setCampaignFieldLocked(false);
-    if (select) select.value = '';
-  }
-  autosave();
-}
-
-function restoreCampaignField(savedCampaignId) {
-  const select = document.getElementById('char_campaign_select');
-  const customInput = document.getElementById('char_campaign_custom');
-  const hiddenField = document.getElementById('char_campaign');
-  const statusEl = document.getElementById('char_campaign_password_status');
-  if (!select || !hiddenField) return;
-
-  stopJoinRequestListener();
-  setCampaignFieldLocked(false);
-  if (statusEl) statusEl.textContent = '';
-  hiddenField.value = savedCampaignId;
-
-  if (!savedCampaignId) {
-    select.value = '';
-    if (customInput) customInput.style.display = 'none';
-    // No approved campaign — check for an outstanding pending request to resume
-    resumePendingJoinIfAny();
-    return;
-  }
-
-  // Check if it matches a known campaign
-  const knownOption = Array.from(select.options).find(o => o.value === savedCampaignId);
-  if (knownOption) {
-    select.value = savedCampaignId;
-    if (customInput) customInput.style.display = 'none';
-    // Already joined → lock so the player can't change/leave on their own
-    setCampaignFieldLocked(true);
-    if (statusEl) { statusEl.textContent = '✓ Joined ' + savedCampaignId; statusEl.style.color = '#6e6'; }
-    // Keep watching the join request so a DM removal/denial reflects here too,
-    // and reconcile if the request was deleted while we were offline.
-    const joined = _campaignCache.find(c => c.name === savedCampaignId);
-    const user = window.currentUser;
-    if (joined && user) startJoinRequestListener(joined.id, user.uid, joined.name);
-  } else {
-    // Custom campaign (free-text, no DM gate)
-    select.value = '__custom__';
-    if (customInput) { customInput.style.display = ''; customInput.value = savedCampaignId; }
-  }
-}
-
-// On load, if this player has a pending/approved request for any campaign, resume it
-async function resumePendingJoinIfAny() {
-  const user = window.currentUser;
-  const db = window.db;
-  if (!user || !db || !Array.isArray(_campaignCache) || !_campaignCache.length) return;
-  for (const c of _campaignCache) {
-    try {
-      const snap = await db.collection('campaigns').doc(c.id)
-        .collection('joinRequests').doc(user.uid).get();
-      if (snap.exists) {
-        startJoinRequestListener(c.id, user.uid, c.name);
-        // Reflect the right name in the dropdown while pending
-        const sel = document.getElementById('char_campaign_select');
-        if (sel && snap.data()?.status !== 'approved') {
-          const opt = Array.from(sel.options).find(o => o.value === c.name);
-          if (opt) { sel.value = c.name; setCampaignFieldLocked(true); }
-        }
-        return;
-      }
-    } catch (_) { /* ignore per-campaign read errors */ }
-  }
-}
-
-// Load campaign dropdown when stats page becomes visible
-const _origSwitchTab = window.switchTab;
-window.switchTab = function(btn) {
-  if (_origSwitchTab) _origSwitchTab(btn);
-  if (btn?.dataset?.tab === 'page1') loadCampaignDropdown();
-};
-
-window.onCampaignSelectChange = onCampaignSelectChange;
-window.verifyCampaignPassword = verifyCampaignPassword;
 window.loadCampaignDropdown = loadCampaignDropdown;
+window.renderCampaignSettings = renderCampaignSettings;
+window.joinCampaign = joinCampaign;
+window.leaveCampaign = leaveCampaign;
+window.restoreCampaignField = restoreCampaignField;
 

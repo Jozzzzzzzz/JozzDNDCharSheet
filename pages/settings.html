@@ -128,6 +128,22 @@
       </div>
     </div>
 
+    <div class="home-card settings-card" id="campaignSettingsCard">
+      <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
+      <div class="section-help-panel" onclick="closeHelp(this)">
+        <p><strong>Campaign Access</strong> — if your DM uses this app, joining their campaign gives them read-only view access to your character sheet so they can build encounters around your real spells and stats.</p>
+        <p><strong>Joining changes nothing about your sheet</strong> — it's purely a view grant. Your DM sees your most recent saved data with a timestamp of when it was last saved.</p>
+        <p>Enter the campaign name and the password your DM gave you, then press Join. You can leave at any time, and your DM can remove you.</p>
+      </div>
+      <div class="card-header">
+        <h3>Campaign Access</h3>
+        <p>Grant your DM view access to your sheet</p>
+      </div>
+      <div id="campaignSettingsBody" class="settings-controls-stack">
+        <p class="settings-note">Sign in to join a campaign.</p>
+      </div>
+    </div>
+
     <div class="home-card settings-card">
       <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
       <div class="section-help-panel" onclick="closeHelp(this)">
@@ -204,13 +220,12 @@
 
         <!-- Users tab -->
         <div id="adminTabUsers" class="admin-tab-panel" style="display:none;">
-          <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
-            <select id="adminUserSelect" onchange="adminSelectUser(this.value)" style="flex:1;min-width:0;padding:10px 12px;font-size:0.9rem;border-radius:6px;border:1px solid var(--accent-border);background:rgba(255,255,255,0.06);color:inherit;box-sizing:border-box;">
-              <option value="">Select a user...</option>
-            </select>
-            <button type="button" class="settings-action-btn accent-contrast-bg" onclick="adminRefreshUsers()" style="width:auto;flex-shrink:0;padding:10px 20px;">Refresh</button>
+          <div class="admin-users-toolbar">
+            <input id="adminUserSearch" type="text" placeholder="Search by name or email…" oninput="adminFilterUsers(this.value)" autocomplete="off"/>
+            <button type="button" class="settings-action-btn accent-contrast-bg" onclick="adminRefreshUsers()">Refresh</button>
           </div>
           <p id="adminUserMeta" class="settings-note"></p>
+          <div id="adminUserGrid" class="admin-user-grid"></div>
           <div id="adminUserCharacters"></div>
         </div>
 

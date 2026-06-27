@@ -6,9 +6,25 @@
 // the Home button until they visit the home page.
 // ============================================================
 
-const CHANGELOG_LATEST_VERSION = '1.07';
+const CHANGELOG_LATEST_VERSION = '1.08';
 
 const CHANGELOG = [
+  {
+    version: '1.08',
+    date: '2026-06-27',
+    title: 'v1.08 — Simpler Campaigns & Cleaner Admin',
+    updates: [
+      'Joining a campaign is now done from Settings → Campaign Access — enter the campaign password and you are in, no waiting for approval',
+      'Joining a campaign no longer changes anything about your sheet — it simply gives your DM view-only access to help them plan around your character',
+      'Your Stats page now shows a small "In campaign" badge only when you are actually in one',
+      'DMs viewing a player sheet now see when it was last saved, so they know the info is up to date',
+      'The Admin user list is now a tidy card grid with search, an active-now indicator, device counts and last-seen times',
+    ],
+    fixes: [
+      'Removing a player from a campaign now works instantly, even if that player is offline at the time',
+      'Tidied up old behind-the-scenes code left over from the previous campaign system',
+    ],
+  },
   {
     version: '1.07',
     date: '2026-06-27',

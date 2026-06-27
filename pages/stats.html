@@ -34,20 +34,13 @@
       <label>Level</label>
       <input id="char_level" oninput="updateProficiencyBonus(); autosave()" type="number" min="1" placeholder="Level"/>
     </div>
-    <div style="grid-column: 1 / -1;">
-      <label>Campaign <span style="font-size:0.78em;opacity:0.5;font-weight:400;">— links your character to a DM's campaign</span></label>
-      <div class="campaign-field-row">
-        <select id="char_campaign_select" onchange="onCampaignSelectChange(this)">
-          <option value="">Solo / No Campaign</option>
-        </select>
-        <input id="char_campaign_custom" placeholder="Custom campaign name..." style="display:none;" oninput="autosave()"/>
+    <input id="char_campaign" type="hidden"/>
+    <div id="char_campaign_indicator" style="grid-column: 1 / -1; display:none;">
+      <label>Campaign</label>
+      <div class="campaign-indicator-box">
+        🛡️ In campaign: <strong id="char_campaign_indicator_name"></strong>
+        <span style="font-size:0.78em;opacity:0.6;font-weight:400;"> — your DM has view access. Manage in Settings → Campaign Access.</span>
       </div>
-      <div id="char_campaign_password_row" style="display:none; margin-top:6px;">
-        <input id="char_campaign_password" type="password" placeholder="Campaign password" style="max-width:240px;"/>
-        <button type="button" class="settings-action-btn accent-contrast-bg" style="margin-left:6px;" onclick="verifyCampaignPassword()">Join</button>
-        <span id="char_campaign_password_status" style="font-size:0.8em;margin-left:8px;"></span>
-      </div>
-      <input id="char_campaign" type="hidden"/>
     </div>
   </div>
 </div>
