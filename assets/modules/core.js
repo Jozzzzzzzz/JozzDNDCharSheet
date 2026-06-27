@@ -4553,11 +4553,24 @@ async function joinCampaign(btn) {
   const campaign = _campaignCache.find(c => c.name === campaignName);
   if (!campaign) { _setCampaignStatus('Campaign not found — try again.', '#e66'); return; }
 
-  // Verify password (if the campaign has one)
-  if (campaign.passwordHash) {
+  // Verify against the CURRENT password hash from Firestore, not the cached copy,
+  // so an admin password change takes effect immediately without the player
+  // having to refresh.
+  if (btn) { btn.disabled = true; btn.textContent = 'Checking…'; }
+  let livePasswordHash = campaign.passwordHash;
+  try {
+    const fresh = await db.collection('campaigns').doc(campaign.id).get();
+    if (fresh.exists) {
+      livePasswordHash = fresh.data().passwordHash || '';
+      campaign.passwordHash = livePasswordHash; // keep cache in sync
+    }
+  } catch (_) { /* offline — fall back to cached hash */ }
+
+  if (livePasswordHash) {
     const enteredHash = typeof window.sha256Hex === 'function' ? await window.sha256Hex(password) : '';
-    if (enteredHash !== campaign.passwordHash) {
+    if (enteredHash !== livePasswordHash) {
       _setCampaignStatus('Incorrect password.', '#e66');
+      if (btn) { btn.disabled = false; btn.textContent = 'Join'; }
       return;
     }
   }

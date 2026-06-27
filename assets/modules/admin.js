@@ -514,39 +514,20 @@ async function adminLoadCampaigns() {
     const campaigns = [];
     snap.forEach(doc => campaigns.push({ id: doc.id, ...doc.data() }));
 
-    // Fetch player counts in parallel
+    // Player counts from the members subcollection (reflects removals), in parallel
     const playerCounts = await Promise.all(campaigns.map(async c => {
       try {
-        const charSnap = await db.collectionGroup('characters')
-          .where('data.characterInfo.campaignId', '==', c.name)
-          .get();
-        return charSnap.size;
+        const memSnap = await db.collection('campaigns').doc(c.id).collection('members').get();
+        return memSnap.size;
       } catch (_) { return '?'; }
-    }));
-
-    // Fetch DM requests for assigned DMs
-    const dmRequestSnaps = await Promise.all(campaigns.map(async c => {
-      if (!c.dmEmails || !c.dmEmails.length) return [];
-      try {
-        const reqSnap = await db.collection('dm_requests')
-          .where('email', 'in', c.dmEmails)
-          .get();
-        const reqs = [];
-        reqSnap.forEach(d => reqs.push(d.data()));
-        return reqs;
-      } catch (_) { return []; }
     }));
 
     list.innerHTML = '';
     campaigns.forEach((c, i) => {
       const playerCount = playerCounts[i];
-      const dmReqs = dmRequestSnaps[i] || [];
       const dmList = (c.dmEmails || []).length
-        ? (c.dmEmails || []).map(email => {
-            const req = dmReqs.find(r => r.email === email);
-            const status = req ? req.status : 'not requested';
-            return `<span class="admin-dm-tag">${escapeHtml(email)} <em>(${status})</em></span>`;
-          }).join('')
+        ? (c.dmEmails || []).map(email =>
+            `<span class="admin-dm-tag">${escapeHtml(email)}</span>`).join('')
         : '<span class="settings-note">No DM assigned</span>';
 
       const div = document.createElement('div');

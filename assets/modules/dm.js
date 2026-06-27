@@ -773,14 +773,11 @@ async function dmLoadHomePlayerCount() {
   const el = document.getElementById('dmHomeCampaignPlayers');
   if (!el) return;
   const db = window.db;
-  const campaignName = dmSessionLoad()?.campaignName || '';
-  if (!db || !campaignName) { el.textContent = '—'; return; }
+  if (!db || !dmCurrentCampaignId()) { el.textContent = '—'; return; }
   el.textContent = '…';
   try {
-    const snap = await db.collectionGroup('characters')
-      .where('data.characterInfo.campaignId', '==', campaignName)
-      .get();
-    el.textContent = String(snap.size);
+    const members = await dmFetchMembers();
+    el.textContent = String(members.length);
   } catch (e) {
     el.textContent = '—';
     console.warn('home player count failed:', e.message);
@@ -863,6 +860,29 @@ function dmCurrentCampaignId() {
   return dmSessionLoad()?.campaignId || '';
 }
 
+// Fetch the current campaign roster from the members subcollection (the source
+// of truth that reflects removals). Returns [{ uid, charId, charName, race,
+// class, level }]. Empty array if no campaign / not connected.
+async function dmFetchMembers() {
+  const db = window.db;
+  const campaignId = dmCurrentCampaignId();
+  if (!db || !campaignId) return [];
+  const snap = await db.collection('campaigns').doc(campaignId).collection('members').get();
+  const members = [];
+  snap.forEach(doc => {
+    const m = doc.data() || {};
+    members.push({
+      uid: m.uid || doc.id,
+      charId: m.charId || '',
+      charName: m.charName || 'Unnamed',
+      race: m.race || '',
+      class: m.class || '',
+      level: m.level || ''
+    });
+  });
+  return members;
+}
+
 const _dmRemoveState = {};
 async function dmRemovePlayer(uid, name, btn) {
   // Two-step confirm
@@ -899,29 +919,32 @@ async function dmLoadPlayerSpells() {
   const legend = document.getElementById('dmSpellsLegend');
   if (!wrap) return;
 
-  const session = dmSessionLoad();
-  const campaignName = session?.campaignName || '';
   const db = window.db;
-  if (!db || !campaignName) { wrap.innerHTML = '<p class="dm-empty-state">No campaign in session.</p>'; return; }
+  const campaignName = dmSessionLoad()?.campaignName || '';
+  if (!db || !dmCurrentCampaignId()) { wrap.innerHTML = '<p class="dm-empty-state">No campaign in session.</p>'; return; }
 
   wrap.innerHTML = '<p class="dm-empty-state">Loading player spells…</p>';
 
   try {
-    const snap = await db.collectionGroup('characters')
-      .where('data.characterInfo.campaignId', '==', campaignName)
-      .get();
+    // Roster from members (reflects removals), then pull each player's live sheet.
+    const members = (await dmFetchMembers()).filter(m => m.charId);
 
-    if (snap.empty) {
-      wrap.innerHTML = `<p class="dm-empty-state">No characters linked to "<strong>${escapeHtml(campaignName)}</strong>" yet.</p>`;
+    if (!members.length) {
+      wrap.innerHTML = `<p class="dm-empty-state">No players have joined "<strong>${escapeHtml(campaignName)}</strong>" yet.</p>`;
       if (legend) legend.style.display = 'none';
       return;
     }
+
+    const docs = await Promise.all(members.map(m =>
+      db.collection('userData').doc(m.uid).collection('characters').doc(m.charId).get()
+        .catch(() => null)));
 
     // Build: players[], and a map of spellName -> { level, byPlayer:Set }
     const players = [];
     const spellMap = new Map(); // key: lowercased name
 
-    snap.forEach(doc => {
+    docs.forEach(doc => {
+      if (!doc || !doc.exists) return;
       const d = doc.data() || {};
       const info = d?.data?.characterInfo || {};
       const sd = d?.data?.page3?.spellsData || {};
@@ -944,6 +967,12 @@ async function dmLoadPlayerSpells() {
       ingest(sd.cantrips, true);
       ingest(sd.spells, false);
     });
+
+    if (!players.length) {
+      wrap.innerHTML = '<p class="dm-empty-state">Could not load any player sheets.</p>';
+      if (legend) legend.style.display = 'none';
+      return;
+    }
 
     if (!spellMap.size) {
       wrap.innerHTML = '<p class="dm-empty-state">Linked characters have no spells recorded yet.</p>';
