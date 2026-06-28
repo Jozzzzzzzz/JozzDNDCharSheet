@@ -5974,7 +5974,9 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   grid-template-columns: 1fr 1fr;
   gap: 10px;
   margin-bottom: 10px;
+  min-width: 0; /* let tracks shrink so large text-scale doesn't overflow */
 }
+.ability-row > .ability-col { min-width: 0; }
 
 .character-info-section label {
   color: var(--accent-text);
@@ -5987,23 +5989,26 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 }
 
 .ability-col label {
-  display: block;
-  box-sizing: border-box;
-  width: 100%;
   font-weight: bold;
   margin-bottom: 5px;
   color: var(--accent-contrast) !important;
   background: var(--accent);
-  padding: 4px 8px;
+  padding: 4px 5px;
   border-radius: 4px;
   min-height: 20px;
   text-align: center;
   border: 2px solid var(--accent-border);
+  box-sizing: border-box;
+  white-space: nowrap;
+  /* Start the chip text a little smaller (and tighter letter-spacing) so it
+     still fits "Bonus" in its column when the global text-scale is at max. */
+  font-size: 0.82em;
+  letter-spacing: -0.2px;
 }
 
 .ability-col input {
   box-sizing: border-box;
-  width: 100%;
+  min-width: 0;
 }
 
 /* Bonus input styling - now regular editable inputs */
