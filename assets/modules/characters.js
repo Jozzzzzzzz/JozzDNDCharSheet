@@ -133,11 +133,14 @@ function getCurrentCurrencySummary() {
   return { totalGp, list };
 }
 
-function getWealthBand(totalGp, country) {
-  if (totalGp >= country.top1Gp) return 'top 1%';
-  if (totalGp >= country.top5Gp) return 'top 5%';
-  if (totalGp >= country.top10Gp) return 'top 10%';
-  return 'still working toward the top 10%';
+// Returns a complete phrase that slots into "{name} {phrase}." so every wealth
+// band reads as a grammatical sentence.
+function getWealthBandPhrase(totalGp, country) {
+  const where = country.country;
+  if (totalGp >= country.top1Gp) return `would sit in the top 1% of wealth in ${where}`;
+  if (totalGp >= country.top5Gp) return `would rank among the richest 5% in ${where}`;
+  if (totalGp >= country.top10Gp) return `would make the top 10% of earners in ${where}`;
+  return `is still building toward the top 10% in ${where}`;
 }
 
 function getCurrentCharacterDisplayName() {
@@ -154,11 +157,66 @@ function buildCurrencyWealthBannerMessage() {
   if (totalGp <= 0 || !list) return null;
 
   const country = wealthComparisonCountries[Math.floor(Math.random() * wealthComparisonCountries.length)];
-  const band = getWealthBand(totalGp, country);
+  const phrase = getWealthBandPhrase(totalGp, country);
   const characterName = getCurrentCharacterDisplayName();
   const roundedGp = Math.round(totalGp).toLocaleString();
-  return `Did you know: ${characterName} has ${roundedGp} GP, roughly ${band} rich in ${country.country}.`;
+  // e.g. "Did you know: Six Sevenson holds 355 GP — by this sheet's estimate
+  // that is still building toward the top 10% in Australia."
+  return `Did you know: ${characterName} holds ${roundedGp} GP — by this sheet's estimate that ${phrase}.`;
 }
+
+// Context-aware banners that react to the live sheet (HP + spell slots).
+// Returns one relevant line at random, or null if nothing notable applies.
+// Kept light: only reads fields that are always in the DOM.
+function buildContextualBannerMessage() {
+  const name = getCurrentCharacterDisplayName();
+  const candidates = [];
+
+  // --- Health state ---
+  const currHp = parseInt(document.getElementById('curr_hp')?.value, 10);
+  const maxHp = parseInt(document.getElementById('max_hp')?.value, 10);
+  if (Number.isFinite(currHp) && Number.isFinite(maxHp) && maxHp > 0) {
+    const ratio = currHp / maxHp;
+    if (currHp <= 0) {
+      candidates.push(`${name} is down. Someone roll for a heal — fast.`);
+    } else if (ratio <= 0.25) {
+      candidates.push(`${name} is hanging on by a thread. Reach for a potion.`);
+      candidates.push(`${name} is one bad roll from the floor right now.`);
+    } else if (ratio <= 0.5) {
+      candidates.push(`${name} is bloodied — one solid hit from real trouble.`);
+    } else if (ratio >= 1) {
+      candidates.push(`${name} is at full health and ready for whatever's next.`);
+    }
+  }
+
+  // --- Spell slots / resources (from spells.js globals) ---
+  // These are file-level `let` globals in spells.js; reference them bare with a
+  // typeof guard since characters.js loads before spells.js.
+  const slots = (typeof manualSpellSlots !== 'undefined' && Array.isArray(manualSpellSlots)) ? manualSpellSlots : [];
+  const used = (typeof manualSpellSlotsUsed !== 'undefined' && manualSpellSlotsUsed) ? manualSpellSlotsUsed : {};
+  if (slots.length) {
+    let totalMax = 0, totalUsed = 0;
+    slots.forEach(s => {
+      const max = Number(s.maxValue) || 0;
+      totalMax += max;
+      totalUsed += Math.min(max, Number(used[s.id]) || 0);
+    });
+    if (totalMax > 0) {
+      if (totalUsed >= totalMax) {
+        candidates.push(`${name} is out of spell slots — time to swing something heavy.`);
+      } else if (totalUsed === 0) {
+        candidates.push(`${name} is fully charged — every spell slot ready to go.`);
+      } else if (totalUsed >= totalMax * 0.75) {
+        candidates.push(`${name} is running low on spell slots. Spend them wisely.`);
+      }
+    }
+  }
+
+  if (!candidates.length) return null;
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
+window.buildContextualBannerMessage = buildContextualBannerMessage;
 
 // ========== CHARACTER MANAGEMENT ==========
 

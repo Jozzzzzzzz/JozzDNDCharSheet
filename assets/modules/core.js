@@ -2182,8 +2182,14 @@ function rollBannerMessage() {
     }
   }
 
-  const dynamicMessage = Math.random() < 0.35 ? buildCurrencyWealthBannerMessage() : null;
-  let nextMessage = dynamicMessage;
+  // Dynamic banners: ~25% contextual (HP / spell slots), else ~35% wealth, else static.
+  let nextMessage = null;
+  if (Math.random() < 0.25 && typeof buildContextualBannerMessage === 'function') {
+    nextMessage = buildContextualBannerMessage();
+  }
+  if (!nextMessage && Math.random() < 0.35) {
+    nextMessage = buildCurrencyWealthBannerMessage();
+  }
 
   if (!nextMessage) {
     let nextIndex = Math.floor(Math.random() * messages.length);

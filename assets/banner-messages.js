@@ -72,6 +72,22 @@ window.BANNER_MESSAGES = [
   'Fun fact: A Gelatinous Cube is nearly invisible — it is essentially a walking corridor trap.',
   'Fun fact: The tarrasque cannot fly — kite it from range and you have a chance.',
   'Fun fact: Dragons gain new abilities as they age through wyrmling, young, adult, and ancient.',
+  'Fun fact: A creature can only benefit from one long rest in any 24-hour period.',
+  'Fun fact: Grappling does not need an attack roll — it is an Athletics check against the target.',
+  'Fun fact: Twin spells like Haste can target two creatures if you are a Sorcerer with Twinned Spell.',
+  'Fun fact: Darkvision sees in dim light as bright, and darkness as dim — everything looks greyscale.',
+  'Fun fact: A flying creature falls if it is knocked prone, restrained, or its speed drops to 0.',
+  'Fun fact: Bless adds 1d4 to attack rolls and saving throws — quietly one of the best level-1 spells.',
+  'Fun fact: A familiar can deliver touch spells for you from up to 100 feet away.',
+  'Fun fact: You can drop prone for free, but standing up costs half your movement.',
+  'Fun fact: Critical hits double the dice you roll, not the total — modifiers are added once.',
+  'Fun fact: Hiding needs cover or obscurement — you cannot hide from a creature that can clearly see you.',
+  'Fun fact: Goblins get Nimble Escape: they can Disengage or Hide as a bonus action every turn.',
+  'Fun fact: A net attack can restrain a Large or smaller creature — niche, but it wins fights.',
+  'Fun fact: Owlbears are believed to be the result of a wizard crossing a giant owl with a bear.',
+  'Fun fact: A Rope of Climbing can move on its own and tie knots on command.',
+  'Fun fact: Most spells need only one free hand for somatic components, even while holding a shield.',
+  'Fun fact: Drinking a potion is an action; feeding one to an unconscious ally is also an action.',
 
   // ----------------------------------------------------------------
   // PARTY VIBES — relatable chaos
@@ -96,14 +112,11 @@ window.BANNER_MESSAGES = [
   // MONEY MATHS — GP to real-world comparisons (1 GP ≈ NZ$100 estimate)
   // These are intentionally near the bottom since they involve numbers.
   // ----------------------------------------------------------------
-  'Did you know: For this sheet, 1 GP is roughly NZ$100 as a table-friendly estimate.',
-  'Did you know: A quick rough guide is 1 CP ≈ NZ$1, 1 SP ≈ NZ$10, and 1 GP ≈ NZ$100.',
-  'Did you know: 1 platinum piece is worth 10 GP — about NZ$1,000 by this sheet estimate.',
-  'Did you know: A loose 1 GP comparison is about US$60, NZ$100, or GBP 50 — for flavour only.',
-  'Did you know: If the top-1% line is around NZ$5 million, that is roughly 50,000 GP.',
-  'Did you know: If the top-1% line is around US$10 million, that is roughly 166,667 GP.',
-  'Did you know: If the top-1% line is around GBP 4 million, that is roughly 80,000 GP.',
-  'Fun fact: A dragon sitting on 100,000 GP is sitting on roughly NZ$10 million by this estimate.',
-  'Tip: Real-world money comparisons are just table flavour — D&D item prices are not balanced like modern shopping.'
+  'Did you know: As a table-friendly estimate, this sheet treats 1 GP as roughly NZ$100.',
+  'Did you know: A rough money guide: 1 CP ≈ NZ$1, 1 SP ≈ NZ$10, 1 GP ≈ NZ$100, 1 PP ≈ NZ$1,000.',
+  'Did you know: One loose take on 1 GP is about US$60, NZ$100, or £50 — pure flavour, not official.',
+  'Did you know: By this sheet estimate, becoming a real-world millionaire takes around 10,000 GP.',
+  'Did you know: A dragon hoarding 100,000 GP is sitting on roughly NZ$10 million by this estimate.',
+  'Tip: Money comparisons here are just table flavour — D&D prices are not balanced like modern shopping.'
 
 ];
