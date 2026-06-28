@@ -582,12 +582,12 @@ async function adminViewCampaignPlayers(campaignId, campaignName) {
     const rows = [];
     snap.forEach(doc => {
       const m = doc.data() || {};
-      const uid = m.uid || doc.id;
+      const charId = m.charId || doc.id;
       rows.push(`
         <div class="admin-campaign-player-row">
           <span class="admin-campaign-player-name">${escapeHtml(m.charName || 'Unnamed')}</span>
           <span class="settings-note">${escapeHtml([m.race, m.class, m.level ? 'Lv ' + m.level : ''].filter(Boolean).join(' · '))}</span>
-          <button class="settings-action-btn admin-delete-btn" onclick="adminRemovePlayer('${campaignId}','${uid}','${escapeHtml(campaignName)}')">Remove</button>
+          <button class="settings-action-btn admin-delete-btn" onclick="adminRemovePlayer('${campaignId}','${charId}','${escapeHtml(campaignName)}')">Remove</button>
         </div>
       `);
     });
@@ -608,15 +608,15 @@ function adminFriendlyError(e) {
   return (e && e.message) ? e.message : 'Something went wrong. Try again.';
 }
 
-async function adminRemovePlayer(campaignId, uid, campaignName) {
-  if (!confirm('Remove this player from the campaign? Their campaign indicator clears and they can re-join with the password.')) return;
+async function adminRemovePlayer(campaignId, charId, campaignName) {
+  if (!confirm('Remove this character from the campaign? Their campaign indicator clears and they can re-join with the password.')) return;
   const db = window.db;
-  if (!db) return;
+  if (!db || !charId) return;
   try {
-    // Delete the member doc — the roster reads members, so the player is removed
-    // instantly even while offline. Their own app clears its indicator next load.
+    // Delete the member doc (keyed by charId) — the roster reads members, so the
+    // character is removed instantly even while offline.
     await db.collection('campaigns').doc(campaignId)
-      .collection('members').doc(uid).delete();
+      .collection('members').doc(charId).delete();
     setAdminCampaignStatus('Player removed.', 'success');
     setTimeout(() => adminViewCampaignPlayers(campaignId, campaignName), 100);
   } catch (e) {

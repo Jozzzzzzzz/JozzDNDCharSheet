@@ -4474,7 +4474,7 @@ async function loadCampaignCache() {
 // campaign cache and (re)renders the Settings → Campaign Access card.
 async function loadCampaignDropdown() {
   await loadCampaignCache();
-  renderCampaignSettings();
+  renderCampaignControls();
 }
 
 // ─── Settings → Campaign Access (members-doc based) ─────────────────────────
@@ -4494,26 +4494,27 @@ function _currentJoinedCampaignName() {
   return '';
 }
 
-// Render the Settings → Campaign Access card based on auth + joined state.
-function renderCampaignSettings() {
-  const body = document.getElementById('campaignSettingsBody');
+// Render the Stats → Character Info campaign controls based on auth + joined
+// state of the CURRENTLY LOADED character (membership is per-character).
+function renderCampaignControls() {
+  const body = document.getElementById('campaignControlsBody');
   if (!body) return;
   const user = window.currentUser;
 
   if (!user) {
-    body.innerHTML = '<p class="settings-note">Sign in to join a campaign.</p>';
+    body.innerHTML = '<p class="campaign-note">Sign in (Settings) to link this character to a campaign.</p>';
     return;
   }
 
   const joined = _currentJoinedCampaignName();
   if (joined) {
     body.innerHTML = `
-      <p class="settings-note">Your DM has view access to this character's sheet.</p>
       <div class="campaign-joined-row">
-        <span class="campaign-joined-name">In campaign: <strong>${escapeHtml(joined)}</strong></span>
-        <button class="settings-action-btn admin-delete-btn" onclick="leaveCampaign(this)">Leave Campaign</button>
+        <span class="campaign-joined-name">🛡️ In campaign: <strong>${escapeHtml(joined)}</strong></span>
+        <button class="settings-action-btn admin-delete-btn" onclick="leaveCampaign(this)">Leave</button>
       </div>
-      <p id="campaignSettingsStatus" class="settings-note"></p>`;
+      <p class="campaign-note">Your DM has read-only view access to this character's sheet. Joining changes nothing else.</p>
+      <p id="campaignControlsStatus" class="campaign-note"></p>`;
     return;
   }
 
@@ -4521,7 +4522,6 @@ function renderCampaignSettings() {
   const options = _campaignCache.map(c =>
     `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('');
   body.innerHTML = `
-    <p class="settings-note">If your DM uses this app, join their campaign to give them read-only view access to this character's sheet. It changes nothing else.</p>
     <div class="campaign-join-controls">
       <select id="campaignJoinSelect">
         <option value="">Select a campaign…</option>
@@ -4530,11 +4530,12 @@ function renderCampaignSettings() {
       <input id="campaignJoinPassword" type="password" placeholder="Campaign password" autocomplete="off"/>
       <button class="settings-action-btn accent-contrast-bg" onclick="joinCampaign(this)">Join</button>
     </div>
-    <p id="campaignSettingsStatus" class="settings-note"></p>`;
+    <p class="campaign-note">If your DM uses this app, join their campaign with the password they gave you. It gives them read-only view access to this character — nothing else changes.</p>
+    <p id="campaignControlsStatus" class="campaign-note"></p>`;
 }
 
 function _setCampaignStatus(msg, color) {
-  const el = document.getElementById('campaignSettingsStatus');
+  const el = document.getElementById('campaignControlsStatus');
   if (el) { el.textContent = msg || ''; el.style.color = color || ''; }
 }
 
@@ -4575,11 +4576,14 @@ async function joinCampaign(btn) {
     }
   }
 
+  const charId = currentCharacter || '';
+  if (!charId) { _setCampaignStatus('Load a character first.', '#e66'); if (btn) { btn.disabled = false; btn.textContent = 'Join'; } return; }
+
   if (btn) { btn.disabled = true; btn.textContent = 'Joining…'; }
   try {
     const info = {
       uid: user.uid,
-      charId: currentCharacter || '',
+      charId,
       charName: (document.getElementById('char_name')?.value || 'Unnamed').trim(),
       race: document.getElementById('char_race')?.value || '',
       class: document.getElementById('char_class')?.value || '',
@@ -4588,17 +4592,18 @@ async function joinCampaign(btn) {
       campaignName: campaign.name,
       joinedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
+    // PER-CHARACTER: doc keyed by charId so each character joins independently.
     await db.collection('campaigns').doc(campaign.id)
-      .collection('members').doc(user.uid).set(info);
+      .collection('members').doc(charId).set(info);
     // Mark migrated so a future missing member doc is read as a removal.
-    try { localStorage.setItem(_membershipMigrationKey(user.uid, currentCharacter || '', campaign.name), '1'); } catch (_) {}
+    try { localStorage.setItem(_membershipMigrationKey(user.uid, charId, campaign.name), '1'); } catch (_) {}
 
     // Mirror onto the character so the Stats indicator + reconciliation work.
     const hidden = document.getElementById('char_campaign');
     if (hidden) hidden.value = campaign.name;
     autosave();
     updateCampaignIndicator(campaign.name);
-    renderCampaignSettings();
+    renderCampaignControls();
     _setCampaignStatus('✓ Joined ' + campaign.name, '#6e6');
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = 'Join'; }
@@ -4617,14 +4622,15 @@ async function leaveCampaign(btn) {
 
   if (btn) { btn.disabled = true; btn.textContent = 'Leaving…'; }
   const campaign = _campaignCache.find(c => c.name === joinedName);
+  const charId = currentCharacter || '';
   try {
-    if (campaign) {
+    if (campaign && charId) {
       await db.collection('campaigns').doc(campaign.id)
-        .collection('members').doc(user.uid).delete();
-      try { localStorage.removeItem(_membershipMigrationKey(user.uid, currentCharacter || '', joinedName)); } catch (_) {}
+        .collection('members').doc(charId).delete();
+      try { localStorage.removeItem(_membershipMigrationKey(user.uid, charId, joinedName)); } catch (_) {}
     }
     clearJoinedCampaign();
-    renderCampaignSettings();
+    renderCampaignControls();
     _setCampaignStatus('You left ' + joinedName + '.', '');
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = 'Leave Campaign'; }
@@ -4662,7 +4668,7 @@ function restoreCampaignField(savedCampaignId) {
   const hiddenField = document.getElementById('char_campaign');
   if (hiddenField) hiddenField.value = savedCampaignId || '';
   updateCampaignIndicator(savedCampaignId || '');
-  renderCampaignSettings();
+  renderCampaignControls();
   if (savedCampaignId) reconcileMembership(savedCampaignId);
 }
 
@@ -4690,10 +4696,11 @@ async function reconcileMembership(campaignName) {
   if (!campaign) return; // unknown/inactive campaign — leave the saved value alone
 
   const charId = currentCharacter || '';
+  if (!charId) return;
   const migKey = _membershipMigrationKey(user.uid, charId, campaignName);
 
   try {
-    const ref = db.collection('campaigns').doc(campaign.id).collection('members').doc(user.uid);
+    const ref = db.collection('campaigns').doc(campaign.id).collection('members').doc(charId);
     const snap = await ref.get();
     if (snap.exists) {
       // Already a member — make sure the migration marker is set so a later
@@ -4725,13 +4732,13 @@ async function reconcileMembership(campaignName) {
     // Marker present + no member doc → genuine DM/owner removal. Clear locally.
     try { localStorage.removeItem(migKey); } catch (_) {}
     clearJoinedCampaign();
-    renderCampaignSettings();
+    renderCampaignControls();
     _setCampaignStatus('You were removed from ' + campaignName + '.', '#e66');
   } catch (_) { /* offline / transient — keep the saved value, retry next load */ }
 }
 
 window.loadCampaignDropdown = loadCampaignDropdown;
-window.renderCampaignSettings = renderCampaignSettings;
+window.renderCampaignControls = renderCampaignControls;
 window.joinCampaign = joinCampaign;
 window.leaveCampaign = leaveCampaign;
 window.restoreCampaignField = restoreCampaignField;

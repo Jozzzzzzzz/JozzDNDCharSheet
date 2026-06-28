@@ -1,7 +1,7 @@
 <div class="dm-page" id="dm-spells" style="display:none;">
   <div class="dm-page-header">
     <h2>Player Spells &amp; Actions</h2>
-    <p class="dm-page-subtitle">Every spell your players know, side by side</p>
+    <p class="dm-page-subtitle">Each player's currently prepared spells, side by side</p>
   </div>
 
   <div class="dm-card">
@@ -9,7 +9,7 @@
       <h3>Spell Overview</h3>
       <button class="dm-action-btn" onclick="dmLoadPlayerSpells()">Load / Refresh</button>
     </div>
-    <p class="dm-note">Pulls each linked player's cantrips and spells into one table. Spells known by more than one player are highlighted so you can spot overlaps at a glance.</p>
+    <p class="dm-note">Pulls each linked player's currently <strong>prepared</strong> spells into one table. Players control what's prepared on their own sheet — hit Refresh to pull the latest. Spells prepared by more than one player are highlighted so you can spot overlaps at a glance.</p>
     <div id="dmSpellsLegend" class="dm-spells-legend" style="display:none;">
       <span class="dm-spells-legend-item"><span class="dm-spells-swatch dm-overlap-2"></span> 2 players</span>
       <span class="dm-spells-legend-item"><span class="dm-spells-swatch dm-overlap-3"></span> 3+ players</span>

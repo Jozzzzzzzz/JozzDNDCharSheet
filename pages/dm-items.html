@@ -1,0 +1,36 @@
+<div class="dm-page" id="dm-items" style="display:none;">
+  <div class="dm-page-header">
+    <h2>Items</h2>
+    <p class="dm-page-subtitle">SRD magic item database via Open5e</p>
+  </div>
+
+  <div class="dm-card">
+    <div class="dm-card-header">
+      <h3>Browse Magic Items</h3>
+    </div>
+    <div class="dm-search-bar">
+      <input type="text" id="dmItemSearch" placeholder="Search items... (e.g. Sword, Ring, Potion)" oninput="dmFilterItems()" autocomplete="off">
+      <select id="dmItemRarityFilter" onchange="dmFilterItems()">
+        <option value="">All rarities</option>
+        <option value="common">Common</option>
+        <option value="uncommon">Uncommon</option>
+        <option value="rare">Rare</option>
+        <option value="very rare">Very Rare</option>
+        <option value="legendary">Legendary</option>
+        <option value="artifact">Artifact</option>
+      </select>
+      <button class="dm-action-btn" onclick="dmLoadItems()">Load Items</button>
+    </div>
+    <p class="dm-note" id="dmItemsNote">Click "Load Items" to fetch from Open5e API. Requires internet connection.</p>
+    <div id="dmItemsList" class="dm-monsters-list"></div>
+  </div>
+
+  <!-- Item detail panel -->
+  <div id="dmItemDetail" class="dm-monster-detail" style="display:none;">
+    <div class="dm-monster-detail-header">
+      <h3 id="dmItemDetailName">Item Name</h3>
+      <button class="dm-close-detail-btn" onclick="document.getElementById('dmItemDetail').style.display='none'">✕ Close</button>
+    </div>
+    <div id="dmItemDetailBody" class="dm-monster-detail-body"></div>
+  </div>
+</div>

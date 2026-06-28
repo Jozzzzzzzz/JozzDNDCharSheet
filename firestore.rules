@@ -82,20 +82,24 @@ service cloud.firestore {
         allow update: if isOwnerAdmin() || isCampaignDm(campaignId);
       }
 
-      // Membership: campaigns/{id}/members/{uid}
-      // A member doc is a player's grant of read-access to the DM/owner.
-      // It is the SOURCE OF TRUTH for the campaign roster (not the player's
-      // own character doc), so a DM/owner can remove a player instantly even
-      // while that player is offline.
-      match /members/{uid} {
-        // Player joins (create) and leaves (delete) their OWN membership,
-        // and reads their own to know they're in.
-        allow create, delete: if isSignedIn() && request.auth.uid == uid;
-        allow read: if (isSignedIn() && request.auth.uid == uid)
+      // Membership: campaigns/{id}/members/{charId}
+      // PER-CHARACTER. A member doc is a single character's grant of read-access
+      // to the DM/owner, keyed by the character id (NOT the user id) so a player
+      // with several characters can join independently with each one. The doc
+      // stores `uid` so rules can tell who owns it.
+      // This is the SOURCE OF TRUTH for the campaign roster, so a DM/owner can
+      // remove a character instantly even while that player is offline.
+      match /members/{charId} {
+        // The owning player creates / deletes their own character's membership.
+        // On create, the doc must carry their own uid.
+        allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+        allow delete: if (isSignedIn() && resource.data.uid == request.auth.uid)
+                         || isOwnerAdmin() || isCampaignDm(campaignId);
+        // Read: the owning player, the owner-admin, or an assigned DM.
+        allow read: if (isSignedIn() && resource.data.uid == request.auth.uid)
                        || isOwnerAdmin() || isCampaignDm(campaignId);
-        // DM / owner can remove (delete) any member; owner can add/write anyone.
-        allow delete: if isOwnerAdmin() || isCampaignDm(campaignId);
-        allow write:  if isOwnerAdmin();
+        // Owner can add/overwrite anyone's membership.
+        allow write: if isOwnerAdmin();
       }
     }
 

@@ -6,9 +6,24 @@
 // the Home button until they visit the home page.
 // ============================================================
 
-const CHANGELOG_LATEST_VERSION = '1.08';
+const CHANGELOG_LATEST_VERSION = '1.09';
 
 const CHANGELOG = [
+  {
+    version: '1.09',
+    date: '2026-06-28',
+    title: 'v1.09 — Per-Character Campaigns & DM Item Library',
+    updates: [
+      'Joining a campaign is now per-character — each of your characters joins independently, right from the Stats → Character Info section',
+      'New DM Items tab: browse the full Open5e magic item library, search by name and filter by rarity, and add items straight to an NPC\'s loot',
+      'DM Player Spells view now shows each player\'s currently prepared spells (updates as players change their preparation — just hit Refresh)',
+    ],
+    fixes: [
+      'Fixed campaign membership so switching between your characters no longer carries the campaign link across all of them',
+      'Removed players now clear correctly across every DM and Admin view',
+      'Tidied the Ability Scores layout so the stat and bonus columns line up cleanly',
+    ],
+  },
   {
     version: '1.08',
     date: '2026-06-27',

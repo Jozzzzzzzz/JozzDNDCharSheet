@@ -4391,14 +4391,16 @@
   gap: 10px;
 }
 
-/* ── Campaign Field ── */
-/* ── Campaign Access (Settings) + Stats indicator ── */
-.campaign-indicator-box {
-  background: var(--accent-soft);
-  border: 1px solid var(--accent-border);
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 0.92em;
+/* ── Campaign controls (Stats → Character Info, per-character) ── */
+.campaign-controls-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.campaign-note {
+  font-size: 0.8em;
+  opacity: 0.6;
+  margin: 2px 0 0;
 }
 
 .campaign-join-controls {
@@ -4415,6 +4417,10 @@
   gap: 10px;
   align-items: center;
   flex-wrap: wrap;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  padding: 8px 12px;
 }
 .campaign-joined-name { flex: 1 1 auto; }
 
@@ -5981,6 +5987,9 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 }
 
 .ability-col label {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
   font-weight: bold;
   margin-bottom: 5px;
   color: var(--accent-contrast) !important;
@@ -5990,6 +5999,11 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   min-height: 20px;
   text-align: center;
   border: 2px solid var(--accent-border);
+}
+
+.ability-col input {
+  box-sizing: border-box;
+  width: 100%;
 }
 
 /* Bonus input styling - now regular editable inputs */
@@ -8083,6 +8097,13 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 }
 
 .dm-sb-trait strong { color: var(--accent-text); }
+
+.dm-sb-desc {
+  color: rgba(255,255,255,0.8);
+  line-height: 1.55;
+}
+.dm-sb-desc p { margin: 0 0 8px; }
+.dm-sb-desc p:last-child { margin-bottom: 0; }
 
 /* ── Encounters ── */
 .dm-encounter-layout { display: grid; grid-template-columns: 1fr 320px; gap: 16px; }

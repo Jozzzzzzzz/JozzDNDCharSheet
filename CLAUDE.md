@@ -293,15 +293,16 @@ Access is gated by the **campaign DM control password** (`campaigns/{id}.dmPassw
 - **In-app dialogs:** `dmModal(opts)` (promise-based; `{title, message, input, inputType, placeholder, value, confirmText, cancelText, danger}` → resolves the input string / `true` / `null` on cancel) and `dmToast(msg, type)` replace ALL native `prompt/alert/confirm` in the DM side. Themed to the player popup language (`.dm-modal*`, `.dm-toast*`). Use these, not native dialogs, for any new DM interaction.
 
 ### DM Pages
-Tab order (in `partials/dm-chrome.html`): Home · Lore · Players · Player Spells & Actions · Monsters · Encounters · NPCs · Notes · Settings.
+Tab order (in `partials/dm-chrome.html`): Home · Lore · Players · Player Spells & Actions · Monsters · Items · Encounters · NPCs · Notes · Settings.
 
 | Page | File | Status | Key IDs |
 |---|---|---|---|
 | Home | `pages/dm-home.html` | Working | `#dmHomeGreeting`, `#dmHomeCampaignName`, `#dmHomeCampaignSetting` |
 | Lore | `pages/dm-lore.html` | **Placeholder** (Coming Soon shell) | — |
-| Players | `pages/dm-players.html` | Working | `#dmPlayersList`, `#dmPendingCard`, `#dmPendingList`, `#dmPlayerSheetPanel`, `#dmPlayerSheetBody` |
+| Players | `pages/dm-players.html` | Working | `#dmPlayersList`, `#dmPlayerSheetPanel`, `#dmPlayerSheetBody` (roster reads `campaigns/{id}/members` keyed by charId) |
 | Player Spells & Actions | `pages/dm-spells.html` | **Placeholder** (Coming Soon shell) | — |
 | Monsters | `pages/dm-monsters.html` | Working | `#dmMonsterSearch`, `#dmMonsterCrFilter`, `#dmMonstersList`, `#dmMonsterDetail` |
+| Items | `pages/dm-items.html` | Working | `#dmItemSearch`, `#dmItemRarityFilter`, `#dmItemsList`, `#dmItemDetail` |
 | Encounters | `pages/dm-encounters.html` | Working | `#dmCombatantList`, `#dmEncounterName`, `#dmSavedEncounterList` |
 | NPCs | `pages/dm-npcs.html` | Working | `#dmNpcName`, `#dmNpcLootResult`, `#dmNpcList` |
 | Notes | `pages/dm-notes.html` | **Placeholder** (Coming Soon shell) | — |

@@ -35,11 +35,11 @@
       <input id="char_level" oninput="updateProficiencyBonus(); autosave()" type="number" min="1" placeholder="Level"/>
     </div>
     <input id="char_campaign" type="hidden"/>
-    <div id="char_campaign_indicator" style="grid-column: 1 / -1; display:none;">
-      <label>Campaign</label>
-      <div class="campaign-indicator-box">
-        🛡️ In campaign: <strong id="char_campaign_indicator_name"></strong>
-        <span style="font-size:0.78em;opacity:0.6;font-weight:400;"> — your DM has view access. Manage in Settings → Campaign Access.</span>
+    <div id="char_campaign_indicator" style="display:none;"><span id="char_campaign_indicator_name"></span></div>
+    <div style="grid-column: 1 / -1;">
+      <label>Campaign <span style="font-size:0.78em;opacity:0.5;font-weight:400;">— link this character to a DM's campaign</span></label>
+      <div id="campaignControlsBody" class="campaign-controls-body">
+        <p class="campaign-note">Sign in (Settings) to link this character to a campaign.</p>
       </div>
     </div>
   </div>

@@ -504,6 +504,111 @@ window.dmLoadMonsters = dmLoadMonsters;
 window.dmFilterMonsters = dmFilterMonsters;
 window.dmShowMonster = dmShowMonster;
 
+// ─── Items (Open5e magic items — reference only) ───────────────────────────
+// SAFETY: this is REFERENCE DATA the DM browses. It never writes to or mutates
+// any player's saved character. "Add to NPC loot" only appends to the DM's own
+// NPC loot text field.
+let dmAllItems = [];
+
+async function dmLoadItems() {
+  const note = document.getElementById('dmItemsNote');
+  const list = document.getElementById('dmItemsList');
+  if (note) note.textContent = 'Loading from Open5e...';
+  if (list) list.innerHTML = '';
+
+  try {
+    let results = [];
+    let url = 'https://api.open5e.com/v1/magicitems/?limit=100';
+    while (url) {
+      const res = await fetch(url);
+      const data = await res.json();
+      results = results.concat(data.results || []);
+      url = data.next || null;
+    }
+    results.sort((a, b) => a.name.localeCompare(b.name));
+    dmAllItems = results;
+    if (note) note.textContent = `Loaded ${results.length} magic items from Open5e.`;
+    dmRenderItemList(results);
+  } catch (e) {
+    if (note) note.textContent = 'Failed to load items. Check your internet connection.';
+    console.error('Item load failed:', e);
+  }
+}
+
+function dmFilterItems() {
+  const q = (document.getElementById('dmItemSearch')?.value || '').toLowerCase();
+  const rarity = (document.getElementById('dmItemRarityFilter')?.value || '').toLowerCase();
+  let filtered = dmAllItems;
+  if (q) filtered = filtered.filter(it =>
+    it.name.toLowerCase().includes(q) || (it.type || '').toLowerCase().includes(q));
+  if (rarity) filtered = filtered.filter(it => (it.rarity || '').toLowerCase() === rarity);
+  dmRenderItemList(filtered);
+}
+
+function dmRenderItemList(items) {
+  const list = document.getElementById('dmItemsList');
+  if (!list) return;
+  if (!items.length) { list.innerHTML = '<p class="dm-empty-state">No items match.</p>'; return; }
+
+  list.innerHTML = items.map(it => `
+    <div class="dm-monster-row" onclick="dmShowItem('${escapeHtml(it.slug)}')">
+      <span class="dm-monster-name">${escapeHtml(it.name)}</span>
+      <span class="dm-monster-meta">${escapeHtml(it.type || 'Item')} · ${escapeHtml(it.rarity || 'unknown rarity')}${it.requires_attunement ? ' · attunement' : ''}</span>
+    </div>
+  `).join('');
+}
+
+async function dmShowItem(slug) {
+  const detail = document.getElementById('dmItemDetail');
+  const name = document.getElementById('dmItemDetailName');
+  const body = document.getElementById('dmItemDetailBody');
+  if (!detail || !body) return;
+
+  const cached = dmAllItems.find(it => it.slug === slug);
+  const it = cached || await fetch(`https://api.open5e.com/v1/magicitems/${slug}/`).then(r => r.json()).catch(() => null);
+  if (!it) return;
+
+  if (name) name.textContent = it.name;
+  const attune = it.requires_attunement
+    ? (typeof it.requires_attunement === 'string' && it.requires_attunement.trim()
+        ? it.requires_attunement : 'Yes')
+    : 'No';
+  body.innerHTML = `
+    <div class="dm-stat-block">
+      <div class="dm-sb-meta">${escapeHtml(it.type || 'Item')}, ${escapeHtml(it.rarity || 'unknown rarity')}</div>
+      <div class="dm-sb-divider"></div>
+      <div class="dm-sb-row"><strong>Requires Attunement</strong> ${escapeHtml(attune)}</div>
+      ${it.document__title ? `<div class="dm-sb-row"><strong>Source</strong> ${escapeHtml(it.document__title)}</div>` : ''}
+      <div class="dm-sb-divider"></div>
+      <div class="dm-sb-desc">${dmItemDescHtml(it.desc || '')}</div>
+    </div>
+    <button class="dm-action-btn" style="margin-top:12px;" onclick="dmAddItemToNpcLoot('${escapeHtml(it.name)}')">Add to NPC Loot</button>
+  `;
+  detail.style.display = 'block';
+  detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// Render multi-paragraph item descriptions safely (escape, then keep breaks).
+function dmItemDescHtml(desc) {
+  return String(desc).split(/\n+/).map(p => `<p>${escapeHtml(p)}</p>`).join('');
+}
+
+// Append the item name to the NPC generator's loot field (DM's own data only).
+function dmAddItemToNpcLoot(itemName) {
+  const el = document.getElementById('dmNpcLootResult');
+  if (!el) { dmToast('Open the NPCs tab first.', 'error'); return; }
+  const existing = (el.textContent || '').trim();
+  const isPlaceholder = el.classList.contains('dm-empty-state') || !existing;
+  el.textContent = isPlaceholder ? itemName : `${existing} · ${itemName}`;
+  el.classList.remove('dm-empty-state');
+  dmToast(`Added "${itemName}" to NPC loot.`, 'success');
+}
+
+window.dmLoadItems = dmLoadItems;
+window.dmFilterItems = dmFilterItems;
+window.dmShowItem = dmShowItem;
+window.dmAddItemToNpcLoot = dmAddItemToNpcLoot;
+
 // ─── Encounters ────────────────────────────────────────────────────────────
 
 let dmCombatants = [];
@@ -843,7 +948,7 @@ async function dmLoadPlayers() {
         </div>
         <div class="dm-player-actions">
           ${c.charId ? `<button class="dm-action-btn" onclick="dmViewPlayerCharacter('${c.uid}','${c.charId}')">View Sheet</button>` : ''}
-          <button class="dm-action-btn dm-danger-btn" onclick="dmRemovePlayer('${c.uid}','${escapeHtml(c.name)}',this)">Remove</button>
+          <button class="dm-action-btn dm-danger-btn" onclick="dmRemovePlayer('${c.charId}','${escapeHtml(c.name)}',this)">Remove</button>
         </div>
       </div>
     `).join('');
@@ -884,25 +989,26 @@ async function dmFetchMembers() {
 }
 
 const _dmRemoveState = {};
-async function dmRemovePlayer(uid, name, btn) {
+async function dmRemovePlayer(charId, name, btn) {
+  if (!charId) return;
   // Two-step confirm
-  if (!_dmRemoveState[uid]) {
-    _dmRemoveState[uid] = true;
+  if (!_dmRemoveState[charId]) {
+    _dmRemoveState[charId] = true;
     if (btn) { btn.textContent = 'Sure?'; }
-    setTimeout(() => { _dmRemoveState[uid] = false; if (btn) btn.textContent = 'Remove'; }, 4000);
+    setTimeout(() => { _dmRemoveState[charId] = false; if (btn) btn.textContent = 'Remove'; }, 4000);
     return;
   }
-  _dmRemoveState[uid] = false;
+  _dmRemoveState[charId] = false;
   const db = window.db;
   const campaignId = dmCurrentCampaignId();
   if (!db || !campaignId) return;
   if (btn) { btn.disabled = true; btn.textContent = 'Removing…'; }
   try {
-    // Delete the member doc — the roster reads members, so the player is gone
-    // immediately regardless of whether they're online. Their own app clears its
-    // campaign indicator on next load when it sees no member doc.
+    // Delete the member doc (keyed by charId) — the roster reads members, so the
+    // character is gone immediately regardless of whether the player is online.
+    // Their app clears its campaign indicator on next load when it sees no doc.
     await db.collection('campaigns').doc(campaignId)
-      .collection('members').doc(uid).delete();
+      .collection('members').doc(charId).delete();
     dmToast(name + ' removed.', 'success');
     dmLoadPlayers();
   } catch (e) {
@@ -954,7 +1060,11 @@ async function dmLoadPlayerSpells() {
 
       const ingest = (arr, isCantrip) => {
         (Array.isArray(arr) ? arr : []).forEach(sp => {
-          const name = (sp && sp.name ? String(sp.name) : '').trim();
+          // Only PREPARED spells — matches the player's own Prepared Spells table
+          // (spells.js filters on spell.prepared). This reflects the player's
+          // current preparation each time the DM (re)loads this view.
+          if (!sp || !sp.prepared) return;
+          const name = (sp.name ? String(sp.name) : '').trim();
           if (!name) return;
           const key = name.toLowerCase();
           // Level: cantrips = 0; otherwise use record level (number-ish) or 0
@@ -975,7 +1085,7 @@ async function dmLoadPlayerSpells() {
     }
 
     if (!spellMap.size) {
-      wrap.innerHTML = '<p class="dm-empty-state">Linked characters have no spells recorded yet.</p>';
+      wrap.innerHTML = '<p class="dm-empty-state">No prepared spells across linked characters yet. Players control which spells are prepared on their own sheet.</p>';
       if (legend) legend.style.display = 'none';
       return;
     }
