@@ -7904,7 +7904,6 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 .dm-action-btn:hover {
   background: var(--accent-soft);
   border-color: var(--accent-text);
-  transform: translateY(-1px);
   box-shadow: 0 3px 8px rgba(0,0,0,0.25);
 }
 
@@ -8110,8 +8109,150 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 .dm-sb-desc p { margin: 0 0 8px; }
 .dm-sb-desc p:last-child { margin-bottom: 0; }
 
+/* ── Build | Generate mode toggle ── */
+.dm-mode-toggle {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 10px;
+  background: rgba(var(--accent-rgb), 0.08);
+  border: 1px solid var(--accent-border);
+  margin-bottom: 14px;
+}
+.dm-mode-btn {
+  border: none;
+  background: transparent;
+  color: rgba(255,255,255,0.7);
+  font-weight: 600;
+  font-size: 0.88rem;
+  padding: 7px 18px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.dm-mode-btn:hover { color: #fff; }
+.dm-mode-btn.active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
 /* ── Encounters ── */
 .dm-encounter-layout { display: grid; grid-template-columns: 1fr 320px; gap: 16px; }
+
+/* Party input rows */
+.dm-party-rows { display: flex; flex-direction: column; gap: 6px; }
+.dm-party-row { display: flex; align-items: center; gap: 8px; }
+.dm-party-row input { width: 64px; }
+.dm-party-row-label { font-size: 0.82rem; color: rgba(255,255,255,0.55); flex: 1; }
+
+/* Generator controls */
+.dm-gen-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.dm-gen-controls select { flex: 1 1 150px; min-width: 0; }
+/* Toggle chips (Scale to party / Replace current) */
+.dm-gen-replace {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.7);
+  white-space: nowrap;
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--accent-border);
+  background: rgba(255,255,255,0.03);
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+.dm-gen-replace:hover {
+  background: var(--accent-soft);
+  color: #fff;
+}
+/* the native checkbox: small, accent-coloured, no transform/jump */
+.dm-gen-replace input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex: none;
+  accent-color: var(--accent);
+  cursor: pointer;
+  transform: none !important;
+}
+.dm-gen-replace input[type="checkbox"]:hover { transform: none !important; }
+/* highlight the whole chip when its box is checked */
+.dm-gen-replace:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: #fff;
+}
+
+/* Live difficulty meter */
+.dm-difficulty-meter {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px;
+  padding: 12px 16px; margin-bottom: 16px;
+  border-radius: 10px;
+  border: 1px solid var(--accent-border);
+  background: var(--card-bg);
+}
+.dm-diff-label { font-size: 1.05rem; font-weight: 700; }
+.dm-diff-xp { font-size: 0.85rem; color: rgba(255,255,255,0.8); }
+.dm-diff-mult { color: rgba(255,255,255,0.5); }
+.dm-diff-budget { font-size: 0.76rem; color: rgba(255,255,255,0.45); flex-basis: 100%; }
+/* difficulty colour cues (left border + label tint) */
+.dm-difficulty-meter.diff-trivial { border-left: 4px solid #6b7280; }
+.dm-difficulty-meter.diff-easy    { border-left: 4px solid #4ccf6a; }
+.dm-difficulty-meter.diff-easy .dm-diff-label    { color: #6fe089; }
+.dm-difficulty-meter.diff-medium  { border-left: 4px solid #d9c24a; }
+.dm-difficulty-meter.diff-medium .dm-diff-label  { color: #e6d063; }
+.dm-difficulty-meter.diff-hard    { border-left: 4px solid #e08a3c; }
+.dm-difficulty-meter.diff-hard .dm-diff-label    { color: #f0a25a; }
+.dm-difficulty-meter.diff-deadly  { border-left: 4px solid #d9483c; }
+.dm-difficulty-meter.diff-deadly .dm-diff-label  { color: #f06a5a; }
+.dm-difficulty-meter.diff-brutal  { border-left: 4px solid #b8324a; }
+.dm-difficulty-meter.diff-brutal .dm-diff-label  { color: #f0567a; }
+.dm-difficulty-meter.diff-mythic  { border-left: 4px solid #9b3ad6; }
+.dm-difficulty-meter.diff-mythic .dm-diff-label  { color: #c77af0; }
+
+/* ── Encounter card ── */
+.dm-encounter-card { margin-top: 16px; }
+.dm-enc-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.dm-enc-card-head h3 { margin: 0; }
+.dm-enc-card-label {
+  display: block; margin: 12px 0 4px;
+  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.03em;
+  color: var(--accent-text); text-transform: uppercase;
+}
+.dm-enc-card-label span { font-weight: 400; text-transform: none; opacity: 0.5; letter-spacing: 0; }
+.dm-enc-card-text {
+  width: 100%; box-sizing: border-box; resize: vertical;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--accent-border); border-radius: 6px;
+  color: rgba(255,255,255,0.9); padding: 8px 10px; font-size: 0.88rem; line-height: 1.5;
+}
+.dm-enc-card-init { margin-top: 12px; }
+.dm-init-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.dm-init-list li { display: flex; align-items: center; gap: 10px; font-size: 0.88rem; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.dm-init-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 30px; height: 26px; padding: 0 6px;
+  background: var(--accent); color: var(--accent-contrast);
+  border-radius: 6px; font-weight: 700; font-size: 0.85rem;
+}
+.dm-init-ac { margin-left: auto; font-size: 0.76rem; color: rgba(255,255,255,0.45); }
+
+/* difficulty pill on the card */
+.dm-difficulty-pill {
+  display: inline-block; padding: 3px 12px; border-radius: 999px;
+  font-size: 0.78rem; font-weight: 700;
+  border: 1px solid currentColor;
+}
+.dm-difficulty-pill.diff-trivial { color: #9aa3ad; }
+.dm-difficulty-pill.diff-easy    { color: #6fe089; }
+.dm-difficulty-pill.diff-medium  { color: #e6d063; }
+.dm-difficulty-pill.diff-hard    { color: #f0a25a; }
+.dm-difficulty-pill.diff-deadly  { color: #f06a5a; }
+.dm-difficulty-pill.diff-brutal  { color: #f0567a; }
+.dm-difficulty-pill.diff-mythic  { color: #c77af0; }
 
 .dm-encounter-name-row {
   display: flex;
@@ -8159,8 +8300,28 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 .dm-hp-dead { color: #e85a5a; }
 
 .dm-saved-encounter-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
-.dm-saved-encounter-name { flex: 1; font-size: 0.9rem; font-weight: 600; color: rgba(255,255,255,0.88); }
+.dm-saved-encounter-name { font-size: 0.9rem; font-weight: 600; color: rgba(255,255,255,0.88); }
 .dm-saved-encounter-count { font-size: 0.78rem; color: rgba(255,255,255,0.4); }
+
+/* Expandable saved-encounter cards */
+.dm-saved-enc {
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.02);
+}
+.dm-saved-enc-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 12px; cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.dm-saved-enc-head:hover { background: var(--accent-soft); }
+.dm-saved-enc-title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.dm-saved-enc-body { padding: 4px 12px 12px; border-top: 1px solid rgba(255,255,255,0.06); }
+.dm-saved-enc-intro { font-style: italic; color: rgba(255,255,255,0.75); margin: 8px 0; }
+.dm-saved-enc-list { list-style: none; margin: 6px 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.dm-saved-enc-list li { display: flex; align-items: center; gap: 8px; font-size: 0.84rem; color: rgba(255,255,255,0.8); }
 
 /* ── NPCs ── */
 .dm-npc-layout { display: grid; grid-template-columns: 1fr 300px; gap: 16px; }
@@ -8178,7 +8339,20 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 .dm-field-row textarea { resize: vertical; }
 
 .dm-name-row { display: flex; gap: 6px; align-items: center; }
-.dm-name-row input { flex: 1; }
+.dm-name-row input { flex: 1; min-width: 0; }
+.dm-name-row textarea { flex: 1; min-width: 0; }
+/* keep the reroll button aligned to the top of a multi-line field */
+.dm-name-row textarea + .dm-icon-btn,
+.dm-name-row textarea + .dm-reroll-btn { align-self: flex-start; }
+
+/* compact per-field reroll button */
+.dm-reroll-btn {
+  flex-shrink: 0;
+  width: auto;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
 
 .dm-npc-loot { border-top: 1px solid var(--accent-border); padding-top: 10px; margin-top: 4px; }
 .dm-loot-result { font-size: 0.88rem; color: rgba(255,255,255,0.78); padding: 8px 0; }
@@ -8192,6 +8366,7 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 }
 
 .dm-npc-info { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.dm-npc-actions { display: flex; gap: 4px; flex-shrink: 0; }
 .dm-npc-name { font-weight: 700; font-size: 0.92rem; color: rgba(255,255,255,0.92); }
 .dm-npc-meta { font-size: 0.78rem; color: rgba(255,255,255,0.45); }
 .dm-npc-notes { font-size: 0.8rem; color: rgba(255,255,255,0.6); white-space: pre-wrap; }

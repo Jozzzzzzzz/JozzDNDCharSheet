@@ -1,15 +1,78 @@
 <div class="dm-page" id="dm-encounters" style="display:none;">
   <div class="dm-page-header">
     <h2>Encounters</h2>
-    <p class="dm-page-subtitle">Build and run combat encounters</p>
+    <p class="dm-page-subtitle">Build, balance and run combat encounters</p>
   </div>
 
-  <div class="dm-encounter-layout">
+  <!-- Party (shared context for both modes) -->
+  <div class="dm-card">
+    <div class="dm-card-header">
+      <h3>Your Party</h3>
+      <button class="dm-action-btn" onclick="dmAddPartyRow()">+ Add Level Group</button>
+    </div>
+    <p class="dm-note">Set who's in the party so the builder can rate difficulty with real 5e XP math. Add a row per level (e.g. three lv 5 and one lv 4).</p>
+    <div id="dmPartyRows" class="dm-party-rows"></div>
+  </div>
 
-    <!-- Builder panel -->
+  <!-- Live difficulty meter (shared) -->
+  <div id="dmDifficultyMeter" class="dm-difficulty-meter"></div>
+
+  <div data-mode-group="encounter">
+  <div class="dm-mode-toggle">
+    <button class="dm-mode-btn active" data-mode="build" onclick="dmSetMode('encounter','build')">Build</button>
+    <button class="dm-mode-btn" data-mode="generate" onclick="dmSetMode('encounter','generate')">Generate</button>
+    <button class="dm-mode-btn" data-mode="saved" onclick="dmSetMode('encounter','saved'); dmRenderSavedEncounters()">Saved</button>
+  </div>
+
+  <!-- GENERATE view -->
+  <div class="dm-card" data-mode-view="generate" style="display:none;">
+    <div class="dm-card-header">
+      <h3>Auto-Generate</h3>
+    </div>
+    <p class="dm-note">Pick a theme, difficulty and shape — it pulls real monsters from Open5e to hit your party's XP budget, then writes up a full encounter card.</p>
+    <div class="dm-gen-controls">
+      <select id="dmGenTheme" title="Encounter theme">
+        <option value="random">Theme: Random / Any</option>
+        <option value="bandits">Bandits &amp; Cutthroats</option>
+        <option value="goblinoids">Goblinoids</option>
+        <option value="beasts">Beasts &amp; Wildlife</option>
+        <option value="undead">Undead</option>
+        <option value="fiends">Fiends &amp; Demons</option>
+        <option value="casters">Spellcasters</option>
+        <option value="fighters">Warriors &amp; Brutes</option>
+        <option value="bossMinions">Boss + Minions</option>
+      </select>
+      <select id="dmGenDifficulty" title="Target difficulty">
+        <option value="trivial">Trivial</option>
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+        <option value="deadly">Deadly</option>
+        <option value="brutal">Brutal ⚔</option>
+        <option value="mythic">Mythic ☠</option>
+      </select>
+      <select id="dmGenShape" title="Encounter shape">
+        <option value="balanced" selected>Shape: Balanced mix</option>
+        <option value="swarm">Swarm (many weak)</option>
+        <option value="elite">Elite (few strong)</option>
+        <option value="bossMinions">Boss + Minions</option>
+        <option value="solo">Solo (one big)</option>
+      </select>
+      <input type="number" id="dmGenCount" min="0" max="30" placeholder="# creatures" title="Force a creature count (0 = auto)" style="width:120px;">
+    </div>
+    <div class="dm-gen-controls" style="margin-top:8px;">
+      <label class="dm-gen-replace"><input type="checkbox" id="dmGenAutoScale" checked> Scale to party size</label>
+      <label class="dm-gen-replace"><input type="checkbox" id="dmGenReplace" checked> Replace current</label>
+      <button class="dm-action-btn dm-save-btn" onclick="dmGenerateEncounter()">Generate Encounter</button>
+    </div>
+    <p id="dmGenStatus" class="dm-note"></p>
+  </div>
+
+  <!-- BUILD view -->
+  <div data-mode-view="build">
     <div class="dm-card dm-encounter-builder">
       <div class="dm-card-header">
-        <h3>Encounter Builder</h3>
+        <h3>Combatants</h3>
         <button class="dm-action-btn" onclick="dmClearEncounter()">Clear</button>
       </div>
       <div class="dm-encounter-name-row">
@@ -24,19 +87,25 @@
         <button class="dm-action-btn" onclick="dmAddCombatant()">Add</button>
       </div>
       <div id="dmCombatantList" class="dm-combatant-list">
-        <p class="dm-empty-state">No combatants yet. Add monsters or players above.</p>
+        <p class="dm-empty-state">No combatants yet. Generate one, add monsters from the Monsters tab, or add manually.</p>
       </div>
     </div>
+  </div><!-- /build view -->
 
-    <!-- Saved encounters -->
+  <!-- SAVED view -->
+  <div data-mode-view="saved" style="display:none;">
     <div class="dm-card dm-saved-encounters">
       <div class="dm-card-header">
         <h3>Saved Encounters</h3>
       </div>
+      <p class="dm-note">Encounters you saved from the card — click one to expand, edit its notes, or load it back into the builder.</p>
       <div id="dmSavedEncounterList" class="dm-saved-encounter-list">
-        <p class="dm-empty-state">No saved encounters.</p>
+        <p class="dm-empty-state">No saved encounters yet.</p>
       </div>
     </div>
+  </div><!-- /saved view -->
 
-  </div>
+  <!-- Encounter card (shown after Generate, persists across Build/Generate) -->
+  <div id="dmEncounterCard" class="dm-card dm-encounter-card" style="display:none;"></div>
+  </div><!-- /mode-group -->
 </div>

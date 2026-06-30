@@ -1,19 +1,24 @@
 <div class="dm-page" id="dm-npcs" style="display:none;">
   <div class="dm-page-header">
     <h2>NPC Builder</h2>
-    <p class="dm-page-subtitle">Generate and save NPCs for your campaign</p>
+    <p class="dm-page-subtitle">Build, generate and save NPCs for your campaign</p>
   </div>
 
   <div class="dm-npc-layout">
 
-    <!-- Generator -->
+    <!-- Builder -->
     <div class="dm-card dm-npc-generator">
       <div class="dm-card-header">
-        <h3>Quick Generate</h3>
-        <button class="dm-action-btn" onclick="dmGenerateNpc()">Generate NPC</button>
+        <h3 id="dmNpcFormTitle">Build an NPC</h3>
+        <div class="dm-name-row">
+          <button class="dm-action-btn" onclick="dmGenerateNpc()">Generate</button>
+          <button class="dm-action-btn" onclick="dmRerollNpc()" title="Clear everything and roll a fresh NPC">🎲 Reroll All</button>
+        </div>
       </div>
+      <p class="dm-note">Fill in what you want and leave the rest to <strong>Generate</strong> (it keeps your picks). Use the Reroll on any line to redo just that part. Everything is editable.</p>
 
       <div class="dm-npc-form">
+        <!-- Identity -->
         <div class="dm-field-row">
           <label>Name</label>
           <div class="dm-name-row">
@@ -71,10 +76,57 @@
           </select>
         </div>
         <div class="dm-field-row">
-          <label>Notes</label>
-          <textarea id="dmNpcNotes" placeholder="Personality, appearance, secrets..." rows="3" maxlength="500"></textarea>
+          <label>Wealth <span style="font-size:0.78em;opacity:0.5;font-weight:400;">— drives loot</span></label>
+          <select id="dmNpcWealth">
+            <option value="Random">Random (by role)</option>
+            <option value="Destitute">Destitute</option>
+            <option value="Poor">Poor</option>
+            <option value="Modest">Modest</option>
+            <option value="Comfortable">Comfortable</option>
+            <option value="Wealthy">Wealthy</option>
+          </select>
         </div>
 
+        <!-- Editable detail fields (each rerollable) -->
+        <div class="dm-field-row">
+          <label>Appearance</label>
+          <div class="dm-name-row">
+            <input type="text" id="dmNpcAppearance" placeholder="Distinctive look..." maxlength="160">
+            <button class="dm-action-btn dm-reroll-btn" onclick="dmRerollField('appearance')" title="Reroll appearance">Reroll</button>
+          </div>
+        </div>
+        <div class="dm-field-row">
+          <label>Personality</label>
+          <div class="dm-name-row">
+            <input type="text" id="dmNpcPersonality" placeholder="How they act..." maxlength="160">
+            <button class="dm-action-btn dm-reroll-btn" onclick="dmRerollField('personality')" title="Reroll personality">Reroll</button>
+          </div>
+        </div>
+        <div class="dm-field-row">
+          <label>Occupation</label>
+          <div class="dm-name-row">
+            <input type="text" id="dmNpcOccupation" placeholder="What they do..." maxlength="160">
+            <button class="dm-action-btn dm-reroll-btn" onclick="dmRerollField('occupation')" title="Reroll occupation">Reroll</button>
+          </div>
+        </div>
+        <div class="dm-field-row">
+          <label>Plot / Situation</label>
+          <div class="dm-name-row">
+            <textarea id="dmNpcPlot" placeholder="What's going on with them right now..." rows="2" maxlength="300"></textarea>
+            <button class="dm-action-btn dm-reroll-btn" onclick="dmRerollField('plot')" title="Reroll plot">Reroll</button>
+          </div>
+        </div>
+        <div class="dm-field-row">
+          <label>Quest Hook <span style="font-size:0.78em;opacity:0.5;font-weight:400;">— optional</span></label>
+          <div class="dm-name-row">
+            <textarea id="dmNpcHook" placeholder="A job or lead the party could take on (optional)..." rows="2" maxlength="300"></textarea>
+            <button class="dm-action-btn dm-reroll-btn" onclick="dmRerollField('hook')" title="Add or reroll quest hook">Hook</button>
+          </div>
+        </div>
+        <div class="dm-field-row">
+          <label>Extra Notes</label>
+          <textarea id="dmNpcNotes" placeholder="Anything else — voice, secrets, relationships..." rows="2" maxlength="500"></textarea>
+        </div>
         <div class="dm-npc-loot">
           <div class="dm-card-header" style="padding:0 0 8px 0; border:none;">
             <h4>Loot</h4>
@@ -83,7 +135,10 @@
           <div id="dmNpcLootResult" class="dm-loot-result dm-empty-state">Hit "Roll Loot" to generate a loot drop.</div>
         </div>
 
-        <button class="dm-action-btn dm-save-btn" style="margin-top:12px;" onclick="dmSaveNpc()">Save NPC</button>
+        <div class="dm-name-row" style="margin-top:12px;">
+          <button class="dm-action-btn dm-save-btn" onclick="dmSaveNpc()" id="dmNpcSaveBtn">Save NPC</button>
+          <button class="dm-action-btn" onclick="dmCancelEditNpc()" id="dmNpcCancelBtn" style="display:none;">Cancel Edit</button>
+        </div>
       </div>
     </div>
 

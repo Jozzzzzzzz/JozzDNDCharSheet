@@ -1,15 +1,22 @@
 <div class="dm-page" id="dm-items" style="display:none;">
   <div class="dm-page-header">
     <h2>Items</h2>
-    <p class="dm-page-subtitle">SRD magic item database via Open5e</p>
+    <p class="dm-page-subtitle">The full equipment archive — magic items, weapons &amp; armor, via Open5e</p>
   </div>
 
   <div class="dm-card">
     <div class="dm-card-header">
-      <h3>Browse Magic Items</h3>
+      <h3>Item Archive</h3>
+      <button class="dm-action-btn" onclick="dmLoadItems(true)" title="Reload from Open5e">Reload</button>
     </div>
     <div class="dm-search-bar">
-      <input type="text" id="dmItemSearch" placeholder="Search items... (e.g. Sword, Ring, Potion)" oninput="dmFilterItems()" autocomplete="off">
+      <input type="text" id="dmItemSearch" placeholder="Search by name or type... (e.g. Sword, Ring, Healing)" oninput="dmFilterItems()" autocomplete="off">
+      <select id="dmItemTypeFilter" onchange="dmFilterItems()">
+        <option value="">All categories</option>
+        <option value="Magic Item">Magic Items</option>
+        <option value="Weapon">Weapons</option>
+        <option value="Armor">Armor</option>
+      </select>
       <select id="dmItemRarityFilter" onchange="dmFilterItems()">
         <option value="">All rarities</option>
         <option value="common">Common</option>
@@ -18,10 +25,10 @@
         <option value="very rare">Very Rare</option>
         <option value="legendary">Legendary</option>
         <option value="artifact">Artifact</option>
+        <option value="mundane">Mundane (weapons/armor)</option>
       </select>
-      <button class="dm-action-btn" onclick="dmLoadItems()">Load Items</button>
     </div>
-    <p class="dm-note" id="dmItemsNote">Click "Load Items" to fetch from Open5e API. Requires internet connection.</p>
+    <p class="dm-note" id="dmItemsNote">Loading the archive…</p>
     <div id="dmItemsList" class="dm-monsters-list"></div>
   </div>
 
