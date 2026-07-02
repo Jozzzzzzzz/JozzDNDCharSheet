@@ -482,8 +482,30 @@ async function dmShowMonster(slug) {
   if (!m) return;
 
   if (name) name.textContent = m.name;
-  body.innerHTML = `
+  // Cache the full record so the Add-to-Encounter path can carry the whole
+  // stat block into the combatant (for the click-to-expand card + Dex init).
+  if (m.slug && !dmAllMonsters.find(x => x.slug === m.slug)) dmAllMonsters.push(m);
+  body.innerHTML = dmRenderStatBlockHtml(m) +
+    `<button class="dm-action-btn" style="margin-top:12px;" onclick="dmAddMonsterToEncounter('${escapeHtml(m.slug || '')}')">Add to Encounter</button>`;
+  detail.style.display = 'block';
+  detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// Shared stat-block renderer — used by the Monsters tab detail panel and the
+// click-to-expand card on each encounter combatant. Pure HTML, no side effects.
+// Open5e monster reference page for a slug (falls back to a name search).
+function dmMonsterLink(m) {
+  if (m && m.slug) return `https://open5e.com/monsters/${m.slug}`;
+  const q = encodeURIComponent((m && m.name) || '');
+  return `https://open5e.com/monsters?search=${q}`;
+}
+
+function dmRenderStatBlockHtml(m) {
+  return `
     <div class="dm-stat-block">
+      <div class="dm-sb-title">
+        <a href="${dmMonsterLink(m)}" target="_blank" rel="noopener" class="dm-sb-link" title="Open ${escapeHtml(m.name || 'this creature')} on Open5e ↗">${escapeHtml(m.name || 'Creature')} ↗</a>
+      </div>
       <div class="dm-sb-meta">${escapeHtml(m.size || '')} ${escapeHtml(m.type || '')}${m.subtype ? ` (${escapeHtml(m.subtype)})` : ''}, ${escapeHtml(m.alignment || '')}</div>
       <div class="dm-sb-divider"></div>
       <div class="dm-sb-row"><strong>Armor Class</strong> ${m.armor_class ?? '?'}</div>
@@ -504,12 +526,71 @@ async function dmShowMonster(slug) {
       <div class="dm-sb-row"><strong>Challenge</strong> ${m.challenge_rating ?? '?'} (${dmCrToXp(m.challenge_rating)} XP)</div>
       ${m.special_abilities?.length ? `<div class="dm-sb-divider"></div><h4>Traits</h4>${m.special_abilities.map(a => `<div class="dm-sb-trait"><strong>${escapeHtml(a.name)}.</strong> ${escapeHtml(a.desc)}</div>`).join('')}` : ''}
       ${m.actions?.length ? `<div class="dm-sb-divider"></div><h4>Actions</h4>${m.actions.map(a => `<div class="dm-sb-trait"><strong>${escapeHtml(a.name)}.</strong> ${escapeHtml(a.desc)}</div>`).join('')}` : ''}
+      ${m.reactions?.length ? `<div class="dm-sb-divider"></div><h4>Reactions</h4>${m.reactions.map(a => `<div class="dm-sb-trait"><strong>${escapeHtml(a.name)}.</strong> ${escapeHtml(a.desc)}</div>`).join('')}` : ''}
       ${m.legendary_actions?.length ? `<div class="dm-sb-divider"></div><h4>Legendary Actions</h4>${m.legendary_actions.map(a => `<div class="dm-sb-trait"><strong>${escapeHtml(a.name)}.</strong> ${escapeHtml(a.desc)}</div>`).join('')}` : ''}
-    </div>
-    <button class="dm-action-btn" style="margin-top:12px;" onclick="dmAddMonsterToEncounter('${escapeHtml(m.name)}', ${m.hit_points ?? 10}, ${m.armor_class ?? 10}, ${JSON.stringify(m.challenge_rating ?? null)})">Add to Encounter</button>
-  `;
-  detail.style.display = 'block';
-  detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    </div>`;
+}
+
+// ─── Reusable creature modal ───────────────────────────────────────────────
+// Opens a scrollable stat-block popup for one creature. Works from anywhere:
+// the builder, the initiative order, or a saved encounter. Accepts either a
+// full stat-block object or a { name, slug } stub (it fetches the block by slug).
+async function dmOpenCreature(source) {
+  let m = source;
+  // If we only have a slug (saved encounters strip the stat block), resolve it.
+  const hasBlock = m && (m.actions || m.special_abilities || m.armor_class != null);
+  if (!hasBlock) {
+    const slug = m && m.slug;
+    if (slug) {
+      const cached = dmAllMonsters.find(x => x.slug === slug);
+      m = cached || await fetch(`https://api.open5e.com/v1/monsters/${slug}/`).then(r => r.json()).catch(() => null) || m;
+      if (m && m.slug && !dmAllMonsters.find(x => x.slug === m.slug)) dmAllMonsters.push(m);
+    }
+  }
+  if (!m) { dmToast('No stat block available for this creature.', 'error'); return; }
+
+  const root = dmEnsureModalRoot();
+  const backdrop = document.createElement('div');
+  backdrop.className = 'dm-modal-backdrop';
+  backdrop.innerHTML = `
+    <div class="dm-modal dm-creature-modal" role="dialog" aria-modal="true">
+      <button class="dm-icon-btn dm-creature-close" title="Close">✕</button>
+      <div class="dm-creature-modal-body">${dmRenderStatBlockHtml(m)}</div>
+    </div>`;
+  root.appendChild(backdrop);
+  requestAnimationFrame(() => backdrop.classList.add('show'));
+
+  const close = () => { backdrop.classList.remove('show'); setTimeout(() => backdrop.remove(), 200); };
+  backdrop.querySelector('.dm-creature-close').onclick = close;
+  backdrop.onclick = (e) => { if (e.target === backdrop) close(); };
+  document.addEventListener('keydown', function esc(e) {
+    if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); }
+  });
+}
+
+// Open a creature by combatant id — resolves the stat block from live state.
+function dmOpenCombatantCreature(id) {
+  // Look across the live list and any sorted view; ids are stable.
+  const c = dmCombatants.find(x => x.id === id);
+  if (!c) return;
+  if (c.isPlayer) { dmToast('Players use their own character sheet.', 'info'); return; }
+  dmOpenCreature(c.statBlock || { name: c.name, slug: c.slug });
+}
+
+// Open a creature from a saved encounter's combatant (by slug/name).
+function dmOpenSavedCreature(slug, name) {
+  if (!slug) { dmToast('This creature has no linked stat block.', 'info'); return; }
+  dmOpenCreature({ slug, name });
+}
+
+window.dmOpenCreature = dmOpenCreature;
+window.dmOpenCombatantCreature = dmOpenCombatantCreature;
+window.dmOpenSavedCreature = dmOpenSavedCreature;
+
+// Numeric ability modifier (null-safe → 0).
+function dmModNum(score) {
+  if (score == null || isNaN(score)) return 0;
+  return Math.floor((score - 10) / 2);
 }
 
 function dmMod(score) {
@@ -720,40 +801,60 @@ function dmPartyThresholds() {
 }
 
 // 7-tier difficulty. Brutal/Mythic push beyond the DMG ceiling for grand battles.
-// Returns the target ADJUSTED-xp for a tier given the party thresholds.
+// Returns the FLOOR adjusted-XP for a tier given the party thresholds.
 const DM_DIFFICULTY_TIERS = ['trivial','easy','medium','hard','deadly','brutal','mythic'];
 const DM_DIFFICULTY_LABELS = { trivial:'Trivial', easy:'Easy', medium:'Medium', hard:'Hard', deadly:'Deadly', brutal:'Brutal', mythic:'Mythic' };
 
+// House-rule aggression multiplier. Applied to EVERY tier target, which is the
+// single source the build budget, the rating bands, AND the readouts all derive
+// from — so the whole system scales together. Encounters run 50% beefier than
+// the DMG baseline, and the difficulty label stays honest (pick Medium → get a
+// harder-than-vanilla fight that still reads "Medium", never a tier off).
+const DM_ENCOUNTER_XP_MULT = 1.5;
+
 function dmTierTargetXp(tier, th) {
   th = th || dmPartyThresholds();
+  let base;
   switch (tier) {
-    case 'trivial': return Math.round(th.easy * 0.5);
-    case 'easy':    return th.easy;
-    case 'medium':  return th.medium;
-    case 'hard':    return th.hard;
-    case 'deadly':  return th.deadly;
-    case 'brutal':  return Math.round(th.deadly * 1.5);
-    case 'mythic':  return Math.round(th.deadly * 2.5);
-    default:        return th.medium;
+    case 'trivial': base = Math.round(th.easy * 0.5); break;
+    case 'easy':    base = th.easy; break;
+    case 'medium':  base = th.medium; break;
+    case 'hard':    base = th.hard; break;
+    case 'deadly':  base = th.deadly; break;
+    case 'brutal':  base = Math.round(th.deadly * 1.5); break;
+    case 'mythic':  base = Math.round(th.deadly * 2.5); break;
+    default:        base = th.medium; break;
   }
+  return Math.round(base * DM_ENCOUNTER_XP_MULT);
 }
 
-// Given a set of monster XP values, return adjusted XP + difficulty label.
+// Ceiling (exclusive) of a tier's band = the next tier's floor. The top tier
+// (mythic) has no ceiling. Used to keep a generated encounter inside its band.
+function dmTierCeilingXp(tier, th) {
+  th = th || dmPartyThresholds();
+  const i = DM_DIFFICULTY_TIERS.indexOf(tier);
+  const next = DM_DIFFICULTY_TIERS[i + 1];
+  return next ? dmTierTargetXp(next, th) : Infinity;
+}
+
+// Given a set of monster XP values, return total XP + difficulty label.
+// NOTE: we rate on RAW summed XP (no encounter count-multiplier). The multiplier
+// made the live meter disagree with the picker — adding more weak monsters could
+// tip a "Medium" build into Deadly purely from the count bump. Rating raw XP
+// against the thresholds keeps pick = display exactly. `adjusted` == `rawXp`.
 function dmRateEncounter(monsterXps) {
-  const partySize = dmPartySize();
   const rawXp = monsterXps.reduce((a, b) => a + (Number(b) || 0), 0);
-  const mult = dmEncounterMultiplier(monsterXps.length, partySize);
-  const adjusted = Math.round(rawXp * mult);
+  const adjusted = rawXp;
   const th = dmPartyThresholds();
 
   let cls = 'trivial';
   if (adjusted >= dmTierTargetXp('mythic', th)) cls = 'mythic';
   else if (adjusted >= dmTierTargetXp('brutal', th)) cls = 'brutal';
-  else if (adjusted >= th.deadly) cls = 'deadly';
-  else if (adjusted >= th.hard) cls = 'hard';
-  else if (adjusted >= th.medium) cls = 'medium';
-  else if (adjusted >= th.easy) cls = 'easy';
-  return { rawXp, adjusted, mult, label: DM_DIFFICULTY_LABELS[cls], cls, thresholds: th };
+  else if (adjusted >= dmTierTargetXp('deadly', th)) cls = 'deadly';
+  else if (adjusted >= dmTierTargetXp('hard', th)) cls = 'hard';
+  else if (adjusted >= dmTierTargetXp('medium', th)) cls = 'medium';
+  else if (adjusted >= dmTierTargetXp('easy', th)) cls = 'easy';
+  return { rawXp, adjusted, mult: 1, label: DM_DIFFICULTY_LABELS[cls], cls, thresholds: th };
 }
 
 // ─── Live difficulty meter ─────────────────────────────────────────────────
@@ -761,17 +862,24 @@ function dmRateEncounter(monsterXps) {
 function dmRenderPartyRows() {
   const wrap = document.getElementById('dmPartyRows');
   if (!wrap) return;
+  const totalPlayers = dmParty.reduce((n, r) => n + (Number(r.count) || 0), 0);
   wrap.innerHTML = dmParty.map((r, i) => `
     <div class="dm-party-row">
-      <input type="number" min="1" max="20" value="${r.level}" title="Level"
-        onchange="dmUpdateParty(${i}, 'level', this.value)">
-      <span>× </span>
-      <input type="number" min="1" max="12" value="${r.count}" title="How many at this level"
-        onchange="dmUpdateParty(${i}, 'count', this.value)">
-      <span class="dm-party-row-label">players at lv ${r.level}</span>
-      ${dmParty.length > 1 ? `<button class="dm-icon-btn dm-remove-btn" onclick="dmRemovePartyRow(${i})" title="Remove">✕</button>` : ''}
+      <div class="dm-party-field">
+        <label>Players</label>
+        <input type="number" min="1" max="12" value="${r.count}" title="How many players at this level"
+          onchange="dmUpdateParty(${i}, 'count', this.value)">
+      </div>
+      <span class="dm-party-at">at level</span>
+      <div class="dm-party-field">
+        <label>Level</label>
+        <input type="number" min="1" max="20" value="${r.level}" title="Their character level"
+          onchange="dmUpdateParty(${i}, 'level', this.value)">
+      </div>
+      ${dmParty.length > 1 ? `<button class="dm-icon-btn dm-remove-btn dm-party-remove" onclick="dmRemovePartyRow(${i})" title="Remove this group">✕</button>` : ''}
     </div>
-  `).join('');
+  `).join('') +
+  `<div class="dm-party-total">${totalPlayers} player${totalPlayers === 1 ? '' : 's'} total</div>`;
 }
 
 function dmUpdateParty(i, field, value) {
@@ -805,15 +913,15 @@ function dmUpdateDifficultyMeter() {
   if (!xps.length) {
     el.className = 'dm-difficulty-meter';
     el.innerHTML = `<span class="dm-diff-label">Add rated monsters to see difficulty</span>
-      <span class="dm-diff-budget">Party budget — Easy ${th.easy} · Med ${th.medium} · Hard ${th.hard} · Deadly ${th.deadly} XP</span>`;
+      <span class="dm-diff-budget">Party budget — Easy ${dmTierTargetXp('easy', th)} · Med ${dmTierTargetXp('medium', th)} · Hard ${dmTierTargetXp('hard', th)} · Deadly ${dmTierTargetXp('deadly', th)} XP</span>`;
     return;
   }
   const r = dmRateEncounter(xps);
   el.className = `dm-difficulty-meter diff-${r.cls}`;
   el.innerHTML = `
     <span class="dm-diff-label">${r.label}</span>
-    <span class="dm-diff-xp">${r.adjusted.toLocaleString()} adjusted XP <span class="dm-diff-mult">(×${r.mult} for ${xps.length} monsters)</span></span>
-    <span class="dm-diff-budget">Thresholds — Easy ${r.thresholds.easy} · Med ${r.thresholds.medium} · Hard ${r.thresholds.hard} · Deadly ${r.thresholds.deadly}</span>`;
+    <span class="dm-diff-xp">${r.adjusted.toLocaleString()} XP <span class="dm-diff-mult">(${xps.length} monster${xps.length === 1 ? '' : 's'})</span></span>
+    <span class="dm-diff-budget">Thresholds — Easy ${dmTierTargetXp('easy', th)} · Med ${dmTierTargetXp('medium', th)} · Hard ${dmTierTargetXp('hard', th)} · Deadly ${dmTierTargetXp('deadly', th)}</span>`;
 }
 
 function dmAddCombatant() {
@@ -836,37 +944,215 @@ function dmAddCombatant() {
   dmUpdateDifficultyMeter();
 }
 
-function dmAddMonsterToEncounter(name, hp, ac, cr) {
+// Add a player to the encounter: name + their total (already-rolled) initiative.
+// Players are unrated (no XP), optional HP/AC, and flagged for distinct styling.
+function dmAddPlayer() {
+  const name = (document.getElementById('dmPlayerName')?.value || '').trim();
+  if (!name) return;
+  const init = parseInt(document.getElementById('dmPlayerInit')?.value || '0', 10) || 0;
+  const hpRaw = document.getElementById('dmPlayerHp')?.value;
+  const acRaw = document.getElementById('dmPlayerAc')?.value;
+  const hp = parseInt(hpRaw, 10);
+  const ac = parseInt(acRaw, 10);
+  const hasHp = !isNaN(hp) && hp > 0;
+  dmCombatants.push({
+    id: Date.now(), name, initiative: init,
+    maxHp: hasHp ? hp : 0, hp: hasHp ? hp : 0,
+    ac: !isNaN(ac) ? ac : null,
+    isMonster: false, isPlayer: true, xp: 0
+  });
+  document.getElementById('dmPlayerName').value = '';
+  document.getElementById('dmPlayerInit').value = '';
+  if (document.getElementById('dmPlayerHp')) document.getElementById('dmPlayerHp').value = '';
+  if (document.getElementById('dmPlayerAc')) document.getElementById('dmPlayerAc').value = '';
+  dmRenderCombatants();
+  dmUpdateDifficultyMeter();
+}
+
+async function dmAddMonsterToEncounter(slug) {
+  // Resolve the full monster record (cache first, then API) so the combatant
+  // carries its Dex (for real initiative) and stat block (for the card).
+  let m = dmAllMonsters.find(x => x.slug === slug);
+  if (!m && slug) m = await fetch(`https://api.open5e.com/v1/monsters/${slug}/`).then(r => r.json()).catch(() => null);
+  if (!m) { dmToast('Could not load that monster.', 'error'); return; }
+  if (m.slug && !dmAllMonsters.find(x => x.slug === m.slug)) dmAllMonsters.push(m);
+
+  const cr = m.challenge_rating ?? null;
+  const hp = m.hit_points ?? 10;
+  const ac = m.armor_class ?? 10;
+  const dex = (typeof m.dexterity === 'number') ? m.dexterity : null;
   const xp = (cr !== undefined && cr !== null) ? (parseInt(String(dmCrToXp(cr)).replace(/[^0-9]/g, ''), 10) || 0) : 0;
-  dmCombatants.push({ id: Date.now(), name, maxHp: hp, hp, ac, initiative: 0, cr: cr ?? null, xp, isMonster: true });
+  const init = rnd(1, 20) + dmModNum(dex);
+  dmCombatants.push({
+    id: Date.now(), name: m.name, maxHp: hp, hp, ac, initiative: init,
+    cr, xp, isMonster: true, slug: m.slug || null, dex, statBlock: m
+  });
   dmRenderCombatants();
   dmUpdateDifficultyMeter();
   switchDmTabById('dm-encounters');
 }
 
+// Order mode: 'init' sorts the list by initiative (turn order); 'manual' keeps
+// the array order so drag-reorder sticks. Drag in init mode flips to manual.
+let dmOrderMode = 'init';
+
+function dmSetOrderMode(mode) {
+  dmOrderMode = (mode === 'manual') ? 'manual' : 'init';
+  dmRenderCombatants();
+}
+
 function dmRenderCombatants() {
   const list = document.getElementById('dmCombatantList');
   if (!list) return;
-  if (!dmCombatants.length) { list.innerHTML = '<p class="dm-empty-state">No combatants yet.</p>'; return; }
+  if (!dmCombatants.length) { list.innerHTML = '<p class="dm-empty-state">No combatants yet. Add players, generate monsters, or add them from the Monsters tab.</p>'; return; }
 
-  list.innerHTML = dmCombatants.map(c => `
-    <div class="dm-combatant-row" id="dmC_${c.id}">
+  // In init mode we render a sorted view but never mutate the array; in manual
+  // mode we render the array as-is so drag order is the source of truth.
+  const rows = dmOrderMode === 'init'
+    ? dmCombatants.slice().sort((a, b) => (b.initiative || 0) - (a.initiative || 0))
+    : dmCombatants;
+
+  const header = `
+    <div class="dm-combatant-order-bar">
+      <span class="dm-order-label">Order</span>
+      <div class="dm-order-toggle">
+        <button class="dm-order-btn ${dmOrderMode === 'init' ? 'active' : ''}" onclick="dmSetOrderMode('init')" title="Sort by initiative (turn order)">Initiative</button>
+        <button class="dm-order-btn ${dmOrderMode === 'manual' ? 'active' : ''}" onclick="dmSetOrderMode('manual')" title="Keep your arranged order — drag to reorder">Manual</button>
+      </div>
+      <span class="dm-order-hint">${dmOrderMode === 'manual' ? 'Drag rows by the ⠿ handle to reorder.' : 'Highest initiative first.'}</span>
+    </div>`;
+
+  list.innerHTML = header + rows.map((c, idx) => {
+    const isPlayer = !!c.isPlayer;
+    const hasHp = Number(c.maxHp) > 0;
+    const hpCls = !hasHp ? '' : (c.hp <= 0 ? 'dm-hp-dead' : c.hp <= c.maxHp * 0.25 ? 'dm-hp-low' : '');
+    const canExpand = !!c.statBlock;
+    const expanded = dmExpandedCombatants.has(c.id);
+    const turnNo = dmOrderMode === 'init' ? `<span class="dm-turn-no" title="Turn order">${idx + 1}</span>` : '';
+    return `
+    <div class="dm-combatant-row ${expanded ? 'dm-combatant-expanded' : ''} ${isPlayer ? 'dm-combatant-player' : ''}"
+         id="dmC_${c.id}" draggable="true"
+         ondragstart="dmCombatantDragStart(event, ${c.id})"
+         ondragend="dmCombatantDragEnd(event)"
+         ondragover="dmCombatantDragOver(event, ${c.id})"
+         ondrop="dmCombatantDrop(event, ${c.id})">
+      <span class="dm-drag-handle" title="Drag anywhere on this row to reorder">⠿</span>
+      ${turnNo}
       <div class="dm-combatant-init">
         <label>Init</label>
-        <input type="number" value="${c.initiative}" style="width:52px;" onchange="dmSetInit(${c.id}, this.value)">
+        <input type="number" value="${c.initiative}" style="width:52px;" onchange="dmSetInit(${c.id}, this.value)" title="Initiative — override anytime">
       </div>
       <div class="dm-combatant-info">
-        <span class="dm-combatant-name">${escapeHtml(c.name)}</span>
-        <span class="dm-combatant-ac">AC ${c.ac}</span>
+        <span class="dm-combatant-name ${canExpand ? 'dm-combatant-clickable' : ''}"
+              ${canExpand ? `onclick="dmToggleCombatantCard(${c.id})" title="Click for stat block"` : ''}>
+          ${canExpand ? (expanded ? '▾ ' : '▸ ') : ''}${escapeHtml(c.name)}
+          ${isPlayer ? '<span class="dm-player-badge">PLAYER</span>' : ''}
+        </span>
       </div>
+      ${(isPlayer && c.ac == null) ? '' : `
+      <span class="dm-combatant-ac">
+        <label>AC</label>
+        <input type="number" value="${c.ac ?? ''}" min="0" max="99" style="width:46px;" placeholder="—" onchange="dmSetAc(${c.id}, this.value)" title="Armor Class — override anytime">
+      </span>`}
+      ${hasHp ? `
       <div class="dm-combatant-hp">
-        <button class="dm-hp-btn" onclick="dmDamage(${c.id})">−</button>
-        <span class="dm-hp-display ${c.hp <= 0 ? 'dm-hp-dead' : c.hp <= c.maxHp * 0.25 ? 'dm-hp-low' : ''}">${c.hp}/${c.maxHp}</span>
-        <button class="dm-hp-btn" onclick="dmHeal(${c.id})">+</button>
-      </div>
+        <button class="dm-hp-btn" onclick="dmDamage(${c.id})" title="Damage">−</button>
+        <span class="dm-combatant-hp-edit ${hpCls}">
+          <input type="number" value="${c.hp}" min="0" max="9999" style="width:48px;" onchange="dmSetHp(${c.id}, this.value)" title="Current HP — override anytime">
+          <span class="dm-hp-sep">/</span>
+          <input type="number" value="${c.maxHp}" min="1" max="9999" style="width:48px;" onchange="dmSetMaxHp(${c.id}, this.value)" title="Max HP — override anytime">
+        </span>
+        <button class="dm-hp-btn" onclick="dmHeal(${c.id})" title="Heal">+</button>
+      </div>` : (isPlayer ? `<div class="dm-combatant-hp dm-player-nohp"><button class="dm-hp-btn" onclick="dmAddPlayerHp(${c.id})" title="Track HP for this player">+ HP</button></div>` : '')}
       <button class="dm-icon-btn dm-remove-btn" onclick="dmRemoveCombatant(${c.id})" title="Remove">✕</button>
-    </div>
-  `).join('');
+      ${expanded && c.statBlock ? `<div class="dm-combatant-card">${dmRenderStatBlockHtml(c.statBlock)}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ─── Drag-reorder for combatant rows ───────────────────────────────────────
+let dmDragId = null;
+
+function dmCombatantDragStart(e, id) {
+  // The whole row is draggable, but don't hijack drags that start on an
+  // interactive element — let inputs/buttons/links behave normally (text
+  // selection, clicks). Drag works from any non-interactive part of the row.
+  if (e.target.closest('input, button, select, a, textarea')) {
+    e.preventDefault();
+    return;
+  }
+  dmDragId = id;
+  e.dataTransfer.effectAllowed = 'move';
+  // Some browsers need data set for drag to fire.
+  try { e.dataTransfer.setData('text/plain', String(id)); } catch (_) {}
+  const row = document.getElementById(`dmC_${id}`);
+  if (row) row.classList.add('dm-dragging');
+}
+
+function dmCombatantDragOver(e, id) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+}
+
+function dmCombatantDrop(e, targetId) {
+  e.preventDefault();
+  if (dmDragId == null || dmDragId === targetId) return;
+  const from = dmCombatants.findIndex(c => c.id === dmDragId);
+  const to = dmCombatants.findIndex(c => c.id === targetId);
+  if (from < 0 || to < 0) return;
+  const [moved] = dmCombatants.splice(from, 1);
+  dmCombatants.splice(to, 0, moved);
+  // Reordering implies the DM wants a hand-arranged order.
+  dmOrderMode = 'manual';
+  dmDragId = null;
+  dmRenderCombatants();
+}
+
+function dmCombatantDragEnd(e) {
+  dmDragId = null;
+  document.querySelectorAll('.dm-combatant-row.dm-dragging').forEach(el => el.classList.remove('dm-dragging'));
+}
+
+// Let a player row start tracking HP on demand.
+async function dmAddPlayerHp(id) {
+  const c = dmCombatants.find(x => x.id === id);
+  if (!c) return;
+  const val = await dmModal({ title: `Track HP for ${c.name}`, input: true, inputType: 'number', placeholder: 'Max HP', confirmText: 'Set' });
+  const hp = parseInt(val || '0', 10);
+  if (!hp || hp < 1) return;
+  c.maxHp = hp; c.hp = hp;
+  dmRenderCombatants();
+}
+
+// Tracks which combatant rows have their stat card expanded.
+let dmExpandedCombatants = new Set();
+
+function dmToggleCombatantCard(id) {
+  if (dmExpandedCombatants.has(id)) dmExpandedCombatants.delete(id);
+  else dmExpandedCombatants.add(id);
+  dmRenderCombatants();
+}
+
+function dmSetAc(id, val) {
+  const c = dmCombatants.find(x => x.id === id);
+  if (!c) return;
+  const n = parseInt(val, 10);
+  c.ac = (val === '' || isNaN(n)) ? null : Math.max(0, n);
+}
+
+function dmSetHp(id, val) {
+  const c = dmCombatants.find(x => x.id === id);
+  if (!c) return;
+  c.hp = Math.max(0, Math.min(c.maxHp, parseInt(val, 10) || 0));
+  dmRenderCombatants();
+}
+
+function dmSetMaxHp(id, val) {
+  const c = dmCombatants.find(x => x.id === id);
+  if (!c) return;
+  c.maxHp = Math.max(1, parseInt(val, 10) || 1);
+  if (c.hp > c.maxHp) c.hp = c.maxHp;
+  dmRenderCombatants();
 }
 
 async function dmDamage(id) {
@@ -919,7 +1205,9 @@ function dmSaveEncounter() {
     id: Date.now(),
     name,
     savedAt: new Date().toISOString(),
-    combatants: JSON.parse(JSON.stringify(dmCombatants)),
+    // Drop the bulky statBlock on save (it's re-hydrated from slug on load);
+    // keep slug + dex so initiative + the stat card still work after reload.
+    combatants: JSON.parse(JSON.stringify(dmCombatants.map(c => ({ ...c, statBlock: undefined })))),
     card: card ? JSON.parse(JSON.stringify({
       intro: card.intro || '', tips: card.tips || '', notes: card.notes || '',
       shapeDesc: card.shapeDesc || '', difficulty: card.difficulty || '',
@@ -960,7 +1248,10 @@ function dmRenderSavedEncounters() {
         ${e.card && e.card.intro ? `<p class="dm-saved-enc-intro">${escapeHtml(e.card.intro)}</p>` : ''}
         ${e.card && e.card.tips ? `<p class="dm-note"><strong>How to run:</strong> ${escapeHtml(e.card.tips)}</p>` : ''}
         <ul class="dm-saved-enc-list">
-          ${e.combatants.filter(c => c.isMonster !== false).map(c => `<li>${escapeHtml(c.name)} <span class="dm-init-ac">AC ${c.ac} · ${c.maxHp} HP</span></li>`).join('')}
+          ${e.combatants.filter(c => c.isMonster !== false).map(c => {
+            const openable = !!c.slug;
+            return `<li class="${openable ? 'dm-init-openable' : ''}" ${openable ? `onclick="dmOpenSavedCreature('${escapeHtml(c.slug)}', '${escapeHtml(c.name).replace(/'/g, "\\'")}')" title="Open ${escapeHtml(c.name)} stat block"` : ''}>${escapeHtml(c.name)}${openable ? ' <span class="dm-init-open-hint">▸ stats</span>' : ''} <span class="dm-init-ac">AC ${c.ac} · ${c.maxHp} HP</span></li>`;
+          }).join('')}
         </ul>
         <label class="dm-enc-card-label">Notes</label>
         <textarea class="dm-enc-card-text" rows="3" placeholder="Notes for this encounter..." oninput="dmUpdateSavedNotes(${e.id}, this.value)">${escapeHtml(e.card && e.card.notes ? e.card.notes : '')}</textarea>
@@ -991,7 +1282,12 @@ function dmUpdateSavedNotes(id, value) {
 function dmLoadEncounter(id) {
   const enc = dmGetSavedEncounters().find(e => e.id === id);
   if (!enc) return;
-  dmCombatants = enc.combatants.map(c => ({ ...c, hp: c.maxHp }));
+  dmExpandedCombatants = new Set();
+  dmCombatants = enc.combatants.map(c => {
+    // Re-hydrate the stat block from cache by slug (it's stripped on save).
+    const sb = c.slug ? dmAllMonsters.find(m => m.slug === c.slug) : null;
+    return { ...c, hp: c.maxHp, statBlock: sb || c.statBlock || null };
+  });
   const n = document.getElementById('dmEncounterName');
   if (n) n.value = enc.name;
   // Restore the card too, if it was saved.
@@ -1012,10 +1308,21 @@ function dmDeleteEncounter(id) {
 }
 
 window.dmAddCombatant = dmAddCombatant;
+window.dmAddPlayer = dmAddPlayer;
+window.dmAddPlayerHp = dmAddPlayerHp;
+window.dmSetOrderMode = dmSetOrderMode;
+window.dmCombatantDragStart = dmCombatantDragStart;
+window.dmCombatantDragOver = dmCombatantDragOver;
+window.dmCombatantDrop = dmCombatantDrop;
+window.dmCombatantDragEnd = dmCombatantDragEnd;
 window.dmAddMonsterToEncounter = dmAddMonsterToEncounter;
 window.dmDamage = dmDamage;
 window.dmHeal = dmHeal;
 window.dmSetInit = dmSetInit;
+window.dmSetAc = dmSetAc;
+window.dmSetHp = dmSetHp;
+window.dmSetMaxHp = dmSetMaxHp;
+window.dmToggleCombatantCard = dmToggleCombatantCard;
 window.dmRemoveCombatant = dmRemoveCombatant;
 window.dmClearEncounter = dmClearEncounter;
 window.dmSaveEncounter = dmSaveEncounter;
@@ -1041,6 +1348,15 @@ const DM_ENCOUNTER_THEMES = {
   goblinoids:    { label: 'Goblinoids', types: ['humanoid'], keywords: ['goblin','hobgoblin','bugbear','orc','kobold','gnoll'] },
   casters:       { label: 'Spellcasters', types: [], keywords: ['mage','cult','priest','acolyte','warlock','wizard','sorcerer','druid','adept','necromancer','witch'] },
   fighters:      { label: 'Warriors & Brutes', types: [], keywords: ['knight','veteran','gladiator','berserker','guard','warrior','champion','soldier','captain','thug'] },
+  aberrations:   { label: 'Aberrations', types: ['aberration'], keywords: ['aboleth','beholder','mind flayer','illithid','otyugh','gibbering','chuul','cloaker','slaad','nothic','flumph','grell'] },
+  dragons:       { label: 'Dragons & Kin', types: ['dragon'], keywords: ['dragon','wyvern','drake','kobold','dragonborn','pseudodragon','wyrmling'] },
+  giants:        { label: 'Giants', types: ['giant'], keywords: ['giant','ogre','troll','ettin','cyclops','oni','goliath'] },
+  fey:           { label: 'Fey & Woodland', types: ['fey','plant'], keywords: ['dryad','satyr','pixie','sprite','hag','blink dog','treant','awakened','sylph','pooka','redcap','quickling'] },
+  constructs:    { label: 'Constructs', types: ['construct'], keywords: ['golem','animated','construct','homunculus','scarecrow','shield guardian','helmed','clockwork'] },
+  oozesVermin:   { label: 'Oozes & Vermin', types: ['ooze'], keywords: ['ooze','slime','jelly','pudding','cube','swarm','rat','spider','centipede','scorpion','wasp','insect','beetle'] },
+  elementals:    { label: 'Elementals', types: ['elemental'], keywords: ['elemental','mephit','genie','djinn','efreeti','salamander','azer','gargoyle','magmin','water','fire','air','earth','invisible stalker'] },
+  casterWarband: { label: 'Caster + Warband (combo)', types: [], keywords: ['mage','cult','priest','acolyte','warlock','necromancer','goblin','hobgoblin','bandit','skeleton','zombie','guard','thug','cultist'] },
+  huntPack:      { label: 'Hunting Pack (combo)', types: ['beast','monstrosity'], keywords: ['wolf','worg','hyena','jackal','panther','raptor','hunter','pack','dire','sabre'] },
   bossMinions:   { label: 'Boss + Minions', types: [], keywords: [] } // special: one strong + several weak
 };
 
@@ -1072,7 +1388,9 @@ function dmNormaliseMonster(m) {
   if (!xp) return null; // skip CR-0/unscored, they break budgeting
   return {
     name: m.name, type: (m.type || '').toLowerCase(), cr: m.challenge_rating,
-    xp, hp: m.hit_points ?? 10, ac: m.armor_class ?? 10
+    xp, hp: m.hit_points ?? 10, ac: m.armor_class ?? 10,
+    dex: (typeof m.dexterity === 'number') ? m.dexterity : null,
+    slug: m.slug || null, raw: m   // raw = full Open5e record for the click-to-expand card
   };
 }
 
@@ -1094,79 +1412,183 @@ const DM_ENCOUNTER_SHAPES = {
   swarm:       { label: 'Swarm (many weak)', desc: 'a horde of weaker creatures' },
   elite:       { label: 'Elite (few strong)', desc: 'a handful of dangerous foes' },
   bossMinions: { label: 'Boss + Minions', desc: 'one leader and its lackeys' },
-  solo:        { label: 'Solo (one big)', desc: 'a single mighty creature' }
+  solo:        { label: 'Solo (one big)', desc: 'a single mighty creature' },
+  ambush:      { label: 'Ambush (surprise)', desc: 'attackers who strike from hiding' },
+  gauntlet:    { label: 'Gauntlet (waves)', desc: 'foes arriving in successive waves' },
+  vanguard:    { label: 'Vanguard + Archers', desc: 'a front line shielding ranged attackers' },
+  twinThreat:  { label: 'Twin Threat (duo)', desc: 'two dangerous leaders fighting as a pair' },
+  duel:        { label: 'Rival Duel', desc: 'a single rival matched to a champion PC' },
+  siege:       { label: 'Siege / Horde', desc: 'a relentless horde pressing a position' }
 };
+
+// Fill a sub-budget with monsters, biased 'strong' | 'weak' | 'mixed'. Used by
+// the multi-part shapes (vanguard front/back, gauntlet waves). Always reaches
+// the sub-budget as closely as the pool allows.
+function dmFillToBudget(sorted, budget, bias) {
+  if (!sorted.length || budget <= 0) return [];
+  const lo = sorted[0].xp;
+  const band = () => {
+    let fit = sorted.filter(m => m.xp <= budget * 1.2);
+    if (!fit.length) fit = [sorted[0]];
+    if (bias === 'strong') return fit.slice(Math.floor(fit.length / 2));
+    if (bias === 'weak') return fit.slice(0, Math.max(1, Math.ceil(fit.length / 2)));
+    return fit;
+  };
+  const picks = [];
+  let guard = 0;
+  while (guard++ < 60 && picks.reduce((s, p) => s + p.xp, 0) < budget) {
+    const remaining = budget - picks.reduce((s, p) => s + p.xp, 0);
+    if (remaining <= lo * 0.5 && picks.length) break;
+    picks.push(dmPick(band()));
+  }
+  return picks.length ? picks : [sorted[0]];
+}
 
 // Generic shaped builder. `shape` tunes creature size/count; `countTarget` (if >0)
 // pushes toward that many creatures.
 function dmBuildShapedEncounter(pool, targetAdjXp, partySize, shape, countTarget) {
   if (!pool.length || targetAdjXp <= 0) return [];
   const sorted = pool.slice().sort((a, b) => a.xp - b.xp);
-  const lo = sorted[0].xp, hi = sorted[sorted.length - 1].xp;
+  const lo = sorted[0].xp;
 
-  // Solo: one creature as close to the deadly-ish budget as possible.
-  if (shape === 'solo') {
-    const rawTarget = targetAdjXp; // ×1 multiplier for a single creature
-    const best = sorted.reduce((a, b) => Math.abs(b.xp - rawTarget) < Math.abs(a.xp - rawTarget) ? b : a, sorted[0]);
-    return [best];
+  const nearest = (val, list) => list.reduce((a, b) => Math.abs(b.xp - val) < Math.abs(a.xp - val) ? b : a, list[0]);
+
+  // Solo / Duel: one creature as close to the budget as possible.
+  if (shape === 'solo' || shape === 'duel') {
+    return [nearest(targetAdjXp, sorted)];
   }
   // Boss + minions handled by its own helper.
   if (shape === 'bossMinions') return dmBuildBossEncounter(pool, targetAdjXp, partySize);
 
-  // Bias the candidate band by shape.
-  const bandFor = (remaining) => {
-    let fit = sorted.filter(m => m.xp <= remaining * 1.15);
-    if (!fit.length) fit = [sorted[0]];
-    if (shape === 'swarm') {
-      // prefer the weakest third
-      const cut = Math.max(1, Math.ceil(fit.length / 3));
-      return fit.slice(0, cut);
-    }
-    if (shape === 'elite') {
-      // prefer the strongest that still fits
-      const cut = Math.floor(fit.length / 2);
-      return fit.slice(cut);
-    }
-    // balanced: middle-and-up
-    return fit.slice(Math.floor(fit.length / 3));
-  };
+  // Twin Threat: two roughly-equal strong leaders splitting the budget, nothing
+  // else. Each takes ~half the budget; picks the two nearest (allowing a repeat).
+  if (shape === 'twinThreat') {
+    const half = targetAdjXp / 2;
+    const a = nearest(half, sorted);
+    // Second one fills whatever remains so the pair lands on-budget.
+    const b = nearest(targetAdjXp - a.xp, sorted);
+    return [a, b];
+  }
 
-  // EXACT COUNT requested: size each creature to ~ budget/count so we always
-  // produce that many, hitting the XP target as closely as the pool allows.
+  // Vanguard + Archers: a front line (~55% budget on stronger, tanky-leaning
+  // monsters) plus a backline of weaker ranged-flavoured attackers (~45%). Tags
+  // help the card describe positioning; the XP still sums to target below.
+  if (shape === 'vanguard') {
+    const front = dmFillToBudget(sorted, Math.round(targetAdjXp * 0.55), 'strong');
+    const back  = dmFillToBudget(sorted, targetAdjXp - front.reduce((s, p) => s + p.xp, 0), 'weak');
+    return front.map(p => ({ ...p, role: 'front' })).concat(back.map(p => ({ ...p, role: 'back' })));
+  }
+
+  // Gauntlet: split into 2-3 waves, each a fraction of the budget. Flatten to a
+  // single pick list (with wave tags) — total still equals the budget.
+  if (shape === 'gauntlet') {
+    const waveCount = targetAdjXp > 4000 ? 3 : 2;
+    const per = targetAdjXp / waveCount;
+    let out = [];
+    for (let w = 0; w < waveCount; w++) {
+      const wave = dmFillToBudget(sorted, Math.round(per), 'mixed');
+      out = out.concat(wave.map(p => ({ ...p, wave: w + 1 })));
+    }
+    return out;
+  }
+
+  // EXACT COUNT requested: always produce N creatures, but they MUST sum to the
+  // tier target. We seed N around the per-creature share, then upgrade/downgrade
+  // individual creatures until the total lands in the band — count stays fixed.
   if (countTarget > 0) {
     const n = Math.min(30, countTarget);
-    const mult = dmEncounterMultiplier(n, partySize);
-    const rawBudget = targetAdjXp / mult;
-    const perCreature = rawBudget / n;
+    const perCreature = targetAdjXp / n; // raw budget == target (no multiplier)
+    const sumXp = (ps) => ps.reduce((s, p) => s + p.xp, 0);
+    const nearestTo = (val, list) => list.reduce((a, b) => Math.abs(b.xp - val) < Math.abs(a.xp - val) ? b : a, list[0]);
+
+    // Seed: each creature near the per-creature share (with a little variety).
     const picks = [];
     for (let i = 0; i < n; i++) {
-      // pick the monster closest to the per-creature share (with shape lean)
       let candidates = sorted.filter(m => m.xp <= perCreature * 1.6);
       if (!candidates.length) candidates = [sorted[0]];
       if (shape === 'elite') candidates = candidates.slice(Math.floor(candidates.length / 2));
       else if (shape === 'swarm') candidates = candidates.slice(0, Math.max(1, Math.ceil(candidates.length / 2)));
-      // nearest to target share among the (possibly biased) candidates
-      const best = candidates.reduce((a, b) => Math.abs(b.xp - perCreature) < Math.abs(a.xp - perCreature) ? b : a, candidates[0]);
-      // small variety: 50% of the time pick a random nearby instead of the exact best
+      const best = nearestTo(perCreature, candidates);
       picks.push(Math.random() < 0.5 ? best : dmPick(candidates));
+    }
+
+    // Correct UP to the target: while under the floor, take the weakest pick and
+    // bump it to the strongest monster that still keeps us at/under the target
+    // (or the next step up if none fits). This closes big gaps fast and lands
+    // near the floor. The generator then clamps the ceiling. Count never changes.
+    const maxXp = sorted[sorted.length - 1].xp;
+    let guard = 0;
+    while (guard++ < 800 && sumXp(picks) < targetAdjXp) {
+      // weakest pick with room to grow
+      let wi = -1, wxp = Infinity;
+      picks.forEach((p, i) => { if (p.xp < maxXp && p.xp < wxp) { wxp = p.xp; wi = i; } });
+      if (wi < 0) break; // everything already at the pool's strongest
+      const gap = targetAdjXp - sumXp(picks);
+      const room = picks[wi].xp + gap; // most this pick could become without overshooting
+      const stronger = sorted.filter(m => m.xp > picks[wi].xp);
+      if (!stronger.length) break;
+      const fit = stronger.filter(m => m.xp <= room);
+      picks[wi] = fit.length ? fit[fit.length - 1] : stronger[0];
     }
     return picks;
   }
 
-  // BUDGET-LED: keep adding until we approach the target adjusted XP.
-  const maxMonsters = shape === 'swarm' ? Math.max(6, partySize * 4) : Math.max(2, partySize * 3);
+  // BUDGET-LED (no forced count): aim for a SENSIBLE number of creatures instead
+  // of greedily stacking whatever fits — otherwise a good pool gets filled with a
+  // pile of weak monsters up to the cap. We pick a target count from the shape
+  // (roughly party-sized), size each creature to budget/count, then let the
+  // floor-guarantee below fine-tune. Rating is RAW summed XP (no multiplier), so
+  // target IS the raw budget.
+  const sumXp = (ps) => ps.reduce((s, p) => s + p.xp, 0);
+  const nearestTo = (val, list) => list.reduce((a, b) => Math.abs(b.xp - val) < Math.abs(a.xp - val) ? b : a, list[0]);
+
+  // Desired creature count by shape (a natural spread, not a hard cap).
+  let wantCount;
+  if (shape === 'swarm' || shape === 'siege') wantCount = Math.max(6, Math.round(partySize * 2));
+  else if (shape === 'elite' || shape === 'ambush') wantCount = Math.max(2, Math.round(partySize * 0.6));
+  else wantCount = Math.max(2, partySize); // balanced ≈ one foe per PC
+  // Don't ask for more creatures than the budget can afford at the cheapest tier,
+  // nor fewer than the strongest monster allows.
+  wantCount = Math.max(1, Math.min(wantCount, Math.max(1, Math.round(targetAdjXp / Math.max(lo, 1)))));
+
+  const perCreature = targetAdjXp / wantCount;
   const picks = [];
-  let guard = 0;
-  while (guard++ < 120 && picks.length < maxMonsters) {
-    const mult = dmEncounterMultiplier(picks.length + 1, partySize);
-    const rawBudget = targetAdjXp / mult;
-    const rawUsed = picks.reduce((s, p) => s + p.xp, 0);
-    const remaining = rawBudget - rawUsed;
-    if (remaining <= lo * 0.5 && picks.length) break;
-    const band = bandFor(Math.max(remaining, lo));
-    picks.push(dmPick(band));
-    const adjNow = (rawUsed + picks[picks.length - 1].xp) * dmEncounterMultiplier(picks.length, partySize);
-    if (adjNow >= targetAdjXp * 0.9) break;
+  for (let i = 0; i < wantCount; i++) {
+    // candidates near the per-creature share, biased by shape
+    let cand = sorted.filter(m => m.xp <= perCreature * 1.5);
+    if (!cand.length) cand = [sorted[0]];
+    if (shape === 'elite' || shape === 'ambush') cand = cand.slice(Math.floor(cand.length / 2));
+    else if (shape === 'swarm' || shape === 'siege') cand = cand.slice(0, Math.max(1, Math.ceil(cand.length / 2)));
+    const best = nearestTo(perCreature, cand);
+    picks.push(Math.random() < 0.45 ? dmPick(cand) : best);
+  }
+
+  // GUARANTEE THE FLOOR: if the fill loop stopped short of the target (the pool
+  // is too weak to reach it with this many creatures, or the count cap bit),
+  // upgrade the weakest picks to stronger monsters until we reach the target —
+  // exactly like the forced-count path. This is what makes "pick Deadly" build
+  // a Deadly-worth pool even from a low-CR theme. Bounded by pool strength.
+  const maxXp = sorted[sorted.length - 1].xp;
+  guard = 0;
+  while (guard++ < 800 && sumXp(picks) < targetAdjXp) {
+    // weakest pick that can still grow
+    let wi = -1, wxp = Infinity;
+    picks.forEach((p, i) => { if (p.xp < maxXp && p.xp < wxp) { wxp = p.xp; wi = i; } });
+    if (wi < 0) {
+      // Every pick is already the strongest monster available. If we're STILL
+      // under target, add another strongest monster (count grows past the cap —
+      // hitting the tier matters more than the cap).
+      if (picks.length && picks[0].xp >= maxXp && sumXp(picks) < targetAdjXp) {
+        picks.push(sorted[sorted.length - 1]);
+        continue;
+      }
+      break;
+    }
+    const gap = targetAdjXp - sumXp(picks);
+    const room = picks[wi].xp + gap; // most this pick can become without overshooting
+    const stronger = sorted.filter(m => m.xp > picks[wi].xp);
+    const fit = stronger.filter(m => m.xp <= room);
+    picks[wi] = fit.length ? fit[fit.length - 1] : stronger[0];
   }
   return picks;
 }
@@ -1175,7 +1597,7 @@ function dmBuildShapedEncounter(pool, targetAdjXp, partySize, shape, countTarget
 function dmBuildBossEncounter(pool, targetAdjXp, partySize) {
   if (!pool.length) return [];
   const sorted = pool.slice().sort((a, b) => b.xp - a.xp);
-  const rawBudget = targetAdjXp / 1.5;
+  const rawBudget = targetAdjXp; // raw target (no count-multiplier)
   const bossTarget = rawBudget * 0.55;
   const boss = sorted.find(m => m.xp <= bossTarget * 1.3) || sorted[sorted.length - 1];
   const picks = [boss];
@@ -1184,8 +1606,7 @@ function dmBuildBossEncounter(pool, targetAdjXp, partySize) {
   let guard = 0;
   while (guard++ < 30 && fillPool.length) {
     const rawUsed = picks.reduce((s, p) => s + p.xp, 0);
-    const mult = dmEncounterMultiplier(picks.length + 1, partySize);
-    if (rawUsed * mult >= targetAdjXp * 0.95) break;
+    if (rawUsed >= targetAdjXp * 0.95) break;
     picks.push(dmPick(fillPool));
     if (picks.length >= 14) break;
   }
@@ -1218,15 +1639,72 @@ async function dmGenerateEncounter() {
 
   const th = dmPartyThresholds();
   const partySize = dmPartySize();
-  let targetAdjXp = dmTierTargetXp(difficulty, th);
+
+  // The chosen tier defines a band: [floor, ceiling). We AIM for the middle of
+  // the band so the builder's natural over/undershoot stays inside it — then we
+  // hard-clamp below to guarantee the result rates as the tier you picked.
+  const floor = dmTierTargetXp(difficulty, th);
+  const ceiling = dmTierCeilingXp(difficulty, th);
+  let targetAdjXp = isFinite(ceiling) ? Math.round((floor + ceiling) / 2) : Math.round(floor * 1.25);
   // Auto-scale: nudge the budget up for bigger parties (beyond the threshold math).
   if (autoScale && partySize > 4) targetAdjXp = Math.round(targetAdjXp * (1 + (partySize - 4) * 0.12));
+  // Never aim past the band ceiling — keep a small margin under it.
+  if (isFinite(ceiling)) targetAdjXp = Math.min(targetAdjXp, Math.round(ceiling * 0.95));
 
   // Shape comes from the picker, but Boss/Solo themes imply their shape.
   const effShape = (themeKey === 'bossMinions') ? 'bossMinions' : shape;
-  const picks = dmBuildShapedEncounter(pool, targetAdjXp, partySize, effShape, countTarget);
+  let picks = dmBuildShapedEncounter(pool, targetAdjXp, partySize, effShape, countTarget);
 
   if (!picks.length) { setStatus('Could not fit that budget — try another theme, shape, or difficulty.', 'error'); return; }
+
+  const sumOf = (ps) => ps.reduce((s, p) => s + p.xp, 0);
+  const poolSorted = pool.slice().sort((a, b) => a.xp - b.xp);
+  const poolMax = poolSorted[poolSorted.length - 1].xp;
+
+  // FLOOR GUARANTEE (all shapes): if the build came in under the tier floor,
+  // upgrade the weakest picks to stronger monsters until it reaches the band.
+  // This covers the tactical shapes (twin/vanguard/gauntlet) that build in parts.
+  {
+    let guard = 0;
+    while (guard++ < 800 && sumOf(picks) < floor) {
+      let wi = -1, wxp = Infinity;
+      picks.forEach((p, i) => { if (p.xp < poolMax && p.xp < wxp) { wxp = p.xp; wi = i; } });
+      if (wi < 0) {
+        if (picks.length && sumOf(picks) < floor) { picks.push(poolSorted[poolSorted.length - 1]); continue; }
+        break;
+      }
+      const gap = floor - sumOf(picks);
+      const room = picks[wi].xp + gap;
+      const stronger = poolSorted.filter(m => m.xp > picks[wi].xp);
+      const fit = stronger.filter(m => m.xp <= room);
+      picks[wi] = fit.length ? fit[fit.length - 1] : stronger[0];
+    }
+  }
+
+  // Hard-clamp into the band so the result rates EXACTLY the tier picked —
+  // never higher, never lower.
+  if (isFinite(ceiling) && picks.length) {
+    const minXp = poolSorted[0].xp;
+    let guard = 0;
+    if (countTarget > 0) {
+      // Forced count: keep N creatures — DOWNGRADE the strongest to a weaker
+      // monster until the total drops below the ceiling.
+      while (guard++ < 400 && sumOf(picks) >= ceiling) {
+        let si = -1, sxp = -Infinity;
+        picks.forEach((p, i) => { if (p.xp > minXp && p.xp > sxp) { sxp = p.xp; si = i; } });
+        if (si < 0) break; // all already at pool minimum — can't go lower
+        const weaker = poolSorted.filter(m => m.xp < picks[si].xp);
+        if (!weaker.length) break;
+        picks[si] = weaker[weaker.length - 1];
+      }
+    } else {
+      // Free count: drop the smallest monster until back under the ceiling.
+      while (picks.length > 1 && sumOf(picks) >= ceiling && guard++ < 60) {
+        const minIdx = picks.reduce((mi, p, i, a) => p.xp < a[mi].xp ? i : mi, 0);
+        picks.splice(minIdx, 1);
+      }
+    }
+  }
 
   if (replace) dmCombatants = [];
   const totals = {};
@@ -1235,8 +1713,17 @@ async function dmGenerateEncounter() {
   const added = [];
   picks.forEach((p, i) => {
     seen[p.name] = (seen[p.name] || 0) + 1;
-    const label = totals[p.name] > 1 ? `${p.name} ${seen[p.name]}` : p.name;
-    const c = { id: Date.now() + i, name: label, maxHp: p.hp, hp: p.hp, ac: p.ac, initiative: 0, cr: p.cr, xp: p.xp, isMonster: true };
+    let label = totals[p.name] > 1 ? `${p.name} ${seen[p.name]}` : p.name;
+    // Tag wave / role foes so the DM can run the tactical shapes at a glance.
+    if (p.wave) label += ` [Wave ${p.wave}]`;
+    else if (p.role === 'front') label += ' [Front]';
+    else if (p.role === 'back') label += ' [Back]';
+    const c = {
+      id: Date.now() + i, name: label, maxHp: p.hp, hp: p.hp, ac: p.ac,
+      initiative: rnd(1, 20) + dmModNum(p.dex), cr: p.cr, xp: p.xp, isMonster: true,
+      slug: p.slug || null, dex: (typeof p.dex === 'number') ? p.dex : null,
+      statBlock: p.raw || null, wave: p.wave || null, role: p.role || null
+    };
     dmCombatants.push(c);
     added.push(c);
   });
@@ -1248,8 +1735,20 @@ async function dmGenerateEncounter() {
   // Build + show the encounter card.
   dmBuildEncounterCard({ theme: themeKey, shape: effShape, difficulty, rating: r });
 
-  setStatus(`Generated ${picks.length} creature${picks.length === 1 ? '' : 's'} — rated ${r.label} (${r.adjusted.toLocaleString()} adj XP).`, 'success');
+  // If the result didn't reach the tier you picked, the monster pool for this
+  // theme + creature count simply can't hit that budget — say so plainly instead
+  // of silently rating lower.
+  const gotTier = DM_DIFFICULTY_TIERS.indexOf(r.cls);
+  const wantTier = DM_DIFFICULTY_TIERS.indexOf(difficulty);
+  if (gotTier < wantTier) {
+    setStatus(`Best fit: ${picks.length} creature${picks.length === 1 ? '' : 's'} rated ${r.label} (${r.adjusted.toLocaleString()} XP). This theme's monsters aren't strong enough to reach ${DM_DIFFICULTY_LABELS[difficulty]} at ${picks.length} creatures — try fewer creatures, a tougher theme, or the “Elite” shape.`, 'error');
+  } else {
+    setStatus(`Generated ${picks.length} creature${picks.length === 1 ? '' : 's'} — rated ${r.label} (${r.adjusted.toLocaleString()} XP).`, 'success');
+  }
   switchDmTabById('dm-encounters');
+  // Drop the DM into Build mode so the generated creatures show as the
+  // draggable, click-to-expand combatant cards (the list lives in the build view).
+  dmSetMode('encounter', 'build');
 }
 
 window.dmGenerateEncounter = dmGenerateEncounter;
@@ -1266,24 +1765,107 @@ const DM_ENCOUNTER_INTROS = {
   fiends:     ['The stench of brimstone arrives first, then the laughter from below.','Reality buckles as the fiends tear their way into the world.','Shadows lengthen, sprout claws, and lunge.'],
   casters:    ['A cold voice speaks a word of power, and the air ignites with magic.','Robed figures look up from their ritual — the intrusion will be punished.','"You should not have come." Arcane light gathers around their hands.'],
   fighters:   ['Steel rings against steel as the warriors form a line and advance.','"Hold the line!" The brutes lower their shoulders and charge.','Veterans, scarred and ready, move to cut off every escape.'],
+  aberrations:['The angles of the room feel wrong, and then something that should not exist unfolds into view.','A pressure builds behind the eyes — whispers, promises, and then the horror reveals itself.','Reality thins like wet paper, and what waits on the other side reaches through.'],
+  dragons:    ['A shadow swallows the sun; leathery wings beat once, and the reptilian eyes fix upon the party.','The heat arrives before the roar — scales the colour of old coins glinting in the dark.','"Little thieves." The voice is vast, amused, and utterly without mercy.'],
+  giants:     ['The ground quakes with each footfall long before the giant crests the ridge.','A boulder arcs out of the sky — the first warning that something enormous has noticed them.','It has to stoop to see them, and it does not like what it sees.'],
+  fey:        ['Laughter rings from nowhere and everywhere; the woodland has decided the party are trespassers.','Flowers turn to watch. A voice, sweet and cruel, offers a bargain no one asked for.','The path loops back on itself, and the fair folk step out of the crooked light.'],
+  constructs: ['Stone grinds on stone as the sentinels wake, eyes lighting with cold purpose.','No breath, no fear — just the relentless clank of things built only to end intruders.','The guardians were told to let no one pass. They have never once failed.'],
+  oozesVermin:['The floor glistens — and then flows, reaching hungrily toward the nearest boot.','A dry rustle becomes a tide of skittering legs pouring from every crack.','Something drips from the ceiling, hisses where it lands, and begins to spread.'],
+  elementals: ['The air itself turns hostile — flame, frost, or howling wind given furious shape.','Raw elemental force tears loose from the world and rounds on the intruders.','The ground, the fire, the very wind rise up as one and attack.'],
+  casterWarband:['A robed figure lifts a hand and the rabble at its back howls forward on command.','"Protect the ritual!" — and the warband throws itself between you and its master.','Spellfire gathers behind a wall of expendable bodies.'],
+  huntPack:   ['They\'ve been tracking the party for miles. Now the circle closes and the hunt begins.','Low shapes fan out through the grass — this pack has done this many times before.','A single yip, answered from all sides. The ambush was set hours ago.'],
   bossMinions:['The lackeys part, and their master steps forward with a terrible smile.','"Kill them," the leader says, almost bored, as the minions surge ahead.','A commanding presence raises one hand — and the swarm obeys.']
 };
 
+// Shape-specific "how it starts" openers — layered on top of the theme intro.
+const DM_SHAPE_INTROS = {
+  ambush:     ['No warning — the first the party knows of it is the strike from concealment.','Every escape route is already covered before a single blade is drawn.'],
+  gauntlet:   ['This is only the first wave. More are already moving up behind.','The foes come in relays, each rush buying time for the next to form.'],
+  vanguard:   ['A wall of shields locks together while shapes behind it raise bows and staves.','The front rank braces to hold you in place — the danger is what stands behind them.'],
+  twinThreat: ['Two of them, moving in practised concert — this is a partnership, not a mob.','They split to flank, each a threat in its own right, deadlier together.'],
+  siege:      ['The horde does not stop coming. Hold the line or be overrun.','Wave upon wave, they press forward heedless of the fallen.'],
+  duel:       ['One steps forward and points a blade: "You. Only you."','A rival singles out the party\'s champion — this is personal.']
+};
+
 const DM_ENCOUNTER_TIPS = {
-  swarm: 'Many weak foes: use the encounter multiplier to your advantage — they hit harder together than their XP suggests. Group their turns to keep play fast.',
-  elite: 'A few strong foes: focus-fire is your enemy here. Spread the threat, use terrain, and give each one a distinct tactic.',
-  bossMinions: 'Boss + minions: the boss should act first and last where possible. Have minions screen for it; if the boss falls, consider whether the minions break and flee.',
-  solo: 'A single big creature risks being stun-locked. Give it legendary-style options or extra actions in spirit, and use the environment so the party can\'t just dogpile.',
-  balanced: 'A balanced mix: lead with ranged or skirmishers, hold heavy hitters in reserve, and use the terrain to control the party\'s approach.'
+  balanced:
+    'BALANCED MIX — a varied spread of foes.\n' +
+    '• Opening: lead with ranged attackers and skirmishers to soften the party while your heavy hitters close the distance.\n' +
+    '• Targeting: have foes gang the softest reachable PC (backline casters, low-AC bodies) rather than the tank the party wants them to hit.\n' +
+    '• Terrain: use difficult ground, chokepoints and cover so the party can\'t line up a single clean volley on everyone.\n' +
+    '• Morale: when about half the group is down, weaker foes should waver — flee, surrender, or fight defensively — unless something compels them.',
+  swarm:
+    'SWARM — many weak foes.\n' +
+    '• Their strength is action economy: lots of bodies = lots of attacks. Spread out so the party can\'t hit clumps with area spells.\n' +
+    '• Group identical creatures onto one initiative count and roll their attacks together to keep the turn fast.\n' +
+    '• Use them to grapple, flank and block movement — pin the martials so your nastier foes get free shots.\n' +
+    '• Expect a fireball to erase a chunk; that\'s fine, it\'s the trade. Keep a second line back out of the first blast.',
+  elite:
+    'ELITE — a few strong foes.\n' +
+    '• Focus-fire is the party\'s win condition — don\'t bunch up. Split the threats across the battlefield so they can only kill one at a time.\n' +
+    '• Give each elite a distinct job: one controls, one strikes, one flanks. Make them feel individually dangerous.\n' +
+    '• Use reactions, mobility and cover to avoid being pinned. An elite that stands still and trades blows dies fast.\n' +
+    '• Consider staggering when they engage so the party can\'t alpha-strike all of them in round one.',
+  bossMinions:
+    'BOSS + MINIONS — one leader and its lackeys.\n' +
+    '• The boss should act first (set the tone) and, if it has the option, again near the end of the round — lean on lair/legendary-style beats even if improvised.\n' +
+    '• Minions exist to screen: they body-block lanes to the boss, soak reactions, and set up flanks. Spend them freely.\n' +
+    '• Have the boss target whoever threatens it most (the focus-firing rogue, the control caster) rather than the nearest body.\n' +
+    '• Morale hook: if the boss falls, the minions likely break and flee. If a key minion falls, the boss may enrage.',
+  solo:
+    'SOLO — a single mighty creature.\n' +
+    '• The danger is being stun-locked or focus-fired. Give it extra actions in spirit — legendary actions, a big recharge attack, or a second turn low in the initiative.\n' +
+    '• Use the terrain and its own mobility so the party can\'t simply dogpile in melee — force them to spread out.\n' +
+    '• Add a soft "phase" at ~50% HP: new tactic, an area effect, or a desperate escalation, so the fight has a turning point.\n' +
+    '• Legendary resistance (or an improvised save-shrug once or twice) stops a single lucky save from ending it early.',
+  ambush:
+    'AMBUSH — attackers strike from hiding.\n' +
+    '• Run a surprise round: hidden foes act, the party can\'t (roll their Stealth vs the party\'s passive Perception to confirm who\'s surprised).\n' +
+    '• Attacks from hiding have advantage and often trigger Sneak Attack — open with the biggest hits while the party is flat-footed.\n' +
+    '• Attackers should be positioned to cut off escape and hit the backline first; this shape leans on fewer, harder-hitting foes.\n' +
+    '• After the surprise round it\'s a normal fight — the ambushers have spent their edge, so they may reposition or retreat to reset.',
+  gauntlet:
+    'GAUNTLET — foes arrive in successive waves.\n' +
+    '• The creatures are split into waves (see the initiative list tags). Bring wave 2 in a round or two after wave 1, wave 3 after that.\n' +
+    '• This taxes resources: the party can\'t safely blow everything on the first group. Reward pacing and punish over-nova.\n' +
+    '• Later waves should hit where the party is weakest — flank the casters, arrive from a fresh direction, cut off the exit.\n' +
+    '• Give a visible tell before each wave (horns, footsteps, a door bursting) so it feels earned, not random.',
+  vanguard:
+    'VANGUARD + ARCHERS — a front line shielding ranged attackers.\n' +
+    '• Front-line foes (tagged "front") hold the choke and body-block; the backline (tagged "back") plinks from range behind them.\n' +
+    '• The archers/casters are the real threat — the party has to break through or go around the wall to reach them.\n' +
+    '• Front-liners should use Ready actions, grapples and shove to keep the party stuck in the kill zone.\n' +
+    '• If the front collapses, the backline retreats and keeps firing rather than standing to trade in melee.',
+  twinThreat:
+    'TWIN THREAT — two dangerous leaders fighting as a pair.\n' +
+    '• Play them as a team: they split to flank, cover each other, and never both get caught in one area effect.\n' +
+    '• One should control/disable while the other strikes — a lockdown-and-execute pairing is far scarier than two bruisers.\n' +
+    '• If the party focuses one, the other punishes them for the tunnel vision (free flanks, opportunity hits, a rescue).\n' +
+    '• Losing one raises the stakes: the survivor gets reckless or vengeful — a good moment for a damage or defence spike.',
+  siege:
+    'SIEGE / HORDE — a relentless horde pressing a position.\n' +
+    '• This is attrition. Foes keep coming; the party should feel the pressure of a line that might break.\n' +
+    '• Give them an objective beyond "kill everything" — hold a door, protect an NPC, survive N rounds — so retreat and positioning matter.\n' +
+    '• Feed the horde in from the edges each round rather than all at once; a chokepoint turns the fight from lethal to heroic.\n' +
+    '• Reward clever crowd-control (walls, grease, entangles) — it\'s the intended answer to being outnumbered.',
+  duel:
+    'RIVAL DUEL — a single rival matched to a champion.\n' +
+    '• Best when one PC has a personal stake — let the rival call them out and duel one-on-one while the rest deal with the scene.\n' +
+    '• Match the rival\'s power to a single strong PC, not the whole party — otherwise it\'s just a solo boss.\n' +
+    '• Give the rival a signature move and some banter; make it a character beat, not a stat check.\n' +
+    '• Decide in advance what happens if the party gangs up — the rival flees, calls reinforcements, or fights to a dramatic loss.'
 };
 
 let dmCurrentEncounterCard = null; // { intro, tips, notes, ... }
 
 function dmRollInitiativeFor(combatants) {
-  // d20 + a light Dex-ish mod derived from AC (rough but flavourful).
+  // d20 + the creature's real Dex modifier when known; fall back to a rough
+  // AC-derived mod for legacy/manual rows that have no Dex score.
   combatants.forEach(c => {
     if (c.isMonster === false) return; // leave manual/player rows alone
-    const mod = Math.max(-1, Math.min(5, Math.round(((c.ac || 12) - 12) / 2)));
+    const mod = (typeof c.dex === 'number')
+      ? dmModNum(c.dex)
+      : Math.max(-1, Math.min(5, Math.round(((c.ac || 12) - 12) / 2)));
     c.initiative = rnd(1, 20) + mod;
   });
 }
@@ -1296,9 +1878,14 @@ function dmBuildEncounterCard(meta) {
 
   const introPool = DM_ENCOUNTER_INTROS[meta.theme] || DM_ENCOUNTER_INTROS.random;
   const shapeDesc = (DM_ENCOUNTER_SHAPES[meta.shape] || DM_ENCOUNTER_SHAPES.balanced).desc;
+  // Layer a shape-specific opener onto the theme intro when one exists.
+  const shapeIntros = DM_SHAPE_INTROS[meta.shape];
+  const intro = shapeIntros
+    ? `${dmPick(introPool)} ${dmPick(shapeIntros)}`
+    : dmPick(introPool);
 
   dmCurrentEncounterCard = {
-    intro: dmPick(introPool),
+    intro,
     tips: DM_ENCOUNTER_TIPS[meta.shape] || DM_ENCOUNTER_TIPS.balanced,
     shapeDesc,
     rating: meta.rating,
@@ -1335,9 +1922,16 @@ function dmRenderEncounterCard() {
   const card = dmCurrentEncounterCard;
   if (!card) { el.style.display = 'none'; el.innerHTML = ''; return; }
 
-  const monsters = dmCombatants.filter(c => c.isMonster && c.xp > 0)
-    .slice().sort((a, b) => (b.initiative || 0) - (a.initiative || 0));
-  const order = monsters.map(c => `<li><span class="dm-init-num">${c.initiative}</span> ${escapeHtml(c.name)} <span class="dm-init-ac">AC ${c.ac} · ${c.hp} HP</span></li>`).join('');
+  // Full turn order: every combatant (players + monsters), highest init first.
+  const ordered = dmCombatants.slice().sort((a, b) => (b.initiative || 0) - (a.initiative || 0));
+  const order = ordered.map(c => {
+    const meta = c.isPlayer
+      ? `${c.ac != null ? `AC ${c.ac}` : ''}${(c.ac != null && Number(c.maxHp) > 0) ? ' · ' : ''}${Number(c.maxHp) > 0 ? `${c.hp} HP` : ''}`.trim()
+      : `AC ${c.ac} · ${c.hp} HP`;
+    // Monsters open their full stat block; players don't (they have sheets).
+    const openable = !c.isPlayer && (c.statBlock || c.slug);
+    return `<li class="${c.isPlayer ? 'dm-init-player' : ''} ${openable ? 'dm-init-openable' : ''}" ${openable ? `onclick="dmOpenCombatantCreature(${c.id})" title="Open ${escapeHtml(c.name)} stat block"` : ''}><span class="dm-init-num">${c.initiative}</span> ${escapeHtml(c.name)}${openable ? ' <span class="dm-init-open-hint">▸ stats</span>' : ''}${c.isPlayer ? ' <span class="dm-player-badge">PLAYER</span>' : ''}${meta ? ` <span class="dm-init-ac">${meta}</span>` : ''}</li>`;
+  }).join('');
 
   const r = card.rating || {};
   el.style.display = 'block';
@@ -1349,13 +1943,13 @@ function dmRenderEncounterCard() {
         <button class="dm-icon-btn" onclick="dmCloseEncounterCard()" title="Dismiss">✕</button>
       </div>
     </div>
-    <p class="dm-note">${escapeHtml(card.shapeDesc || '')} · ${r.adjusted ? r.adjusted.toLocaleString() + ' adjusted XP' : ''}</p>
+    <p class="dm-note">${escapeHtml(card.shapeDesc || '')} · ${r.adjusted ? r.adjusted.toLocaleString() + ' XP' : ''}</p>
 
     <label class="dm-enc-card-label">Intro — how it starts <span>(read aloud, editable)</span></label>
     <textarea class="dm-enc-card-text" rows="2" oninput="dmCardEdit('intro', this.value)">${escapeHtml(card.intro || '')}</textarea>
 
-    <label class="dm-enc-card-label">How to run it</label>
-    <textarea class="dm-enc-card-text" rows="3" oninput="dmCardEdit('tips', this.value)">${escapeHtml(card.tips || '')}</textarea>
+    <label class="dm-enc-card-label">How to run it <span>(tactics for this battle type)</span></label>
+    <textarea class="dm-enc-card-text dm-enc-card-tips" rows="9" oninput="dmCardEdit('tips', this.value)">${escapeHtml(card.tips || '')}</textarea>
 
     <div class="dm-enc-card-init">
       <div class="dm-card-header" style="border:none;padding:0 0 6px;">

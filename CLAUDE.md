@@ -45,7 +45,7 @@ All JS lives in `assets/`. Files are loaded **in this exact order** via dynamic 
 | `assets/modules/actions.js` | Combat actions/reactions tracking | ~270 |
 | `assets/modules/inventory.js` | Inventory CRUD, equipment, storage containers, coin tracking, portrait upload/remove (`removePortrait`), settings dropdown | ~1180 |
 | `assets/modules/spells.js` | Spell list, spell slots (with drag-reorder), custom resources, favorites, prepared spells table, spell search, sync panels. Loads spell reference data async from `assets/data/spells.json` via `loadSpellDatabase()` at boot, then enriches from Open5e API in background | ~1440 |
-| `assets/modules/dm.js` | DM Portal — password-gated entry, 24h session, portal enter/exit, tab switching, monster browser (Open5e API), encounter builder, NPC generator, loot tables, players/pending approval, in-app dialogs (`dmModal`/`dmToast`), `friendlyFirebaseError`. DM data in localStorage `dndDmEncounters`/`dndDmNpcs` | ~900 |
+| `assets/modules/dm.js` | DM Portal — password-gated entry, 24h session, portal enter/exit, tab switching, monster browser (Open5e API), encounter builder (themes/shapes/difficulty math, players, drag-reorder, click-to-open creature cards), NPC generator, loot tables, players/pending approval, in-app dialogs (`dmModal`/`dmToast`), `friendlyFirebaseError`. DM data in localStorage `dndDmEncounters`/`dndDmNpcs` | ~2750 |
 | `assets/modules/admin.js` | Owner-only admin portal: user list, character import/preview via Firestore. Depends on `escapeHtml`, `getStoredJSON`, `loadCharacterList`, `loadData` from `core.js` | ~230 |
 | `assets/app.js` | Boot entry point: `window.initializeApp`, `showWeaponsPopup`, `addWeapon`, `manualSave`. Also seeds default bg fields and calls `initNotesPage()` on first boot. | ~150 |
 
@@ -303,7 +303,7 @@ Tab order (in `partials/dm-chrome.html`): Home · Lore · Players · Player Spel
 | Player Spells & Actions | `pages/dm-spells.html` | **Placeholder** (Coming Soon shell) | — |
 | Monsters | `pages/dm-monsters.html` | Working | `#dmMonsterSearch`, `#dmMonsterCrFilter`, `#dmMonstersList`, `#dmMonsterDetail` |
 | Items | `pages/dm-items.html` | Working | `#dmItemSearch`, `#dmItemRarityFilter`, `#dmItemsList`, `#dmItemDetail` |
-| Encounters | `pages/dm-encounters.html` | Working | `#dmCombatantList`, `#dmEncounterName`, `#dmSavedEncounterList` |
+| Encounters | `pages/dm-encounters.html` | Working | `#dmCombatantList`, `#dmEncounterName`, `#dmSavedEncounterList`, `#dmGenTheme`/`#dmGenShape`/`#dmGenDifficulty`/`#dmGenCount`, `#dmDifficultyMeter`, `#dmPlayerName`/`#dmPlayerInit` |
 | NPCs | `pages/dm-npcs.html` | Working | `#dmNpcName`, `#dmNpcLootResult`, `#dmNpcList` |
 | Notes | `pages/dm-notes.html` | **Placeholder** (Coming Soon shell) | — |
 | Settings | `pages/dm-settings.html` | Working | `#dmSettingsEmail`, `#dmSettingsCampaign`, `#dmSettingsSessionExpiry` |
@@ -324,8 +324,30 @@ Tab order (in `partials/dm-chrome.html`): Home · Lore · Players · Player Spel
 ### Monsters (Open5e API)
 `dmLoadMonsters()` paginates `https://api.open5e.com/v1/monsters/?limit=100&document__slug=wotc-srd`. Results cached in `dmAllMonsters`. `dmFilterMonsters()` filters client-side by name/type and CR. `dmShowMonster(slug)` renders a full stat block with Add to Encounter button.
 
+- **`dmRenderStatBlockHtml(m)`** — the single shared stat-block renderer (meta, AC/HP/speed, six abilities, senses/languages, CR, **Traits / Actions / Reactions / Legendary Actions**). Used by the Monsters tab detail panel AND the click-to-open creature card everywhere else. Pure HTML, no side effects. The title is a hyperlink to `open5e.com/monsters/{slug}` via `dmMonsterLink(m)` (falls back to an Open5e search by name if no slug). **Never hardcode a stat block elsewhere — call this.**
+- **`dmOpenCreature(source)`** — reusable scrollable modal showing one creature's full stat block. `source` is either a full stat-block object or a `{ name, slug }` stub (it fetches the block by slug, cache-first). `dmOpenCombatantCreature(id)` opens a live combatant's creature (skips players); `dmOpenSavedCreature(slug, name)` opens one from a saved encounter (re-fetches by slug since saved encounters strip the block). Works from the builder, the initiative order, and saved encounters.
+
 ### Encounters
-`dmCombatants` — in-memory array of `{ id, name, maxHp, hp, ac, initiative }`. Saved to localStorage via `dmSaveEncounter()`. `dmLoadEncounter(id)` restores combatants to full HP. Damage/heal via `prompt()`.
+`dmCombatants` — in-memory array. Each combatant now carries: `{ id, name, maxHp, hp, ac, initiative, isMonster, xp }` plus, for generated/added monsters: `slug`, `dex` (real Dex score → initiative), `statBlock` (full Open5e record, for click-to-open), and shape tags `wave` / `role` ('front'|'back'). Player rows carry `isPlayer:true` (unrated, optional HP/AC). Saved to localStorage `dndDmEncounters` via `dmSaveEncounter()`; **`statBlock` is stripped on save** (bulky) and **re-hydrated from `dmAllMonsters` by slug on `dmLoadEncounter(id)`**. All new fields are optional — old saved encounters load fine (missing fields degrade gracefully; a monster with no slug just isn't click-to-open).
+
+- **Adding creatures:** `dmAddMonsterToEncounter(slug)` resolves the full monster (cache→API), stores dex + statBlock, rolls initiative (d20 + real Dex mod). `dmAddCombatant()` = manual unrated combatant. `dmAddPlayer()` = player row (name + total initiative, optional HP/AC).
+- **Per-creature overrides:** every row has always-editable Init / AC / HP(cur/max) inputs (`dmSetInit/dmSetAc/dmSetHp/dmSetMaxHp`); ± buttons still damage/heal. Click a monster's name to inline-expand its stat card.
+- **Order + drag:** `dmOrderMode` ('init' sorts the list highest-first as turn order and numbers rows; 'manual' keeps array order). `dmSetOrderMode()` toggles. Whole row is draggable (`dmCombatantDrag*`); a guard in `dmCombatantDragStart` skips drags starting on inputs/buttons/links so fields stay editable. Dragging switches to manual mode.
+- **Damage/heal:** via `dmModal` (not native `prompt`).
+
+#### Encounter difficulty math (READ BEFORE TOUCHING)
+Rating is on **RAW summed monster XP** vs the party's DMG thresholds — **there is no encounter count-multiplier in the rating** (`dmRateEncounter` returns `mult:1`). The count-multiplier used to inflate adjusted XP and make the live meter disagree with the picker (adding weak monsters tipped Medium→Deadly). Do not reintroduce it into rating.
+- `dmPartyThresholds()` sums each PC's `[easy,medium,hard,deadly]` XP (DMG p.82, `DM_XP_THRESHOLDS`) across `dmParty`.
+- `dmTierTargetXp(tier, th)` = the FLOOR of a tier's band. Base 5e (brutal = deadly×1.5, mythic = deadly×2.5) **× `DM_ENCOUNTER_XP_MULT` (house-rule 1.5×)** applied to every tier. This one function is the single source the build budget, the rating bands, AND the meter readouts all derive from — so the 1.5× scales the whole system together and the label stays honest (pick Medium → beefier fight that still reads Medium). To change the aggression, edit only the constant. `dmTierCeilingXp(tier)` = next tier's floor. A tier's band is `[floor, ceiling)`.
+- `dmRateEncounter(xps)` sums raw XP (no count-multiplier — see above), labels by highest band cleared. `dmUpdateDifficultyMeter()` paints the live meter from `dmCombatants`.
+- **Generator (`dmGenerateEncounter`) guarantees pick = display:** aims for mid-band, then (1) a **floor guarantee** upgrades the weakest picks to stronger monsters until sum ≥ floor (covers all shapes, incl. the part-built tactical ones), then (2) a **ceiling clamp** drops the smallest (free count) or downgrades the strongest in place (forced count) until sum < ceiling. **No-count generation** picks a sensible creature count from the shape (balanced ≈ party size, swarm ≈ 2×, elite ≈ 0.6×) and sizes each creature to `budget/count` — it does NOT greedily stack to a cap. If the theme pool is too weak to reach the tier, it lands as high as it can and shows an honest "best fit… can't reach X" status note instead of silently under-rating.
+
+#### Themes, shapes (battle types), intros & tips
+- **`DM_ENCOUNTER_THEMES`** — 18 themes (humanoid foes, monsters by type, and combos like `casterWarband`/`huntPack`/`bossMinions`). Each filters the pool by creature `type` and/or name keywords. `dmMonstersForTheme(themeKey)`.
+- **`DM_ENCOUNTER_SHAPES`** — 11 shapes. Classic (balanced/swarm/elite/bossMinions/solo) + tactical battle types (ambush/gauntlet/vanguard/twinThreat/siege/duel). Some have real builder logic in `dmBuildShapedEncounter`: solo/duel = 1 creature; twinThreat = 2 leaders; vanguard = front(strong)+back(weak) via `dmFillToBudget`; gauntlet = 2–3 waves via `dmFillToBudget`. `dmFillToBudget(sorted, budget, bias)` fills a sub-budget ('strong'|'weak'|'mixed').
+- **Flavor is keyed to theme + shape:** `DM_ENCOUNTER_INTROS[theme]` (read-aloud openers) layered with `DM_SHAPE_INTROS[shape]`; `DM_ENCOUNTER_TIPS[shape]` (multi-bullet "how to run it" tactics). **These four maps + the two `<select>`s in `pages/dm-encounters.html` must stay in sync** — every dropdown value needs a theme/shape map entry and matching flavor (a missing theme intro falls back to `random`; a missing shape tip falls back to `balanced`).
+
+**Nothing in the encounter system touches character data** — it only reads/writes `dndDmEncounters` and in-memory `dmCombatants`, never `dndCharacters`/`autosave`/cloud sync.
 
 ### NPC Generator
 Name pools in `DM_NPC_NAMES` (male/female/surname). Traits in `DM_NPC_TRAITS`. Secrets in `DM_NPC_SECRETS`. Loot in `dmRollLoot()` — three tiers: scraps (35%), low-level gear (35%), gold+gem (30%).

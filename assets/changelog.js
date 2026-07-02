@@ -6,9 +6,29 @@
 // the Home button until they visit the home page.
 // ============================================================
 
-const CHANGELOG_LATEST_VERSION = '1.09';
+const CHANGELOG_LATEST_VERSION = '1.10';
 
 const CHANGELOG = [
+  {
+    version: '1.10',
+    date: '2026-07-02',
+    title: 'v1.10 — DM Encounter Overhaul',
+    updates: [
+      'Every creature in an encounter is now a card you can open — click it for the full stat block (traits, actions, reactions, legendary actions) with a link straight to its Open5e page. Works from the builder, the initiative order, and saved encounters',
+      'Initiative is now rolled properly as d20 + the creature\'s real Dexterity, and you can override any creature\'s Initiative, HP and AC right on its row',
+      'Add your players into the encounter (name + their initiative total) — the list sorts into a clear turn order, and player rows stand out from monsters',
+      'Drag any combatant row to reorder it, or toggle between initiative order and your own manual order',
+      'Loads of new encounter variety: 7 new monster themes (Aberrations, Dragons, Giants, Fey, Constructs, Oozes & Vermin, Elementals) plus combo packs, and new battle types — Ambush, Gauntlet (waves), Vanguard + Archers, Twin Threat, Siege and Rival Duel',
+      'Each generated encounter now comes with a proper "how to run it" tactics writeup for that battle type, plus a layered read-aloud intro',
+      'Encounters now run 50% beefier than the standard baseline for a tougher fight, while still showing the correct difficulty label',
+      'Refreshed the DM header — tabs are now grouped with icons and the pages have a cleaner, more consistent look',
+    ],
+    fixes: [
+      'The generated difficulty now always matches what you picked — pick Medium and it reads Medium, never a tier higher or lower',
+      'Leaving the creature count blank no longer floods the encounter with monsters — it now picks a sensible number for the chosen battle type',
+      'Cleaned up the party setup (players/level) and the add-player row so the text fits and reads clearly',
+    ],
+  },
   {
     version: '1.09',
     date: '2026-06-28',
