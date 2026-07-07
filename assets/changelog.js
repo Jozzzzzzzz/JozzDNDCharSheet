@@ -14,11 +14,11 @@ const CHANGELOG = [
     date: '2026-07-07',
     title: 'v1.12 — Polish & Help',
     updates: [
-      'The Proficient control in the weapon form is now a clean on/off toggle switch (matching the rest of the app) instead of a tickbox that looked broken on hover',
+      'Tickboxes in the Add-from-sheet pickers and the weapon form are now clean on/off toggle switches (matching the rest of the app) instead of checkboxes that looked broken on hover — includes the "Search everything in D&D 5e" toggle and the weapon Proficient toggle',
       'Expanded the in-section help (the ? button, top-right) for Actions and Weapons to fully explain the new sections, "Add from sheet" search, custom cards, magic bonus, overrides, the fair dice roller and the roll log',
     ],
     fixes: [
-      'Fixed the weapon Proficient tickbox jumping/breaking when you hovered it',
+      'Fixed the "Search everything" and weapon Proficient tickboxes jumping/breaking when you hovered them',
     ],
   },
   {

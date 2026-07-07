@@ -594,10 +594,13 @@
 
   <div class="kit-search-wrap">
     <input type="text" id="actionKitSearch" class="kit-search-input" placeholder="Search…" oninput="onActionKitSearch()" autocomplete="off">
-    <label class="kit-showall-toggle">
-      <input type="checkbox" id="actionKitShowAll" onchange="toggleActionKitShowAll()">
-      <span>Search everything in D&amp;D 5e (off = just your sheet)</span>
-    </label>
+    <div class="kit-showall-toggle">
+      <label class="switch">
+        <input type="checkbox" id="actionKitShowAll" onchange="toggleActionKitShowAll()">
+        <span class="slider round"></span>
+      </label>
+      <span class="kit-showall-text">Search everything in D&amp;D 5e <span class="weapon-form-hint">(off = just your sheet)</span></span>
+    </div>
     <div id="actionKitSearchResults" class="action-kit-search-results"><!-- rendered by renderActionKitSearch() --></div>
   </div>
 

@@ -6481,8 +6481,8 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 .kit-empty { font-size: 0.82rem; color: rgba(255,255,255,0.4); font-style: italic; margin: 4px 0; }
 
 /* Show-all toggle + per-source tag in the kit picker */
-.kit-showall-toggle { display: flex; align-items: center; gap: 7px; margin-top: 8px; font-size: 0.78rem; color: rgba(255,255,255,0.6); cursor: pointer; user-select: none; }
-.kit-showall-toggle input { accent-color: var(--accent-text); }
+.kit-showall-toggle { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.kit-showall-text { font-size: 0.82rem; color: rgba(255,255,255,0.72); }
 .kit-src-tag { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 8px; font-size: 0.66rem; font-weight: 700; text-transform: capitalize; vertical-align: middle; background: rgba(var(--accent-rgb), 0.16); color: var(--accent-text); }
 .kit-src-weapon { background: rgba(210,150,90,0.22); color: #f0c89a; }
 .kit-src-spell { background: rgba(140,120,230,0.22); color: #c8bcff; }
