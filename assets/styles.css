@@ -6506,8 +6506,8 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 .weapon-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; margin: 4px 0 6px; }
 @media (max-width: 560px) { .weapon-form-grid { grid-template-columns: 1fr; } }
 .weapon-form-hint, .weapon-form-grid .weapon-form-hint { opacity: 0.55; font-weight: normal; font-size: 0.85em; }
-.weapon-prof-toggle { display: flex; align-items: center; gap: 8px; margin: 6px 0 2px; font-size: 0.86rem; color: rgba(255,255,255,0.75); cursor: pointer; user-select: none; }
-.weapon-prof-toggle input { accent-color: var(--accent-text); }
+.weapon-prof-row { display: flex; align-items: center; gap: 12px; margin: 10px 0 4px; }
+.weapon-prof-text { font-size: 0.9rem; color: rgba(255,255,255,0.82); }
 
 /* Per-weapon roll buttons on the card */
 .weapon-roll-row { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin: 8px 0 4px; padding: 8px 0; border-top: 1px solid var(--accent-border); }

@@ -468,11 +468,12 @@
     <div class="section actions-features-section">
       <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
       <div class="section-help-panel" onclick="closeHelp(this)">
-        <p><strong>Actions & Features</strong> — your character's combat actions, reactions, and class/racial features.</p>
-        <p><strong>Add Action</strong> — for things you do on your turn: attacks, spells cast as actions, class abilities. Fill in name, damage, range, and notes.</p>
-        <p><strong>Add Feature</strong> — for passive or triggered features: class abilities, racial traits, feats. No damage needed.</p>
-        <p><strong>Favourite Actions</strong> — star any action or feature to pin it to the top for quick reference during combat.</p>
-        <p><strong>Actions Notes</strong> — free-text area for extra detail, combo reminders, or anything that doesn't fit a card.</p>
+        <p><strong>Actions, Bonus Actions & Features</strong> — everything your character can do, split into three lists by when it happens.</p>
+        <p><strong>Actions</strong> = things on your turn (attacks, most spells). <strong>Bonus Actions</strong> = bonus-action stuff (off-hand attack, some spells/features). <strong>Features & Traits</strong> = passive or always-on abilities (racial traits, class features).</p>
+        <p><strong>Add from sheet</strong> — searches your own weapons, spells, items and racial traits and drops them in ready-made. Flip the <em>"Search everything in D&D 5e"</em> toggle to pull from the whole ruleset instead. Spells automatically land in the right section based on their casting time.</p>
+        <p><strong>Add custom</strong> — write your own card by hand: name, timing (which section), damage, range, uses, and an optional reference link that shows a "View rules" button.</p>
+        <p><strong>Cards</strong> — long descriptions collapse with a "View more" toggle; a coloured badge shows where a pulled card came from (weapon / spell / item / trait). Star ❤️ to pin favourites to the top; ✏️ edit or 🗑️ delete any card.</p>
+        <p><strong>Nothing here changes your inventory, weapons or other characters</strong> — pulling just copies a ready-to-edit card into your list.</p>
       </div>
       <h2>Actions, Bonus Actions & Features</h2>
 
@@ -531,8 +532,10 @@
          <div class="section">
            <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
            <div class="section-help-panel" onclick="closeHelp(this)">
-             <p><strong>Weapons</strong> — your equipped weapons and their attack details.</p>
-             <p><strong>Add from sheet</strong> pulls any D&D 5e weapon with its dice pre-filled; <strong>Add custom</strong> is pure homebrew. Each card has fair-dice roll buttons — Attack (🎯/ADV/DIS) and Damage (🎲/CRIT). Every die is shown in the Roll Log so nothing is hidden. To-hit auto-calculates from your ability + proficiency.</p>
+             <p><strong>Weapons</strong> — your weapons, their attack details, and a fair dice roller.</p>
+             <p><strong>Add from sheet</strong> pulls any D&D 5e weapon with its dice + type pre-filled; <strong>Add custom</strong> is pure homebrew. Either way you can Edit afterwards and change anything.</p>
+             <p><strong>Roll buttons</strong> on each card: <strong>Attack</strong> — 🎯 normal, ADV (advantage), DIS (disadvantage); <strong>Damage</strong> — 🎲 normal, CRIT. Every single die is shown in the Roll Log below, natural 20s and 1s are highlighted, and rolls use true random so they're perfectly fair. The Roll Log is saved to your sheet.</p>
+             <p><strong>To-hit auto-calculates</strong> from your chosen ability (STR/DEX) + proficiency (toggle it off for a non-proficient weapon). <strong>Magic bonus (+1 to +5)</strong> adds to both attack and damage and shows on the name (e.g. "Longsword +2"). For homebrew, use the <strong>to-hit / damage overrides</strong> or a custom dice expression to force exact numbers.</p>
              <div class="crit-mode-picker" onclick="event.stopPropagation();">
                <label for="critModeSelect"><strong>Critical hit rule</strong> — applies to every weapon on this sheet:</label>
                <select id="critModeSelect" onchange="onCritModeChange(this.value)">

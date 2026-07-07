@@ -261,10 +261,13 @@
     </div>
   </div>
 
-  <label class="weapon-prof-toggle">
-    <input type="checkbox" id="weapon_proficient" checked>
-    <span>Proficient (adds proficiency bonus to the attack)</span>
-  </label>
+  <div class="weapon-prof-row">
+    <label class="switch">
+      <input type="checkbox" id="weapon_proficient" checked>
+      <span class="slider round"></span>
+    </label>
+    <span class="weapon-prof-text">Proficient <span class="weapon-form-hint">(adds proficiency bonus to the attack)</span></span>
+  </div>
 
   <label>Properties:</label>
   <input type="text" id="weapon_properties" placeholder="e.g. Finesse, Versatile (1d10), Thrown"/>

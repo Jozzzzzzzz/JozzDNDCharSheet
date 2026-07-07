@@ -6,9 +6,21 @@
 // the Home button until they visit the home page.
 // ============================================================
 
-const CHANGELOG_LATEST_VERSION = '1.11';
+const CHANGELOG_LATEST_VERSION = '1.12';
 
 const CHANGELOG = [
+  {
+    version: '1.12',
+    date: '2026-07-07',
+    title: 'v1.12 — Polish & Help',
+    updates: [
+      'The Proficient control in the weapon form is now a clean on/off toggle switch (matching the rest of the app) instead of a tickbox that looked broken on hover',
+      'Expanded the in-section help (the ? button, top-right) for Actions and Weapons to fully explain the new sections, "Add from sheet" search, custom cards, magic bonus, overrides, the fair dice roller and the roll log',
+    ],
+    fixes: [
+      'Fixed the weapon Proficient tickbox jumping/breaking when you hovered it',
+    ],
+  },
   {
     version: '1.11',
     date: '2026-07-07',
