@@ -211,8 +211,8 @@ function renderAdminUserGrid(users) {
         </div>
         <span class="admin-user-email">${escapeHtml(u.email || u.uid)}</span>
         <div class="admin-user-card-meta">
-          <span>🖥 ${devices} device${devices === 1 ? '' : 's'}</span>
-          <span>🕒 ${escapeHtml(seen)}</span>
+          <span>${devices} device${devices === 1 ? '' : 's'}</span>
+          <span>${escapeHtml(seen)}</span>
         </div>
       </button>`;
   }).join('');
@@ -267,10 +267,10 @@ async function adminSelectUser(uid) {
       <div class="admin-user-detail-header">
         <h4>${escapeHtml(user.nickname || (user.email || '').split('@')[0] || 'User')}</h4>
         <div class="admin-user-detail-chips">
-          <span class="admin-chip ${active ? 'is-active' : ''}">${active ? '● Active now' : '○ Offline'}</span>
+          <span class="admin-chip ${active ? 'is-active' : ''}">${active ? 'Active now' : 'Offline'}</span>
           <span class="admin-chip">${escapeHtml(user.email || uid)}</span>
-          <span class="admin-chip">🖥 ${user.knownDeviceCount || 0} device${(user.knownDeviceCount || 0) === 1 ? '' : 's'}</span>
-          <span class="admin-chip">🕒 Last sign-in: ${escapeHtml(formatTs(user.lastSignInAt) || '—')}</span>
+          <span class="admin-chip">${user.knownDeviceCount || 0} device${(user.knownDeviceCount || 0) === 1 ? '' : 's'}</span>
+          <span class="admin-chip">Last sign-in: ${escapeHtml(formatTs(user.lastSignInAt) || '—')}</span>
           <span class="admin-chip">${chars.length} character${chars.length === 1 ? '' : 's'}</span>
         </div>
       </div>`;
@@ -808,7 +808,7 @@ function adminRenderRollLog(name, rollLog) {
     const rows = (rollLog.days[day] || []).slice().reverse().map(e => {
       const time = new Date(e.ts || 0).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const detail = e.kind === 'tohit'
-        ? `to hit ${e.total >= 0 ? '' : ''}${e.total} (d20 ${e.d20}${e.otherD20 != null ? ', ' + e.otherD20 : ''}${e.mode && e.mode !== 'normal' ? ' ' + e.mode : ''})${e.nat20 ? ' 💥' : ''}${e.nat1 ? ' 💀' : ''}`
+        ? `to hit ${e.total >= 0 ? '' : ''}${e.total} (d20 ${e.d20}${e.otherD20 != null ? ', ' + e.otherD20 : ''}${e.mode && e.mode !== 'normal' ? ' ' + e.mode : ''})${e.nat20 ? ' CRIT' : ''}${e.nat1 ? ' nat1' : ''}`
         : `${e.crit ? 'CRIT ' : ''}damage ${e.total}${e.damageType ? ' ' + escapeHtml(e.damageType) : ''}`;
       return `<div class="admin-log-row"><span class="admin-log-weapon">${escapeHtml(e.weapon || 'Weapon')}</span><span class="admin-log-detail">${detail}</span><span class="admin-log-time">${time}</span></div>`;
     }).join('');

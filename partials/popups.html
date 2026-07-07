@@ -234,6 +234,10 @@
       <select id="weapon_ability">
         <option value="str">Strength</option>
         <option value="dex">Dexterity</option>
+        <option value="con">Constitution</option>
+        <option value="int">Intelligence</option>
+        <option value="wis">Wisdom</option>
+        <option value="cha">Charisma</option>
       </select>
     </div>
     <div>
@@ -291,6 +295,18 @@
   </div>
   <div style="margin-top: 15px; display: flex; justify-content: flex-end;">
     <button onclick="closePopup('weaponPickerPopup')">Done</button>
+  </div>
+</div>
+
+<!-- Roll Log popup (fair-dice history) -->
+<div class="popup" id="rollLogPopup">
+  <div class="roll-log-head">
+    <h3>Roll Log</h3>
+    <button class="roll-log-clear" type="button" onclick="clearRollLog()">Clear today</button>
+  </div>
+  <div id="weaponRollLog" class="weapon-roll-log"><!-- rendered by renderRollLog() --></div>
+  <div style="margin-top: 15px; display: flex; justify-content: flex-end;">
+    <button onclick="closePopup('rollLogPopup')">Done</button>
   </div>
 </div>
 
@@ -721,7 +737,7 @@
 
 <!-- Weight Warning Popup -->
 <div class="popup" id="weightWarningPopup">
-  <h3>⚠️ Item Too Heavy!</h3>
+  <h3>Item Too Heavy!</h3>
   <p id="weightWarningMessage">Sorry, that item won't fit into your bag.</p>
   <p style="font-size: 0.8em; color: var(--text); opacity: 0.7; font-style: italic;">"Wish I had a bag of holding"</p>
   <div style="margin-top: 15px; display: flex; justify-content: center;">

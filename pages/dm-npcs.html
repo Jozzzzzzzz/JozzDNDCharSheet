@@ -12,7 +12,7 @@
         <h3 id="dmNpcFormTitle">Build an NPC</h3>
         <div class="dm-name-row">
           <button class="dm-action-btn" onclick="dmGenerateNpc()">Generate</button>
-          <button class="dm-action-btn" onclick="dmRerollNpc()" title="Clear everything and roll a fresh NPC">🎲 Reroll All</button>
+          <button class="dm-action-btn" onclick="dmRerollNpc()" title="Clear everything and roll a fresh NPC">Reroll All</button>
         </div>
       </div>
       <p class="dm-note">Fill in what you want and leave the rest to <strong>Generate</strong> (it keeps your picks). Use the Reroll on any line to redo just that part. Everything is editable.</p>
@@ -23,7 +23,7 @@
           <label>Name</label>
           <div class="dm-name-row">
             <input type="text" id="dmNpcName" placeholder="NPC name" maxlength="60">
-            <button class="dm-icon-btn" onclick="dmRollNpcName()" title="Random name">🎲</button>
+            <button class="dm-icon-btn" onclick="dmRollNpcName()" title="Random name"></button>
           </div>
         </div>
         <div class="dm-field-row">
@@ -130,7 +130,7 @@
         <div class="dm-npc-loot">
           <div class="dm-card-header" style="padding:0 0 8px 0; border:none;">
             <h4>Loot</h4>
-            <button class="dm-icon-btn" onclick="dmRollLoot()" title="Roll loot">🎲 Roll Loot</button>
+            <button class="dm-icon-btn" onclick="dmRollLoot()" title="Roll loot">Roll Loot</button>
           </div>
           <div id="dmNpcLootResult" class="dm-loot-result dm-empty-state">Hit "Roll Loot" to generate a loot drop.</div>
         </div>

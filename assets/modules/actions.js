@@ -191,7 +191,7 @@ function renderActionsReviewBanner() {
   if (!n) { el.style.display = 'none'; el.innerHTML = ''; return; }
   el.style.display = '';
   el.innerHTML =
-    `<span>⚠️ ${n} card${n === 1 ? '' : 's'} ${n === 1 ? 'was' : 'were'} auto-sorted and may belong in a different section. ` +
+    `<span>${n} card${n === 1 ? '' : 's'} ${n === 1 ? 'was' : 'were'} auto-sorted and may belong in a different section. ` +
     `Edit any card to confirm or move it.</span>` +
     `<button class="actions-review-dismiss" onclick="dismissActionsReview()">Got it</button>`;
 }
@@ -231,7 +231,7 @@ function createActionCard(action, type) {
     ? `<div class="action-description ${(isLong && !expanded) ? 'action-desc-clamp' : ''}">${esc(desc)}</div>`
     : '';
   const linkBlock = action.link
-    ? `<a class="action-ref-link" href="${esc(action.link)}" target="_blank" rel="noopener">View rules ↗</a>`
+    ? `<a class="action-ref-link" href="${esc(action.link)}" target="_blank" rel="noopener">View rules</a>`
     : '';
   const viewMore = (isLong || action.link)
     ? `<button class="action-viewmore-btn" onclick="toggleActionExpand('${action.id}')">${expanded ? 'View less' : 'View more'}</button>`
@@ -251,11 +251,11 @@ function createActionCard(action, type) {
     ${descBlock}
     ${(viewMore || linkBlock) ? `<div class="action-more-row">${viewMore}${(expanded || !isLong) ? linkBlock : ''}</div>` : ''}
     <div class="action-actions">
-      <button class="action-btn favorite-btn ${action.favorite ? 'favorited' : ''}" onclick="toggleActionFavorite('${action.id}', '${type}')" title="Favourite">
-        ${action.favorite ? '❤️' : '🤍'}
+      <button class="action-btn favorite-btn ${action.favorite ? 'favorited' : ''}" onclick="toggleActionFavorite('${action.id}', '${type}')" title="${action.favorite ? 'Unfavourite' : 'Favourite'}">
+        <span class="fav-star">&#9733;</span>
       </button>
-      <button class="action-btn edit-btn" onclick="editAction('${action.id}', '${type}')" title="Edit">✏️</button>
-      <button class="action-btn delete-btn" onclick="deleteAction('${action.id}', '${type}')" title="Delete">🗑️</button>
+      <button class="action-btn edit-btn" onclick="editAction('${action.id}', '${type}')" title="Edit">Edit</button>
+      <button class="action-btn delete-btn" onclick="deleteAction('${action.id}', '${type}')" title="Delete">Del</button>
     </div>
   `;
   return card;
@@ -625,7 +625,7 @@ function renderActionKitSearch(query) {
     return `
       <div class="kit-row ${added ? 'kit-row-added' : ''}">
         <div class="kit-row-info">
-          <span class="kit-row-name">${escapeHtml(c.name)}${link ? ` <a class="kit-row-link" href="${escapeHtml(link)}" target="_blank" rel="noopener" title="View on Open5e">↗</a>` : ''}<span class="kit-src-tag kit-src-${c.source}">${escapeHtml(c.source)}</span></span>
+          <span class="kit-row-name">${escapeHtml(c.name)}${link ? ` <a class="kit-row-link" href="${escapeHtml(link)}" target="_blank" rel="noopener" title="View on Open5e">link</a>` : ''}<span class="kit-src-tag kit-src-${c.source}">${escapeHtml(c.source)}</span></span>
           <span class="kit-row-meta">${escapeHtml(meta)}</span>
         </div>
         ${added ? '<span class="kit-added-tag">✓ Added</span>'

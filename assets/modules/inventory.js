@@ -323,14 +323,14 @@ function createWeaponCard(weapon, index) {
     <div class="weapon-roll-row" onclick="event.stopPropagation();">
       <div class="weapon-roll-group">
         <span class="weapon-roll-label">Attack</span>
-        <button type="button" class="weapon-roll-btn" title="Roll to hit" onclick="event.stopPropagation(); rollWeaponAttack(${index}, 'normal')">🎯</button>
-        <button type="button" class="weapon-roll-btn weapon-roll-adv" title="With advantage" onclick="event.stopPropagation(); rollWeaponAttack(${index}, 'adv')">ADV</button>
-        <button type="button" class="weapon-roll-btn weapon-roll-dis" title="With disadvantage" onclick="event.stopPropagation(); rollWeaponAttack(${index}, 'dis')">DIS</button>
+        <button type="button" class="weapon-roll-btn" title="Roll to hit" onclick="event.stopPropagation(); rollWeaponAttack(${index}, 'normal')">Hit</button>
+        <button type="button" class="weapon-roll-btn weapon-roll-adv" title="With advantage" onclick="event.stopPropagation(); rollWeaponAttack(${index}, 'adv')">Adv</button>
+        <button type="button" class="weapon-roll-btn weapon-roll-dis" title="With disadvantage" onclick="event.stopPropagation(); rollWeaponAttack(${index}, 'dis')">Dis</button>
       </div>
       <div class="weapon-roll-group">
         <span class="weapon-roll-label">Damage</span>
-        <button type="button" class="weapon-roll-btn" title="Roll damage" onclick="event.stopPropagation(); rollWeaponDmg(${index}, false)">🎲</button>
-        <button type="button" class="weapon-roll-btn weapon-roll-crit" title="Roll critical damage (double dice)" onclick="event.stopPropagation(); rollWeaponDmg(${index}, true)">CRIT</button>
+        <button type="button" class="weapon-roll-btn" title="Roll damage" onclick="event.stopPropagation(); rollWeaponDmg(${index}, false)">Dmg</button>
+        <button type="button" class="weapon-roll-btn weapon-roll-crit" title="Roll critical damage (double dice)" onclick="event.stopPropagation(); rollWeaponDmg(${index}, true)">Crit</button>
       </div>
     </div>
     <div class="equipment-actions">
@@ -629,8 +629,8 @@ function createItemCard(item, container) {
     <div class="item-actions">
       ${refillBtn}
       ${moveSelect}
-      <button class="item-btn edit-btn" onclick="editItem('${item.id}', '${container}')">✏️</button>
-      <button class="item-btn delete-btn" onclick="deleteItem('${item.id}', '${container}')">🗑️</button>
+      <button class="item-btn edit-btn" onclick="editItem('${item.id}', '${container}')">Edit</button>
+      <button class="item-btn delete-btn" onclick="deleteItem('${item.id}', '${container}')">Del</button>
     </div>
   `;
   return card;
@@ -791,7 +791,7 @@ function updateMainInventoryWeightDisplay() {
     const enc = str * 5, heavy = str * 10, max = str * 15;
     const thresholds = `Enc: ${enc} | Heavy: ${heavy} | Max: ${max} lbs`;
     if (tier) {
-      encumbranceLine = `<div style="font-size:0.85em;font-weight:bold;color:${tier.color};margin-top:4px;">⚠ ${tier.label}</div>
+      encumbranceLine = `<div style="font-size:0.85em;font-weight:bold;color:${tier.color};margin-top:4px;">${tier.label}</div>
         <div style="font-size:0.75em;opacity:0.75;margin-top:2px;">${thresholds}</div>`;
     } else {
       encumbranceLine = `<div style="font-size:0.75em;opacity:0.7;margin-top:4px;">${thresholds}</div>`;
@@ -802,7 +802,7 @@ function updateMainInventoryWeightDisplay() {
   const statusEl = document.getElementById('encumbrance_status');
   if (statusEl && inventoryData.encumbranceEnabled) {
     const tier = getEncumbranceTier(totalWeight);
-    statusEl.textContent = tier ? `⚠ ${tier.label.split(' (')[0]}` : 'No encumbrance';
+    statusEl.textContent = tier ? tier.label.split(' (')[0] : 'No encumbrance';
     statusEl.style.color = tier ? tier.color : '';
   } else if (statusEl) {
     statusEl.textContent = '';

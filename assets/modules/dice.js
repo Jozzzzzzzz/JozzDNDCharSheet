@@ -256,6 +256,12 @@ function clearRollLog() {
   if (typeof autosave === 'function') autosave();
 }
 
+// Open the roll log in its popup (kept hidden until asked for).
+function showRollLogPopup() {
+  renderRollLog();
+  if (typeof showPopup === 'function') showPopup('rollLogPopup');
+}
+
 // Human-readable dice breakdown, e.g. "2d6 [4, 5] + 3".
 function _describeDamageTerms(entry) {
   const parts = entry.terms.map(t => `${t.count}d${t.sides} [${t.rolls.join(', ')}]`);
@@ -271,7 +277,7 @@ function renderRollLog() {
   if (!el) return;
   const rolls = _recentRolls(_ROLL_LOG_PANEL_MAX);
   if (!rolls.length) {
-    el.innerHTML = '<p class="roll-log-empty">No rolls yet. Use a weapon’s 🎯 / 🎲 buttons to roll — every die is shown here and saved to your sheet.</p>';
+    el.innerHTML = '<p class="roll-log-empty">No rolls yet. Use a weapon’s Hit / Dmg buttons to roll — every die is shown here and saved to your sheet.</p>';
     return;
   }
   const esc = window.escapeHtml || ((s) => String(s));
@@ -281,7 +287,7 @@ function renderRollLog() {
       const modeTag = e.mode === 'adv' ? '<span class="roll-tag roll-adv">ADV</span>'
                     : e.mode === 'dis' ? '<span class="roll-tag roll-dis">DIS</span>' : '';
       const critClass = e.nat20 ? ' roll-nat20' : (e.nat1 ? ' roll-nat1' : '');
-      const critLabel = e.nat20 ? ' 💥 CRIT!' : (e.nat1 ? ' 💀 nat 1' : '');
+      const critLabel = e.nat20 ? ' <span class="roll-crit-label">CRIT!</span>' : (e.nat1 ? ' <span class="roll-nat1-label">nat 1</span>' : '');
       return `
         <div class="roll-log-row${critClass}">
           <div class="roll-log-main">

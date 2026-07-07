@@ -15,13 +15,13 @@ function friendlyFirebaseError(e) {
     return '⏳ This view needs a quick one-time database setup. It usually finishes within a few minutes — try again shortly.';
   }
   if (code === 'permission-denied' || low.includes('permission')) {
-    return '🔒 You don\'t have access to this. If you just set up a campaign, make sure the security rules are deployed.';
+    return 'You don\'t have access to this. If you just set up a campaign, make sure the security rules are deployed.';
   }
   if (code === 'unavailable' || low.includes('offline') || low.includes('network')) {
-    return '📡 Can\'t reach the cloud right now — check your internet connection and try again.';
+    return 'Can\'t reach the cloud right now — check your internet connection and try again.';
   }
   if (code === 'unauthenticated' || low.includes('unauthenticated')) {
-    return '👤 You\'re signed out. Sign in again and retry.';
+    return 'You\'re signed out. Sign in again and retry.';
   }
   // Fallback — still readable, no raw stack
   return 'Something went wrong loading this. Try again in a moment.';
@@ -135,7 +135,7 @@ async function renderDmCard() {
   if (dmSessionValid() && session && user && session.uid === user.uid) {
     body.innerHTML = `
       <div class="dm-granted-banner">
-        <span class="dm-granted-icon">⚔️</span>
+        <span class="dm-granted-icon">DM</span>
         <div>
           <p class="dm-granted-title">DM Portal — Session Active</p>
           <p class="settings-note">Campaign: <strong>${escapeHtml(session.campaignName || '—')}</strong></p>
@@ -1963,7 +1963,7 @@ function dmRenderEncounterCard() {
     <textarea class="dm-enc-card-text" rows="3" placeholder="Terrain, twists, reinforcements, loot on the bodies..." oninput="dmCardEdit('notes', this.value)">${escapeHtml(card.notes || '')}</textarea>
 
     <div class="dm-name-row" style="margin-top:12px;">
-      <button class="dm-action-btn dm-save-btn" onclick="dmSaveCurrentEncounter()">⭐ Save Encounter</button>
+      <button class="dm-action-btn dm-save-btn" onclick="dmSaveCurrentEncounter()">Save Encounter</button>
       <span class="dm-note" style="margin:0;">Saves to the Saved tab with notes &amp; combatants.</span>
     </div>
   `;
@@ -2126,7 +2126,7 @@ const DM_NPC_FIELD_IDS = {
   hook: 'dmNpcHook'
 };
 
-// Reroll a single field in place (used by each line's 🎲 button).
+// Reroll a single field in place (used by each line's reroll button).
 function dmRerollField(field) {
   const id = DM_NPC_FIELD_IDS[field];
   const el = id && document.getElementById(id);
@@ -2368,7 +2368,7 @@ function dmRenderNpcList() {
         ${n.loot ? `<span class="dm-npc-loot">Loot: ${escapeHtml(n.loot)}</span>` : ''}
       </div>
       <div class="dm-npc-actions">
-        <button class="dm-icon-btn" onclick="dmEditNpc(${n.id})" title="Edit">✎</button>
+        <button class="dm-icon-btn" onclick="dmEditNpc(${n.id})" title="Edit">Edit</button>
         <button class="dm-icon-btn dm-remove-btn" onclick="dmDeleteNpc(${n.id})" title="Remove">✕</button>
       </div>
     </div>
@@ -2682,7 +2682,7 @@ async function dmViewPlayerCharacter(uid, charId) {
           <h3>${escapeHtml(info.name || 'Unnamed')}</h3>
           <p>${[info.race, info.class, info.subclass, info.level ? 'Level ' + info.level : ''].filter(Boolean).join(' · ')}</p>
           <p style="opacity:0.45;font-size:0.8em;">${escapeHtml(info.background || '')}</p>
-          ${savedAt ? `<p style="opacity:0.5;font-size:0.75em;margin-top:4px;">🕒 ${escapeHtml(savedAt)}</p>` : ''}
+          ${savedAt ? `<p style="opacity:0.5;font-size:0.75em;margin-top:4px;">${escapeHtml(savedAt)}</p>` : ''}
         </div>
         <div class="dm-sb-abilities" style="margin:14px 0;">${abilityRows}</div>
         <div class="dm-player-sheet-stats">

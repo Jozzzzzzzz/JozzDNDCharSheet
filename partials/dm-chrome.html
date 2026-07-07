@@ -6,45 +6,44 @@
 
     <!-- Top strip: DM SCREEN cue + campaign + exit -->
     <div class="dm-screen-banner">
-      <span class="dm-screen-icon">⚔️</span>
       <span class="dm-screen-title">DM Screen</span>
       <span class="dm-screen-campaign" id="dmScreenCampaignLabel"></span>
-      <button class="dm-exit-btn" onclick="exitDmPortal()" title="Exit DM Portal">✕ Exit</button>
+      <button class="dm-exit-btn" onclick="exitDmPortal()" title="Exit DM Portal">Exit</button>
     </div>
 
     <!-- Grouped, icon'd tab bar -->
     <nav class="dm-tabs" aria-label="DM sections">
       <div class="dm-tab-group" data-group="Table">
         <button class="dm-tab active" data-dm-tab="dm-home" onclick="switchDmTab(this)"><span class="dm-tab-ico">⌂</span><span class="dm-tab-label">Home</span></button>
-        <button class="dm-tab" data-dm-tab="dm-lore" onclick="switchDmTab(this)"><span class="dm-tab-ico">📖</span><span class="dm-tab-label">Lore</span></button>
-        <button class="dm-tab" data-dm-tab="dm-notes" onclick="switchDmTab(this)"><span class="dm-tab-ico">📝</span><span class="dm-tab-label">Notes</span></button>
+        <button class="dm-tab" data-dm-tab="dm-lore" onclick="switchDmTab(this)"><span class="dm-tab-ico"></span><span class="dm-tab-label">Lore</span></button>
+        <button class="dm-tab" data-dm-tab="dm-notes" onclick="switchDmTab(this)"><span class="dm-tab-ico"></span><span class="dm-tab-label">Notes</span></button>
       </div>
 
       <div class="dm-tab-divider" aria-hidden="true"></div>
 
       <div class="dm-tab-group" data-group="Party">
         <button class="dm-tab" data-dm-tab="dm-players" onclick="switchDmTab(this)"><span class="dm-tab-ico">◉</span><span class="dm-tab-label">Players</span></button>
-        <button class="dm-tab" data-dm-tab="dm-spells" onclick="switchDmTab(this)"><span class="dm-tab-ico">✦</span><span class="dm-tab-label">Spells &amp; Actions</span></button>
+        <button class="dm-tab" data-dm-tab="dm-spells" onclick="switchDmTab(this)"><span class="dm-tab-ico"></span><span class="dm-tab-label">Spells &amp; Actions</span></button>
       </div>
 
       <div class="dm-tab-divider" aria-hidden="true"></div>
 
       <div class="dm-tab-group" data-group="Reference">
-        <button class="dm-tab" data-dm-tab="dm-monsters" onclick="switchDmTab(this)"><span class="dm-tab-ico">☠</span><span class="dm-tab-label">Monsters</span></button>
-        <button class="dm-tab" data-dm-tab="dm-items" onclick="switchDmTab(this)"><span class="dm-tab-ico">⚒</span><span class="dm-tab-label">Items</span></button>
+        <button class="dm-tab" data-dm-tab="dm-monsters" onclick="switchDmTab(this)"><span class="dm-tab-ico"></span><span class="dm-tab-label">Monsters</span></button>
+        <button class="dm-tab" data-dm-tab="dm-items" onclick="switchDmTab(this)"><span class="dm-tab-ico"></span><span class="dm-tab-label">Items</span></button>
       </div>
 
       <div class="dm-tab-divider" aria-hidden="true"></div>
 
       <div class="dm-tab-group" data-group="Tools">
-        <button class="dm-tab" data-dm-tab="dm-encounters" onclick="switchDmTab(this)"><span class="dm-tab-ico">⚔</span><span class="dm-tab-label">Encounters</span></button>
-        <button class="dm-tab" data-dm-tab="dm-npcs" onclick="switchDmTab(this)"><span class="dm-tab-ico">☺</span><span class="dm-tab-label">NPCs</span></button>
+        <button class="dm-tab" data-dm-tab="dm-encounters" onclick="switchDmTab(this)"><span class="dm-tab-ico"></span><span class="dm-tab-label">Encounters</span></button>
+        <button class="dm-tab" data-dm-tab="dm-npcs" onclick="switchDmTab(this)"><span class="dm-tab-ico"></span><span class="dm-tab-label">NPCs</span></button>
       </div>
 
       <div class="dm-tab-divider" aria-hidden="true"></div>
 
       <div class="dm-tab-group" data-group="Config">
-        <button class="dm-tab" data-dm-tab="dm-settings" onclick="switchDmTab(this)"><span class="dm-tab-ico">⚙</span><span class="dm-tab-label">Settings</span></button>
+        <button class="dm-tab" data-dm-tab="dm-settings" onclick="switchDmTab(this)"><span class="dm-tab-ico"></span><span class="dm-tab-label">Settings</span></button>
       </div>
     </nav>
 

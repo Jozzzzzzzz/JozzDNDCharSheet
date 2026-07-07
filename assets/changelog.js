@@ -6,9 +6,23 @@
 // the Home button until they visit the home page.
 // ============================================================
 
-const CHANGELOG_LATEST_VERSION = '1.12';
+const CHANGELOG_LATEST_VERSION = '1.13';
 
 const CHANGELOG = [
+  {
+    version: '1.13',
+    date: '2026-07-08',
+    title: 'v1.13 — Cleaner Look & Weapon Ability Choice',
+    updates: [
+      'Weapons can now roll off any ability — Strength, Dexterity, Constitution, Intelligence, Wisdom or Charisma — so things like a Warlock\'s Charisma pact weapon work properly',
+      'The roll log is now tucked behind a small "View roll log" button so it stays out of the way; your rolls are still saved to your sheet',
+      'Removed emojis across the whole sheet for a cleaner, more grown-up look — buttons now use short text labels (Hit / Dmg / Adv / Dis / Crit, Edit / Del)',
+      'Favourites use a star that turns gold when starred; green ticks are kept where a checkmark is genuinely useful',
+    ],
+    fixes: [
+      'Toggle controls no longer use hover-breaking tickboxes',
+    ],
+  },
   {
     version: '1.12',
     date: '2026-07-07',

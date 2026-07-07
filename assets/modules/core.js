@@ -1039,70 +1039,70 @@ const NOTES_DEFAULT_FOLDERS = [
   {
     id: 'nfd_quests', title: 'Quests & Missions', isDefault: true,
     cards: [
-      { id: 'nfc_q1', isDefault: true, title: '📋 Example — Active Quest',
+      { id: 'nfc_q1', isDefault: true, title: 'Example — Active Quest',
         body: 'Quest name: The Missing Merchant\nGiven by: Mayor Aldric of Millhaven\nObjective: Find out what happened to Torvin the trader, last seen on the Eastern Road.\nReward: 200gp + a letter of introduction to the Merchant Guild\nStatus: In progress\n\n— Copy this card format for each new quest you track.' },
     ]
   },
   {
     id: 'nfd_npcs', title: 'NPCs', isDefault: true,
     cards: [
-      { id: 'nfc_n1', isDefault: true, title: '📋 Example — NPC',
+      { id: 'nfc_n1', isDefault: true, title: 'Example — NPC',
         body: 'Name: Sera Dunwhite\nRace / Class: Human Innkeeper\nLocation: The Broken Antler Inn, Millhaven\nRole: Quest giver / information source\nPersonality: Warm but nosy. Loves gossip.\nRelationship to party: Friendly — gave us a discount room\nKnown info: Saw Torvin arguing with a cloaked figure the night he vanished.\nNotes: Might know more if we bring her wine from the capital.\n\n— Add a new card for each NPC you meet.' },
     ]
   },
   {
     id: 'nfd_locations', title: 'Locations', isDefault: true,
     cards: [
-      { id: 'nfc_l1', isDefault: true, title: '📋 Example — Location',
+      { id: 'nfc_l1', isDefault: true, title: 'Example — Location',
         body: 'Name: Millhaven\nType: Small town\nRegion: The Thornwood Reaches\nFirst visited: Session 1\nKey NPCs: Mayor Aldric, Sera (innkeeper), Gruff the blacksmith\nPoints of interest: The Broken Antler Inn, the old watchtower, the market square\nDangers: Bandit activity on the Eastern Road\nNotes: Population ~400. Loyal to the Crown but ignored by them.\n\n— Add a new card for each place you discover.' },
     ]
   },
   {
     id: 'nfd_lore', title: 'Lore & World Notes', isDefault: true,
     cards: [
-      { id: 'nfc_lw1', isDefault: true, title: '📋 Example — Faction',
+      { id: 'nfc_lw1', isDefault: true, title: 'Example — Faction',
         body: 'Name: The Ember Court\nGoals: Restore the old empire by any means necessary\nLeader: Unknown — believed to be a noble in the capital\nHow they feel about us: Hostile — we disrupted their operation in Millhaven\nUseful contacts inside: None yet\nNotes: Their agents wear a red signet ring with a flame motif.\n\n— Add a new card for each faction, deity, or piece of lore you uncover.' },
     ]
   },
   {
     id: 'nfd_session', title: 'Session Notes', isDefault: true,
     cards: [
-      { id: 'nfc_s1', isDefault: true, title: '📋 Example — Session Recap',
+      { id: 'nfc_s1', isDefault: true, title: 'Example — Session Recap',
         body: 'Session #: 1\nDate played: 2026-01-10\nWhere we started: Millhaven, The Broken Antler Inn\n\nWhat happened:\nWe arrived in Millhaven after answering a job posting. The mayor hired us to find Torvin the merchant. Sera the innkeeper told us about the cloaked figure. We investigated the Eastern Road and found cart tracks leading into the Greyfen Marsh.\n\nKey decisions made:\n— Decided to head into the marsh rather than wait for backup.\n— Chose not to report the Ember Court signet ring to the guards (don\'t trust them yet).\n\nLoose ends:\n— Who is the cloaked figure?\n— Why does the mayor seem nervous when the Ember Court is mentioned?\n\nWhere we ended: Camp at the edge of Greyfen Marsh.\n\n— Duplicate this card for each session.' },
     ]
   },
   {
     id: 'nfd_party', title: 'Party & Allies', isDefault: true,
     cards: [
-      { id: 'nfc_p1', isDefault: true, title: '📋 Example — Party Member',
+      { id: 'nfc_p1', isDefault: true, title: 'Example — Party Member',
         body: 'Name: Korrath Ashveil\nClass: Fighter (Battle Master) / Level 3\nPlayer: Dan\nRace: Half-orc\nPersonality: Blunt, honourable, secretly afraid of failure\nStrengths: Front-line tank, intimidation\nWeaknesses: Low Charisma, reckless in combat\nNotes: Has a bounty on his head in the capital. Doesn\'t talk about it.\n\n— Add a card for each party member and key ally.' },
     ]
   },
   {
     id: 'nfd_enemies', title: 'Enemies & Threats', isDefault: true,
     cards: [
-      { id: 'nfc_e1', isDefault: true, title: '📋 Example — Enemy',
+      { id: 'nfc_e1', isDefault: true, title: 'Example — Enemy',
         body: 'Name: Marsh Stalker (Crocodile variant)\nType / CR: Beast / CR 2\nLocation: Greyfen Marsh\nMotivation: Territorial predator\nWeaknesses: Fire damage, bright light\nAttacks: Bite (+4, 1d10+2), Tail (+4, 1d8+2)\nDefeated? Not yet — fled after taking 15 damage.\nNotes: There are at least two of them. One has an old arrow wound on its left flank.\n\n— Add a card for each notable enemy or boss.' },
     ]
   },
   {
     id: 'nfd_items', title: 'Items & Treasure', isDefault: true,
     cards: [
-      { id: 'nfc_i1', isDefault: true, title: '📋 Example — Magic Item',
+      { id: 'nfc_i1', isDefault: true, title: 'Example — Magic Item',
         body: 'Name: Cloak of the Marsh Walker\nRarity: Uncommon\nAttuned to: Nyx (our Ranger)\nProperties: Advantage on Stealth checks in swamp/marsh terrain. Wearer does not sink in mud.\nWhere found: Looted from the Ember Court agent\'s body, Session 1.\nNotes: The lining has the Ember Court flame embroidered in faded red thread.\n\n— Add a card for each magic item, notable piece of loot, or thing you want to sell.' },
     ]
   },
   {
     id: 'nfd_combat', title: 'Combat & Tactics', isDefault: true,
     cards: [
-      { id: 'nfc_c1', isDefault: true, title: '📋 Example — Tactic',
+      { id: 'nfc_c1', isDefault: true, title: 'Example — Tactic',
         body: 'Tactic: The Bottleneck\nWho\'s involved: Korrath (Fighter) + Nyx (Ranger) + Zara (Wizard)\nSetup: Korrath holds a doorway or narrow passage. Nyx fires from range. Zara casts area spells behind the melee line.\nEffect: Enemies can\'t flank us. Zara\'s AOE never hits allies.\nBest used when: Indoors, dungeon corridors, chokepoints.\nWeakness: Falls apart in open terrain or against ranged-heavy enemies.\n\n— Add a card for combos, recurring enemy tactics, or anything useful to remember mid-fight.' },
     ]
   },
   {
     id: 'nfd_misc', title: 'Miscellaneous', isDefault: true,
     cards: [
-      { id: 'nfc_m1', isDefault: true, title: '📋 Example — House Rule',
+      { id: 'nfc_m1', isDefault: true, title: 'Example — House Rule',
         body: 'Rule: Inspiration can be spent for a free re-roll on any d20 check (not just one).\nAgreed on: Session 0, all players present.\nNotes: DM awards Inspiration for good roleplay, creative thinking, or making the session more fun for everyone.\n\n— Use this folder for anything that doesn\'t fit elsewhere: house rules, campaign goals, mysteries, random ideas.' },
     ]
   },
@@ -1243,7 +1243,7 @@ function makeNoteFolderEl(folder, index) {
     // drag handle
     const dragHandle = document.createElement('div');
     dragHandle.className = 'notes-drag-handle';
-    dragHandle.textContent = '⠿';
+    dragHandle.textContent = '::';
     dragHandle.title = 'Drag to reorder';
     dragHandle.addEventListener('mousedown', notesFolderDragStart);
     dragHandle.addEventListener('touchstart', notesFolderDragStart, { passive: false });
@@ -1327,7 +1327,7 @@ function makeNoteCardEl(folder, card, index) {
     if (!card.isDefault) {
       const dragHandle = document.createElement('div');
       dragHandle.className = 'notes-drag-handle';
-      dragHandle.textContent = '⠿';
+      dragHandle.textContent = '::';
       dragHandle.title = 'Drag to reorder';
       dragHandle.addEventListener('mousedown', notesCardDragStart);
       dragHandle.addEventListener('touchstart', notesCardDragStart, { passive: false });
@@ -1775,7 +1775,7 @@ function makeBgFieldEl(field, index) {
   if (bgReorderMode) {
     const handle = document.createElement('div');
     handle.className = 'bg-drag-handle';
-    handle.textContent = '⠿';
+    handle.textContent = '::';
     handle.title = 'Drag to reorder';
     handle.addEventListener('pointerdown', onBgPointerDown);
     wrap.appendChild(handle);
@@ -3786,7 +3786,7 @@ function importData(event) {
       const looksEmpty = !hasName && !hasRealSections;
       if (looksEmpty) {
         const proceed = confirm(
-          '⚠️ This file has no character data — it looks blank or corrupted (no name, stats, weapons, spells or inventory found).\n\n' +
+          'Warning: this file has no character data — it looks blank or corrupted (no name, stats, weapons, spells or inventory found).\n\n' +
           'Importing it will create an empty character. Continue anyway?'
         );
         if (!proceed) { event.target.value = ''; return; }
@@ -4872,7 +4872,7 @@ function renderCampaignControls() {
   if (joined) {
     body.innerHTML = `
       <div class="campaign-joined-row">
-        <span class="campaign-joined-name">🛡️ In campaign: <strong>${escapeHtml(joined)}</strong></span>
+        <span class="campaign-joined-name">In campaign: <strong>${escapeHtml(joined)}</strong></span>
         <button class="settings-action-btn admin-delete-btn" onclick="leaveCampaign(this)">Leave</button>
       </div>
       <p class="campaign-note">Your DM has read-only view access to this character's sheet. Joining changes nothing else.</p>

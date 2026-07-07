@@ -6519,8 +6519,11 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 .weapon-roll-dis { color: #e6a6a6; }
 .weapon-roll-crit { color: #ffd479; }
 
-/* Roll log panel */
-.weapon-roll-log-wrap { margin-top: 14px; border-top: 1px solid var(--accent-border); padding-top: 10px; }
+/* Small button that opens the roll log popup (log is hidden by default) */
+.roll-log-open-btn { margin-top: 12px; background: none; border: 1px solid var(--accent-border); color: rgba(255,255,255,0.6); border-radius: 6px; padding: 5px 12px; font-size: 0.78rem; cursor: pointer; transition: color 0.2s ease, border-color 0.2s ease; }
+.roll-log-open-btn:hover { color: var(--accent-text); border-color: var(--accent-text); }
+
+/* Roll log panel (now lives inside the roll log popup) */
 .roll-log-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .roll-log-head h3 { margin: 0; font-size: 0.95rem; color: var(--accent-text); }
 .roll-log-clear { background: none; border: 1px solid var(--accent-border); color: rgba(255,255,255,0.6); border-radius: 6px; padding: 3px 10px; font-size: 0.76rem; cursor: pointer; }
@@ -6541,6 +6544,8 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 .roll-log-row.roll-nat1 { border-color: rgba(210,120,120,0.6); background: rgba(210,120,120,0.10); }
 .roll-log-row.roll-nat1 .roll-log-total { color: #e6a6a6; }
 .roll-log-row.roll-crit-dmg { border-color: #ffd479; }
+.roll-crit-label { color: #ffd479; font-weight: 800; }
+.roll-nat1-label { color: #e6a6a6; font-weight: 700; }
 
 /* Crit-rule picker inside the Weapons help panel */
 .crit-mode-picker { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--accent-border); }
@@ -6610,9 +6615,22 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
     color: var(--accent-contrast);
   }
 
+  /* Star favourite: grey by default, gold when favourited */
+  .favorite-btn .fav-star {
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 1.05em;
+    line-height: 1;
+    transition: color 0.15s ease, text-shadow 0.15s ease;
+  }
+
   .favorite-btn.favorited {
-    background: #ff6b6b;
-    color: #fff;
+    background: var(--accent);
+    color: var(--accent-contrast);
+  }
+
+  .favorite-btn.favorited .fav-star {
+    color: #ffcc33;
+    text-shadow: 0 0 6px rgba(255, 204, 51, 0.5);
   }
 
   .edit-btn {
