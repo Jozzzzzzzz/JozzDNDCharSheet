@@ -147,7 +147,7 @@
         <button onclick="exportData()" class="settings-action-btn accent-contrast-bg">Export Character</button>
         <label class="import-label accent-contrast-bg settings-action-btn settings-import-label">
           Import Character
-          <input onchange="importData(event)" style="display: none;" type="file"/>
+          <input onchange="importData(event)" accept=".txt,.json,application/json,text/plain" style="display: none;" type="file"/>
         </label>
       </div>
     </div>
@@ -176,6 +176,7 @@
         <div class="admin-tabs">
           <button class="admin-tab active" data-admin-tab="adminTabCampaigns" onclick="switchAdminTab(this)">Campaigns</button>
           <button class="admin-tab" data-admin-tab="adminTabUsers" onclick="switchAdminTab(this)">Users</button>
+          <button class="admin-tab" data-admin-tab="adminTabLogs" onclick="switchAdminTab(this); adminInitLogs()">Logs</button>
         </div>
 
         <!-- Campaigns tab -->
@@ -211,6 +212,17 @@
           <p id="adminUserMeta" class="settings-note"></p>
           <div id="adminUserGrid" class="admin-user-grid"></div>
           <div id="adminUserCharacters"></div>
+        </div>
+
+        <!-- Logs tab: Campaigns → Characters → roll logs -->
+        <div id="adminTabLogs" class="admin-tab-panel" style="display:none;">
+          <p class="settings-note">Browse roll logs by campaign and character. More log types will appear here over time.</p>
+          <div class="admin-users-toolbar">
+            <select id="adminLogsCampaign" onchange="adminLogsSelectCampaign(this.value)" style="flex:1;"></select>
+            <button type="button" class="settings-action-btn accent-contrast-bg" onclick="adminInitLogs(true)">Refresh</button>
+          </div>
+          <div id="adminLogsCharacters" class="admin-user-grid"></div>
+          <div id="adminLogsDetail"></div>
         </div>
 
       </div>

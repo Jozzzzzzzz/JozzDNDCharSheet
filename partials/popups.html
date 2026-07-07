@@ -176,24 +176,98 @@
   </div>
 </div>
 
-<!-- Add/Edit Weapon Popup -->
+<!-- Add/Edit Weapon Popup (structured, Open5e-style + fair dice) -->
 <div class="popup" id="weaponFormPopup">
-  <h3 id="weaponFormTitle">Add Weapon</h3>
+  <h3 id="weaponFormTitle">Add custom weapon</h3>
 
   <label>Name:</label>
   <input type="text" id="weapon_name" placeholder="e.g. Longsword, Shortbow, Dagger"/>
 
-  <label>To Hit Bonus:</label>
-  <input type="text" id="weapon_to_hit" placeholder="e.g. +5, +7"/>
+  <div class="weapon-form-grid">
+    <div>
+      <label>Category:</label>
+      <select id="weapon_category">
+        <option value="Simple Melee Weapons">Simple Melee</option>
+        <option value="Simple Ranged Weapons">Simple Ranged</option>
+        <option value="Martial Melee Weapons">Martial Melee</option>
+        <option value="Martial Ranged Weapons">Martial Ranged</option>
+        <option value="">Other / Homebrew</option>
+      </select>
+    </div>
+    <div>
+      <label>Damage dice:</label>
+      <select id="weapon_damage_dice" onchange="onWeaponDiceSelectChange(this.value)">
+        <option value="1d4">1d4</option>
+        <option value="1d6">1d6</option>
+        <option value="1d8">1d8</option>
+        <option value="1d10">1d10</option>
+        <option value="1d12">1d12</option>
+        <option value="2d6">2d6</option>
+        <option value="2d8">2d8</option>
+        <option value="2d10">2d10</option>
+        <option value="1">1 (fixed)</option>
+        <option value="">— none —</option>
+        <option value="__custom__">Custom…</option>
+      </select>
+      <input type="text" id="weapon_damage_dice_custom" class="weapon-custom-dice" style="display:none;margin-top:6px;" placeholder="e.g. 3d6, 1d8 + 1d4"/>
+    </div>
+    <div>
+      <label>Damage type:</label>
+      <select id="weapon_damage_type">
+        <option value="slashing">Slashing</option>
+        <option value="piercing">Piercing</option>
+        <option value="bludgeoning">Bludgeoning</option>
+        <option value="fire">Fire</option>
+        <option value="cold">Cold</option>
+        <option value="lightning">Lightning</option>
+        <option value="acid">Acid</option>
+        <option value="thunder">Thunder</option>
+        <option value="poison">Poison</option>
+        <option value="necrotic">Necrotic</option>
+        <option value="radiant">Radiant</option>
+        <option value="psychic">Psychic</option>
+        <option value="force">Force</option>
+      </select>
+    </div>
+    <div>
+      <label>Attack ability:</label>
+      <select id="weapon_ability">
+        <option value="str">Strength</option>
+        <option value="dex">Dexterity</option>
+      </select>
+    </div>
+    <div>
+      <label>Magic bonus: <span class="weapon-form-hint">(+ to hit &amp; damage)</span></label>
+      <select id="weapon_enhancement">
+        <option value="0">None</option>
+        <option value="1">+1</option>
+        <option value="2">+2</option>
+        <option value="3">+3</option>
+        <option value="4">+4</option>
+        <option value="5">+5</option>
+      </select>
+    </div>
+    <div>
+      <label>Extra damage bonus: <span class="weapon-form-hint">(e.g. class feature)</span></label>
+      <input type="number" id="weapon_damage_bonus" placeholder="e.g. 2"/>
+    </div>
+    <div>
+      <label>To-hit override: <span class="weapon-form-hint">(blank = auto)</span></label>
+      <input type="number" id="weapon_to_hit_override" placeholder="auto from ability+prof"/>
+    </div>
+    <div>
+      <label>Damage override: <span class="weapon-form-hint">(blank = auto)</span></label>
+      <input type="text" id="weapon_damage_override" placeholder="e.g. 2d6+5 — forces the roll"/>
+    </div>
+  </div>
 
-  <label>Damage:</label>
-  <input type="text" id="weapon_damage" placeholder="e.g. 1d8 slashing, 1d6 piercing"/>
-
-  <label>Bonus Damage:</label>
-  <input type="text" id="weapon_bonus_damage" placeholder="e.g. +3, 1d6 fire"/>
+  <label class="weapon-prof-toggle">
+    <input type="checkbox" id="weapon_proficient" checked>
+    <span>Proficient (adds proficiency bonus to the attack)</span>
+  </label>
 
   <label>Properties:</label>
-  <input type="text" id="weapon_properties" placeholder="e.g. Finesse, Versatile, Two-Handed"/>
+  <input type="text" id="weapon_properties" placeholder="e.g. Finesse, Versatile (1d10), Thrown"/>
 
   <label>Notes:</label>
   <textarea id="weapon_notes" placeholder="Any special notes about this weapon..."></textarea>
@@ -201,6 +275,19 @@
   <div style="margin-top: 15px; display: flex; justify-content: space-between;">
     <button onclick="saveWeapon()" id="saveWeaponBtn">Add Weapon</button>
     <button onclick="closePopup('weaponFormPopup')">Cancel</button>
+  </div>
+</div>
+
+<!-- Add weapon "from sheet / catalogue" picker -->
+<div class="popup action-kit-popup" id="weaponPickerPopup">
+  <h3>Add weapon from catalogue</h3>
+  <p class="kit-intro">Search all D&amp;D 5e weapons (Open5e SRD) and add one with its dice pre-filled — then tweak anything. Or use “Add custom” for pure homebrew. Adding a weapon never changes your inventory or other characters.</p>
+  <div class="kit-search-wrap">
+    <input type="text" id="weaponPickerSearch" class="kit-search-input" placeholder="Search weapons… e.g. longsword, rapier, bow" oninput="onWeaponPickerSearch()" autocomplete="off">
+    <div id="weaponPickerResults" class="action-kit-search-results"><!-- rendered by renderWeaponPicker() --></div>
+  </div>
+  <div style="margin-top: 15px; display: flex; justify-content: flex-end;">
+    <button onclick="closePopup('weaponPickerPopup')">Done</button>
   </div>
 </div>
 
@@ -455,7 +542,14 @@
   
   <label>Name:</label>
   <input type="text" id="action_name" placeholder="e.g. Fireball, Sword Strike, Sneak Attack"/>
-  
+
+  <label>Timing: <span style="opacity:0.6;font-weight:normal;">(which section it lives in)</span></label>
+  <select id="action_timing">
+    <option value="action">Action</option>
+    <option value="bonus">Bonus Action</option>
+    <option value="feature">Feature / Trait (passive)</option>
+  </select>
+
   <label>Category:</label>
   <select id="action_category">
     <option value="melee">Melee</option>
@@ -480,10 +574,36 @@
   
   <label>Description:</label>
   <textarea id="action_description" placeholder="Describe the action in detail..."></textarea>
-  
+
+  <label>Reference URL: <span style="opacity:0.6;font-weight:normal;">(optional)</span></label>
+  <input type="text" id="action_link" placeholder="e.g. https://open5e.com/spells/fireball — shows a 'View rules' link on the card"/>
+
   <div style="margin-top: 15px; display: flex; justify-content: space-between;">
     <button onclick="saveAction()" id="saveActionBtn">Add Action</button>
     <button onclick="closePopup('actionFormPopup')">Cancel</button>
+  </div>
+</div>
+
+<!-- Action "From my kit" picker + search (timing-aware: actions / bonus / features) -->
+<div class="popup action-kit-popup" id="actionKitPopup">
+  <h3 id="actionKitTitle">Add from sheet</h3>
+  <p class="kit-intro">Search your own weapons, spells, items and traits — or flip the toggle to pull anything from all of D&amp;D 5e. Everything becomes a normal card you can edit. Nothing here changes your inventory, weapons or other characters.</p>
+
+  <div class="kit-search-wrap">
+    <input type="text" id="actionKitSearch" class="kit-search-input" placeholder="Search…" oninput="onActionKitSearch()" autocomplete="off">
+    <label class="kit-showall-toggle">
+      <input type="checkbox" id="actionKitShowAll" onchange="toggleActionKitShowAll()">
+      <span>Search everything in D&amp;D 5e (off = just your sheet)</span>
+    </label>
+    <div id="actionKitSearchResults" class="action-kit-search-results"><!-- rendered by renderActionKitSearch() --></div>
+  </div>
+
+  <div class="kit-section-divider"><span>Your kit</span></div>
+
+  <div id="actionKitBody" class="action-kit-body"><!-- rendered by renderActionKit() --></div>
+
+  <div style="margin-top: 15px; display: flex; justify-content: flex-end;">
+    <button onclick="closePopup('actionKitPopup')">Done</button>
   </div>
 </div>
 

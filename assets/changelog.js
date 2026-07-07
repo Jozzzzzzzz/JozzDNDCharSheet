@@ -6,9 +6,33 @@
 // the Home button until they visit the home page.
 // ============================================================
 
-const CHANGELOG_LATEST_VERSION = '1.10';
+const CHANGELOG_LATEST_VERSION = '1.11';
 
 const CHANGELOG = [
+  {
+    version: '1.11',
+    date: '2026-07-07',
+    title: 'v1.11 — Actions Overhaul, Fair Dice & Weapon Rolls',
+    updates: [
+      'Actions are now split into three clear sections — Actions, Bonus Actions, and Features & Traits — each with its own list',
+      'New "Add from sheet" picker on every section: search your own weapons, spells, items and racial traits, or flip a toggle to search everything in D&D 5e. Spells route to the right section automatically by casting time',
+      'Pull racial traits (Darkvision, Fey Ancestry, Breath Weapon and more) straight into your Features & Traits from the built-in race library',
+      '"Add custom" lets you write any action, bonus action or feature by hand — with an optional reference link that shows a "View rules" button on the card',
+      'Weapons got a full rebuild: add any D&D 5e weapon from the catalogue with its dice pre-filled, or build a custom one with dropdowns for damage dice, type, attack ability and category',
+      'Add a magic bonus (+1 to +5) to any weapon — it applies to both attack and damage, and shows on the card (e.g. "Longsword +2")',
+      'Fair dice roller on every weapon: roll To Hit (with Advantage/Disadvantage) and Damage (with Crit) — every die is shown, natural 20s and 1s are highlighted, and the rolls use true cryptographic randomness so every result is perfectly fair',
+      'Pick your table\'s critical hit rule (in the Weapons help panel): Double dice (official), Max + roll (Savage), Double total, or Max damage',
+      'Full homebrew control on weapons — custom dice expressions, damage override, to-hit override, proficiency toggle and extra damage bonus',
+      'Your rolls are now saved to a Roll Log on your sheet, grouped by day',
+      'Owner Admin Portal now has a Logs tab — browse roll logs by campaign and character, with a compressed export',
+      'Exports are now a readable text character sheet you can open and read anywhere — with the importable data tucked at the bottom so it still re-imports perfectly',
+    ],
+    fixes: [
+      'Popups no longer scroll the page behind them or jump to the top — the background stays put while you scroll inside a popup',
+      'Importing a blank or corrupted file now warns you before creating an empty character',
+      'Old character exports and saves keep working unchanged — nothing needs re-doing',
+    ],
+  },
   {
     version: '1.10',
     date: '2026-07-02',

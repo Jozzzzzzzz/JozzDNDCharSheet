@@ -330,6 +330,11 @@ function calculateAbilityBonus(ability) {
   if (ability === 'dex') updateInitiative();
   if (ability === 'con') syncConModifier();
   if (ability === 'int' || ability === 'wis' || ability === 'cha') updateSpellcastingStats();
+  // STR/DEX feed weapon auto to-hit & damage — keep the weapon cards in sync.
+  if ((ability === 'str' || ability === 'dex') && typeof refreshWeaponDisplayFields === 'function') {
+    refreshWeaponDisplayFields();
+    if (typeof displayWeaponsStats === 'function') displayWeaponsStats();
+  }
 }
 
 function formatBonusInput(inputId) {

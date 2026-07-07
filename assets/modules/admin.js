@@ -717,3 +717,133 @@ window.adminEditCampaignDm = adminEditCampaignDm;
 window.adminToggleCampaign = adminToggleCampaign;
 window.adminViewCampaignPlayers = adminViewCampaignPlayers;
 window.adminChangeCampaignPassword = adminChangeCampaignPassword;
+
+// ========== ADMIN → LOGS (Campaigns → Characters → roll logs) ==========
+// Owner-only. Reads live from Firestore: campaign members give {uid, charId},
+// then userData/{uid}/characters/{charId}.data.rollLog holds the day-grouped
+// rolls. Foundation for more log types later.
+
+let _adminLogsCampaigns = [];   // cached campaign list for the dropdown
+let _adminLogsCurrentChar = null; // { uid, charId, name, rollLog } last opened
+
+async function adminInitLogs(force) {
+  const sel = document.getElementById('adminLogsCampaign');
+  const chars = document.getElementById('adminLogsCharacters');
+  const detail = document.getElementById('adminLogsDetail');
+  if (!sel) return;
+  if (chars) chars.innerHTML = '';
+  if (detail) detail.innerHTML = '';
+  if (_adminLogsCampaigns.length && !force) return; // already loaded
+
+  const db = window.db;
+  if (!db) return;
+  sel.innerHTML = '<option value="">Loading campaigns…</option>';
+  try {
+    const snap = await db.collection('campaigns').orderBy('createdAt', 'desc').get();
+    _adminLogsCampaigns = [];
+    snap.forEach(doc => _adminLogsCampaigns.push({ id: doc.id, ...doc.data() }));
+    sel.innerHTML = '<option value="">— pick a campaign —</option>' +
+      _adminLogsCampaigns.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('');
+  } catch (e) {
+    sel.innerHTML = '<option value="">Error loading</option>';
+    if (chars) chars.innerHTML = `<p class="settings-note">${escapeHtml(adminFriendlyError(e))}</p>`;
+  }
+}
+
+async function adminLogsSelectCampaign(campaignId) {
+  const chars = document.getElementById('adminLogsCharacters');
+  const detail = document.getElementById('adminLogsDetail');
+  if (detail) detail.innerHTML = '';
+  if (!chars) return;
+  if (!campaignId) { chars.innerHTML = ''; return; }
+  const db = window.db;
+  if (!db) return;
+  chars.innerHTML = '<p class="settings-note">Loading characters…</p>';
+  try {
+    const snap = await db.collection('campaigns').doc(campaignId).collection('members').get();
+    const members = [];
+    snap.forEach(doc => { const m = doc.data() || {}; members.push({ uid: m.uid || doc.id, charId: m.charId || '', name: m.charName || 'Unnamed', meta: [m.race, m.class, m.level ? 'Lv ' + m.level : ''].filter(Boolean).join(' · ') }); });
+    if (!members.length) { chars.innerHTML = '<p class="settings-note">No characters in this campaign yet.</p>'; return; }
+    chars.innerHTML = members.map(m => `
+      <button type="button" class="admin-user-card" onclick="adminViewCharLogs('${escapeHtml(m.uid)}','${escapeHtml(m.charId)}','${escapeHtml(m.name)}')">
+        <span class="settings-preview-tag">${escapeHtml(m.name)}</span>
+        <span class="settings-note">${escapeHtml(m.meta)}</span>
+      </button>`).join('');
+  } catch (e) {
+    chars.innerHTML = `<p class="settings-note">${escapeHtml(adminFriendlyError(e))}</p>`;
+  }
+}
+
+async function adminViewCharLogs(uid, charId, name) {
+  const detail = document.getElementById('adminLogsDetail');
+  if (!detail) return;
+  const db = window.db;
+  if (!db || !uid || !charId) { detail.innerHTML = '<p class="settings-note">Missing character reference.</p>'; return; }
+  detail.innerHTML = '<p class="settings-note">Loading logs…</p>';
+  try {
+    const doc = await db.collection('userData').doc(uid).collection('characters').doc(charId).get();
+    const data = (doc.exists ? (doc.data() || {}) : {}).data || {};
+    const rollLog = (data.rollLog && data.rollLog.days) ? data.rollLog : { days: {} };
+    _adminLogsCurrentChar = { uid, charId, name, rollLog };
+    detail.innerHTML = adminRenderRollLog(name, rollLog);
+  } catch (e) {
+    detail.innerHTML = `<p class="settings-note">${escapeHtml(adminFriendlyError(e))}</p>`;
+  }
+}
+
+function adminRenderRollLog(name, rollLog) {
+  const days = Object.keys(rollLog.days || {}).sort().reverse();
+  const totalRolls = days.reduce((n, d) => n + (rollLog.days[d] || []).length, 0);
+  const header = `
+    <div class="admin-user-detail-header">
+      <h4>${escapeHtml(name)} — Roll Log</h4>
+      <div class="admin-user-detail-chips">
+        <span class="admin-chip">${days.length} day${days.length === 1 ? '' : 's'}</span>
+        <span class="admin-chip">${totalRolls} roll${totalRolls === 1 ? '' : 's'}</span>
+        <button class="settings-action-btn accent-contrast-bg" style="max-width:220px" onclick="adminExportCharLog()">Export (compressed)</button>
+      </div>
+    </div>`;
+  if (!totalRolls) return header + '<p class="settings-note">No rolls recorded for this character yet.</p>';
+  const body = days.map(day => {
+    const rows = (rollLog.days[day] || []).slice().reverse().map(e => {
+      const time = new Date(e.ts || 0).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const detail = e.kind === 'tohit'
+        ? `to hit ${e.total >= 0 ? '' : ''}${e.total} (d20 ${e.d20}${e.otherD20 != null ? ', ' + e.otherD20 : ''}${e.mode && e.mode !== 'normal' ? ' ' + e.mode : ''})${e.nat20 ? ' 💥' : ''}${e.nat1 ? ' 💀' : ''}`
+        : `${e.crit ? 'CRIT ' : ''}damage ${e.total}${e.damageType ? ' ' + escapeHtml(e.damageType) : ''}`;
+      return `<div class="admin-log-row"><span class="admin-log-weapon">${escapeHtml(e.weapon || 'Weapon')}</span><span class="admin-log-detail">${detail}</span><span class="admin-log-time">${time}</span></div>`;
+    }).join('');
+    return `<div class="admin-log-day"><h5>${escapeHtml(day)}</h5>${rows}</div>`;
+  }).join('');
+  return header + `<div class="admin-log-list">${body}</div>`;
+}
+
+// Compress a string with the browser's gzip stream; falls back to plain text.
+async function adminGzip(str) {
+  if (typeof CompressionStream === 'undefined') return null;
+  const stream = new Blob([str]).stream().pipeThrough(new CompressionStream('gzip'));
+  return await new Response(stream).blob();
+}
+
+async function adminExportCharLog() {
+  if (!_adminLogsCurrentChar) return;
+  const { name, uid, charId, rollLog } = _adminLogsCurrentChar;
+  const payload = JSON.stringify({ type: 'rollLog', version: 1, character: name, uid, charId, exportedAt: new Date().toISOString(), rollLog });
+  const safe = String(name || 'character').replace(/[^a-z0-9]+/gi, '_').toLowerCase();
+  const date = new Date().toISOString().slice(0, 10);
+  const gz = await adminGzip(payload);
+  const blob = gz || new Blob([payload], { type: 'application/json' });
+  const ext = gz ? 'json.gz' : 'json';
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `rolllog_${safe}_${date}.${ext}`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+window.adminInitLogs = adminInitLogs;
+window.adminLogsSelectCampaign = adminLogsSelectCampaign;
+window.adminViewCharLogs = adminViewCharLogs;
+window.adminExportCharLog = adminExportCharLog;

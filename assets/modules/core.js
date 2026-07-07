@@ -524,7 +524,7 @@ function showDarkModeOnlyPopup() {
 
   document.documentElement.removeAttribute('data-theme');
   localStorage.setItem('dndTheme', 'dark');
-  document.body.classList.add('modal-open');
+  lockBackgroundScroll();
   document.body.classList.add('dark-mode-only-open');
 
   const popup = document.getElementById('darkModeOnlyPopup');
@@ -2545,6 +2545,12 @@ function clearAllFormFields() {
   updateWeaponsPreview();
   updateEquipmentPreviews();
 
+  // Clear per-character roll log
+  if (typeof characterRollLog !== 'undefined') {
+    characterRollLog = { days: {} };
+    if (typeof renderRollLog === 'function') renderRollLog();
+  }
+
   // Clear conditions
   const conditionsContainer = document.getElementById('conditions_container');
   if (conditionsContainer) {
@@ -2576,7 +2582,7 @@ function clearAllFormFields() {
   actionsData = {
     actions: []
   };
-  displayActions('action');
+  displayActions();
   updateFavorites();
 
   // Clear spells data
@@ -2908,6 +2914,7 @@ function autosave() {
     page4,
     page6,
     weapons: weaponsData,
+    rollLog: (typeof characterRollLog !== 'undefined' ? characterRollLog : { days: {} }),
     conditions: Array.from(document.querySelectorAll('#conditions_container .condition')).map(condition => {
       try {
         const header = condition.querySelector('.condition-header');
@@ -3133,12 +3140,15 @@ function loadData() {
     // Initialize death save visual states after loading
     initializeDeathSaves();
     
-    // Actions & Features
-    if (data.page1.actionsData) {
-      actionsData = data.page1.actionsData;
-      displayActions('action');
-      updateFavorites();
-    }
+    // Actions, Bonus Actions & Features
+    // Always reset to this character's data (or empty) so nothing bleeds in from
+    // the previously loaded character, then infer timing for old-format cards.
+    actionsData = (data.page1.actionsData && Array.isArray(data.page1.actionsData.actions))
+      ? data.page1.actionsData
+      : { actions: [] };
+    if (typeof migrateActionTiming === 'function') migrateActionTiming();
+    displayActions();
+    updateFavorites();
     
     // Actions Notes
     if (data.page1.actionsNotes) {
@@ -3458,7 +3468,16 @@ function loadData() {
   // Weapons
   if (data.weapons) {
     weaponsData = data.weapons;
+    if (typeof refreshWeaponDisplayFields === 'function') refreshWeaponDisplayFields();
     updateWeaponsPreview();
+  }
+
+  // Roll log (per-character, grouped by day). Always reset to this character's
+  // own log so nothing bleeds between sheets.
+  if (typeof characterRollLog !== 'undefined') {
+    characterRollLog = (data.rollLog && typeof data.rollLog === 'object' && data.rollLog.days)
+      ? data.rollLog : { days: {} };
+    if (typeof renderRollLog === 'function') renderRollLog();
   }
   
   // Conditions
@@ -3514,6 +3533,123 @@ function inferCharacterCreatedAt(character) {
     }
   }
   return null;
+}
+
+// Marker separating the human-readable sheet from the re-importable JSON in a
+// hybrid export. importData() parses only what follows this line.
+const IMPORT_JSON_MARKER = '=== IMPORTABLE DATA (do not edit below this line) ===';
+
+// Build a plain-text, human-readable character sheet from the data blob. Kept
+// defensive — every field is optional, missing sections are simply skipped.
+function buildReadableSheet(data) {
+  const L = [];
+  const ci = data.characterInfo || {};
+  const p1 = data.page1 || {};
+  const line = (s) => L.push(s == null ? '' : String(s));
+  const rule = () => line('----------------------------------------');
+  const val = (v) => (v === '' || v == null) ? '—' : v;
+
+  line('╔══════════════════════════════════════╗');
+  line(`  ${val(ci.name || 'Unnamed Character')}`);
+  line('╚══════════════════════════════════════╝');
+  line(`Race: ${val(ci.race)}    Class: ${val(ci.class)}${ci.subclass ? ' (' + ci.subclass + ')' : ''}`);
+  line(`Background: ${val(ci.background)}    Level: ${val(ci.level)}`);
+  if (ci.campaignId) line(`Campaign: ${ci.campaignId}`);
+  line('');
+
+  // Ability scores
+  const ab = p1.abilities || {};
+  if (Object.keys(ab).length) {
+    line('ABILITY SCORES'); rule();
+    ['str', 'dex', 'con', 'int', 'wis', 'cha'].forEach(k => {
+      if (ab[k] != null && ab[k] !== '') line(`  ${k.toUpperCase()}: ${ab[k]}`);
+    });
+    line('');
+  }
+
+  // Combat stats
+  const cs = p1.combatStats || {};
+  if (Object.keys(cs).length) {
+    line('COMBAT'); rule();
+    if (cs.ac != null) line(`  AC: ${val(cs.ac)}`);
+    if (cs.initiative != null) line(`  Initiative: ${val(cs.initiative)}`);
+    if (cs.speed != null) line(`  Speed: ${val(cs.speed)}`);
+    if (cs.prof_bonus != null) line(`  Proficiency: ${val(cs.prof_bonus)}`);
+    if (cs.passive_perception != null) line(`  Passive Perception: ${val(cs.passive_perception)}`);
+    line('');
+  }
+
+  // Health
+  const h = p1.health || {};
+  if (h.max_hp != null || h.curr_hp != null) {
+    line('HEALTH'); rule();
+    line(`  HP: ${val(h.curr_hp)} / ${val(h.max_hp)}${h.temp_hp ? ' (+' + h.temp_hp + ' temp)' : ''}`);
+    line('');
+  }
+
+  // Weapons
+  const weapons = data.weapons || [];
+  if (weapons.length) {
+    line('WEAPONS'); rule();
+    weapons.forEach(w => {
+      const dmg = [w.damage || w.damageDice, w.damageType].filter(Boolean).join(' ');
+      const enh = (parseInt(w.enhancement, 10) || 0);
+      line(`  • ${w.name || 'Weapon'}${enh > 0 ? ' +' + enh : ''}`);
+      line(`      To Hit: ${val(w.toHit)}   Damage: ${val(dmg)}${w.bonusDamage ? ' ' + w.bonusDamage : ''}`);
+      if (w.properties) line(`      Properties: ${w.properties}`);
+    });
+    line('');
+  }
+
+  // Actions / bonus actions / features
+  const actions = (p1.actionsData && p1.actionsData.actions) || [];
+  if (actions.length) {
+    const groups = { action: 'ACTIONS', bonus: 'BONUS ACTIONS', feature: 'FEATURES & TRAITS' };
+    Object.keys(groups).forEach(t => {
+      const list = actions.filter(a => (a.timing || 'action') === t);
+      if (!list.length) return;
+      line(groups[t]); rule();
+      list.forEach(a => {
+        line(`  • ${a.name || 'Action'}${a.uses ? ' (' + a.uses + ')' : ''}`);
+        if (a.damage) line(`      ${a.damage}${a.attack ? '  ' + a.attack : ''}`);
+        if (a.description) line(`      ${a.description}`);
+      });
+      line('');
+    });
+  }
+
+  // Spells
+  const sp = data.page3 && data.page3.spellsData;
+  if (sp && (sp.cantrips || sp.spells)) {
+    const all = [...(sp.cantrips || []), ...(sp.spells || [])];
+    if (all.length) {
+      line('SPELLS'); rule();
+      all.forEach(s => line(`  • ${s.name || 'Spell'}${s.level != null ? ' (Lv ' + s.level + ')' : ''}`));
+      line('');
+    }
+  }
+
+  // Inventory (names + quantities)
+  const inv = p1.inventoryData || {};
+  const invItems = [...(inv.equipment || []), ...(inv.mainInventory || [])];
+  if (invItems.length) {
+    line('INVENTORY'); rule();
+    invItems.forEach(it => line(`  • ${it.name || 'Item'}${it.quantity ? ' ×' + it.quantity : ''}`));
+    line('');
+  }
+
+  // Notes folders (titles + card titles only, to keep it readable)
+  const folders = (data.page6 && data.page6.noteFolders) || [];
+  if (folders.length) {
+    line('NOTES'); rule();
+    folders.forEach(f => {
+      line(`  ${f.title || 'Folder'}:`);
+      (f.cards || []).forEach(c => line(`      - ${c.title || 'Note'}`));
+    });
+    line('');
+  }
+
+  return L.join('\n');
 }
 
 function exportData() {
@@ -3577,12 +3713,21 @@ function exportData() {
       }
     };
     
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json'});
+    // Hybrid file: a human-readable sheet at the top, then the full importable
+    // JSON after a marker. Opens cleanly as text AND re-imports correctly.
+    const readable = buildReadableSheet(characterData);
+    const jsonPart = JSON.stringify(exportData, null, 2);
+    const fileText =
+      readable +
+      `\n\nExported ${nowIso}\n\n${IMPORT_JSON_MARKER}\n` +
+      jsonPart + '\n';
+
+    const blob = new Blob([fileText], {type: 'text/plain'});
     const url = URL.createObjectURL(blob);
-    
+
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${sanitizeFilePart(displayName, 'dnd_character')}_${sanitizeFilePart(levelPart, 'lvl-unknown')}_created-${createdDatePart}.json`;
+    a.download = `${sanitizeFilePart(displayName, 'dnd_character')}_${sanitizeFilePart(levelPart, 'lvl-unknown')}_created-${createdDatePart}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -3610,7 +3755,13 @@ function importData(event) {
   const reader = new FileReader();
   reader.onload = function(e) {
     try {
-      const importedData = JSON.parse(e.target.result);
+      // Hybrid text+JSON exports put the machine-readable data after a marker
+      // line. If present, parse only the JSON block; otherwise treat the whole
+      // file as JSON (older pure-.json exports).
+      let raw = e.target.result;
+      const markerIdx = raw.indexOf(IMPORT_JSON_MARKER);
+      if (markerIdx !== -1) raw = raw.slice(markerIdx + IMPORT_JSON_MARKER.length);
+      const importedData = JSON.parse(raw);
       // Support multiple import formats:
       // 1) Current export wrapper: { version, exportDate, character, characterInfo }
       // 2) Raw character payload: { characterInfo, page1, ... }
@@ -3624,6 +3775,21 @@ function importData(event) {
 
       if (!characterData || typeof characterData !== 'object') {
         throw new Error('Unsupported character file format');
+      }
+
+      // Guard against blank / void files: a real sheet has at least a name or one
+      // of the page/data sections. If none are present, warn before importing an
+      // empty character (which would otherwise be created silently).
+      const hasName = !!(characterData?.characterInfo?.name || importedData?.name || importedData?.characterInfo?.name);
+      const dataKeys = Object.keys(characterData);
+      const hasRealSections = dataKeys.some(k => /^page\d|characterInfo|weapons|inventoryData|spellsData/.test(k));
+      const looksEmpty = !hasName && !hasRealSections;
+      if (looksEmpty) {
+        const proceed = confirm(
+          '⚠️ This file has no character data — it looks blank or corrupted (no name, stats, weapons, spells or inventory found).\n\n' +
+          'Importing it will create an empty character. Continue anyway?'
+        );
+        if (!proceed) { event.target.value = ''; return; }
       }
 
       const importedCreatedAt =
@@ -3657,12 +3823,84 @@ function importData(event) {
 }
 
 // ========== WEAPONS SYSTEM ==========
+// Weapons now carry structured fields for the fair dice roller:
+//   { name, category, damageDice, damageType, ability('str'|'dex'),
+//     proficient, toHitOverride, damageBonus, properties, notes }
+// Legacy free-text fields (toHit, damage, bonusDamage) are kept in sync by
+// syncWeaponDisplayFields() so the existing preview/stats tables still render,
+// and OLD saves (which only have the legacy fields) are migrated on load.
+
+// Derive a readable to-hit / damage string from the structured fields for the
+// display tables. Never overwrites a legacy-only weapon that has no structured
+// data (so nothing on an old sheet changes visually until it's edited).
+function syncWeaponDisplayFields(w) {
+  if (!w) return;
+  const hasStructured = w.damageDice != null || w.ability != null || w.category != null;
+  if (!hasStructured) return;
+  // Reuse the roller's math so display and rolls agree (includes magic bonus).
+  const toHitNum = (typeof weaponToHitMod === 'function') ? weaponToHitMod(w) : 0;
+  w.toHit = (toHitNum >= 0 ? '+' : '') + toHitNum;
+  if (w.damageOverride && String(w.damageOverride).trim() !== '') {
+    // Override shows verbatim; no separate bonus (it's baked into the expression).
+    w.damage = [String(w.damageOverride).trim(), w.damageType].filter(Boolean).join(' ');
+    w.bonusDamage = '';
+  } else {
+    const dmgBonus = (typeof weaponDamageMod === 'function') ? weaponDamageMod(w) : 0;
+    w.damage = [w.damageDice, w.damageType].filter(Boolean).join(' ');
+    w.bonusDamage = dmgBonus ? ((dmgBonus >= 0 ? '+' : '') + dmgBonus) : '';
+  }
+  // Name shown with its magic bonus, e.g. "Longsword +2" (base name kept in .name).
+  const enh = parseInt(w.enhancement, 10) || 0;
+  w.displayName = enh > 0 ? `${w.name} +${enh}` : w.name;
+}
+
+// Migrate every weapon's display fields (called after load / ability changes).
+function refreshWeaponDisplayFields() {
+  (weaponsData || []).forEach(syncWeaponDisplayFields);
+}
+
+// Show/hide the custom-dice text field when "Custom…" is chosen.
+function onWeaponDiceSelectChange(val) {
+  const custom = document.getElementById('weapon_damage_dice_custom');
+  if (custom) custom.style.display = (val === '__custom__') ? '' : 'none';
+}
+
+// Put a dice value into the dropdown+custom pair: if it's one of the presets use
+// the dropdown, otherwise switch to "Custom…" and fill the text field.
+function setWeaponDiceField(dice) {
+  const sel = document.getElementById('weapon_damage_dice');
+  const custom = document.getElementById('weapon_damage_dice_custom');
+  const presets = Array.from(sel.options).map(o => o.value);
+  if (presets.includes(dice)) {
+    sel.value = dice;
+    if (custom) { custom.style.display = 'none'; custom.value = ''; }
+  } else {
+    sel.value = '__custom__';
+    if (custom) { custom.style.display = ''; custom.value = dice || ''; }
+  }
+}
+
+// Read the effective dice string from the dropdown+custom pair.
+function getWeaponDiceField() {
+  const sel = document.getElementById('weapon_damage_dice');
+  if (sel.value === '__custom__') {
+    return (document.getElementById('weapon_damage_dice_custom').value || '').trim();
+  }
+  return sel.value;
+}
+
 function showWeaponsForm() {
-  document.getElementById('weaponFormTitle').textContent = 'Add Weapon';
+  document.getElementById('weaponFormTitle').textContent = 'Add custom weapon';
   document.getElementById('weapon_name').value = '';
-  document.getElementById('weapon_to_hit').value = '';
-  document.getElementById('weapon_damage').value = '';
-  document.getElementById('weapon_bonus_damage').value = '';
+  document.getElementById('weapon_category').value = 'Martial Melee Weapons';
+  setWeaponDiceField('1d8');
+  document.getElementById('weapon_damage_type').value = 'slashing';
+  document.getElementById('weapon_ability').value = 'str';
+  document.getElementById('weapon_enhancement').value = '0';
+  document.getElementById('weapon_damage_bonus').value = '';
+  document.getElementById('weapon_to_hit_override').value = '';
+  document.getElementById('weapon_damage_override').value = '';
+  document.getElementById('weapon_proficient').checked = true;
   document.getElementById('weapon_properties').value = '';
   document.getElementById('weapon_notes').value = '';
   document.getElementById('saveWeaponBtn').textContent = 'Add Weapon';
@@ -3676,9 +3914,16 @@ function editWeapon(index) {
 
   document.getElementById('weaponFormTitle').textContent = 'Edit Weapon';
   document.getElementById('weapon_name').value = weapon.name || '';
-  document.getElementById('weapon_to_hit').value = weapon.toHit || '';
-  document.getElementById('weapon_damage').value = weapon.damage || '';
-  document.getElementById('weapon_bonus_damage').value = weapon.bonusDamage || '';
+  document.getElementById('weapon_category').value = weapon.category || '';
+  // Fall back to parsing the legacy 'damage' string for old weapons.
+  setWeaponDiceField(weapon.damageDice || (String(weapon.damage || '').match(/\d*d\d+/) || [''])[0]);
+  document.getElementById('weapon_damage_type').value = weapon.damageType || '';
+  document.getElementById('weapon_ability').value = weapon.ability || 'str';
+  document.getElementById('weapon_enhancement').value = String(weapon.enhancement != null ? weapon.enhancement : 0);
+  document.getElementById('weapon_damage_bonus').value = weapon.damageBonus != null ? weapon.damageBonus : '';
+  document.getElementById('weapon_to_hit_override').value = weapon.toHitOverride != null ? weapon.toHitOverride : '';
+  document.getElementById('weapon_damage_override').value = weapon.damageOverride != null ? weapon.damageOverride : '';
+  document.getElementById('weapon_proficient').checked = weapon.proficient !== false;
   document.getElementById('weapon_properties').value = weapon.properties || '';
   document.getElementById('weapon_notes').value = weapon.notes || '';
   document.getElementById('saveWeaponBtn').textContent = 'Update Weapon';
@@ -3688,27 +3933,25 @@ function editWeapon(index) {
 
 function saveWeapon() {
   const name = document.getElementById('weapon_name').value.trim();
-  const toHit = document.getElementById('weapon_to_hit').value.trim();
-  const damage = document.getElementById('weapon_damage').value.trim();
-  const bonusDamage = document.getElementById('weapon_bonus_damage').value.trim();
-  const properties = document.getElementById('weapon_properties').value.trim();
-  const notes = document.getElementById('weapon_notes').value.trim();
-  const editIndex = document.getElementById('saveWeaponBtn').getAttribute('data-edit-index');
-
-  if (!name) {
-    alert('Please enter a name for the weapon.');
-    return;
-  }
+  if (!name) { alert('Please enter a name for the weapon.'); return; }
 
   const weaponData = {
     name,
-    toHit,
-    damage,
-    bonusDamage,
-    notes,
-    properties
+    category: document.getElementById('weapon_category').value,
+    damageDice: getWeaponDiceField(),
+    damageType: document.getElementById('weapon_damage_type').value,
+    ability: document.getElementById('weapon_ability').value,
+    enhancement: parseInt(document.getElementById('weapon_enhancement').value, 10) || 0,
+    proficient: document.getElementById('weapon_proficient').checked,
+    damageBonus: document.getElementById('weapon_damage_bonus').value.trim(),
+    toHitOverride: document.getElementById('weapon_to_hit_override').value.trim(),
+    damageOverride: document.getElementById('weapon_damage_override').value.trim(),
+    properties: document.getElementById('weapon_properties').value.trim(),
+    notes: document.getElementById('weapon_notes').value.trim()
   };
+  syncWeaponDisplayFields(weaponData); // fill toHit / damage / bonusDamage
 
+  const editIndex = document.getElementById('saveWeaponBtn').getAttribute('data-edit-index');
   if (editIndex !== null && editIndex !== '') {
     weaponsData[parseInt(editIndex, 10)] = weaponData;
   } else {
@@ -3718,6 +3961,81 @@ function saveWeapon() {
   updateWeaponsPreview();
   displayWeaponsStats();
   closePopup('weaponFormPopup');
+  autosave();
+}
+
+// ---- "Add from catalogue" picker (Open5e SRD weapons) ----
+let _weaponCatalogue = null; // cached array once loaded; null = not yet fetched
+function loadWeaponCatalogueOnce() {
+  if (_weaponCatalogue !== null) return Promise.resolve(_weaponCatalogue);
+  return fetch('assets/data/open5e/weapons.json')
+    .then(r => r.ok ? r.json() : [])
+    .then(arr => {
+      _weaponCatalogue = (Array.isArray(arr) ? arr : []).map(e => {
+        const f = e.fields || e;
+        let props = [];
+        try { props = JSON.parse(f.properties_json || '[]'); } catch (_) { props = []; }
+        const ranged = /Ranged/i.test(f.category || '');
+        return {
+          name: f.name || '', category: f.category || '',
+          damageDice: f.damage_dice || '', damageType: f.damage_type || '',
+          properties: props.join(', '),
+          ability: (ranged || /finesse/i.test(props.join(' '))) ? 'dex' : 'str'
+        };
+      }).filter(w => w.name);
+      return _weaponCatalogue;
+    })
+    .catch(() => { _weaponCatalogue = []; return _weaponCatalogue; });
+}
+
+function showWeaponPicker() {
+  const search = document.getElementById('weaponPickerSearch');
+  if (search) search.value = '';
+  loadWeaponCatalogueOnce().then(() => renderWeaponPicker(''));
+  showPopup('weaponPickerPopup');
+}
+
+function onWeaponPickerSearch() {
+  const el = document.getElementById('weaponPickerSearch');
+  renderWeaponPicker(el ? el.value : '');
+}
+
+let _weaponPickerCache = [];
+function renderWeaponPicker(query) {
+  const out = document.getElementById('weaponPickerResults');
+  if (!out) return;
+  const q = (query || '').trim().toLowerCase();
+  const all = _weaponCatalogue || [];
+  if (!all.length) { out.innerHTML = '<p class="kit-empty">Weapon catalogue loading…</p>'; return; }
+  const matches = (q ? all.filter(w => w.name.toLowerCase().includes(q) || (w.category || '').toLowerCase().includes(q)) : all)
+    .sort((a, b) => a.name.localeCompare(b.name)).slice(0, 60);
+  _weaponPickerCache = matches;
+  if (!matches.length) { out.innerHTML = `<p class="kit-empty">No weapons match “${escapeHtml(query)}”.</p>`; return; }
+  out.innerHTML = matches.map((w, idx) => {
+    const meta = [w.damageDice, w.damageType, w.properties].filter(Boolean).join(' · ');
+    return `
+      <div class="kit-row">
+        <div class="kit-row-info">
+          <span class="kit-row-name">${escapeHtml(w.name)}</span>
+          <span class="kit-row-meta">${escapeHtml(meta)}</span>
+        </div>
+        <button class="kit-add-btn" onclick="addWeaponFromCatalogue(${idx})">+ Add</button>
+      </div>`;
+  }).join('');
+}
+
+function addWeaponFromCatalogue(idx) {
+  const w = _weaponPickerCache[idx];
+  if (!w) return;
+  const weapon = {
+    name: w.name, category: w.category, damageDice: w.damageDice, damageType: w.damageType,
+    ability: w.ability || 'str', proficient: true, damageBonus: '', toHitOverride: '',
+    properties: w.properties || '', notes: ''
+  };
+  syncWeaponDisplayFields(weapon);
+  weaponsData.push(weapon);
+  updateWeaponsPreview();
+  displayWeaponsStats();
   autosave();
 }
 
@@ -4201,12 +4519,18 @@ function showPopup(id) {
   // Show elements
   popup.style.display = 'block';
   backdrop.style.display = 'block';
-  
+
   // Force immediate visibility
   popup.style.opacity = '1';
   popup.style.transform = id === 'darkModeOnlyPopup' ? 'none' : 'translate(-50%, -50%) scale(1)';
   popup.style.pointerEvents = 'auto';
-  
+
+  // Lock background scroll while any popup is open, so scrolling inside the
+  // popup can't chain through and move the page behind it — and the page keeps
+  // its scroll position instead of jumping to the top. Reference-counted so
+  // nested/stacked popups don't unlock the background early.
+  lockBackgroundScroll();
+
   // Trigger animations
   requestAnimationFrame(() => {
     popup.classList.add('show');
@@ -4214,14 +4538,45 @@ function showPopup(id) {
   });
 }
 
+// Lock the page behind popups. On the FIRST popup we remember the current scroll
+// offset and pin the body there (the CSS uses position:fixed), so the background
+// can't scroll and doesn't jump to the top. Reference-counted for stacked popups.
+function lockBackgroundScroll() {
+  window._openPopupCount = (window._openPopupCount || 0) + 1;
+  if (window._openPopupCount === 1) {
+    window._lockedScrollY = window.scrollY || window.pageYOffset || 0;
+    document.body.style.top = `-${window._lockedScrollY}px`;
+    document.documentElement.classList.add('modal-open');
+    document.body.classList.add('modal-open');
+  }
+}
+
+// Release one popup's lock; only unlock (and restore scroll position) once the
+// last open popup closes.
+function releasePopupScrollLock() {
+  window._openPopupCount = Math.max(0, (window._openPopupCount || 1) - 1);
+  if (window._openPopupCount === 0) unlockBackgroundScroll();
+}
+
+// Fully remove the lock and jump the page back to where it was.
+function unlockBackgroundScroll() {
+  window._openPopupCount = 0;
+  document.documentElement.classList.remove('modal-open');
+  document.body.classList.remove('modal-open');
+  document.body.style.top = '';
+  const y = window._lockedScrollY || 0;
+  window._lockedScrollY = 0;
+  window.scrollTo(0, y);
+}
+
 function closePopup(id) {
   const popup = document.getElementById(id);
   const backdrop = document.getElementById('popupBackdrop');
-  
+
   // Remove show classes to trigger close animation
   popup.classList.remove('show');
   backdrop.classList.remove('show');
-  
+
   // Hide elements after animation completes
   setTimeout(() => {
     popup.style.display = 'none';
@@ -4229,8 +4584,9 @@ function closePopup(id) {
     backdrop.style.zIndex = '';
   }, 300); // Match the CSS transition duration
 
+  releasePopupScrollLock();
+
   if (id === 'darkModeOnlyPopup') {
-    document.body.classList.remove('modal-open');
     document.body.classList.remove('dark-mode-only-open');
   }
 
@@ -4259,8 +4615,8 @@ function closeAllPopups() {
 
   currentNotesElement = null;
   currentNotesField = null;
+  unlockBackgroundScroll();
   document.body.classList.remove('notes-editor-open');
-  document.body.classList.remove('modal-open');
   document.body.classList.remove('dark-mode-only-open');
 }
 

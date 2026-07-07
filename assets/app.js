@@ -111,6 +111,8 @@ window.initializeApp = function() {
 
   initializeActions();
   initializeInventory();
+  if (typeof renderRollLog === 'function') renderRollLog();
+  if (typeof initCritModePicker === 'function') initCritModePicker();
 
   if (typeof window.equipmentData === 'undefined') {
     window.equipmentData = [];

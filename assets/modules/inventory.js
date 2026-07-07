@@ -303,7 +303,7 @@ function createWeaponCard(weapon, index) {
     ? `${weapon.notes.substring(0, 117)}...`
     : weapon.notes;
 
-  const name = escapeHtml(weapon.name || 'Unnamed Weapon');
+  const name = escapeHtml(weapon.displayName || weapon.name || 'Unnamed Weapon');
   const badge = escapeHtml(typeLabel);
   const toHit = escapeHtml(weapon.toHit || '-');
   const damage = escapeHtml(weapon.damage || '-');
@@ -320,6 +320,19 @@ function createWeaponCard(weapon, index) {
       ${weapon.properties ? `<div class="equipment-stat"><span class="equipment-stat-label">Properties:</span><span class="equipment-stat-value">${escapeHtml(weapon.properties)}</span></div>` : ''}
     </div>
     ${notesPreview ? `<div class="equipment-description">${escapeHtml(notesPreview)}</div>` : ''}
+    <div class="weapon-roll-row" onclick="event.stopPropagation();">
+      <div class="weapon-roll-group">
+        <span class="weapon-roll-label">Attack</span>
+        <button type="button" class="weapon-roll-btn" title="Roll to hit" onclick="event.stopPropagation(); rollWeaponAttack(${index}, 'normal')">🎯</button>
+        <button type="button" class="weapon-roll-btn weapon-roll-adv" title="With advantage" onclick="event.stopPropagation(); rollWeaponAttack(${index}, 'adv')">ADV</button>
+        <button type="button" class="weapon-roll-btn weapon-roll-dis" title="With disadvantage" onclick="event.stopPropagation(); rollWeaponAttack(${index}, 'dis')">DIS</button>
+      </div>
+      <div class="weapon-roll-group">
+        <span class="weapon-roll-label">Damage</span>
+        <button type="button" class="weapon-roll-btn" title="Roll damage" onclick="event.stopPropagation(); rollWeaponDmg(${index}, false)">🎲</button>
+        <button type="button" class="weapon-roll-btn weapon-roll-crit" title="Roll critical damage (double dice)" onclick="event.stopPropagation(); rollWeaponDmg(${index}, true)">CRIT</button>
+      </div>
+    </div>
     <div class="equipment-actions">
       <button type="button" class="equipment-btn notes-btn" data-weapon-index="${index}" data-action="notes">Notes</button>
       <button type="button" class="equipment-btn edit-btn" data-weapon-index="${index}" data-action="edit">Edit</button>

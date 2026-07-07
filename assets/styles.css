@@ -1039,6 +1039,9 @@
     max-width: 800px;
     max-height: 90vh;
     overflow-y: auto;
+    /* Keep scrolling inside the popup — don't let it chain to the page behind. */
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     opacity: 0;
     transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1088,12 +1091,17 @@
     background: rgba(0, 0, 0, 0.82);
   }
 
-  html.modal-open,
+  /* Background scroll lock. showPopup() pins the body in place at its current
+     scroll offset (position: fixed + top: -scrollY, set inline from JS) so the
+     page can't move behind the popup AND doesn't jump to the top. The popup
+     itself lives in #popups-root and stays fully scrollable. */
   body.modal-open {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
     overflow: hidden !important;
-    touch-action: none !important;
     overscroll-behavior: none !important;
-    height: 100% !important;
   }
 
   html.settings-open,
@@ -6412,6 +6420,144 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
     font-weight: bold;
     margin-left: 10px;
   }
+
+/* Source badge on pulled action cards (weapon / spell / universal) */
+.action-source-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 0.72em;
+  font-weight: 700;
+  text-transform: capitalize;
+  vertical-align: middle;
+}
+.action-source-weapon { background: rgba(210,150,90,0.28); color: #f0c89a; }
+.action-source-spell { background: rgba(140,120,230,0.28); color: #c8bcff; }
+.action-source-universal { background: rgba(120,180,255,0.22); color: #bcd8ff; }
+
+/* Openable action card: clamp long descriptions, View more toggle, ref link */
+.action-desc-clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.action-more-row { display: flex; align-items: center; gap: 12px; margin-top: 6px; flex-wrap: wrap; }
+.action-viewmore-btn { background: none; border: none; color: var(--accent-text); font-size: 0.8rem; font-weight: 600; cursor: pointer; padding: 0; }
+.action-viewmore-btn:hover { text-decoration: underline; }
+.action-ref-link { color: var(--accent-text); text-decoration: none; font-size: 0.8rem; font-weight: 600; }
+.action-ref-link:hover { text-decoration: underline; }
+.action-card-expanded { border-color: var(--accent-text); }
+
+/* "From my kit" button + picker popup */
+.kit-picker-btn { background: var(--accent-muted) !important; border: 1px solid var(--accent-text) !important; }
+.action-kit-popup { max-width: 560px; width: min(94vw, 560px); }
+/* Roomier on larger screens */
+@media (min-width: 900px) { .action-kit-popup { max-width: 760px; width: min(90vw, 760px); } }
+@media (min-width: 1400px) { .action-kit-popup { max-width: 900px; width: min(80vw, 900px); } }
+.kit-intro { font-size: 0.85rem; color: rgba(255,255,255,0.6); margin: 0 0 12px; }
+
+/* Search-all-5e box + results */
+.kit-search-wrap { margin-bottom: 16px; }
+.kit-search-input { width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.06); border: 1px solid var(--accent-border); border-radius: 8px; padding: 9px 12px; color: rgba(255,255,255,0.92); font-size: 0.9rem; font-family: inherit; }
+.kit-search-input:focus { outline: none; border-color: var(--accent-text); box-shadow: 0 0 0 2px var(--accent-soft); }
+.action-kit-search-results { margin-top: 8px; max-height: 34vh; overflow-y: auto; }
+.kit-row-link { color: var(--accent-text); text-decoration: none; font-size: 0.9em; margin-left: 4px; }
+.kit-row-link:hover { text-decoration: underline; }
+.kit-section-divider { display: flex; align-items: center; gap: 10px; margin: 4px 0 12px; color: rgba(255,255,255,0.5); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.kit-section-divider::before, .kit-section-divider::after { content: ''; flex: 1; height: 1px; background: var(--accent-border); }
+
+.action-kit-body { max-height: 46vh; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+@media (min-width: 900px) { .action-kit-body, .action-kit-search-results { max-height: 40vh; } }
+.kit-group { }
+.kit-group-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; padding-bottom: 5px; border-bottom: 1px solid var(--accent-border); }
+.kit-group-head h4 { margin: 0; font-size: 0.9rem; color: var(--accent-text); }
+.kit-add-all { background: var(--accent-soft); border: 1px solid var(--accent-border); color: var(--accent-text); border-radius: 6px; padding: 3px 10px; font-size: 0.76rem; cursor: pointer; }
+.kit-add-all:hover { background: var(--accent-muted); }
+.kit-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 10px; border-radius: 7px; background: rgba(var(--accent-rgb), 0.05); border: 1px solid var(--accent-border); margin-bottom: 5px; }
+.kit-row-added { opacity: 0.55; }
+.kit-row-info { display: flex; flex-direction: column; min-width: 0; }
+.kit-row-name { font-weight: 600; font-size: 0.88rem; color: rgba(255,255,255,0.92); }
+.kit-row-meta { font-size: 0.76rem; color: rgba(255,255,255,0.5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kit-add-btn { background: var(--accent-muted); border: 1px solid var(--accent-text); color: var(--accent-contrast); border-radius: 6px; padding: 5px 12px; font-size: 0.8rem; font-weight: 600; cursor: pointer; white-space: nowrap; transition: transform 0.15s ease; }
+.kit-add-btn:hover { transform: translateY(-1px); }
+.kit-added-tag { font-size: 0.78rem; font-weight: 600; color: #8fe08f; white-space: nowrap; }
+.kit-empty { font-size: 0.82rem; color: rgba(255,255,255,0.4); font-style: italic; margin: 4px 0; }
+
+/* Show-all toggle + per-source tag in the kit picker */
+.kit-showall-toggle { display: flex; align-items: center; gap: 7px; margin-top: 8px; font-size: 0.78rem; color: rgba(255,255,255,0.6); cursor: pointer; user-select: none; }
+.kit-showall-toggle input { accent-color: var(--accent-text); }
+.kit-src-tag { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 8px; font-size: 0.66rem; font-weight: 700; text-transform: capitalize; vertical-align: middle; background: rgba(var(--accent-rgb), 0.16); color: var(--accent-text); }
+.kit-src-weapon { background: rgba(210,150,90,0.22); color: #f0c89a; }
+.kit-src-spell { background: rgba(140,120,230,0.22); color: #c8bcff; }
+.kit-src-item { background: rgba(120,200,150,0.20); color: #a6e6bf; }
+.kit-src-trait { background: rgba(120,180,255,0.20); color: #bcd8ff; }
+.kit-src-universal { background: rgba(180,180,180,0.18); color: #dcdcdc; }
+
+/* Empty-state line for each of the three timing sections */
+.actions-empty { text-align: center; color: var(--text); opacity: 0.65; grid-column: 1 / -1; font-size: 0.86rem; padding: 8px 0; }
+
+/* Auto-sort review banner above the three sections */
+.actions-review-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; background: rgba(210,160,70,0.14); border: 1px solid rgba(210,160,70,0.5); color: #f0d29a; border-radius: 8px; padding: 9px 13px; margin: 0 0 14px; font-size: 0.85rem; }
+.actions-review-dismiss { background: rgba(210,160,70,0.22); border: 1px solid rgba(210,160,70,0.6); color: #f4dcae; border-radius: 6px; padding: 4px 12px; font-size: 0.8rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.actions-review-dismiss:hover { background: rgba(210,160,70,0.34); }
+
+/* Bonus / Feature source badges on cards (Action badge colours already exist) */
+.action-source-item { background: rgba(120,200,150,0.24); color: #a6e6bf; }
+.action-source-trait { background: rgba(120,180,255,0.22); color: #bcd8ff; }
+
+/* ===== Weapons: structured form, roll buttons, fair-dice roll log ===== */
+.weapon-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; margin: 4px 0 6px; }
+@media (max-width: 560px) { .weapon-form-grid { grid-template-columns: 1fr; } }
+.weapon-form-hint, .weapon-form-grid .weapon-form-hint { opacity: 0.55; font-weight: normal; font-size: 0.85em; }
+.weapon-prof-toggle { display: flex; align-items: center; gap: 8px; margin: 6px 0 2px; font-size: 0.86rem; color: rgba(255,255,255,0.75); cursor: pointer; user-select: none; }
+.weapon-prof-toggle input { accent-color: var(--accent-text); }
+
+/* Per-weapon roll buttons on the card */
+.weapon-roll-row { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin: 8px 0 4px; padding: 8px 0; border-top: 1px solid var(--accent-border); }
+.weapon-roll-group { display: flex; align-items: center; gap: 6px; }
+.weapon-roll-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255,255,255,0.5); margin-right: 2px; }
+.weapon-roll-btn { background: var(--accent-muted); border: 1px solid var(--accent-border); color: var(--accent-contrast); border-radius: 6px; padding: 4px 9px; font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: transform 0.12s ease, background-color 0.2s ease; }
+.weapon-roll-btn:hover { transform: translateY(-1px); background: var(--accent-text); }
+.weapon-roll-adv { color: #9fe6a6; }
+.weapon-roll-dis { color: #e6a6a6; }
+.weapon-roll-crit { color: #ffd479; }
+
+/* Roll log panel */
+.weapon-roll-log-wrap { margin-top: 14px; border-top: 1px solid var(--accent-border); padding-top: 10px; }
+.roll-log-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.roll-log-head h3 { margin: 0; font-size: 0.95rem; color: var(--accent-text); }
+.roll-log-clear { background: none; border: 1px solid var(--accent-border); color: rgba(255,255,255,0.6); border-radius: 6px; padding: 3px 10px; font-size: 0.76rem; cursor: pointer; }
+.roll-log-clear:hover { color: var(--accent-text); border-color: var(--accent-text); }
+.weapon-roll-log { max-height: 260px; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 6px; }
+.roll-log-empty { font-size: 0.82rem; color: rgba(255,255,255,0.4); font-style: italic; margin: 4px 0; }
+.roll-log-row { background: rgba(var(--accent-rgb), 0.05); border: 1px solid var(--accent-border); border-radius: 7px; padding: 7px 10px; }
+.roll-log-main { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 0.88rem; }
+.roll-log-weapon { font-weight: 700; color: rgba(255,255,255,0.92); }
+.roll-log-type { font-size: 0.76rem; color: rgba(255,255,255,0.55); }
+.roll-log-total { margin-left: auto; font-weight: 800; font-size: 1.05rem; color: var(--accent-text); }
+.roll-log-detail { font-size: 0.74rem; color: rgba(255,255,255,0.5); margin-top: 3px; }
+.roll-tag { font-size: 0.64rem; font-weight: 800; padding: 1px 6px; border-radius: 8px; }
+.roll-adv { background: rgba(120,200,150,0.25); color: #9fe6a6; }
+.roll-dis { background: rgba(210,120,120,0.25); color: #e6a6a6; }
+.roll-log-row.roll-nat20 { border-color: #ffd479; background: rgba(255,212,121,0.12); }
+.roll-log-row.roll-nat20 .roll-log-total { color: #ffd479; }
+.roll-log-row.roll-nat1 { border-color: rgba(210,120,120,0.6); background: rgba(210,120,120,0.10); }
+.roll-log-row.roll-nat1 .roll-log-total { color: #e6a6a6; }
+.roll-log-row.roll-crit-dmg { border-color: #ffd479; }
+
+/* Crit-rule picker inside the Weapons help panel */
+.crit-mode-picker { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--accent-border); }
+.crit-mode-picker label { display: block; margin-bottom: 6px; font-size: 0.86rem; }
+.crit-mode-picker select { width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.06); border: 1px solid var(--accent-border); border-radius: 7px; padding: 8px 10px; color: rgba(255,255,255,0.92); font-size: 0.85rem; font-family: inherit; }
+.crit-mode-picker select:focus { outline: none; border-color: var(--accent-text); }
+.crit-mode-note { margin: 7px 0 0; font-size: 0.78rem; color: rgba(255,255,255,0.55); font-style: italic; }
+
+/* Admin → Logs viewer */
+.admin-log-list { margin-top: 10px; max-height: 420px; overflow-y: auto; overscroll-behavior: contain; }
+.admin-log-day { margin-bottom: 14px; }
+.admin-log-day h5 { margin: 0 0 6px; font-size: 0.82rem; color: var(--accent-text); border-bottom: 1px solid var(--accent-border); padding-bottom: 4px; }
+.admin-log-row { display: flex; align-items: center; gap: 10px; padding: 5px 8px; border-radius: 6px; font-size: 0.82rem; }
+.admin-log-row:nth-child(even) { background: rgba(var(--accent-rgb), 0.05); }
+.admin-log-weapon { font-weight: 600; min-width: 120px; color: rgba(255,255,255,0.9); }
+.admin-log-detail { flex: 1; color: rgba(255,255,255,0.7); }
+.admin-log-time { color: rgba(255,255,255,0.45); font-size: 0.74rem; white-space: nowrap; }
 
   .action-stats {
     display: grid;

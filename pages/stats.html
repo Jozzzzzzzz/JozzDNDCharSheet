@@ -474,8 +474,11 @@
         <p><strong>Favourite Actions</strong> — star any action or feature to pin it to the top for quick reference during combat.</p>
         <p><strong>Actions Notes</strong> — free-text area for extra detail, combo reminders, or anything that doesn't fit a card.</p>
       </div>
-      <h2>Actions & Features</h2>
-      
+      <h2>Actions, Bonus Actions & Features</h2>
+
+      <!-- Auto-sort review banner (shown only when migration guessed placements) -->
+      <div id="actionsReviewBanner" class="actions-review-banner" style="display:none;"></div>
+
       <!-- Favorites Section -->
       <div class="favorites-section">
         <h3>Favorite Actions</h3>
@@ -483,19 +486,37 @@
           <!-- Favorites will be populated here -->
         </div>
       </div>
-      
-      <!-- Actions List -->
-      <div class="actions-section">
-        <h3>All Actions</h3>
+
+      <!-- Actions -->
+      <div class="actions-section" id="section-timing-action">
+        <h3>Actions</h3>
         <div class="actions-controls">
-          <button onclick="showActionForm()">+ Add Action</button>
-          <button onclick="showFeatureForm()">+ Add Feature</button>
+          <button class="kit-picker-btn" onclick="showActionKitPicker('action')">Add from sheet</button>
+          <button onclick="showActionForm('action')">Add custom</button>
         </div>
-        <div class="actions-list-container" id="actions_list">
-          <!-- Actions will be populated here -->
-        </div>
+        <div class="actions-list-container" id="actions_list"><!-- populated by displayActions() --></div>
       </div>
-      
+
+      <!-- Bonus Actions -->
+      <div class="actions-section" id="section-timing-bonus">
+        <h3>Bonus Actions</h3>
+        <div class="actions-controls">
+          <button class="kit-picker-btn" onclick="showActionKitPicker('bonus')">Add from sheet</button>
+          <button onclick="showActionForm('bonus')">Add custom</button>
+        </div>
+        <div class="actions-list-container" id="bonus_actions_list"><!-- populated by displayActions() --></div>
+      </div>
+
+      <!-- Features & Traits -->
+      <div class="actions-section" id="section-timing-feature">
+        <h3>Features &amp; Traits</h3>
+        <div class="actions-controls">
+          <button class="kit-picker-btn" onclick="showActionKitPicker('feature')">Add from sheet</button>
+          <button onclick="showActionForm('feature')">Add custom</button>
+        </div>
+        <div class="actions-list-container" id="features_list"><!-- populated by displayActions() --></div>
+      </div>
+
       <!-- Actions Notes Section -->
       <div class="actions-section actions-notes-section">
         <h3>Actions Notes</h3>
@@ -511,15 +532,34 @@
            <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
            <div class="section-help-panel" onclick="closeHelp(this)">
              <p><strong>Weapons</strong> — your equipped weapons and their attack details.</p>
-             <p>Add each weapon with its name, damage dice (e.g. 1d8+3), attack bonus, damage type, range, and any notes (e.g. "silvered", "magic +1").</p>
-             <p>Attack bonus is usually: Proficiency Bonus + STR modifier (melee) or DEX modifier (ranged/finesse). Weapons show up as a quick-reference list during play.</p>
+             <p><strong>Add from sheet</strong> pulls any D&D 5e weapon with its dice pre-filled; <strong>Add custom</strong> is pure homebrew. Each card has fair-dice roll buttons — Attack (🎯/ADV/DIS) and Damage (🎲/CRIT). Every die is shown in the Roll Log so nothing is hidden. To-hit auto-calculates from your ability + proficiency.</p>
+             <div class="crit-mode-picker" onclick="event.stopPropagation();">
+               <label for="critModeSelect"><strong>Critical hit rule</strong> — applies to every weapon on this sheet:</label>
+               <select id="critModeSelect" onchange="onCritModeChange(this.value)">
+                 <option value="double-dice">Double dice (RAW) — roll 2× the weapon dice</option>
+                 <option value="max-plus-roll">Max + roll (Savage) — max dice, then roll one more set</option>
+                 <option value="double-total">Double total — double everything incl. modifiers</option>
+                 <option value="max">Max damage — no roll, maximum possible</option>
+               </select>
+               <p class="crit-mode-note" id="critModeNote"></p>
+             </div>
            </div>
            <h2>Weapons</h2>
            <div class="weapons-controls">
-             <button onclick="showWeaponsForm()">+ Add Weapon</button>
+             <button class="kit-picker-btn" onclick="showWeaponPicker()">Add from sheet</button>
+             <button onclick="showWeaponsForm()">Add custom</button>
            </div>
            <div class="weapons-list-container" id="weapons_stats_list">
              <!-- Weapons will be populated here -->
+           </div>
+
+           <!-- Fair-dice roll log -->
+           <div class="weapon-roll-log-wrap">
+             <div class="roll-log-head">
+               <h3>Roll Log</h3>
+               <button class="roll-log-clear" type="button" onclick="clearRollLog()">Clear</button>
+             </div>
+             <div id="weaponRollLog" class="weapon-roll-log"><!-- rendered by renderRollLog() --></div>
            </div>
         </div>
             
