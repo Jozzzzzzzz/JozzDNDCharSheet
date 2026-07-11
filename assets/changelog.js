@@ -11,7 +11,7 @@ const CHANGELOG_LATEST_VERSION = '1.14';
 const CHANGELOG = [
   {
     version: '1.14',
-    date: '2026-07-09',
+    date: '2026-07-11',
     title: 'v1.14 — Skill Expertise, Conditions Picker & a Huge DM Upgrade',
     updates: [
       'Skills now support half-proficiency and expertise: click the proficiency button on any skill to cycle None → Half (½) → Proficient (●) → Expertise (★). The total does the maths for you (half rounds down, expertise doubles), and proficient rows are tinted for quick scanning',
