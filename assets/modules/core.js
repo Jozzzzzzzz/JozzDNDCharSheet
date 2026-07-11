@@ -431,6 +431,11 @@ let equipmentData = [];
 let currentCharacter = null;
 let deleteState = 0;
 let deleteTargetCharacterId = null;
+// Data-shape version for exports/imports. Bump ONLY when a change to the saved
+// character blob would break older importers. 1 = the current shape (page1–page6,
+// conditions with id/link/exhaustionLevel, skills with proflvl_, etc.). All fields
+// added so far are back-compatible, so this stays at 1 until a breaking change.
+const CHARACTER_SCHEMA_VERSION = 1;
 const LAST_SELECTED_CHARACTER_KEY = 'dndLastSelectedCharacter';
 const LAST_SELECTED_CHARACTER_AT_KEY = 'dndLastSelectedCharacterAt';
 const CHARACTER_FAVORITES_KEY = 'dndFavoriteCharacters';
@@ -830,103 +835,9 @@ function loadThemeSettings() {
 }
 
 // ========== INITIALIZATION ==========
-  // Suggestion Form Functions
-  function initializeSuggestionForm() {
-    const form = document.getElementById('suggestionForm');
-    if (form) {
-      form.addEventListener('submit', handleSuggestionSubmit);
-    }
-  }
-
-  async function handleSuggestionSubmit(event) {
-    event.preventDefault();
-    
-    const suggestionType = document.getElementById('suggestionType').value;
-    const suggestionText = document.getElementById('suggestionText').value;
-    
-    if (!suggestionType || !suggestionText.trim()) {
-      showSuggestionStatus('Please fill in all fields', 'error');
-      return;
-    }
-    
-    // Get user's email from Firebase auth
-    const userEmail = window.currentUser ? window.currentUser.email : 'anonymous@example.com';
-    
-    // Show sending status
-    showSuggestionStatus('Sending suggestion...', 'info');
-    
-    try {
-      // Send suggestion using a simple method
-      await sendSuggestionEmail(userEmail, suggestionType, suggestionText);
-      showSuggestionStatus('Suggestion sent successfully! Thank you for your feedback.', 'success');
-      
-      // Clear form
-      document.getElementById('suggestionType').value = '';
-      document.getElementById('suggestionText').value = '';
-    } catch (error) {
-      console.error('Error sending suggestion:', error);
-      showSuggestionStatus('Failed to send suggestion. Please try again later.', 'error');
-    }
-  }
-  
-  // Send suggestion email using a simple method
-  async function sendSuggestionEmail(userEmail, suggestionType, suggestionText) {
-    // Create the email content
-    const subject = `D&D Character Sheet Suggestion - ${suggestionType}`;
-    const body = `Hello Joz,
-
-I have a suggestion for the D&D Character Sheet:
-
-Suggestion Type: ${suggestionType}
-
-My Suggestion:
-${suggestionText}
-
-Submitted by: ${userEmail}
-
-Thanks for creating this awesome character sheet!
-
-Best regards,
-${userEmail}`;
-
-    const formData = new FormData();
-    formData.append('email', userEmail);
-    formData.append('subject', subject);
-    formData.append('message', body);
-    formData.append('suggestion_type', suggestionType);
-    formData.append('_replyto', userEmail);
-    formData.append('_subject', subject);
-
-    const response = await fetch('https://formspree.io/f/xovnrwbd', {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json'
-      },
-      body: formData
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Suggestion request failed:', response.status, errorText);
-      throw new Error('Suggestion request failed');
-    }
-
-    return { success: true, method: 'formspree' };
-  }
-
-  function showSuggestionStatus(message, type) {
-    const statusDiv = document.getElementById('suggestionStatus');
-    if (statusDiv) {
-      statusDiv.textContent = message;
-      statusDiv.className = `status-message ${type}`;
-      statusDiv.style.display = 'block';
-      
-      // Hide after 5 seconds
-      setTimeout(() => {
-        statusDiv.style.display = 'none';
-      }, 5000);
-    }
-  }
+// Suggestion form functions (initializeSuggestionForm, handleSuggestionSubmit,
+// sendSuggestionEmail, showSuggestionStatus) live in characters.js — which loads
+// after core.js and is the canonical implementation.
 
 // Web App / PWA Initialization
 function initializeWebApp() {
@@ -983,12 +894,12 @@ function initializeWebApp() {
     const file = e.target.files[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file (JPG, PNG, GIF, WebP, etc.)');
+      appToast('Please upload an image file (JPG, PNG, GIF, WebP, etc.)', 'error');
       e.target.value = '';
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      alert('Image must be under 2MB to keep your character data manageable.');
+      appToast('Image must be under 2MB to keep your character data manageable.', 'error');
       e.target.value = '';
       return;
     }
@@ -1429,7 +1340,7 @@ function closeAddFolderPopup() {
 function confirmAddFolder() {
   const input = document.getElementById('folderTitleInput');
   const title = input ? input.value.trim() : '';
-  if (!title) { alert('Please enter a folder name.'); return; }
+  if (!title) { appToast('Please enter a folder name.', 'error'); return; }
   noteFolders.push({ id: 'nf_' + Date.now(), title, cards: [] });
   renderNoteFolders();
   closeAddFolderPopup();
@@ -1454,7 +1365,7 @@ function closeAddNoteCardPopup() {
 function confirmAddNoteCard() {
   const input = document.getElementById('noteCardTitleInput');
   const title = input ? input.value.trim() : '';
-  if (!title) { alert('Please enter a card title.'); return; }
+  if (!title) { appToast('Please enter a card title.', 'error'); return; }
   const folder = noteFolders.find(f => f.id === notesActiveFolderId);
   if (!folder) return;
   const newCard = { id: 'nc_' + Date.now(), title, body: '' };
@@ -1950,7 +1861,7 @@ function closeBgFieldPopup() {
 
 function confirmAddBgField() {
   const title = document.getElementById('bgFieldTitleInput').value.trim();
-  if (!title) { alert('Please enter a title.'); return; }
+  if (!title) { appToast('Please enter a title.', 'error'); return; }
   const placeholder = document.getElementById('bgFieldPlaceholderInput').value.trim();
   const id = 'bgcustom_' + Date.now();
   const vals = captureBgFieldValues();
@@ -2126,43 +2037,6 @@ function getRollingBannerMessages() {
     return external.filter(msg => typeof msg === 'string' && msg.trim().length > 0);
   }
 
-  async function handleSettingsSuggestionSubmit(event) {
-    event.preventDefault();
-
-    const suggestionType = document.getElementById('settingsSuggestionType')?.value;
-    const suggestionText = document.getElementById('settingsSuggestionText')?.value;
-    const statusDiv = document.getElementById('settingsSuggestionStatus');
-    const setStatus = (message, type) => {
-      if (!statusDiv) return;
-      statusDiv.textContent = message;
-      statusDiv.className = `status-message ${type}`;
-      statusDiv.style.display = 'block';
-      setTimeout(() => {
-        statusDiv.style.display = 'none';
-      }, 5000);
-    };
-
-    if (!suggestionType || !suggestionText || !suggestionText.trim()) {
-      setStatus('Please fill in all fields', 'error');
-      return;
-    }
-
-    const userEmail = window.currentUser ? window.currentUser.email : 'anonymous@example.com';
-    setStatus('Sending suggestion...', 'info');
-    try {
-      await sendSuggestionEmail(userEmail, suggestionType, suggestionText);
-      setStatus('Suggestion sent successfully! Thank you for your feedback.', 'success');
-      const typeEl = document.getElementById('settingsSuggestionType');
-      const textEl = document.getElementById('settingsSuggestionText');
-      if (typeEl) typeEl.value = '';
-      if (textEl) textEl.value = '';
-    } catch (error) {
-      console.error('Error sending settings suggestion:', error);
-      setStatus('Failed to send suggestion. Please try again later.', 'error');
-    }
-  }
-
-  window.handleSettingsSuggestionSubmit = handleSettingsSuggestionSubmit;
   return ['This sheet autosaves character data to your browser. Use Export to back up your character.'];
 }
 
@@ -2450,11 +2324,12 @@ function clearAllFormFields() {
                      'performance', 'persuasion', 'religion', 'sleight_of_hand', 'stealth', 'survival'];
 
   skillNames.forEach(skill => {
-    const profElement = document.getElementById(`prof_${skill}`);
     const adjElement = document.getElementById(`adj_${skill}`);
     const bonusElement = document.getElementById(`bonus_${skill}`);
 
-    if (profElement) profElement.checked = false;
+    // Reset proficiency to level 0 (also clears .checked + repaints the button).
+    if (typeof setSkillProfLevel === 'function') setSkillProfLevel(skill, 0);
+    else { const cb = document.getElementById(`prof_${skill}`); if (cb) { cb.checked = false; cb.dataset.profLevel = '0'; } }
     if (adjElement) adjElement.value = '+0';
     if (bonusElement) bonusElement.value = '';
   });
@@ -2552,6 +2427,7 @@ function clearAllFormFields() {
   }
 
   // Clear conditions
+  window.conditionsData = [];
   const conditionsContainer = document.getElementById('conditions_container');
   if (conditionsContainer) {
     conditionsContainer.innerHTML = '';
@@ -2636,7 +2512,7 @@ function initiateDelete(charId) {
 
   if (!btn || !message) return;
   if (!targetId || !target) {
-    alert('No character selected to delete');
+    appToast('No character selected to delete', 'error');
     resetDeleteUI();
     return;
   }
@@ -2803,7 +2679,9 @@ function autosave() {
              'insight','intimidation','investigation','medicine','nature','perception',
              'performance','persuasion','religion','sleight_of_hand','stealth','survival']
              .reduce((obj, skill) => {
-      obj[`prof_${skill}`] = chk(`prof_${skill}`);
+      obj[`prof_${skill}`] = chk(`prof_${skill}`); // legacy boolean (kept for old readers)
+      // New: proficiency level 0 none / 1 half / 2 proficient / 3 expertise.
+      obj[`proflvl_${skill}`] = (typeof getSkillProfLevel === 'function') ? getSkillProfLevel(skill) : (chk(`prof_${skill}`) ? 2 : 0);
       obj[`adj_${skill}`] = val(`adj_${skill}`) ?? '+0';
       obj[`bonus_${skill}`] = val(`bonus_${skill}`);
       return obj;
@@ -2915,18 +2793,15 @@ function autosave() {
     page6,
     weapons: weaponsData,
     rollLog: (typeof characterRollLog !== 'undefined' ? characterRollLog : { days: {} }),
-    conditions: Array.from(document.querySelectorAll('#conditions_container .condition')).map(condition => {
-      try {
-        const header = condition.querySelector('.condition-header');
-        return {
-          name: header?.children[0]?.textContent || '',
-          turns: header?.children[1]?.textContent || '',
-          effect: condition.children[1]?.textContent || '',
-          color: condition.classList.contains('blue') ? 'blue' :
-                 condition.classList.contains('green') ? 'green' : 'red'
-        };
-      } catch(e) { return null; }
-    }).filter(Boolean)
+    conditions: Array.isArray(window.conditionsData) ? window.conditionsData.map(c => ({
+      id: c.id,
+      name: c.name || '',
+      effect: c.effect || '',
+      link: c.link || '',
+      turns: c.turns || '',
+      color: c.color || 'red',
+      exhaustionLevel: typeof c.exhaustionLevel === 'number' ? c.exhaustionLevel : undefined
+    })) : []
   };
 
   characters[charIndex].data = data;
@@ -3062,7 +2937,11 @@ function loadData() {
       document.getElementById('hit_dice_spend').value = data.page1.health.hit_dice_spend || '1';
       document.getElementById('con_modifier').value = data.page1.health.con_modifier || '0';
       document.getElementById('hit_die_size').value = data.page1.health.hit_die_size || '8';
-      document.getElementById('potion_type').value = data.page1.health.potion_type || 'lesser';
+      // Potion type: migrate removed legacy values ('minor'/'lesser') to 'healing'
+      // so the dropdown still shows a valid selection for old saves.
+      const savedPotion = data.page1.health.potion_type;
+      const potionValue = (!savedPotion || savedPotion === 'minor' || savedPotion === 'lesser') ? 'healing' : savedPotion;
+      document.getElementById('potion_type').value = potionValue;
       
       // Restore temp HP
       if (data.page1.health.temp_hp) {
@@ -3080,10 +2959,22 @@ function loadData() {
       updatePotionInfo();
     }    // Skills
     if (data.page1.skills) {
-      for (const skill in data.page1.skills) {
-        if (skill.startsWith('prof_')) {
-          const checkbox = document.getElementById(skill);
-          if (checkbox) checkbox.checked = data.page1.skills[skill];
+      const skillsData = data.page1.skills;
+      for (const skill in skillsData) {
+        if (skill.startsWith('proflvl_')) {
+          // New source of truth: 0 none / 1 half / 2 proficient / 3 expertise.
+          const skillName = skill.replace('proflvl_', '');
+          const lvl = Math.max(0, Math.min(3, parseInt(skillsData[skill], 10) || 0));
+          if (typeof setSkillProfLevel === 'function') setSkillProfLevel(skillName, lvl);
+          else { const cb = document.getElementById(`prof_${skillName}`); if (cb) { cb.dataset.profLevel = String(lvl); cb.checked = lvl >= 2; } }
+        } else if (skill.startsWith('prof_')) {
+          // Legacy boolean — only apply if no proflvl_ was saved for this skill.
+          const skillName = skill.replace('prof_', '');
+          if (!Object.prototype.hasOwnProperty.call(skillsData, `proflvl_${skillName}`)) {
+            const lvl = skillsData[skill] ? 2 : 0;
+            if (typeof setSkillProfLevel === 'function') setSkillProfLevel(skillName, lvl);
+            else { const cb = document.getElementById(skill); if (cb) { cb.dataset.profLevel = String(lvl); cb.checked = lvl >= 2; } }
+          }
         } else if (skill.startsWith('adj_')) {
           const input = document.getElementById(skill);
           if (input) input.value = sanitizeSignedValue(data.page1.skills[skill]);
@@ -3095,7 +2986,13 @@ function loadData() {
           if (adjInput && !Object.prototype.hasOwnProperty.call(data.page1.skills, `adj_${skillName}`)) {
             const ability = (typeof SKILL_ABILITY_MAP !== 'undefined') ? SKILL_ABILITY_MAP[skillName] : null;
             const abilityBonusValue = ability ? document.getElementById(`${ability}_bonus`)?.value : '+0';
-            const profChecked = document.getElementById(`prof_${skillName}`)?.checked || false;
+            // Read proficiency from the SAVED data (not the DOM), so this legacy
+            // reconstruction doesn't depend on key-iteration order. Prefer the new
+            // proflvl_ (>=2 = proficient) then fall back to the old prof_ bool.
+            const savedLvl = skillsData[`proflvl_${skillName}`];
+            const profChecked = (savedLvl !== undefined)
+              ? (parseInt(savedLvl, 10) || 0) >= 2
+              : !!skillsData[`prof_${skillName}`];
             const profBonusValue = document.getElementById('prof_bonus')?.value || '+0';
             const savedTotal = (typeof parseSignedNumber === 'function')
               ? parseSignedNumber(data.page1.skills[skill])
@@ -3480,27 +3377,19 @@ function loadData() {
     if (typeof renderRollLog === 'function') renderRollLog();
   }
   
-  // Conditions
-  if (data.conditions) {
-    const container = document.getElementById('conditions_container');
-    container.innerHTML = '';
-    
-    data.conditions.forEach(condition => {
-      const conditionId = Date.now();
-      const conditionHTML = `
-        <div class="condition ${condition.color}" id="condition_${conditionId}">
-          <div class="condition-header">
-            <span>${condition.name}</span>
-            <span class="condition-turns">${condition.turns}</span>
-          </div>
-          <div>${condition.effect}</div>
-          <button onclick="removeCondition('${conditionId}')" style="float:right; padding:2px 5px; margin-top:5px;">Remove</button>
-        </div>
-      `;
-      
-      container.insertAdjacentHTML('beforeend', conditionHTML);
-    });
-  }
+  // Conditions — rebuild the in-memory model, then render.
+  window.conditionsData = (Array.isArray(data.conditions) ? data.conditions : []).map((c, i) => ({
+    // Old saves lack a stable id; mint one. Strip a stale " turns" suffix that
+    // older versions saved into the turns field from the DOM scrape.
+    id: c.id || ('cond_legacy_' + Date.now() + '_' + i),
+    name: c.name || '',
+    effect: c.effect || '',
+    link: c.link || '',
+    turns: (c.turns || '').replace(/\s*turns\s*$/i, '').replace(/^indefinite$/i, ''),
+    color: c.color || 'red',
+    exhaustionLevel: typeof c.exhaustionLevel === 'number' ? c.exhaustionLevel : undefined
+  }));
+  if (typeof renderConditions === 'function') renderConditions();
 
   // Re-sync note sizing after data is loaded into textareas.
   setupNoteBoxHandlers();
@@ -3654,7 +3543,7 @@ function buildReadableSheet(data) {
 
 function exportData() {
   if (!currentCharacter) {
-    alert("No character loaded to export");
+    appToast('No character loaded to export', 'error');
     return;
   }
   
@@ -3662,7 +3551,7 @@ function exportData() {
   const character = characters.find(char => char.id === currentCharacter);
   
   if (!character) {
-    alert("Character not found");
+    appToast('Character not found', 'error');
     return;
   }
   
@@ -3688,6 +3577,9 @@ function exportData() {
     // Create export data with metadata
     const exportData = {
       version: "2.1",
+      // Data-shape version — bump only on a breaking change to the saved blob.
+      // Importers read this to migrate/reject; see CHARACTER_SCHEMA_VERSION.
+      schemaVersion: CHARACTER_SCHEMA_VERSION,
       exportDate: nowIso,
       createdAt: createdAt,
       character: characterData,
@@ -3744,7 +3636,7 @@ function exportData() {
     }
   } catch (error) {
     console.error('Export error:', error);
-    alert('Export failed. Please try again.');
+    appToast('Export failed. Please try again.', 'error');
   }
 }
 
@@ -3762,6 +3654,16 @@ function importData(event) {
       const markerIdx = raw.indexOf(IMPORT_JSON_MARKER);
       if (markerIdx !== -1) raw = raw.slice(markerIdx + IMPORT_JSON_MARKER.length);
       const importedData = JSON.parse(raw);
+
+      // Schema-version tolerance: files with no schemaVersion are older exports
+      // (fine — the loaders already migrate old shapes). A file from a NEWER schema
+      // than this app understands may have fields we can't read, so warn but still
+      // allow it (import is additive; unknown fields are ignored, not destructive).
+      const fileSchema = Number(importedData?.schemaVersion);
+      if (!isNaN(fileSchema) && fileSchema > CHARACTER_SCHEMA_VERSION) {
+        appToast(`This file is from a newer version (schema ${fileSchema}). Importing anyway — some data may not appear.`, 'info');
+      }
+
       // Support multiple import formats:
       // 1) Current export wrapper: { version, exportDate, character, characterInfo }
       // 2) Raw character payload: { characterInfo, page1, ... }
@@ -3784,40 +3686,54 @@ function importData(event) {
       const dataKeys = Object.keys(characterData);
       const hasRealSections = dataKeys.some(k => /^page\d|characterInfo|weapons|inventoryData|spellsData/.test(k));
       const looksEmpty = !hasName && !hasRealSections;
-      if (looksEmpty) {
-        const proceed = confirm(
-          'Warning: this file has no character data — it looks blank or corrupted (no name, stats, weapons, spells or inventory found).\n\n' +
-          'Importing it will create an empty character. Continue anyway?'
-        );
-        if (!proceed) { event.target.value = ''; return; }
-      }
 
-      const importedCreatedAt =
-        importedData?.createdAt ||
-        importedData?.characterInfo?.createdAt ||
-        new Date().toISOString();
-      
-      const newChar = {
-        id: generateCharacterId(),
-        name: charName,
-        createdAt: importedCreatedAt,
-        data: characterData
+      // Finishes the import once any confirmation has resolved.
+      const finishImport = () => {
+        try {
+          const importedCreatedAt =
+            importedData?.createdAt ||
+            importedData?.characterInfo?.createdAt ||
+            new Date().toISOString();
+
+          const newChar = {
+            id: generateCharacterId(),
+            name: charName,
+            createdAt: importedCreatedAt,
+            data: characterData
+          };
+
+          let characters = getStoredJSON('dndCharacters', []);
+          characters.push(newChar);
+          localStorage.setItem('dndCharacters', JSON.stringify(characters));
+
+          loadCharacterList();
+          loadSelectedCharacter(newChar.id);
+          window.setupSkillCalculationFields();
+          window.enforceAutoMathNumericInputs();
+
+          appToast(`Character "${charName}" imported successfully!`, 'success');
+        } catch (err) {
+          appToast('Error importing file: ' + err.message, 'error');
+        }
+        event.target.value = '';
       };
-      
-      let characters = getStoredJSON('dndCharacters', []);
-      characters.push(newChar);
-      localStorage.setItem('dndCharacters', JSON.stringify(characters));
-      
-      loadCharacterList();
-      loadSelectedCharacter(newChar.id);
-      window.setupSkillCalculationFields();
-      window.enforceAutoMathNumericInputs();
-      
-      alert(`Character "${charName}" imported successfully!`);
+
+      if (looksEmpty) {
+        appConfirm(
+          'Warning: this file has no character data — it looks blank or corrupted (no name, stats, weapons, spells or inventory found). ' +
+          'Importing it will create an empty character. Continue anyway?',
+          { confirmText: 'Import anyway' }
+        ).then(proceed => {
+          if (!proceed) { event.target.value = ''; return; }
+          finishImport();
+        });
+      } else {
+        finishImport();
+      }
     } catch (err) {
-      alert("Error importing file: " + err.message);
+      appToast('Error importing file: ' + err.message, 'error');
+      event.target.value = '';
     }
-    event.target.value = '';
   };
   reader.readAsText(file);
 }
@@ -3933,7 +3849,7 @@ function editWeapon(index) {
 
 function saveWeapon() {
   const name = document.getElementById('weapon_name').value.trim();
-  if (!name) { alert('Please enter a name for the weapon.'); return; }
+  if (!name) { appToast('Please enter a name for the weapon.', 'error'); return; }
 
   const weaponData = {
     name,
@@ -4295,7 +4211,7 @@ function addInventoryItem() {
   const containerId = document.getElementById('old_item_container').value;
 
   if (!name) {
-    alert("Please enter an item name");
+    appToast('Please enter an item name', 'error');
     return;
   }
 
@@ -4356,7 +4272,7 @@ function addStorageContainer() {
   const maxWeight = parseFloat(document.getElementById('storage_container_weight').value) || 0;
   
   if (!containerName) {
-    alert("Please enter a container name");
+    appToast('Please enter a container name', 'error');
     return;
   }
   
@@ -4473,6 +4389,47 @@ function escapeHtml(value) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
+
+// ========== IN-APP DIALOGS ==========
+// Thin app-wide wrappers over the themed dialog primitives in dm.js (dmToast /
+// dmModal), which render into a floating root on document.body and work anywhere —
+// not just the DM portal. They replace native alert()/confirm(), which break in
+// mobile Safari / installed-PWA mode. Each falls back to the native dialog if dm.js
+// hasn't loaded yet, so callers are always safe.
+
+// Non-blocking notification. type: 'info' | 'success' | 'error'
+function appToast(message, type) {
+  if (typeof dmToast === 'function') dmToast(message, type);
+  else alert(message);
+}
+
+// Message dialog with a single OK. Returns a Promise that resolves when dismissed.
+function appAlert(message, title) {
+  if (typeof dmModal === 'function') {
+    return dmModal({ title: title || '', message, confirmText: 'OK', cancelText: 'Close' });
+  }
+  alert(message);
+  return Promise.resolve(true);
+}
+
+// Yes/no confirmation. Returns a Promise<boolean> (true = confirmed).
+function appConfirm(message, opts) {
+  const o = opts || {};
+  if (typeof dmModal === 'function') {
+    return dmModal({
+      title: o.title || 'Please confirm',
+      message,
+      confirmText: o.confirmText || 'Confirm',
+      cancelText: o.cancelText || 'Cancel',
+      danger: o.danger !== false
+    }).then(r => r === true);
+  }
+  return Promise.resolve(confirm(message));
+}
+
+window.appToast = appToast;
+window.appAlert = appAlert;
+window.appConfirm = appConfirm;
 
 // ========== POPUP FUNCTIONS ==========
 function showPopup(id) {

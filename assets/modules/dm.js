@@ -56,7 +56,7 @@ function dmModal(opts) {
         ${o.message ? `<p class="dm-modal-message">${escapeHtml(o.message)}</p>` : ''}
         ${wantsInput ? `<input class="dm-modal-input" type="${escapeHtml(o.inputType || 'text')}" placeholder="${escapeHtml(o.placeholder || '')}" value="${escapeHtml(o.value || '')}">` : ''}
         <div class="dm-modal-actions">
-          <button class="dm-action-btn dm-modal-cancel">${escapeHtml(o.cancelText || 'Cancel')}</button>
+          ${o.cancelText === null ? '' : `<button class="dm-action-btn dm-modal-cancel">${escapeHtml(o.cancelText || 'Cancel')}</button>`}
           <button class="dm-action-btn ${o.danger ? 'dm-danger-btn' : 'accent-contrast-bg'} dm-modal-confirm">${escapeHtml(o.confirmText || 'OK')}</button>
         </div>
       </div>
@@ -73,7 +73,8 @@ function dmModal(opts) {
       resolve(result);
     };
 
-    backdrop.querySelector('.dm-modal-cancel').onclick = () => close(null);
+    const cancelBtn = backdrop.querySelector('.dm-modal-cancel');
+    if (cancelBtn) cancelBtn.onclick = () => close(null);
     backdrop.querySelector('.dm-modal-confirm').onclick = () =>
       close(wantsInput ? (input ? input.value : '') : true);
     backdrop.onclick = (e) => { if (e.target === backdrop) close(null); };
@@ -83,6 +84,48 @@ function dmModal(opts) {
     });
   });
 }
+
+// Multi-choice modal: like dmModal but with a vertical stack of N option buttons.
+// choices: [{ label, value, hint?, primary?, danger? }]. Resolves the chosen
+// value, or null if dismissed (backdrop / Escape / the optional Cancel).
+function dmChoiceModal(opts, choices) {
+  const o = opts || {};
+  const list = Array.isArray(choices) ? choices : [];
+  return new Promise(resolve => {
+    const root = dmEnsureModalRoot();
+    const backdrop = document.createElement('div');
+    backdrop.className = 'dm-modal-backdrop';
+    backdrop.innerHTML = `
+      <div class="dm-modal dm-choice-modal" role="dialog" aria-modal="true">
+        ${o.title ? `<h3 class="dm-modal-title">${escapeHtml(o.title)}</h3>` : ''}
+        ${o.message ? `<p class="dm-modal-message">${escapeHtml(o.message)}</p>` : ''}
+        <div class="dm-choice-list">
+          ${list.map((c, i) => `
+            <button class="dm-choice-btn ${c.primary ? 'dm-choice-primary' : ''} ${c.danger ? 'dm-danger-btn' : ''}" data-idx="${i}">
+              <span class="dm-choice-label">${escapeHtml(c.label)}</span>
+              ${c.hint ? `<span class="dm-choice-hint">${escapeHtml(c.hint)}</span>` : ''}
+            </button>`).join('')}
+        </div>
+        ${o.cancelText === null ? '' : `<button class="dm-action-btn dm-modal-cancel" style="margin-top:8px;">${escapeHtml(o.cancelText || 'Cancel')}</button>`}
+      </div>`;
+    root.appendChild(backdrop);
+    requestAnimationFrame(() => backdrop.classList.add('show'));
+
+    const close = (result) => {
+      backdrop.classList.remove('show');
+      setTimeout(() => backdrop.remove(), 200);
+      resolve(result);
+    };
+    backdrop.querySelectorAll('.dm-choice-btn').forEach(btn => {
+      btn.onclick = () => close(list[parseInt(btn.dataset.idx, 10)].value);
+    });
+    const cancelBtn = backdrop.querySelector('.dm-modal-cancel');
+    if (cancelBtn) cancelBtn.onclick = () => close(null);
+    backdrop.onclick = (e) => { if (e.target === backdrop) close(null); };
+    backdrop.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(null); });
+  });
+}
+window.dmChoiceModal = dmChoiceModal;
 
 function dmToast(message, type) {
   const root = dmEnsureModalRoot();
@@ -1064,8 +1107,9 @@ function dmRenderCombatants() {
         </span>
         <button class="dm-hp-btn" onclick="dmHeal(${c.id})" title="Heal">+</button>
       </div>` : (isPlayer ? `<div class="dm-combatant-hp dm-player-nohp"><button class="dm-hp-btn" onclick="dmAddPlayerHp(${c.id})" title="Track HP for this player">+ HP</button></div>` : '')}
+      ${isPlayer ? '' : `<button class="dm-icon-btn dm-elite-btn ${c._elite ? 'is-elite' : ''}" onclick="dmToggleElite(${c.id})" title="${c._elite ? 'Revert from elite' : 'Make elite (buff HP/AC/damage ×3)'}">★</button>`}
       <button class="dm-icon-btn dm-remove-btn" onclick="dmRemoveCombatant(${c.id})" title="Remove">✕</button>
-      ${expanded && c.statBlock ? `<div class="dm-combatant-card">${dmRenderStatBlockHtml(c.statBlock)}</div>` : ''}
+      ${expanded && c.statBlock ? `<div class="dm-combatant-card">${c._upscaled ? `<div class="dm-upscale-banner">${c._elite ? '★ Elite' : '⇧ Upscaled'} ×${c._upscaled.toFixed(2)} — the stat block below is the BASE creature. This one uses AC ${c.ac} / HP ${c.maxHp}, and roll its damage ×${(c._dmgMult || c._upscaled).toFixed(2)} (base was AC ${c._origAc} / HP ${c._origHp}).</div>` : ''}${dmRenderStatBlockHtml(c.statBlock)}</div>` : ''}
     </div>`;
   }).join('');
 }
@@ -1185,6 +1229,28 @@ function dmRemoveCombatant(id) {
   dmRenderCombatants();
   dmUpdateDifficultyMeter();
 }
+
+// Manual per-creature elite toggle (from the combatant list). ON = buff ×3
+// (HP/AC/damage, name gets "[Elite ★⇧]"); OFF = revert to the stored base stats.
+function dmToggleElite(id) {
+  const c = dmCombatants.find(x => x.id === id);
+  if (!c || c.isPlayer) return;
+  if (c._elite || c._upscaled) {
+    // Revert to base stats saved when it was buffed.
+    if (c._origHp != null) { c.maxHp = c._origHp; c.hp = Math.min(c.hp, c._origHp); }
+    if (c._origAc != null) c.ac = c._origAc;
+    if (c._baseXp != null) c.xp = c._baseXp;
+    c.name = dmNameStem(c.name);
+    delete c._elite; delete c._upscaled; delete c._dmgMult;
+    delete c._origHp; delete c._origAc; delete c._baseXp;
+  } else {
+    c._baseXp = c.xp; // remember for a clean revert
+    dmApplyBuff(c, DM_ELITE_MAX_FACTOR, true);
+  }
+  dmRenderCombatants();
+  dmUpdateDifficultyMeter();
+}
+window.dmToggleElite = dmToggleElite;
 
 function dmClearEncounter() {
   dmCombatants = [];
@@ -1357,7 +1423,35 @@ const DM_ENCOUNTER_THEMES = {
   elementals:    { label: 'Elementals', types: ['elemental'], keywords: ['elemental','mephit','genie','djinn','efreeti','salamander','azer','gargoyle','magmin','water','fire','air','earth','invisible stalker'] },
   casterWarband: { label: 'Caster + Warband (combo)', types: [], keywords: ['mage','cult','priest','acolyte','warlock','necromancer','goblin','hobgoblin','bandit','skeleton','zombie','guard','thug','cultist'] },
   huntPack:      { label: 'Hunting Pack (combo)', types: ['beast','monstrosity'], keywords: ['wolf','worg','hyena','jackal','panther','raptor','hunter','pack','dire','sabre'] },
-  bossMinions:   { label: 'Boss + Minions', types: [], keywords: [] } // special: one strong + several weak
+  bossMinions:   { label: 'Boss + Minions', types: [], keywords: [] }, // special: one strong + several weak
+
+  // ── Human & faction groups (keyword-only so they DON'T pull in goblins/orcs,
+  //    which share the 'humanoid' type). "Pure humans" = named human NPC roles. ──
+  humansCommon:  { label: 'Pure Humans (townsfolk & thugs)', types: [], keywords: ['commoner','guard','bandit','thug','scout','tribal warrior','cultist','acolyte','noble','archer','spy','berserker'] },
+  mercenaries:   { label: 'Mercenary Company', types: [], keywords: ['veteran','knight','gladiator','captain','guard','archer','berserker','soldier','swashbuckler','champion','scout','thug','bandit captain','warlord'] },
+  cultists:      { label: 'Cult of Fanatics', types: [], keywords: ['cultist','cult fanatic','fanatic','priest','acolyte','dark','initiate','warlock','necromancer','mage','deathlock'] },
+  assassinsSpies:{ label: 'Assassins & Spies', types: [], keywords: ['assassin','spy','scout','mage','thug','bandit captain','master thief','archer','swashbuckler','bandit'] },
+  nobleCourt:    { label: 'Noble Court & Guards', types: [], keywords: ['noble','knight','guard','mage','captain','veteran','champion','squire','archer','priest','commoner'] },
+  pirates:       { label: 'Pirates & Raiders', types: [], keywords: ['bandit','thug','pirate','captain','veteran','scout','berserker','swashbuckler','reaver','archer','bandit captain'] },
+  tribalWarband: { label: 'Tribal Warband', types: [], keywords: ['tribal','berserker','warrior','shaman','druid','scout','chief','hunter','totem','commoner','archer'] },
+  banditGang:    { label: 'Bandit Gang / Hideout', types: [], keywords: ['bandit','thug','scout','spy','bandit captain','berserker','archer','cutthroat','veteran','guard','commoner','mage'] },
+
+  // ── Broad type buckets ──
+  nonHumanoid:   { label: 'Any Non-Humanoid', types: [], keywords: [] }, // special: excludes 'humanoid'
+  monstrosities: { label: 'Monstrosities', types: ['monstrosity'], keywords: ['chimera','manticore','griffon','hydra','basilisk','cockatrice','owlbear','displacer','bulette','roper','harpy','minotaur','yeti'] },
+  plants:        { label: 'Plants & Fungi', types: ['plant'], keywords: ['shrieker','violet fungus','shambling','myconid','treant','awakened','vine','twig','needle','gas spore','quickling'] },
+  swarms:        { label: 'Swarms', types: [], keywords: ['swarm'] },
+  celestials:    { label: 'Celestials', types: ['celestial'], keywords: ['angel','deva','planetar','solar','pegasus','unicorn','couatl','ki-rin','empyrean'] },
+  lycanthropes:  { label: 'Lycanthropes / Shapechangers', types: [], keywords: ['were','werewolf','wererat','werebear','weretiger','wereboar','shapechanger','doppelganger','lycanthrope'] },
+
+  // ── Split fiends by law/chaos ──
+  demons:        { label: 'Demons (chaotic)', types: [], keywords: ['demon','dretch','quasit','vrock','hezrou','glabrezu','balor','marilith','manes','shadow demon','barlgura'] },
+  devils:        { label: 'Devils (lawful)', types: [], keywords: ['devil','imp','lemure','bearded devil','barbed devil','chain devil','bone devil','horned devil','erinyes','pit fiend','ice devil','spined devil'] },
+
+  // ── More combos ──
+  mixedWarband:  { label: 'Mixed Warband (combo)', types: [], keywords: ['goblin','hobgoblin','orc','bandit','wolf','worg','ogre','bugbear','kobold','guard','thug'] },
+  undeadHorde:   { label: 'Undead Horde (combo)', types: ['undead'], keywords: ['zombie','skeleton','ghoul','ghast','wight','shadow','specter','crawling'] },
+  beastHandlers: { label: 'Beasts + Handlers (combo)', types: [], keywords: ['wolf','worg','mastiff','bear','boar','goblin','hobgoblin','scout','druid','beastmaster','handler','tribal','hunter'] }
 };
 
 let dmMonsterPool = []; // cached, normalised: { name, type, cr, xp, hp, ac }
@@ -1396,6 +1490,10 @@ function dmNormaliseMonster(m) {
 
 function dmMonstersForTheme(themeKey) {
   const theme = DM_ENCOUNTER_THEMES[themeKey] || DM_ENCOUNTER_THEMES.random;
+  // Special: "Any Non-Humanoid" = everything whose type isn't humanoid.
+  if (themeKey === 'nonHumanoid') {
+    return dmMonsterPool.filter(m => m.type && m.type !== 'humanoid');
+  }
   if (!theme.types.length && !theme.keywords.length) return dmMonsterPool.slice();
   return dmMonsterPool.filter(m => {
     const byType = theme.types.includes(m.type);
@@ -1418,7 +1516,16 @@ const DM_ENCOUNTER_SHAPES = {
   vanguard:    { label: 'Vanguard + Archers', desc: 'a front line shielding ranged attackers' },
   twinThreat:  { label: 'Twin Threat (duo)', desc: 'two dangerous leaders fighting as a pair' },
   duel:        { label: 'Rival Duel', desc: 'a single rival matched to a champion PC' },
-  siege:       { label: 'Siege / Horde', desc: 'a relentless horde pressing a position' }
+  siege:       { label: 'Siege / Horde', desc: 'a relentless horde pressing a position' },
+  // ── New shapes ──
+  gang:        { label: 'Gang / Rabble (many weak)', desc: 'a large crowd of weak, varied foes' },
+  bodyguards:  { label: 'Protect the VIP', desc: 'a fragile high-value target ringed by tough guards' },
+  artillery:   { label: 'Artillery Battery', desc: 'ranged attackers behind a thin screen' },
+  pincer:      { label: 'Pincer (two fronts)', desc: 'two groups striking from opposite sides' },
+  escalating:  { label: 'Escalating Waves', desc: 'waves that grow stronger, the leader arriving last' },
+  skirmishers: { label: 'Skirmishers (fast & fragile)', desc: 'quick, lightly-armoured hit-and-run foes' },
+  loneHunter:  { label: 'Lone Hunter + Lures', desc: 'one predator using weak creatures as bait' },
+  standoff:    { label: 'Standoff (tense trigger)', desc: 'both sides already in position — the first move sets it off' }
 };
 
 // Fill a sub-budget with monsters, biased 'strong' | 'weak' | 'mixed'. Used by
@@ -1491,6 +1598,91 @@ function dmBuildShapedEncounter(pool, targetAdjXp, partySize, shape, countTarget
     }
     return out;
   }
+
+  // Gang / Rabble: a LOT of weak, varied bodies. Force a high count (~party×3)
+  // of the cheapest half of the pool, so a bandit hideout reads as bandits &
+  // thugs, not two veterans. Floor-guarantee below tops it up if under budget.
+  if (shape === 'gang') {
+    const cheap = sorted.slice(0, Math.max(1, Math.ceil(sorted.length * 0.55)));
+    const want = Math.max(6, Math.round(partySize * 3));
+    const per = targetAdjXp / want;
+    const out = [];
+    for (let i = 0; i < want; i++) {
+      let cand = cheap.filter(m => m.xp <= per * 1.6);
+      if (!cand.length) cand = [cheap[0]];
+      out.push(dmPick(cand)); // random within the cheap band → variety
+    }
+    return out;
+  }
+
+  // Protect the VIP: one fragile-but-valuable target (lower XP, tagged 'vip')
+  // plus a ring of tougher guards taking the bulk of the budget.
+  if (shape === 'bodyguards') {
+    const vipBudget = Math.round(targetAdjXp * 0.28);
+    const vip = nearest(vipBudget, sorted);
+    const guards = dmFillToBudget(sorted, targetAdjXp - vip.xp, 'strong');
+    return [{ ...vip, role: 'vip' }].concat(guards.map(p => ({ ...p, role: 'guard' })));
+  }
+
+  // Artillery Battery: mostly ranged/caster back-liners (~70% budget on the
+  // stronger half) with a thin screen up front (~30% weak). Inverse of vanguard.
+  if (shape === 'artillery') {
+    const back  = dmFillToBudget(sorted, Math.round(targetAdjXp * 0.70), 'strong');
+    const front = dmFillToBudget(sorted, targetAdjXp - back.reduce((s, p) => s + p.xp, 0), 'weak');
+    return back.map(p => ({ ...p, role: 'artillery' })).concat(front.map(p => ({ ...p, role: 'screen' })));
+  }
+
+  // Pincer: two roughly-equal groups, tagged flank A / flank B, meant to be
+  // placed on opposite sides of the party.
+  if (shape === 'pincer') {
+    const a = dmFillToBudget(sorted, Math.round(targetAdjXp * 0.5), 'mixed');
+    const b = dmFillToBudget(sorted, targetAdjXp - a.reduce((s, p) => s + p.xp, 0), 'mixed');
+    return a.map(p => ({ ...p, flank: 'A' })).concat(b.map(p => ({ ...p, flank: 'B' })));
+  }
+
+  // Escalating Waves: like gauntlet but each wave is STRONGER than the last, the
+  // final wave carrying the leader. Budget split rising 20% / 35% / 45%.
+  if (shape === 'escalating') {
+    const three = targetAdjXp > 3000;
+    const splits = three ? [0.20, 0.35, 0.45] : [0.35, 0.65];
+    const biases = three ? ['weak', 'mixed', 'strong'] : ['weak', 'strong'];
+    let out = [], spent = 0;
+    splits.forEach((frac, i) => {
+      const budget = (i === splits.length - 1) ? (targetAdjXp - spent) : Math.round(targetAdjXp * frac);
+      const wave = dmFillToBudget(sorted, budget, biases[i]);
+      spent += wave.reduce((s, p) => s + p.xp, 0);
+      out = out.concat(wave.map(p => ({ ...p, wave: i + 1 })));
+    });
+    return out;
+  }
+
+  // Skirmishers: many fast, fragile foes. Filter the pool toward low-HP/high-Dex
+  // creatures, then fill with a weak bias and a higher-than-normal count.
+  if (shape === 'skirmishers') {
+    const nimble = sorted.filter(m => (m.hp || 999) <= 40 && (m.dex == null || m.dex >= 12));
+    const usePool = nimble.length >= 3 ? nimble.slice().sort((a, b) => a.xp - b.xp) : sorted;
+    const want = Math.max(4, Math.round(partySize * 1.5));
+    const per = targetAdjXp / want;
+    const out = [];
+    for (let i = 0; i < want; i++) {
+      let cand = usePool.filter(m => m.xp <= per * 1.5);
+      if (!cand.length) cand = [usePool[0]];
+      out.push(dmPick(cand));
+    }
+    return out.map(p => ({ ...p, role: 'skirmisher' }));
+  }
+
+  // Lone Hunter + Lures: one strong predator (tagged 'hunter') plus 1-2 weak
+  // creatures used as bait (tagged 'lure'). Like a boss but the lures are cheap.
+  if (shape === 'loneHunter') {
+    const hunter = nearest(Math.round(targetAdjXp * 0.78), sorted);
+    const lures = dmFillToBudget(sorted, Math.max(lo, targetAdjXp - hunter.xp), 'weak').slice(0, 2);
+    return [{ ...hunter, role: 'hunter' }].concat(lures.map(p => ({ ...p, role: 'lure' })));
+  }
+
+  // Standoff: composition is a balanced mix; the flavor (already in position,
+  // first move triggers it) lives in the intro/tips. Fall through to balanced.
+  // (no early return — handled by the budget-led path below with balanced counts)
 
   // EXACT COUNT requested: always produce N creatures, but they MUST sum to the
   // tier target. We seed N around the per-creature share, then upgrade/downgrade
@@ -1714,15 +1906,20 @@ async function dmGenerateEncounter() {
   picks.forEach((p, i) => {
     seen[p.name] = (seen[p.name] || 0) + 1;
     let label = totals[p.name] > 1 ? `${p.name} ${seen[p.name]}` : p.name;
-    // Tag wave / role foes so the DM can run the tactical shapes at a glance.
+    // Tag wave / role / flank foes so the DM can run the tactical shapes at a glance.
+    const ROLE_TAGS = {
+      front: 'Front', back: 'Back', vip: 'VIP', guard: 'Guard',
+      artillery: 'Artillery', screen: 'Screen', hunter: 'Hunter',
+      lure: 'Lure', skirmisher: 'Skirmisher'
+    };
     if (p.wave) label += ` [Wave ${p.wave}]`;
-    else if (p.role === 'front') label += ' [Front]';
-    else if (p.role === 'back') label += ' [Back]';
+    else if (p.flank) label += ` [Flank ${p.flank}]`;
+    else if (p.role && ROLE_TAGS[p.role]) label += ` [${ROLE_TAGS[p.role]}]`;
     const c = {
       id: Date.now() + i, name: label, maxHp: p.hp, hp: p.hp, ac: p.ac,
       initiative: rnd(1, 20) + dmModNum(p.dex), cr: p.cr, xp: p.xp, isMonster: true,
       slug: p.slug || null, dex: (typeof p.dex === 'number') ? p.dex : null,
-      statBlock: p.raw || null, wave: p.wave || null, role: p.role || null
+      statBlock: p.raw || null, wave: p.wave || null, role: p.role || null, flank: p.flank || null
     };
     dmCombatants.push(c);
     added.push(c);
@@ -1735,13 +1932,15 @@ async function dmGenerateEncounter() {
   // Build + show the encounter card.
   dmBuildEncounterCard({ theme: themeKey, shape: effShape, difficulty, rating: r });
 
-  // If the result didn't reach the tier you picked, the monster pool for this
-  // theme + creature count simply can't hit that budget — say so plainly instead
-  // of silently rating lower.
+  // If the result didn't reach the tier you picked, the pool is too weak at this
+  // count. Offer to upscale (buff ≤3× + add bodies to a sane cap). If even that
+  // can't reach it, present a helper menu of things that WOULD work.
   const gotTier = DM_DIFFICULTY_TIERS.indexOf(r.cls);
   const wantTier = DM_DIFFICULTY_TIERS.indexOf(difficulty);
   if (gotTier < wantTier) {
-    setStatus(`Best fit: ${picks.length} creature${picks.length === 1 ? '' : 's'} rated ${r.label} (${r.adjusted.toLocaleString()} XP). This theme's monsters aren't strong enough to reach ${DM_DIFFICULTY_LABELS[difficulty]} at ${picks.length} creatures — try fewer creatures, a tougher theme, or the “Elite” shape.`, 'error');
+    // Under the chosen difficulty → run the escalation path (elites → ask troops
+    // → change-theme? → final menu). Handles its own popups + status.
+    await dmResolveUnderTarget({ themeKey, effShape, difficulty, picks, poolMax, partySize, setStatus });
   } else {
     setStatus(`Generated ${picks.length} creature${picks.length === 1 ? '' : 's'} — rated ${r.label} (${r.adjusted.toLocaleString()} XP).`, 'success');
   }
@@ -1753,38 +1952,292 @@ async function dmGenerateEncounter() {
 
 window.dmGenerateEncounter = dmGenerateEncounter;
 
+// Human-readable theme label for messages.
+function themeLabel(themeKey) {
+  const t = DM_ENCOUNTER_THEMES[themeKey];
+  return t ? t.label : 'chosen';
+}
+
+// Shared tuning for the "make it reach the difficulty" system.
+const DM_ELITE_MAX_FACTOR = 3;   // an elite can be buffed at most ×3
+const DM_ELITE_ROSTER_FRAC = 1/3; // at most 1/3 of the roster may be elites
+const DM_MAX_CREATURES = 20;      // never pile bodies past this total
+
+const dmSumMonsterXp = () => dmCombatants.filter(c => c.isMonster && c.xp > 0).reduce((s, c) => s + c.xp, 0);
+const dmMonsterCount = () => dmCombatants.filter(c => c.isMonster && c.xp > 0).length;
+const dmNameStem = (nm) => nm.replace(/\s*\[Elite ★⇧\]\s*$/,'').replace(/\s*\d+\s*⇧?\s*$/,'').replace(/\s*⇧\s*$/,'').trim();
+
+// Buff one combatant ×f (HP/AC/damage + tags). elite → "[Elite ★⇧]", else "⇧".
+function dmApplyBuff(c, f, elite) {
+  if (c._baseXp == null) c._baseXp = c.xp; // remember pre-buff XP for clean revert
+  c.xp = Math.round(c.xp * f);
+  c._origHp = c.maxHp; c._origAc = c.ac;
+  c.maxHp = Math.max(1, Math.round((c.maxHp || 1) * f));
+  c.hp = c.maxHp;
+  c.ac = (c.ac || 10) + Math.min(4, Math.floor((f - 1) / 0.5));
+  c._upscaled = f;
+  c._dmgMult = f;
+  c._elite = !!elite;
+  if (elite) { if (!/Elite ★⇧/.test(c.name)) c.name += ' [Elite ★⇧]'; }
+  else if (!/⇧/.test(c.name)) c.name += ' ⇧';
+}
+
+// STEP 1 — ELITES FIRST. Promote creatures to elites (each ×≤3) to close the gap,
+// but never let elites exceed 1/3 of the roster. Returns { reached, eliteCount,
+// eliteCap (true if the 1/3 cap stopped us), finalXp, targetXp }.
+function dmUpscaleEncounterToTier(tier) {
+  const targetXp = dmTierTargetXp(tier);
+  let currentXp = dmSumMonsterXp();
+  const total = dmMonsterCount();
+  if (!total || targetXp <= currentXp) {
+    return { reached: currentXp >= targetXp, eliteCount: 0, eliteCap: false, finalXp: currentXp, targetXp, count: total };
+  }
+
+  const maxElites = Math.max(1, Math.floor(total * DM_ELITE_ROSTER_FRAC));
+  const gap = targetXp - currentXp;
+
+  // Pick the biggest un-buffed creatures as elite candidates (elites = the meanest).
+  const cands = dmCombatants
+    .filter(c => c.isMonster && c.xp > 0 && !c._upscaled)
+    .sort((a, b) => b.xp - a.xp);
+  if (!cands.length) {
+    return { reached: false, eliteCount: 0, eliteCap: true, finalXp: currentXp, targetXp, count: total };
+  }
+
+  // Work out how MANY elites we need, adding one at a time, but buff them EVENLY:
+  // find the smallest k (≤maxElites) whose top-k creatures, all buffed to the same
+  // factor f (≤3×), close the gap. This gives a believable spread of leaders
+  // instead of one lopsided super-elite.
+  let chosen = [], eliteFactor = 1, eliteCap = false;
+  for (let k = 1; k <= maxElites; k++) {
+    const top = cands.slice(0, k);
+    const topXp = top.reduce((s, c) => s + c.xp, 0);
+    const fNeeded = (topXp + gap) / Math.max(1, topXp); // even factor across these k
+    if (fNeeded <= DM_ELITE_MAX_FACTOR) { chosen = top; eliteFactor = fNeeded; break; }
+    // Not enough with k; if this is the last allowed k, use it at the ×3 cap.
+    if (k === maxElites || k === cands.length) { chosen = top; eliteFactor = DM_ELITE_MAX_FACTOR; eliteCap = true; }
+  }
+
+  chosen.forEach(c => dmApplyBuff(c, eliteFactor, true));
+  currentXp = dmSumMonsterXp();
+
+  dmRenderCombatants();
+  dmUpdateDifficultyMeter();
+  return {
+    reached: currentXp >= targetXp * 0.98,
+    eliteCount: chosen.length, eliteFactor, eliteCap, finalXp: currentXp, targetXp, count: dmMonsterCount()
+  };
+}
+
+// STEP 2 — ADD TROOPS. Clone the cheapest existing foes (more bodies) up to the
+// creature cap. Returns { reached, added, finalXp, targetXp, count }.
+function dmAddTroopsToTier(tier) {
+  const targetXp = dmTierTargetXp(tier);
+  let currentXp = dmSumMonsterXp();
+  let added = 0, guard = 0;
+  while (currentXp < targetXp && guard++ < 60) {
+    if (dmMonsterCount() >= DM_MAX_CREATURES) break;
+    const base = dmCombatants.filter(c => c.isMonster && c.xp > 0).sort((a, b) => a.xp - b.xp)[0];
+    if (!base) break;
+    const stem = dmNameStem(base.name);
+    const n = dmCombatants.filter(c => c.isMonster && dmNameStem(c.name) === stem).length + 1;
+    const clone = { ...base, id: Date.now() + guard, hp: base.maxHp,
+      initiative: rnd(1, 20) + dmModNum(base.dex),
+      name: `${stem} ${n}${base._upscaled ? (base._elite ? ' [Elite ★⇧]' : ' ⇧') : ''}` };
+    dmCombatants.push(clone);
+    currentXp += clone.xp; added++;
+  }
+  dmRenderCombatants();
+  dmUpdateDifficultyMeter();
+  return { reached: currentXp >= targetXp * 0.98, added, finalXp: currentXp, targetXp, count: dmMonsterCount() };
+}
+
+// STEP (offer) — BORROW A TOUGHER CREATURE. Pull the single strongest creature
+// that fits the remaining gap from a thematically-related tougher pool, add it as
+// a distinct "borrowed" anchor. Async (may fetch the theme pool). Returns the
+// borrowed creature's name, or null if none suitable / offline.
+async function dmBorrowToughCreature(themeKey, tier) {
+  const targetXp = dmTierTargetXp(tier);
+  const gap = Math.max(0, targetXp - dmSumMonsterXp());
+  if (gap <= 0) return null;
+
+  // Where each theme borrows its muscle from (fallback: giants, then dragons).
+  const borrowFrom = {
+    bandits:'fighters', banditGang:'fighters', humansCommon:'fighters', mercenaries:'giants',
+    cultists:'fiends', assassinsSpies:'fighters', nobleCourt:'giants', pirates:'giants',
+    tribalWarband:'giants', goblinoids:'giants', beasts:'monstrosities', huntPack:'monstrosities',
+    beastHandlers:'monstrosities', undead:'fiends', undeadHorde:'fiends', constructs:'giants',
+    fey:'fiends', plants:'monstrosities', oozesVermin:'aberrations', swarms:'monstrosities',
+    fighters:'giants', casters:'fiends', casterWarband:'fiends'
+  };
+  const sourceKey = borrowFrom[themeKey] || 'giants';
+
+  let pool;
+  try { await dmEnsureMonsterPool(); pool = dmMonstersForTheme(sourceKey); }
+  catch (e) { return null; }
+  if (!pool || !pool.length) return null;
+
+  // Strongest creature that isn't wildly over the gap (allow up to 1.5× gap so a
+  // single anchor can carry most of it); else the biggest available.
+  const sorted = pool.slice().sort((a, b) => a.xp - b.xp);
+  const fit = sorted.filter(m => m.xp <= gap * 1.5);
+  const chosen = (fit.length ? fit[fit.length - 1] : sorted[sorted.length - 1]);
+  if (!chosen) return null;
+
+  dmCombatants.push({
+    id: Date.now(), name: `${chosen.name} [Borrowed ⚔]`, maxHp: chosen.hp, hp: chosen.hp,
+    ac: chosen.ac, initiative: rnd(1, 20) + dmModNum(chosen.dex), cr: chosen.cr, xp: chosen.xp,
+    isMonster: true, slug: chosen.slug || null, dex: (typeof chosen.dex === 'number') ? chosen.dex : null,
+    statBlock: chosen.raw || null, _borrowed: true, _borrowedFrom: DM_ENCOUNTER_THEMES[sourceKey]?.label || sourceKey
+  });
+  dmRenderCombatants();
+  dmUpdateDifficultyMeter();
+  return chosen.name;
+}
+
+// Themes with genuinely high-CR pools, used to suggest a stronger alternative.
+const DM_STRONG_THEMES = ['giants','dragons','fiends','devils','demons','aberrations','undead','celestials','elementals'];
+
+// Re-rate the live combatants and refresh the encounter card. Returns the rating.
+function dmReRateAndCard(themeKey, effShape, difficulty) {
+  const rating = dmRateEncounter(dmCombatants.filter(c => c.isMonster && c.xp > 0).map(c => c.xp));
+  dmBuildEncounterCard({ theme: themeKey, shape: effShape, difficulty, rating });
+  return rating;
+}
+
+// FLAT "one smart menu" path (v2). Philosophy: do the free win automatically
+// (elites-first, evenly spread), then — only if still short — show ONE menu with
+// every remaining lever and what each achieves. The menu RE-OPENS after each
+// action so the DM can stack fixes (borrow, then troops…) until happy. No chain
+// of yes/no gates; the quick generator stays quick.
+async function dmResolveUnderTarget(ctx) {
+  const { themeKey, effShape, difficulty, poolMax, partySize, setStatus } = ctx;
+  const label = DM_DIFFICULTY_LABELS[difficulty];
+  const reRate = () => dmReRateAndCard(themeKey, effShape, difficulty);
+
+  // ── Automatic: elites first (evenly spread, ≤3×, ≤1/3 of roster). ──
+  const el = dmUpscaleEncounterToTier(difficulty);
+  let r = reRate();
+  if (el.reached) {
+    setStatus(`Promoted ${el.eliteCount} to elite${el.eliteCount === 1 ? '' : 's'} (★, ×${el.eliteFactor.toFixed(1)}) — now ${r.label} (${r.adjusted.toLocaleString()} XP) at ${el.count} creatures.`, 'success');
+    return;
+  }
+
+  // ── Still short → ONE menu, re-opened until the DM is satisfied. ──
+  while (true) {
+    const targetXp = dmTierTargetXp(difficulty);
+    const shortBy = Math.max(0, targetXp - r.adjusted);
+    const atCap = dmMonsterCount() >= DM_MAX_CREATURES;
+
+    const choices = [];
+    choices.push({ label: `Keep it as ${r.label}`, hint: `${r.adjusted.toLocaleString()} XP — accept this as the fight`, value: 'accept', primary: true });
+    choices.push({ label: 'Borrow a tougher creature', hint: `add one strong anchor from a related theme (best single jump toward ${label})`, value: 'borrow' });
+    if (!atCap) choices.push({ label: 'Add more troops', hint: `clone the weakest foes toward ${label} (up to ${DM_MAX_CREATURES})`, value: 'troops' });
+    choices.push({ label: 'Change theme / battle type', hint: `pick a tougher pool and regenerate ${label} from scratch`, value: 'change' });
+    choices.push({ label: 'Build my own instead →', hint: 'open the builder with these foes as a starting point', value: 'build' });
+
+    const pick = await dmChoiceModal({
+      title: `${label} needs more — ${themeLabel(themeKey)} reaches ${r.label}`,
+      message: `Even with ${el.eliteCount} elite${el.eliteCount === 1 ? '' : 's'} (★), this group is ${shortBy.toLocaleString()} XP short of ${label} (${r.adjusted.toLocaleString()} / ${targetXp.toLocaleString()}). Stack any of these until it's where you want it:`,
+      cancelText: 'Close'
+    }, choices);
+
+    if (pick === 'borrow') {
+      const before = r.adjusted;
+      const name = await dmBorrowToughCreature(themeKey, difficulty);
+      r = reRate();
+      if (!name) { setStatus(`Couldn't borrow a creature (offline?). Still ${r.label}.`, 'error'); }
+      else {
+        const over = r.adjusted > dmTierCeilingXp(difficulty) ? ` (nudged past ${label} into ${r.label})` : '';
+        setStatus(`Added ${name} (borrowed ⚔) — now ${r.label} (${r.adjusted.toLocaleString()} XP)${over}.`, 'success');
+      }
+      if (r.adjusted >= dmTierTargetXp(difficulty)) return; // reached — done
+      continue; // re-open menu to stack more
+    }
+    if (pick === 'troops') {
+      const tr = dmAddTroopsToTier(difficulty);
+      r = reRate();
+      setStatus(`Added ${tr.added} more — now ${r.label} (${r.adjusted.toLocaleString()} XP) at ${tr.count} creatures.`, tr.reached ? 'success' : 'info');
+      if (tr.reached) return;
+      continue;
+    }
+    if (pick === 'change') {
+      const themeSel = document.getElementById('dmGenTheme');
+      if (themeSel && !DM_STRONG_THEMES.includes(themeKey)) themeSel.value = DM_STRONG_THEMES[0];
+      dmSetMode('encounter', 'generate');
+      setStatus(`Pick a theme/battle type and press Generate to try ${label} again.`, 'info');
+      return;
+    }
+    if (pick === 'build') {
+      dmSetMode('encounter', 'build');
+      setStatus('Opened the builder — tweak or add to these foes to design your own.', 'info');
+      return;
+    }
+    // accept / close
+    setStatus(`Kept as ${r.label} (${r.adjusted.toLocaleString()} XP) — the best this group can do at a sensible size.`, 'info');
+    return;
+  }
+}
+
 // ─── Encounter card (intro / tips / initiative / notes) ────────────────────
 
 // Intro openers keyed by theme — read-aloud-style "how it started".
 const DM_ENCOUNTER_INTROS = {
-  random:     ['As the party rounds a bend, the threat is suddenly upon them.','A noise — too late. They are not alone.','The air shifts, and danger steps into the open.'],
-  bandits:    ['"That\'s far enough." Figures rise from cover, weapons drawn, blocking the road.','A whistle cuts the air — the ambush is sprung, blades flashing from the treeline.','"Coin or blood, travellers. Your choice." The cutthroats close in.'],
-  goblinoids: ['Crude horns blare from the rocks above as the warband charges down.','Yellow eyes blink awake in the dark, and the chittering begins.','A rain of crude arrows announces the raiders before they even appear.'],
-  beasts:     ['A low growl rolls through the brush — then the pack breaks cover, hungry.','The ground trembles. Whatever lives here has found the intruders.','Snapping branches, then teeth — the wild does not welcome trespassers.'],
-  undead:     ['The cold deepens. Dead hands claw up through the earth.','A dirge of moans echoes as the restless dead shamble into the light.','The grave does not hold here. Something is rising.'],
-  fiends:     ['The stench of brimstone arrives first, then the laughter from below.','Reality buckles as the fiends tear their way into the world.','Shadows lengthen, sprout claws, and lunge.'],
-  casters:    ['A cold voice speaks a word of power, and the air ignites with magic.','Robed figures look up from their ritual — the intrusion will be punished.','"You should not have come." Arcane light gathers around their hands.'],
-  fighters:   ['Steel rings against steel as the warriors form a line and advance.','"Hold the line!" The brutes lower their shoulders and charge.','Veterans, scarred and ready, move to cut off every escape.'],
-  aberrations:['The angles of the room feel wrong, and then something that should not exist unfolds into view.','A pressure builds behind the eyes — whispers, promises, and then the horror reveals itself.','Reality thins like wet paper, and what waits on the other side reaches through.'],
-  dragons:    ['A shadow swallows the sun; leathery wings beat once, and the reptilian eyes fix upon the party.','The heat arrives before the roar — scales the colour of old coins glinting in the dark.','"Little thieves." The voice is vast, amused, and utterly without mercy.'],
-  giants:     ['The ground quakes with each footfall long before the giant crests the ridge.','A boulder arcs out of the sky — the first warning that something enormous has noticed them.','It has to stoop to see them, and it does not like what it sees.'],
-  fey:        ['Laughter rings from nowhere and everywhere; the woodland has decided the party are trespassers.','Flowers turn to watch. A voice, sweet and cruel, offers a bargain no one asked for.','The path loops back on itself, and the fair folk step out of the crooked light.'],
-  constructs: ['Stone grinds on stone as the sentinels wake, eyes lighting with cold purpose.','No breath, no fear — just the relentless clank of things built only to end intruders.','The guardians were told to let no one pass. They have never once failed.'],
-  oozesVermin:['The floor glistens — and then flows, reaching hungrily toward the nearest boot.','A dry rustle becomes a tide of skittering legs pouring from every crack.','Something drips from the ceiling, hisses where it lands, and begins to spread.'],
-  elementals: ['The air itself turns hostile — flame, frost, or howling wind given furious shape.','Raw elemental force tears loose from the world and rounds on the intruders.','The ground, the fire, the very wind rise up as one and attack.'],
-  casterWarband:['A robed figure lifts a hand and the rabble at its back howls forward on command.','"Protect the ritual!" — and the warband throws itself between you and its master.','Spellfire gathers behind a wall of expendable bodies.'],
-  huntPack:   ['They\'ve been tracking the party for miles. Now the circle closes and the hunt begins.','Low shapes fan out through the grass — this pack has done this many times before.','A single yip, answered from all sides. The ambush was set hours ago.'],
-  bossMinions:['The lackeys part, and their master steps forward with a terrible smile.','"Kill them," the leader says, almost bored, as the minions surge ahead.','A commanding presence raises one hand — and the swarm obeys.']
+  random:     ['As the party rounds a bend, the threat is suddenly upon them.','A noise — too late. They are not alone.','The air shifts, and danger steps into the open.','Something was waiting here, and now it moves.','The quiet breaks all at once, and there is no time to think.','One heartbeat the road is empty; the next, it is not.'],
+  bandits:    ['"That\'s far enough." Figures rise from cover, weapons drawn, blocking the road.','A whistle cuts the air — the ambush is sprung, blades flashing from the treeline.','"Coin or blood, travellers. Your choice." The cutthroats close in.','A rope snaps taut across the path, and laughter drifts from the rocks above.','"Well, well. Look what wandered into our stretch of road."','They step from the shadows on every side — no demands this time, just knives.'],
+  goblinoids: ['Crude horns blare from the rocks above as the warband charges down.','Yellow eyes blink awake in the dark, and the chittering begins.','A rain of crude arrows announces the raiders before they even appear.','Shrieking and cackling, the pack pours out of every crevice at once.','Something small and vicious hurls a rock, and the warcry goes up.','The stench hits first; then the horde boils up out of the tunnels.'],
+  beasts:     ['A low growl rolls through the brush — then the pack breaks cover, hungry.','The ground trembles. Whatever lives here has found the intruders.','Snapping branches, then teeth — the wild does not welcome trespassers.','Eyes glint at the edge of the firelight, circling, patient, closing.','A shriek from the canopy, and the predators drop into the open.','The herd was never the danger. What hunts the herd is.'],
+  undead:     ['The cold deepens. Dead hands claw up through the earth.','A dirge of moans echoes as the restless dead shamble into the light.','The grave does not hold here. Something is rising.','The corpses you passed a moment ago are no longer where you left them.','A wet, dragging sound in the dark — and then many more, answering.','The dead do not charge. They simply come, and they do not stop.'],
+  fiends:     ['The stench of brimstone arrives first, then the laughter from below.','Reality buckles as the fiends tear their way into the world.','Shadows lengthen, sprout claws, and lunge.','The temperature drops, the light curdles, and something grins in the dark.','A seam opens in the air itself, and the abyss leans through.','"Fresh souls," a voice purrs, delighted, from everywhere at once.'],
+  casters:    ['A cold voice speaks a word of power, and the air ignites with magic.','Robed figures look up from their ritual — the intrusion will be punished.','"You should not have come." Arcane light gathers around their hands.','Runes flare to life underfoot as the spellcasters turn as one.','The air tastes of ozone; someone, somewhere, has begun to chant.','"Kill the interruption," one says calmly, and the spells begin to fly.'],
+  fighters:   ['Steel rings against steel as the warriors form a line and advance.','"Hold the line!" The brutes lower their shoulders and charge.','Veterans, scarred and ready, move to cut off every escape.','Shields lock with a single practised crash, and the advance begins.','No taunts, no threats — just disciplined killers closing the distance.','"On my mark," the captain says, and the line surges forward.'],
+  aberrations:['The angles of the room feel wrong, and then something that should not exist unfolds into view.','A pressure builds behind the eyes — whispers, promises, and then the horror reveals itself.','Reality thins like wet paper, and what waits on the other side reaches through.','Your own thoughts feel watched a moment before the thing shows itself.','Colours you cannot name bloom in the dark, and then it is upon you.','The walls seem to breathe, and something that is mostly eyes turns to look.'],
+  dragons:    ['A shadow swallows the sun; leathery wings beat once, and the reptilian eyes fix upon the party.','The heat arrives before the roar — scales the colour of old coins glinting in the dark.','"Little thieves." The voice is vast, amused, and utterly without mercy.','The hoard shifts, and what you took for treasure opens one enormous eye.','A wind of sulphur and gold-dust rolls down the cavern before the wings do.','It does not rush. Why would it? It has all the time in the world, and you do not.'],
+  giants:     ['The ground quakes with each footfall long before the giant crests the ridge.','A boulder arcs out of the sky — the first warning that something enormous has noticed them.','It has to stoop to see them, and it does not like what it sees.','A shadow falls across the whole party at once, and it is not a cloud.','"Little things," it rumbles, reaching down almost curiously.','The trees part like grass, and the giant simply steps into view.'],
+  fey:        ['Laughter rings from nowhere and everywhere; the woodland has decided the party are trespassers.','Flowers turn to watch. A voice, sweet and cruel, offers a bargain no one asked for.','The path loops back on itself, and the fair folk step out of the crooked light.','Music you cannot place makes your feet slow — and then they are all around you.','"You broke the rules of this place," a child\'s voice giggles. "Now you play our game."','The mushrooms glow brighter, the shadows lengthen wrong, and the hunt begins.'],
+  constructs: ['Stone grinds on stone as the sentinels wake, eyes lighting with cold purpose.','No breath, no fear — just the relentless clank of things built only to end intruders.','The guardians were told to let no one pass. They have never once failed.','Gears whir to life in the dark, and a dozen glass eyes swivel toward you.','A voice from centuries ago intones a challenge, and the statues step down.','It does not negotiate. It was not built to. It advances.'],
+  oozesVermin:['The floor glistens — and then flows, reaching hungrily toward the nearest boot.','A dry rustle becomes a tide of skittering legs pouring from every crack.','Something drips from the ceiling, hisses where it lands, and begins to spread.','The walls are moving. On closer look, the walls are covered in them.','A soft, wet sound — and the puddle you stepped over is now behind you, following.','They come without malice or plan, only endless, mindless hunger.'],
+  elementals: ['The air itself turns hostile — flame, frost, or howling wind given furious shape.','Raw elemental force tears loose from the world and rounds on the intruders.','The ground, the fire, the very wind rise up as one and attack.','A gout of flame gathers into a shape with burning eyes and reaching arms.','The river rears up, the stones grind together, and the storm takes form.','Something summoned and something furious — it does not know why it hates you, only that it does.'],
+  casterWarband:['A robed figure lifts a hand and the rabble at its back howls forward on command.','"Protect the ritual!" — and the warband throws itself between you and its master.','Spellfire gathers behind a wall of expendable bodies.','The leader stays back, calm and deadly, as the thugs surge to buy time.','"Hold them off the circle!" someone screams, and the mob obeys.','Muscle in front, magic behind — a wall of blades and a storm of spells.'],
+  huntPack:   ['They\'ve been tracking the party for miles. Now the circle closes and the hunt begins.','Low shapes fan out through the grass — this pack has done this many times before.','A single yip, answered from all sides. The ambush was set hours ago.','No growls, no warning — a good pack doesn\'t warn its prey.','They move like one animal with many bodies, cutting off every retreat.','The alpha waits. The others test you first.'],
+  bossMinions:['The lackeys part, and their master steps forward with a terrible smile.','"Kill them," the leader says, almost bored, as the minions surge ahead.','A commanding presence raises one hand — and the swarm obeys.','The minions die first, gladly, to buy their master a better opening.','"You," the leader says, ignoring the rabble entirely. "I\'ve been expecting you."','A whip-crack of command, and the underlings hurl themselves forward.'],
+
+  humansCommon: ['A ragged crowd blocks the way, clutching whatever passes for a weapon.','"We don\'t want trouble — but we\'ll make some if we have to." Hard eyes, harder hands.','Ordinary folk, desperate and armed, close ranks against the strangers.','Pitchforks and old swords level at the party — frightened, but committed.','"You\'re not welcome here." The villagers have clearly done this before.','A mob, half courage and half terror, surges forward all at once.'],
+  mercenaries: ['A disciplined line forms up, shields set and blades ready — these are professionals.','"Nothing personal. We\'re paid to stop you here." The company advances as one.','Scarred veterans fan out with the ease of soldiers who have done this a hundred times.','Crossbows level from cover while the front rank braces — a paid ambush, well set.','"Contract\'s a contract." No malice, no mercy, just business.','They move on hand-signals, not shouts. This is a trained outfit, not a mob.'],
+  cultists:    ['Hooded figures look up from their profane work, eyes bright with zeal.','"The Master will feast on your souls!" The fanatics rush in, unafraid to die.','A droning chant swells as the faithful turn, knives glinting.','Candlelight glints off a hundred wet blades and a hundred fervent smiles.','"You are the sacrifice we were promised!" They advance, delighted.','The ritual doesn\'t stop — some keep chanting even as the rest attack.'],
+  assassinsSpies:['A whisper of movement — and the killers are already among you, blades out.','No warning, no demand: just professionals here to make you disappear.','Shadows detach from the walls, each holding a very sharp answer.','Someone paid well for this. The first you know of it is the blade at your back.','They don\'t announce themselves. They simply begin.','A glint on a rooftop, a footstep behind — the trap was set before you arrived.'],
+  nobleCourt:  ['"How dare you." Retainers step forward, steel drawn to defend their lord.','A gilded voice gives a cold command, and the household guard advances.','Knights and courtiers close ranks around their noble, weapons flashing.','"Deal with them," the noble sighs, waving a ringed hand, and the guards obey.','Polished armour, perfect discipline — and a lord who expects to win.','The court parts, and the household knights move to make an example of you.'],
+  pirates:     ['"Heave to, or we\'ll gut ya where ya stand!" The reavers swarm forward, cutlasses high.','A ragged crew spills into view, laughing, drunk on violence.','"Anythin\' ya carry is ours now." The raiders close in from every side.','Boarding hooks bite home, and the deck fills with howling cutthroats.','"Dead men, walk the plank. Live men, hand over the loot. Simple, aye?"','A cannon\'s echo still hangs in the air as the crew rushes the rail.'],
+  tribalWarband:['War-paint and bared teeth — the warband erupts from the treeline with a howl.','Drums, then screams: the tribe has decided the strangers will not leave.','A shaman raises a bone staff and the warriors charge as one.','Horns of bone and hide sound from three sides at once — you are surrounded.','They know this ground. You do not. The ambush is already closing.','A single warcry is answered by dozens, and the trees come alive with foes.'],
+  nonHumanoid: ['Whatever this is, it never was a person — and it is coming fast.','No words, no parley: only the hungry logic of a thing that is not human.','The wilderness has teeth here, and they have found the party.','There will be no talking your way out of this one.','It regards you the way you\'d regard a meal, and then it moves.','Nothing about it thinks the way you do — which makes it worse.'],
+  monstrosities:['A shape that should not be sculpts itself out of the shadows and lunges.','Nature never made this — but here it is, and it is hungry.','Too many limbs, too many teeth: the monstrosity is upon them.','It shouldn\'t be able to move like that. It does anyway.','Part this, part that, all wrong — and all of it aimed at you.','The thing unfolds to its full size, and the full size is a problem.'],
+  plants:      ['The undergrowth shifts of its own accord — and reaches.','A sickly-sweet reek, and then the vines are moving toward warm flesh.','What looked like a thicket unfolds into something that means them harm.','Spores drift on the air; a heartbeat later, the whole glade is hostile.','Roots erupt underfoot and the treeline leans in with a groan of old wood.','The flowers were pretty right up until they opened toothed mouths.'],
+  swarms:      ['The ground seethes and rises — a single mass of countless tiny bodies.','A dry, rushing hiss becomes a tide pouring toward the party.','It is not one thing. It is thousands, and they are all hungry.','The buzzing becomes a roar, and the cloud descends.','You can\'t fight it back — for every one you crush, ten pour over the top.','The walls, the floor, the ceiling — all of it moving, all of it coming.'],
+  celestials:  ['Light gathers into a stern and radiant form; judgement has arrived.','"Turn back, or be judged." The celestial\'s voice brooks no argument.','Wings of light unfurl — beautiful, terrible, and entirely unmoved.','A chorus with no singers swells, and the shining ones descend.','"You have strayed from the path." There is no anger in it, which is worse.','Radiance floods the space, and something perfect and merciless steps forward.'],
+  lycanthropes:['A snarl, a shudder of changing flesh — the beast beneath the skin is loose.','What wore a human face a moment ago now bares fangs and lunges.','Fur, claws, and hunger: the curse has taken them, and now it hunts.','Bones crack and reshape, clothing tears, and the thing that stands up is not a person.','The moonlight does its work, and the villagers stop being villagers.','A howl rises far too close, and the shape sprinting at you is changing as it comes.'],
+  demons:      ['Chaos given flesh boils into the world, shrieking with mindless hate.','The demons come without plan or mercy — only the joy of ruin.','Reality curdles, and the abyss spits its horrors into the light.','No strategy, no restraint — just a tide of gibbering, gleeful violence.','They tear at each other in their hurry to reach you first.','The air fills with shrieks and the wet sound of something being born wrong.'],
+  devils:      ['Cold, precise, and utterly without pity, the devils advance in perfect order.','"Your soul is already forfeit." The devils close the trap with cruel patience.','No wasted motion, no mercy — the fiends of law have come to collect.','Every move is calculated; they have read the contract, and you are in breach.','"There is nothing personal in this," one says, smiling. "Only terms."','They fan out with terrible discipline, cutting off escape before the first blow.'],
+  mixedWarband:['A ragtag host of beasts and brutes surges forward under a single cruel banner.','Snarls and warcries mix as the mismatched warband charges together.','Whatever holds this pack together, it points them all at the party.','Man and monster fight side by side here, and neither seems to mind.','A whip-crack of command, and a dozen different kinds of teeth come at you.','Chaos, but pointed chaos — someone has welded this mob into a weapon.'],
+  undeadHorde: ['They come in their dozens, a shambling tide of the hungry dead.','The horde does not tire, does not fear, and does not stop.','Wave upon wave of dead flesh presses forward, blotting out the ground.','You cannot kill them fast enough — the dead keep arriving from the dark.','A moaning wall of corpses closes in, too many to count, too many to fight.','Every body that falls is simply climbed over by the next.'],
+  beastHandlers:['Handlers loose their beasts with a shout — the animals hit the line first.','Growling hounds strain forward while their masters ready blade and bow.','A whistle, and the pack is unleashed ahead of its keepers.','"Sic \'em!" The beasts break first; the handlers follow to finish the job.','Snarling animals fan out on their leashes — then the leashes drop.','The keepers hang back, calm and cruel, letting the fangs do the opening work.']
 };
 
 // Shape-specific "how it starts" openers — layered on top of the theme intro.
 const DM_SHAPE_INTROS = {
-  ambush:     ['No warning — the first the party knows of it is the strike from concealment.','Every escape route is already covered before a single blade is drawn.'],
-  gauntlet:   ['This is only the first wave. More are already moving up behind.','The foes come in relays, each rush buying time for the next to form.'],
-  vanguard:   ['A wall of shields locks together while shapes behind it raise bows and staves.','The front rank braces to hold you in place — the danger is what stands behind them.'],
-  twinThreat: ['Two of them, moving in practised concert — this is a partnership, not a mob.','They split to flank, each a threat in its own right, deadlier together.'],
-  siege:      ['The horde does not stop coming. Hold the line or be overrun.','Wave upon wave, they press forward heedless of the fallen.'],
-  duel:       ['One steps forward and points a blade: "You. Only you."','A rival singles out the party\'s champion — this is personal.']
+  ambush:     ['No warning — the first the party knows of it is the strike from concealment.','Every escape route is already covered before a single blade is drawn.','They let the party walk right into the middle before springing it.','The trap closes with practised timing — this was planned.'],
+  gauntlet:   ['This is only the first wave. More are already moving up behind.','The foes come in relays, each rush buying time for the next to form.','Clear the first group and the next is already on you.','There is no single line to break — just wave after wave.'],
+  vanguard:   ['A wall of shields locks together while shapes behind it raise bows and staves.','The front rank braces to hold you in place — the danger is what stands behind them.','The line holds you; the killers behind it take their time.','Get past the shields, or be picked apart from range.'],
+  twinThreat: ['Two of them, moving in practised concert — this is a partnership, not a mob.','They split to flank, each a threat in its own right, deadlier together.','One draws your eye while the other gets into position.','A matched pair, and they clearly know how the other fights.'],
+  siege:      ['The horde does not stop coming. Hold the line or be overrun.','Wave upon wave, they press forward heedless of the fallen.','Sheer numbers, and every one of them wants past you.','There is no flank to turn — only the front, and it is endless.'],
+  duel:       ['One steps forward and points a blade: "You. Only you."','A rival singles out the party\'s champion — this is personal.','The rest hold back; this one wants a fair fight, or claims to.','"Just you and me. The others can watch."'],
+  gang:       ['A whole crowd of them boils out at once — not skilled, but there are so many.','"Get \'em, lads!" and the rabble surges forward in a shouting mass.','More keep spilling from the doorways than you can possibly count.'],
+  bodyguards: ['A ring of hard-eyed guards closes around someone they clearly value.','"Protect them — with your lives!" The bodyguards set themselves between you and their charge.','Whoever is at the centre matters; the wall of muscle around them says so.'],
+  artillery:  ['A thin line braces up front while, behind it, the real danger takes aim.','"Screen them!" — and volley after volley arcs over the front rank.','The front is just bait; the killing comes from the ranks behind.'],
+  pincer:     ['A shape at your front — and then footsteps behind. You are caught between two groups.','They hit from both sides at once; there was never a safe direction.','Half of them charge; the other half were already behind you.'],
+  escalating: ['A weak first rush — a test. Something worse is coming behind it.','Each wave hits harder than the last, and the leader has not shown yet.','They send the expendable ones first. Save your strength; you will need it.'],
+  skirmishers:['Quick shapes dart in, strike, and are gone before you can answer.','No line, no wall — just fast attackers flitting in and out of reach.','They will not stand and fight. They will bleed you a cut at a time.'],
+  loneHunter: ['Something weak stumbles into view — and something far worse is using it as bait.','The little ones are a distraction. The real hunter is already circling.','A lure staggers forward; the predator waits for you to commit.'],
+  standoff:   ['Everyone is already in position. Nobody has moved. The first one who does starts it.','Weapons are drawn on both sides — a single wrong breath will set it off.','A frozen moment, eye to eye — and then someone flinches.']
 };
 
 const DM_ENCOUNTER_TIPS = {
@@ -1853,7 +2306,63 @@ const DM_ENCOUNTER_TIPS = {
     '• Best when one PC has a personal stake — let the rival call them out and duel one-on-one while the rest deal with the scene.\n' +
     '• Match the rival\'s power to a single strong PC, not the whole party — otherwise it\'s just a solo boss.\n' +
     '• Give the rival a signature move and some banter; make it a character beat, not a stat check.\n' +
-    '• Decide in advance what happens if the party gangs up — the rival flees, calls reinforcements, or fights to a dramatic loss.'
+    '• Decide in advance what happens if the party gangs up — the rival flees, calls reinforcements, or fights to a dramatic loss.',
+
+  gang:
+    'GANG / RABBLE — lots of weak, varied foes.\n' +
+    '• Perfect for a bandit hideout, thieves\' den, or riot: many low-CR humans (bandits, thugs, scouts) rather than a couple of elites.\n' +
+    '• Individually harmless — dangerous through numbers and action economy. They win by dogpiling and flanking.\n' +
+    '• Have them break and flee once ~half are down, or when a leader falls; a rabble\'s morale is brittle.\n' +
+    '• Use the terrain of the hideout: choke points, thrown furniture, alarm whistles calling more from the next room.',
+
+  bodyguards:
+    'PROTECT THE VIP — a fragile target ringed by guards.\n' +
+    '• The VIP is the objective, not the wall — a noble, hostage, spellcaster, or ritualist the guards die to shield.\n' +
+    '• Guards interpose, grapple, and body-block; play them as genuinely trying to keep the party off their charge.\n' +
+    '• Decide the VIP\'s goal: flee, finish a ritual, or parley. The clock (how many rounds until they escape/succeed) makes it tense.\n' +
+    '• Reward clever play — a PC who breaks through to the VIP should be able to end the fight fast.',
+
+  artillery:
+    'ARTILLERY BATTERY — ranged threat behind a screen.\n' +
+    '• The back rank (archers, mages) does the real damage; the thin front line only exists to slow the party down.\n' +
+    '• Put the artillery on high ground or behind cover so closing the distance actually matters.\n' +
+    '• Punish clumping — area attacks and volleys should make the party spread out and rush the line.\n' +
+    '• If the screen falls fast, have the artillery reposition or drop bows for blades rather than stand and die.',
+
+  pincer:
+    'PINCER — two groups, opposite sides.\n' +
+    '• Place Flank A and Flank B on opposite edges so the party is caught in the middle from round one.\n' +
+    '• The threat is the crossfire and the split attention — no safe direction to retreat toward.\n' +
+    '• Let smart PCs collapse one flank before the other arrives; stagger the two groups\' arrival by a round if it\'s too brutal.\n' +
+    '• Great with a doorway, bridge, or corridor the party thought was safe behind them.',
+
+  escalating:
+    'ESCALATING WAVES — each wave hits harder.\n' +
+    '• Wave 1 is a soft test (throwaway minions); the last wave carries the leader/elite. Tension builds instead of front-loading.\n' +
+    '• Let the party feel like they\'re winning early — then raise the stakes as the stronger waves arrive.\n' +
+    '• Trigger later waves on a timer, a alarm, or the previous wave dropping — reward speed with breathing room.\n' +
+    '• Watch resource drain: players who blow everything on wave 1 should feel that mistake by wave 3.',
+
+  skirmishers:
+    'SKIRMISHERS — fast, fragile, hit-and-run.\n' +
+    '• Low HP, high mobility: they dart in, strike, and disengage before the party can pin them down.\n' +
+    '• Use hit-and-run every round — never let them stand still to be focused. Ranged pokes and ambush strikes.\n' +
+    '• They punish slow, heavily-armoured parties and open terrain. Corner them and they crumble.\n' +
+    '• Great as scouts, raiders, or assassins softening the party before a bigger fight.',
+
+  loneHunter:
+    'LONE HUNTER + LURES — a predator using bait.\n' +
+    '• One strong creature is the real threat; the 1-2 weak "lures" exist to draw the party out of position.\n' +
+    '• Play the hunter patiently: let the lures engage, then strike the isolated or wounded PC.\n' +
+    '• Terrain is its ally — ambush from cover, retreat, circle back. It fights smart, not head-on.\n' +
+    '• If the lures die early, the hunter should still get one good ambush before committing.',
+
+  standoff:
+    'STANDOFF — both sides already in position.\n' +
+    '• Nobody has swung yet. Open with tension and roleplay: demands, threats, a countdown — the first hostile act starts initiative.\n' +
+    '• Reward a party that talks or defuses; let them gain surprise, a better position, or avoid the fight entirely.\n' +
+    '• When it breaks, everyone is already in range — no approach round, straight into the action.\n' +
+    '• Decide each side\'s trigger and goal in advance so you can play the tension honestly.'
 };
 
 let dmCurrentEncounterCard = null; // { intro, tips, notes, ... }
@@ -1890,6 +2399,8 @@ function dmBuildEncounterCard(meta) {
     shapeDesc,
     rating: meta.rating,
     difficulty: meta.difficulty,
+    theme: meta.theme,   // kept so Reroll Intro can redraw from the right pools
+    shape: meta.shape,
     notes: dmCurrentEncounterCard && dmCurrentEncounterCard.keepNotes ? dmCurrentEncounterCard.notes : ''
   };
   dmRenderCombatants();
@@ -1902,6 +2413,19 @@ function dmRerollInitiative() {
   dmRenderCombatants();
   dmRenderEncounterCard(); // refresh the card's init list (edits are already in state)
   dmToast('Initiative rerolled.', 'success');
+}
+
+// Re-roll just the read-aloud intro, drawing a fresh line from the theme (and
+// shape) pools. Overwrites any manual edit to the intro field only.
+function dmRerollIntro() {
+  if (!dmCurrentEncounterCard) return;
+  const introPool = DM_ENCOUNTER_INTROS[dmCurrentEncounterCard.theme] || DM_ENCOUNTER_INTROS.random;
+  const shapeIntros = DM_SHAPE_INTROS[dmCurrentEncounterCard.shape];
+  dmCurrentEncounterCard.intro = shapeIntros
+    ? `${dmPick(introPool)} ${dmPick(shapeIntros)}`
+    : dmPick(introPool);
+  dmRenderEncounterCard();
+  dmToast('New intro rolled.', 'success');
 }
 
 // Persist the editable intro/tips/notes from the card back into state.
@@ -1945,7 +2469,10 @@ function dmRenderEncounterCard() {
     </div>
     <p class="dm-note">${escapeHtml(card.shapeDesc || '')} · ${r.adjusted ? r.adjusted.toLocaleString() + ' XP' : ''}</p>
 
-    <label class="dm-enc-card-label">Intro — how it starts <span>(read aloud, editable)</span></label>
+    <div class="dm-card-header" style="border:none;padding:0 0 4px;">
+      <label class="dm-enc-card-label" style="margin:0;">Intro — how it starts <span>(read aloud, editable)</span></label>
+      <button class="dm-action-btn dm-reroll-btn" onclick="dmRerollIntro()" title="Roll a fresh opener">↻ Reroll Intro</button>
+    </div>
     <textarea class="dm-enc-card-text" rows="2" oninput="dmCardEdit('intro', this.value)">${escapeHtml(card.intro || '')}</textarea>
 
     <label class="dm-enc-card-label">How to run it <span>(tactics for this battle type)</span></label>

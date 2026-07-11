@@ -6,9 +6,40 @@
 // the Home button until they visit the home page.
 // ============================================================
 
-const CHANGELOG_LATEST_VERSION = '1.13';
+const CHANGELOG_LATEST_VERSION = '1.14';
 
 const CHANGELOG = [
+  {
+    version: '1.14',
+    date: '2026-07-09',
+    title: 'v1.14 — Skill Expertise, Conditions Picker & a Huge DM Upgrade',
+    updates: [
+      'Skills now support half-proficiency and expertise: click the proficiency button on any skill to cycle None → Half (½) → Proficient (●) → Expertise (★). The total does the maths for you (half rounds down, expertise doubles), and proficient rows are tinted for quick scanning',
+      'Conditions are now a proper picker: choose from all 14 official 5e conditions (effect text and an Open5e reference link fill in automatically), or flip the Custom switch to add your own with a link. Exhaustion tracks its 6 levels with − / + buttons right on the card',
+      'Prepared spells & cantrips now show first under a "★ Ready" heading when adding actions from your sheet, so the spells you actually have are front and centre',
+      'Spell cards now show an "At Higher Levels" / cantrip-scaling box, pulled from the spell text, so you can see how a spell grows when upcast',
+      'Quick-cast: prepared spells now have a "Cast" button that spends a matching spell slot in one tap (upcasts to the next available slot if needed)',
+      'Spell search now matches effect text, not just names — search "charmed" or "fire" to find every spell that does it',
+      'Custom resources have one-tap templates: Ki, Sorcery Points, Bardic Inspiration, Rage, Channel Divinity and more',
+      'DM encounter generator: 18 new foe themes including a dedicated Bandit Gang / Hideout, Pure Humans, Cultists, Mercenaries, Pirates, Demons vs Devils, Celestials, Swarms, Lycanthropes and an "Any Non-Humanoid" option',
+      'DM encounter generator: 8 new battle types — Gang / Rabble, Protect the VIP, Artillery Battery, Pincer, Escalating Waves, Skirmishers, Lone Hunter and Standoff — each with tactics and read-aloud intros',
+      'DM encounters now have 5–6 read-aloud intros per theme and a "Reroll Intro" button to spin up a fresh opener',
+      'DM difficulty helper: if your chosen foes are too weak for the difficulty, it now promotes a few of them to elites (★) automatically, and offers to borrow a tougher creature, add more troops, change theme, or build your own — all from one menu',
+      'DMs can now toggle any creature to "Elite" (★) from the combatant list to instantly buff its HP, AC and damage',
+      'All pop-up messages and confirmations are now in-app toasts and dialogs instead of the browser\'s native boxes, so they work properly on mobile and as an installed app',
+      'Owner tools: per-character "Export JSON" button and a character-count badge on each user in the admin portal',
+    ],
+    fixes: [
+      'Fixed custom spells losing their Open5e link — the link field in the spell form now saves and loads correctly',
+      'The healing potion list now uses the correct 5e potions (Healing 2d4+2, Greater 4d4+4, Superior 8d4+8, Supreme 10d4+20); the old duplicate "Minor" entry is gone and existing characters carry over cleanly',
+      'Conditions now save reliably with a stable id (the old version could remove the wrong condition), and keep their link and exhaustion level',
+      'The "Add Condition" button no longer overlaps the section help (?) icon',
+      'Potion and CON-modifier colours now follow your chosen theme instead of being hard-coded',
+      'Sync Up / Sync Down buttons are more robust and can\'t silently stop working',
+      'Corrected the spell count shown around the app (the database is now 1,100+ spells)',
+      'Updated the inventory tip that mentioned drag-and-drop that didn\'t exist',
+    ],
+  },
   {
     version: '1.13',
     date: '2026-07-08',

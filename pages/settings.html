@@ -120,8 +120,8 @@
         </div>
         <div id="signedInView" style="display: none;">
           <p class="settings-note">Signed in as: <span id="userEmail"></span></p>
-          <button class="settings-action-btn settings-sync-up-btn">Sync Up Now</button>
-          <button class="settings-action-btn settings-sync-down-btn">Sync Down Now</button>
+          <button type="button" class="settings-action-btn settings-sync-up-btn" onclick="handleSyncUpConfirm(this)">Sync Up Now</button>
+          <button type="button" class="settings-action-btn settings-sync-down-btn" onclick="handleSyncDownConfirm(this)">Sync Down Now</button>
           <button class="settings-action-btn settings-signout-btn">Sign Out</button>
         </div>
         <p id="syncStatus" class="settings-sync-status"></p>

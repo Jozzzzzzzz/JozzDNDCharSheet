@@ -217,23 +217,70 @@ function enforceAutoMathNumericInputs() {
   bindAutoMathOverrideInputs();
 }
 
+// Proficiency levels for skills: 0 none, 1 half (Jack of All Trades),
+// 2 proficient, 3 expertise. The proficiency bonus is multiplied accordingly
+// (half rounds down, per 5e RAW).
+const SKILL_PROF_LEVELS = [
+  { level: 0, mult: 0,   glyph: '—', label: '',     title: 'Not proficient' },
+  { level: 1, mult: 0.5, glyph: '½', label: 'Half', title: 'Half proficiency (e.g. Jack of All Trades)' },
+  { level: 2, mult: 1,   glyph: '●', label: 'Prof', title: 'Proficient' },
+  { level: 3, mult: 2,   glyph: '★', label: 'Exp',  title: 'Expertise (double proficiency)' },
+];
+
+// The prof_<skill> checkbox stores the level in data-prof-level; .checked mirrors
+// "at least proficient" so legacy save/read paths still work.
+function getSkillProfLevel(skill) {
+  const el = document.getElementById(`prof_${skill}`);
+  if (!el) return 0;
+  const lvl = parseInt(el.dataset.profLevel, 10);
+  if (!isNaN(lvl)) return Math.max(0, Math.min(3, lvl));
+  return el.checked ? 2 : 0; // pre-migration fallback
+}
+
+function setSkillProfLevel(skill, level) {
+  const el = document.getElementById(`prof_${skill}`);
+  if (!el) return;
+  const lvl = Math.max(0, Math.min(3, level | 0));
+  el.dataset.profLevel = String(lvl);
+  el.checked = lvl >= 2; // keep legacy boolean save/read in sync
+  renderSkillProfButton(skill);
+}
+
+function cycleSkillProf(skill) {
+  setSkillProfLevel(skill, (getSkillProfLevel(skill) + 1) % 4);
+  calculateSkillBonus(skill);
+  if (typeof autosave === 'function') autosave();
+}
+
+// Paint the cycle button next to a skill row to match its current level, and
+// tint the whole row by proficiency level for faster scanning.
+function renderSkillProfButton(skill) {
+  const btn = document.getElementById(`profbtn_${skill}`);
+  if (!btn) return;
+  const info = SKILL_PROF_LEVELS[getSkillProfLevel(skill)] || SKILL_PROF_LEVELS[0];
+  btn.textContent = info.label ? `${info.glyph} ${info.label}` : info.glyph;
+  btn.title = info.title;
+  btn.dataset.level = String(info.level);
+  const row = btn.closest('.skill-row');
+  if (row) row.dataset.profLevel = String(info.level);
+}
+
 function calculateSkillBonus(skill) {
   const ability = SKILL_ABILITY_MAP[skill];
   if (!ability) return;
 
   const totalInput = document.getElementById(`bonus_${skill}`);
-  const profCheckbox = document.getElementById(`prof_${skill}`);
   const adjInput = document.getElementById(`adj_${skill}`);
   const abilityBonus = document.getElementById(`${ability}_bonus`);
   const profBonus = document.getElementById('prof_bonus');
-  if (!totalInput || !profCheckbox || !abilityBonus || !profBonus) return;
+  if (!totalInput || !abilityBonus || !profBonus) return;
 
   const abilityMod = parseSignedNumber(abilityBonus.value);
   const profMod = parseSignedNumber(profBonus.value);
   const adjMod = parseSignedNumber(adjInput ? adjInput.value : 0);
 
-  let total = abilityMod + adjMod;
-  if (profCheckbox.checked) total += profMod;
+  const mult = (SKILL_PROF_LEVELS[getSkillProfLevel(skill)] || SKILL_PROF_LEVELS[0]).mult;
+  const total = abilityMod + adjMod + Math.floor(profMod * mult);
 
   totalInput.value = formatSignedNumber(total);
   if (skill === 'perception') updatePassivePerception();
@@ -278,12 +325,26 @@ function setupSkillCalculationFields() {
       });
     }
 
+    // Replace the raw proficiency checkbox with a cycle button (none/half/prof/
+    // expertise). The checkbox element stays in the DOM (hidden) so its ID and
+    // the legacy .checked save/read path keep working; the button drives it.
     if (profCheckbox.dataset.skillProfBound !== '1') {
       profCheckbox.dataset.skillProfBound = '1';
-      profCheckbox.addEventListener('change', () => {
-        calculateSkillBonus(skill);
-        autosave();
-      });
+      profCheckbox.classList.add('skill-prof-checkbox-hidden');
+      // Seed the level from any existing checked state (pre-migration saves).
+      if (profCheckbox.dataset.profLevel === undefined) {
+        profCheckbox.dataset.profLevel = profCheckbox.checked ? '2' : '0';
+      }
+      let btn = document.getElementById(`profbtn_${skill}`);
+      if (!btn) {
+        btn = document.createElement('button');
+        btn.type = 'button';
+        btn.id = `profbtn_${skill}`;
+        btn.className = 'skill-prof-btn';
+        btn.addEventListener('click', () => cycleSkillProf(skill));
+        profCheckbox.insertAdjacentElement('afterend', btn);
+      }
+      renderSkillProfButton(skill);
     }
   });
 

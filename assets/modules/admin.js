@@ -211,11 +211,44 @@ function renderAdminUserGrid(users) {
         </div>
         <span class="admin-user-email">${escapeHtml(u.email || u.uid)}</span>
         <div class="admin-user-card-meta">
+          <span class="admin-user-charcount" data-uid="${escapeHtml(u.uid)}">… chars</span>
           <span>${devices} device${devices === 1 ? '' : 's'}</span>
           <span>${escapeHtml(seen)}</span>
         </div>
       </button>`;
   }).join('');
+  // Fill in character counts lazily so the grid paints immediately.
+  adminFillCharCounts(users);
+}
+
+// Populate each card's character-count badge via a lightweight count() aggregate
+// query (Firebase 10.7 compat). Runs in parallel; failures degrade to '—'.
+// Counts are cached per uid so re-renders (e.g. filtering) don't re-query.
+const _adminCharCountCache = {};
+async function adminFillCharCounts(users) {
+  const db = window.db;
+  if (!db || !Array.isArray(users)) return;
+  const paint = (uid, text) => {
+    const el = document.querySelector(`.admin-user-charcount[data-uid="${cssEscape(uid)}"]`);
+    if (el) el.textContent = text;
+  };
+  await Promise.all(users.map(async (u) => {
+    if (_adminCharCountCache[u.uid] !== undefined) { paint(u.uid, _adminCharCountCache[u.uid]); return; }
+    try {
+      const snap = await db.collection('userData').doc(u.uid).collection('characters').count().get();
+      const n = snap.data().count;
+      const text = `${n} char${n === 1 ? '' : 's'}`;
+      _adminCharCountCache[u.uid] = text;
+      paint(u.uid, text);
+    } catch (e) {
+      paint(u.uid, '— chars');
+    }
+  }));
+}
+
+// Minimal CSS.escape fallback for attribute selectors (uids are safe already).
+function cssEscape(s) {
+  return (window.CSS && CSS.escape) ? CSS.escape(s) : String(s).replace(/["\\]/g, '\\$&');
 }
 
 // Live filter the grid by name/email substring.
@@ -310,10 +343,19 @@ async function adminSelectUser(uid) {
       importBtn.textContent = 'Import Copy';
       importBtn.onclick = () => adminImportCharacter(uid, charId);
 
+      const exportBtn = document.createElement('button');
+      exportBtn.type = 'button';
+      exportBtn.className = 'settings-action-btn';
+      exportBtn.style.maxWidth = '200px';
+      exportBtn.textContent = 'Export JSON';
+      // Capture this character object directly — already loaded, no re-fetch.
+      exportBtn.onclick = () => adminExportCharacter(c, user.email || uid);
+
       const btnRow = document.createElement('div');
       btnRow.className = 'settings-text-preview-row';
       btnRow.appendChild(previewBtn);
       btnRow.appendChild(importBtn);
+      btnRow.appendChild(exportBtn);
 
       const block = document.createElement('div');
       block.className = 'settings-text-preview';
@@ -330,6 +372,35 @@ async function adminSelectUser(uid) {
 }
 
 window.adminSelectUser = adminSelectUser;
+
+// Owner-only: download one character as a clean .json backup. Takes the already
+// loaded character object (no re-fetch) plus the owning user's email for the name.
+function adminExportCharacter(charObj, ownerEmail) {
+  try {
+    if (!charObj) return;
+    const info = charObj?.data?.characterInfo || {};
+    const name = info.name || charObj.name || 'Unnamed';
+    const level = info.level ? `lvl-${info.level}` : 'lvl-unknown';
+    const owner = (ownerEmail || 'unknown').split('@')[0];
+    const slug = (s) => String(s || '').replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'x';
+    const date = new Date().toISOString().slice(0, 10);
+
+    const blob = new Blob([JSON.stringify(charObj, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${slug(owner)}_${slug(name)}_${slug(level)}_${date}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    if (typeof appToast === 'function') appToast(`Exported "${name}"`, 'success');
+  } catch (e) {
+    console.error('Admin export failed:', e);
+    if (typeof appToast === 'function') appToast('Export failed: ' + e.message, 'error');
+  }
+}
+window.adminExportCharacter = adminExportCharacter;
 
 async function adminImportCharacter(uid, charId) {
   const db = window.db;
@@ -609,7 +680,10 @@ function adminFriendlyError(e) {
 }
 
 async function adminRemovePlayer(campaignId, charId, campaignName) {
-  if (!confirm('Remove this character from the campaign? Their campaign indicator clears and they can re-join with the password.')) return;
+  const ok = (typeof appConfirm === 'function')
+    ? await appConfirm('Remove this character from the campaign? Their campaign indicator clears and they can re-join with the password.', { confirmText: 'Remove' })
+    : confirm('Remove this character from the campaign? Their campaign indicator clears and they can re-join with the password.');
+  if (!ok) return;
   const db = window.db;
   if (!db || !charId) return;
   try {

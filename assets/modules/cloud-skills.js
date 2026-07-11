@@ -32,24 +32,25 @@ function bindAuthButtons() {
     }, { passive: false });
   }
 
+  // Sync buttons: an inline onclick in settings.html is the primary path (works
+  // even if this binder never runs). We only add a JS listener as a secondary
+  // path when the inline handler is somehow absent, so they never double-fire.
   const syncUpBtn = document.querySelector('.settings-sync-up-btn');
   if (syncUpBtn && syncUpBtn.dataset.authBound !== '1') {
     syncUpBtn.dataset.authBound = '1';
     syncUpBtn.type = 'button';
-    syncUpBtn.addEventListener('click', (event) => {
-      event.preventDefault();
-      handleSyncUpConfirm(syncUpBtn);
-    });
+    if (!syncUpBtn.getAttribute('onclick')) {
+      syncUpBtn.addEventListener('click', (event) => { event.preventDefault(); handleSyncUpConfirm(syncUpBtn); });
+    }
   }
 
   const syncDownBtn = document.querySelector('.settings-sync-down-btn');
   if (syncDownBtn && syncDownBtn.dataset.authBound !== '1') {
     syncDownBtn.dataset.authBound = '1';
     syncDownBtn.type = 'button';
-    syncDownBtn.addEventListener('click', (event) => {
-      event.preventDefault();
-      handleSyncDownConfirm(syncDownBtn);
-    });
+    if (!syncDownBtn.getAttribute('onclick')) {
+      syncDownBtn.addEventListener('click', (event) => { event.preventDefault(); handleSyncDownConfirm(syncDownBtn); });
+    }
   }
 
   const signOutBtn = document.querySelector('.settings-signout-btn');
@@ -420,21 +421,21 @@ async function signInWithGoogle() {
     if (typeof firebase === 'undefined') {
       console.error('Firebase library not loaded');
       setSyncStatus('Firebase not loaded yet');
-      alert('Firebase is still loading. Please wait a moment and try again.');
+      (window.appToast || alert)('Firebase is still loading. Please wait a moment and try again.', 'error');
       return;
     }
 
     if (!firebase.auth) {
       console.error('Firebase auth module not available');
       setSyncStatus('Firebase auth not available');
-      alert('Firebase authentication is not available. Please refresh the page.');
+      (window.appToast || alert)('Firebase authentication is not available. Please refresh the page.', 'error');
       return;
     }
 
     if (!window.auth && !ensureFirebaseReady()) {
       console.error('Firebase auth instance not initialized');
       setSyncStatus('Authentication not ready');
-      alert('Authentication is not ready yet. Please wait a moment and try again.');
+      (window.appToast || alert)('Authentication is not ready yet. Please wait a moment and try again.', 'error');
       return;
     }
 
@@ -497,7 +498,7 @@ async function signInWithGoogle() {
 
     setSyncStatus(errorMessage);
     console.error('Final error message:', errorMessage);
-    alert(errorMessage);
+    (window.appToast || alert)(errorMessage, 'error');
   }
 }
 

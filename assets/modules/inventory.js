@@ -74,12 +74,13 @@ function initializeInventory() {
         } else if (action === 'edit') {
           editWeapon(weaponIndex);
         } else if (action === 'delete') {
-          if (confirm('Are you sure you want to delete this weapon?')) {
+          appConfirm('Are you sure you want to delete this weapon?', { confirmText: 'Delete' }).then(ok => {
+            if (!ok) return;
             weaponsData.splice(weaponIndex, 1);
             displayWeaponsStats();
             updateWeaponsPreview();
             autosave();
-          }
+          });
         }
         return;
       }
@@ -166,7 +167,7 @@ function saveEquipment() {
   
   
   if (!name) {
-    alert('Please enter a name for the equipment.');
+    appToast('Please enter a name for the equipment.', 'error');
     return;
   }
   
@@ -405,33 +406,30 @@ function editEquipment(id) {
 
 // Delete equipment
 function deleteEquipment(id) {
-  
-  if (confirm('Are you sure you want to delete this equipment?')) {
+  appConfirm('Are you sure you want to delete this equipment?', { confirmText: 'Delete' }).then(ok => {
+    if (!ok) return;
     const index = inventoryData.equipment.findIndex(e => e.id === id);
-    
-    if (index > -1) {
-      inventoryData.equipment.splice(index, 1);
-      
-      displayEquipment();
-      displayEquipmentStats();
-      updateWeightDisplay();
-      syncEquipmentToStats();
-      
-      // Also update the stats page equipment data
-      window.equipmentData = inventoryData.equipment.map(item => ({
-        name: item.name,
-        type: item.type,
-        bonus: item.bonus,
-        weight: item.weight,
-        notes: item.description
-      }));
-      updateEquipmentPreviews();
-      
-      autosave();
-      
-    } else {
-    }
-  }
+    if (index === -1) return;
+
+    inventoryData.equipment.splice(index, 1);
+
+    displayEquipment();
+    displayEquipmentStats();
+    updateWeightDisplay();
+    syncEquipmentToStats();
+
+    // Also update the stats page equipment data
+    window.equipmentData = inventoryData.equipment.map(item => ({
+      name: item.name,
+      type: item.type,
+      bonus: item.bonus,
+      weight: item.weight,
+      notes: item.description
+    }));
+    updateEquipmentPreviews();
+
+    autosave();
+  });
 }
 
 
@@ -468,7 +466,7 @@ function saveItem() {
   // Check if elements exist
   if (!nameElement || !typeElement || !weightElement || !descriptionElement || !saveBtnElement) {
     console.error('Missing form elements:', { nameElement, typeElement, weightElement, descriptionElement, saveBtnElement });
-    alert('Form error: Missing required elements. Please refresh the page and try again.');
+    appToast('Form error: missing required elements. Please refresh the page and try again.', 'error');
     return;
   }
   
@@ -483,7 +481,7 @@ function saveItem() {
   const value = parseFloat(document.getElementById('item_value').value) || 0;
 
   if (!name) {
-    alert('Please enter a name for the item.');
+    appToast('Please enter a name for the item.', 'error');
     return;
   }
 
@@ -667,7 +665,8 @@ function editItem(id, container) {
 
 // Delete item
 function deleteItem(id, container) {
-  if (confirm('Are you sure you want to delete this item?')) {
+  appConfirm('Are you sure you want to delete this item?', { confirmText: 'Delete' }).then(ok => {
+    if (!ok) return;
     if (container === 'main') {
       const index = inventoryData.mainInventory.findIndex(i => i.id === id);
       if (index > -1) {
@@ -687,7 +686,7 @@ function deleteItem(id, container) {
     saveInventory();
     updateWeightDisplay();
     autosave();
-  }
+  });
 }
 
 
@@ -1087,7 +1086,7 @@ function confirmRefill() {
   const costPerUnit = parseFloat(document.getElementById('refill_cost').value) || 0;
   const currency = document.getElementById('refill_currency').value;
 
-  if (qty <= 0) { alert('Please enter a quantity greater than 0.'); return; }
+  if (qty <= 0) { appToast('Please enter a quantity greater than 0.', 'error'); return; }
 
   // Find item
   let item;
@@ -1103,7 +1102,7 @@ function confirmRefill() {
   if (purchased && costPerUnit > 0) {
     const totalCost = costPerUnit * qty;
     if (!deductCurrency(totalCost, currency)) {
-      alert(`Not enough ${currency.toUpperCase()} to purchase ${qty}× ${item.name}. You need ${totalCost.toFixed(2)} ${currency}.`);
+      appToast(`Not enough ${currency.toUpperCase()} to purchase ${qty}× ${item.name}. You need ${totalCost.toFixed(2)} ${currency}.`, 'error');
       return;
     }
   }
@@ -1168,46 +1167,181 @@ function deductCurrency(amount, currency) {
 }
 
 // ========== CONDITIONS SYSTEM ==========
+// ========== CONDITIONS ==========
+
+// The 14 official SRD 5e conditions, plus Exhaustion (which carries a level).
+// desc is the short effect summary; slug builds the open5e.com/conditions link.
+const SRD_CONDITIONS = [
+  { name: 'Blinded', slug: 'blinded', desc: "Can't see, automatically fails sight checks. Attacks against you have advantage; your attacks have disadvantage." },
+  { name: 'Charmed', slug: 'charmed', desc: "Can't attack the charmer or target them with harmful effects. The charmer has advantage on social checks with you." },
+  { name: 'Deafened', slug: 'deafened', desc: "Can't hear and automatically fails any check requiring hearing." },
+  { name: 'Frightened', slug: 'frightened', desc: "Disadvantage on checks and attacks while the source of fear is in sight. Can't willingly move closer to the source." },
+  { name: 'Grappled', slug: 'grappled', desc: "Speed becomes 0 and can't benefit from bonuses to speed. Ends if the grappler is incapacitated or moved away." },
+  { name: 'Incapacitated', slug: 'incapacitated', desc: "Can't take actions or reactions." },
+  { name: 'Invisible', slug: 'invisible', desc: "Impossible to see without special sense. Attacks against you have disadvantage; your attacks have advantage." },
+  { name: 'Paralyzed', slug: 'paralyzed', desc: "Incapacitated, can't move or speak. Auto-fails STR and DEX saves. Attacks against you have advantage and are auto-crits within 5 ft." },
+  { name: 'Petrified', slug: 'petrified', desc: "Turned to stone: incapacitated, unaware, resistance to all damage, immune to poison/disease. Attacks against you have advantage." },
+  { name: 'Poisoned', slug: 'poisoned', desc: "Disadvantage on attack rolls and ability checks." },
+  { name: 'Prone', slug: 'prone', desc: "Can only crawl. Disadvantage on attacks. Melee attacks against you have advantage; ranged have disadvantage." },
+  { name: 'Restrained', slug: 'restrained', desc: "Speed 0. Attacks against you have advantage; your attacks have disadvantage. Disadvantage on DEX saves." },
+  { name: 'Stunned', slug: 'stunned', desc: "Incapacitated, can't move, can only falter speech. Auto-fails STR and DEX saves. Attacks against you have advantage." },
+  { name: 'Unconscious', slug: 'unconscious', desc: "Incapacitated, can't move or speak, unaware, drops what it holds and falls prone. Auto-fails STR/DEX saves. Attacks have advantage and auto-crit within 5 ft." },
+];
+
+// Exhaustion has 6 cumulative levels (SRD). Effect shown is the cumulative effect at that level.
+const EXHAUSTION_LEVELS = {
+  1: 'Disadvantage on ability checks.',
+  2: 'Speed halved. (plus level 1)',
+  3: 'Disadvantage on attack rolls and saving throws. (plus levels 1-2)',
+  4: 'Hit point maximum halved. (plus levels 1-3)',
+  5: 'Speed reduced to 0. (plus levels 1-4)',
+  6: 'Death. (plus levels 1-5)',
+};
+
+function exhaustionLink() { return 'https://open5e.com/conditions/exhaustion'; }
+
+// In-memory conditions model. Each: { id, name, effect, link, turns, color, exhaustionLevel? }
+window.conditionsData = window.conditionsData || [];
+
 function showConditionPopup() {
+  // Reset to picker mode
+  const sel = document.getElementById('condition_srd_select');
+  if (sel) sel.value = '';
+  const toggle = document.getElementById('condition_custom_toggle');
+  if (toggle) toggle.checked = false;
+  const exhRow = document.getElementById('condition_exhaustion_row');
+  if (exhRow) exhRow.style.display = 'none';
+  const exhLvl = document.getElementById('condition_exhaustion_level');
+  if (exhLvl) exhLvl.value = '1';
   document.getElementById('condition_name').value = '';
   document.getElementById('condition_turns').value = '';
   document.getElementById('condition_effect').value = '';
+  document.getElementById('condition_link').value = '';
   document.getElementById('condition_color').value = 'red';
+  updateConditionMode();
   showPopup('conditionPopup');
 }
 
+// Toggle between SRD picker and custom entry, and show the exhaustion level row when relevant.
+function updateConditionMode() {
+  const custom = document.getElementById('condition_custom_toggle')?.checked;
+  const pickerRow = document.getElementById('condition_picker_row');
+  const customFields = document.getElementById('condition_custom_fields');
+  if (pickerRow) pickerRow.style.display = custom ? 'none' : 'block';
+  if (customFields) customFields.style.display = custom ? 'block' : 'none';
+
+  // Exhaustion level row only shows in picker mode when Exhaustion is selected
+  const sel = document.getElementById('condition_srd_select');
+  const exhRow = document.getElementById('condition_exhaustion_row');
+  if (exhRow) exhRow.style.display = (!custom && sel && sel.value === 'exhaustion') ? 'block' : 'none';
+}
+
 function addCondition() {
-  const name = document.getElementById('condition_name').value;
-  const turns = document.getElementById('condition_turns').value;
-  const effect = document.getElementById('condition_effect').value;
-  const color = document.getElementById('condition_color').value;
-  
-  if (!name) {
-    alert("Please enter a condition name");
-    return;
+  const custom = document.getElementById('condition_custom_toggle')?.checked;
+  let cond;
+
+  if (custom) {
+    const name = document.getElementById('condition_name').value.trim();
+    if (!name) { dmToastOrAlert('Please enter a condition name'); return; }
+    cond = {
+      id: 'cond_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+      name,
+      effect: document.getElementById('condition_effect').value.trim(),
+      link: document.getElementById('condition_link').value.trim(),
+      turns: document.getElementById('condition_turns').value.trim(),
+      color: document.getElementById('condition_color').value,
+    };
+  } else {
+    const slug = document.getElementById('condition_srd_select').value;
+    if (!slug) { dmToastOrAlert('Please pick a condition'); return; }
+    if (slug === 'exhaustion') {
+      const level = parseInt(document.getElementById('condition_exhaustion_level').value) || 1;
+      cond = {
+        id: 'cond_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+        name: 'Exhaustion',
+        exhaustionLevel: level,
+        effect: EXHAUSTION_LEVELS[level],
+        link: exhaustionLink(),
+        turns: '',
+        color: 'red',
+      };
+    } else {
+      const src = SRD_CONDITIONS.find(c => c.slug === slug);
+      if (!src) { dmToastOrAlert('Unknown condition'); return; }
+      cond = {
+        id: 'cond_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+        name: src.name,
+        effect: src.desc,
+        link: 'https://open5e.com/conditions/' + src.slug,
+        turns: '',
+        color: 'red',
+      };
+    }
   }
-  
-  const conditionId = Date.now();
-  const esc = typeof escapeHtml === 'function' ? escapeHtml : (s => String(s));
-  const conditionHTML = `
-    <div class="condition ${color}" id="condition_${conditionId}">
-      <div class="condition-header">
-        <span>${esc(name)}</span>
-        <span class="condition-turns">${turns ? esc(turns) + ' turns' : 'Indefinite'}</span>
-      </div>
-      <div>${esc(effect)}</div>
-      <button onclick="removeCondition('${conditionId}')" style="float:right; padding:2px 5px; margin-top:5px;">Remove</button>
-    </div>
-  `;
-  
-  document.getElementById('conditions_container').insertAdjacentHTML('beforeend', conditionHTML);
+
+  window.conditionsData.push(cond);
+  renderConditions();
   closePopup('conditionPopup');
   autosave();
 }
 
+// Thin alias kept for the conditions code; routes through the shared app toast.
+function dmToastOrAlert(msg) {
+  if (typeof appToast === 'function') appToast(msg, 'error');
+  else alert(msg);
+}
+
 function removeCondition(id) {
-  document.getElementById(`condition_${id}`).remove();
+  window.conditionsData = window.conditionsData.filter(c => c.id !== id);
+  renderConditions();
   autosave();
+}
+
+// Step an exhaustion card's level up or down (1-6). Removing below 1 clears it.
+function adjustExhaustion(id, delta) {
+  const cond = window.conditionsData.find(c => c.id === id);
+  if (!cond || typeof cond.exhaustionLevel !== 'number') return;
+  const next = cond.exhaustionLevel + delta;
+  if (next < 1) { removeCondition(id); return; }
+  cond.exhaustionLevel = Math.min(6, next);
+  cond.effect = EXHAUSTION_LEVELS[cond.exhaustionLevel];
+  renderConditions();
+  autosave();
+}
+
+// Render all condition cards from window.conditionsData into the container.
+function renderConditions() {
+  const container = document.getElementById('conditions_container');
+  if (!container) return;
+  const esc = typeof escapeHtml === 'function' ? escapeHtml : (s => String(s));
+  container.innerHTML = window.conditionsData.map(cond => {
+    const color = cond.color || 'red';
+    const isExh = typeof cond.exhaustionLevel === 'number';
+    const titleText = isExh ? `Exhaustion — Level ${cond.exhaustionLevel}` : cond.name;
+    const title = cond.link
+      ? `<a href="${esc(cond.link)}" target="_blank" rel="noopener noreferrer" class="condition-link">${esc(titleText)}</a>`
+      : esc(titleText);
+    const turns = cond.turns ? `${esc(cond.turns)} turns` : (isExh ? '' : 'Indefinite');
+    const exhControls = isExh
+      ? `<div class="condition-exh-controls">
+           <button type="button" onclick="adjustExhaustion('${cond.id}', -1)" title="Lower level">−</button>
+           <span class="condition-exh-level">Lv ${cond.exhaustionLevel}</span>
+           <button type="button" onclick="adjustExhaustion('${cond.id}', 1)" title="Raise level">+</button>
+         </div>`
+      : '';
+    return `
+      <div class="condition ${color}" id="${esc(cond.id)}">
+        <div class="condition-header">
+          <span>${title}</span>
+          ${turns ? `<span class="condition-turns">${turns}</span>` : ''}
+        </div>
+        <div class="condition-effect">${esc(cond.effect)}</div>
+        <div class="condition-actions">
+          ${exhControls}
+          <button type="button" onclick="removeCondition('${cond.id}')" class="condition-remove-btn">Remove</button>
+        </div>
+      </div>`;
+  }).join('');
 }
 
 // ========== WEAPON DETAILS ==========
@@ -1370,11 +1504,13 @@ function displayPurchaseHistory() {
 }
 
 function clearPurchaseHistory() {
-  if (!confirm('Clear all purchase history? This cannot be undone.')) return;
-  inventoryData.purchaseHistory = [];
-  saveInventory();
-  displayPurchaseHistory();
-  autosave();
+  appConfirm('Clear all purchase history? This cannot be undone.', { confirmText: 'Clear' }).then(ok => {
+    if (!ok) return;
+    inventoryData.purchaseHistory = [];
+    saveInventory();
+    displayPurchaseHistory();
+    autosave();
+  });
 }
 
 // ========== ROUND RESET BUTTON ==========
@@ -1382,7 +1518,7 @@ function resetRoundActions() {
   document.getElementById('action_tick').checked = false;
   document.getElementById('bonus_action_tick').checked = false;
   autosave();
-  alert("Action counters reset for new round!");
+  appToast('Action counters reset for new round!', 'success');
 }
 
 
@@ -1459,11 +1595,11 @@ const LayoutManager = {
       });
 
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(layout));
-      alert('Layout saved successfully!');
+      appToast('Layout saved successfully!', 'success');
       return true;
     } catch (e) {
       console.error('Save failed:', e);
-      alert('Save error: ' + e.message);
+      appToast('Save error: ' + e.message, 'error');
       return false;
     }
   },
@@ -1500,7 +1636,9 @@ const LayoutManager = {
   },
   
   reset() {
-    if (confirm('Are you sure you want to reset ALL layout settings to default?')) {
+    const key = this.STORAGE_KEY;
+    appConfirm('Are you sure you want to reset ALL layout settings to default?', { confirmText: 'Reset' }).then(ok => {
+      if (!ok) return;
       // Reset sections
       document.querySelectorAll('.section').forEach(section => {
         section.style.width = '';
@@ -1509,17 +1647,17 @@ const LayoutManager = {
         section.style.left = '';
         section.style.top = '';
       });
-      
+
       // Reset textareas
       document.querySelectorAll('textarea').forEach(textarea => {
         textarea.style.width = '';
         textarea.style.height = '';
       });
-      
+
       // Clear storage
-      localStorage.removeItem(this.STORAGE_KEY);
-      alert('Layout has been reset to default settings');
-    }
+      localStorage.removeItem(key);
+      appToast('Layout has been reset to default settings', 'success');
+    });
   }
 };
 

@@ -39,21 +39,42 @@
           <option value="casters">Spellcasters</option>
           <option value="fighters">Warriors &amp; Brutes</option>
         </optgroup>
+        <optgroup label="Human factions">
+          <option value="humansCommon">Pure Humans (townsfolk &amp; thugs)</option>
+          <option value="mercenaries">Mercenary Company</option>
+          <option value="cultists">Cult of Fanatics</option>
+          <option value="assassinsSpies">Assassins &amp; Spies</option>
+          <option value="nobleCourt">Noble Court &amp; Guards</option>
+          <option value="pirates">Pirates &amp; Raiders</option>
+          <option value="tribalWarband">Tribal Warband</option>
+          <option value="banditGang">Bandit Gang / Hideout</option>
+        </optgroup>
         <optgroup label="Monsters">
+          <option value="nonHumanoid">Any Non-Humanoid</option>
           <option value="beasts">Beasts &amp; Wildlife</option>
+          <option value="monstrosities">Monstrosities</option>
           <option value="undead">Undead</option>
           <option value="fiends">Fiends &amp; Demons</option>
+          <option value="demons">Demons (chaotic)</option>
+          <option value="devils">Devils (lawful)</option>
+          <option value="celestials">Celestials</option>
           <option value="aberrations">Aberrations</option>
           <option value="dragons">Dragons &amp; Kin</option>
           <option value="giants">Giants</option>
           <option value="fey">Fey &amp; Woodland</option>
+          <option value="plants">Plants &amp; Fungi</option>
           <option value="constructs">Constructs</option>
-          <option value="oozesVermin">Oozes &amp; Vermin</option>
           <option value="elementals">Elementals</option>
+          <option value="oozesVermin">Oozes &amp; Vermin</option>
+          <option value="swarms">Swarms</option>
+          <option value="lycanthropes">Lycanthropes / Shapechangers</option>
         </optgroup>
         <optgroup label="Combos">
           <option value="casterWarband">Caster + Warband</option>
+          <option value="mixedWarband">Mixed Warband</option>
           <option value="huntPack">Hunting Pack</option>
+          <option value="beastHandlers">Beasts + Handlers</option>
+          <option value="undeadHorde">Undead Horde</option>
           <option value="bossMinions">Boss + Minions</option>
         </optgroup>
       </select>
@@ -81,6 +102,16 @@
           <option value="twinThreat">Twin Threat (duo)</option>
           <option value="siege">Siege / Horde</option>
           <option value="duel">Rival Duel</option>
+        </optgroup>
+        <optgroup label="More battle types">
+          <option value="gang">Gang / Rabble (many weak)</option>
+          <option value="bodyguards">Protect the VIP</option>
+          <option value="artillery">Artillery Battery</option>
+          <option value="pincer">Pincer (two fronts)</option>
+          <option value="escalating">Escalating Waves</option>
+          <option value="skirmishers">Skirmishers (fast &amp; fragile)</option>
+          <option value="loneHunter">Lone Hunter + Lures</option>
+          <option value="standoff">Standoff (tense trigger)</option>
         </optgroup>
       </select>
       <input type="number" id="dmGenCount" min="0" max="30" placeholder="# creatures" title="Force a creature count (0 = auto)" style="width:120px;">

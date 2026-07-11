@@ -222,10 +222,14 @@
         <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
         <div class="section-help-panel" onclick="closeHelp(this)">
           <p><strong>Skills</strong> — your character's trained abilities, each tied to one of the six ability scores.</p>
-          <p><strong>Checkbox</strong> — tick if your class or background grants proficiency in this skill. Adds your Proficiency Bonus to the total.</p>
-          <p><strong>Total</strong> (left box, read-only) — auto-calculated: ability modifier + proficiency bonus (if proficient). Updates automatically whenever your scores or level change.</p>
-          <p><strong>Adj</strong> (right box) — your manual adjustment. Use this for item bonuses, spell effects, Bard's Jack of All Trades, Expertise, or any situational modifier. Positive or negative, e.g. +2 or −1.</p>
-          <p>The total shown is what you roll for skill checks unless you have a special modifier from a feature.</p>
+          <p><strong>Proficiency button</strong> — click it to cycle through four levels, applied to your Proficiency Bonus:</p>
+          <p>— <strong>—</strong> None: no proficiency bonus.<br>
+             — <strong>½ Half</strong>: half your proficiency bonus, rounded down (e.g. Bard's Jack of All Trades).<br>
+             — <strong>● Prof</strong>: full proficiency bonus (your class/background grants it).<br>
+             — <strong>★ Exp</strong>: expertise — double your proficiency bonus (Rogue/Bard).</p>
+          <p><strong>Total</strong> (left box, read-only) — auto-calculated: ability modifier + (proficiency bonus × your level above) + Adj. Updates whenever your scores, level, or proficiency change.</p>
+          <p><strong>Adj</strong> (right box) — a manual adjustment on top: magic item bonuses, Guidance, or any situational modifier. Positive or negative, e.g. +2 or −1.</p>
+          <p>The total shown is what you roll for skill checks.</p>
         </div>
         <div class="skills-container">
           <div class="skill-row">
@@ -409,7 +413,7 @@
             </div>
             <div class="hit-dice-group">
               <label>Constitution Modifier:</label>
-              <input type="number" id="con_modifier" readonly style="background: #2a2a2a; color: var(--accent-text); font-weight: bold; text-align: center;" title="Auto-synced from CON modifier"/>
+              <input type="number" id="con_modifier" readonly class="con-modifier-field" title="Auto-synced from CON modifier"/>
             </div>
             <div class="hit-dice-group">
               <label>Hit Die Size:</label>
@@ -433,9 +437,7 @@
             <div class="potion-group">
               <label>Potion Type:</label>
               <select id="potion_type" onchange="updatePotionInfo(); autosave()">
-                <option value="minor">Minor Healing Potion (2d4+2)</option>
-                <option value="lesser">Lesser Healing Potion (2d4+2)</option>
-                <option value="healing">Healing Potion (4d4+4)</option>
+                <option value="healing">Healing Potion (2d4+2)</option>
                 <option value="greater">Greater Healing Potion (4d4+4)</option>
                 <option value="superior">Superior Healing Potion (8d4+8)</option>
                 <option value="supreme">Supreme Healing Potion (10d4+20)</option>
@@ -470,7 +472,7 @@
       <div class="section-help-panel" onclick="closeHelp(this)">
         <p><strong>Actions, Bonus Actions & Features</strong> — everything your character can do, split into three lists by when it happens.</p>
         <p><strong>Actions</strong> = things on your turn (attacks, most spells). <strong>Bonus Actions</strong> = bonus-action stuff (off-hand attack, some spells/features). <strong>Features & Traits</strong> = passive or always-on abilities (racial traits, class features).</p>
-        <p><strong>Add from sheet</strong> — searches your own weapons, spells, items and racial traits and drops them in ready-made. Flip the <em>"Search everything in D&D 5e"</em> toggle to pull from the whole ruleset instead. Spells automatically land in the right section based on their casting time.</p>
+        <p><strong>Add from sheet</strong> — searches your own weapons, spells, items and racial traits and drops them in ready-made. Your <strong>prepared spells &amp; cantrips</strong> (the ones in your prepared-spells table) are grouped at the top under <em>★ Ready</em> with a tag, since those are what you actually have available; other sheet spells follow below. Flip the <em>"Search everything in D&D 5e"</em> toggle to pull from the whole ruleset instead. Spells automatically land in the right section based on their casting time.</p>
         <p><strong>Add custom</strong> — write your own card by hand: name, timing (which section), damage, range, uses, and an optional reference link that shows a "View rules" button.</p>
         <p><strong>Cards</strong> — long descriptions collapse with a "View more" toggle; a coloured badge shows where a pulled card came from (weapon / spell / item / trait). Tap the star to pin favourites to the top; use Edit or Del on any card.</p>
         <p><strong>Nothing here changes your inventory, weapons or other characters</strong> — pulling just copies a ready-to-edit card into your list.</p>
@@ -609,15 +611,15 @@
         <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
         <div class="section-help-panel" onclick="closeHelp(this)">
           <p><strong>Long Term Conditions</strong> — persistent status effects on your character.</p>
-          <p>Use this for conditions from spells, diseases, curses, or ongoing effects: Poisoned, Blinded, Charmed, Restrained, etc.</p>
-          <p>Each condition card shows its name, how many turns it lasts (or Indefinite), and a description of the effect. Click Remove when it ends.</p>
-          <p>Conditions are saved with your character and persist across sessions.</p>
+          <p>Click <strong>+ Add Condition</strong> and pick from the 14 official 5e conditions (Poisoned, Blinded, Charmed, Restrained, etc.) — the effect text and an Open5e reference link fill in automatically.</p>
+          <p>Flip the <strong>Custom condition</strong> switch to add your own from spells, diseases, or curses — with a name, effect, optional reference link, duration, and color.</p>
+          <p><strong>Exhaustion</strong> tracks its 6 levels: pick a starting level, then use the − / + buttons on the card to raise or lower it as it changes.</p>
+          <p>Each card shows its name (a link if one is set), duration (or Indefinite), and effect. Click Remove when it ends. Conditions are saved with your character and persist across sessions.</p>
         </div>
-        <h2>Long Term Conditions
-          <button onclick="showConditionPopup()" style="float: right; padding: 2px 6px; font-size: 0.8rem;">+ Add</button>
-        </h2>
+        <h2>Long Term Conditions</h2>
+        <button onclick="showConditionPopup()" class="condition-add-btn">+ Add Condition</button>
         <div id="conditions_container">
-          <!-- itions will be added here dynamically -->
+          <!-- Conditions are rendered dynamically by renderConditions() -->
         </div>
       </div>
 

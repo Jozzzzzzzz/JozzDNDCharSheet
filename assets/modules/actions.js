@@ -111,7 +111,7 @@ function saveAction() {
   const editId = document.getElementById('saveActionBtn').getAttribute('data-edit-id');
 
   if (!name) {
-    alert('Please enter a name for the action.');
+    appToast('Please enter a name for the action.', 'error');
     return;
   }
 
@@ -299,7 +299,8 @@ function editAction(id, type) {
 
 // Delete action
 function deleteAction(id, type) {
-  if (confirm('Are you sure you want to delete this action?')) {
+  appConfirm('Are you sure you want to delete this action?', { confirmText: 'Delete' }).then(ok => {
+    if (!ok) return;
     const index = actionsData.actions.findIndex(a => a.id === id);
     if (index > -1) {
       actionsData.actions.splice(index, 1);
@@ -308,18 +309,19 @@ function deleteAction(id, type) {
       updateFavorites();
       autosave();
     }
-  }
+  });
 }
 
 // Clear all actions
 function clearAllActions(type) {
-  if (confirm('Are you sure you want to clear all actions? This cannot be undone.')) {
+  appConfirm('Are you sure you want to clear all actions? This cannot be undone.', { confirmText: 'Clear all' }).then(ok => {
+    if (!ok) return;
     actionsData.actions = [];
     saveActions();
     displayActions();
     updateFavorites();
     autosave();
-  }
+  });
 }
 
 // Update favorites display
@@ -391,13 +393,16 @@ function spellTiming(sp) {
   return null; // minutes/hours/rituals — not an in-combat action
 }
 function spellToKitAction(sp) {
-  const lvl = Number(sp.level) === 0 ? 'Cantrip' : `Level ${sp.level}`;
+  const isCantrip = Number(sp.level) === 0;
+  const lvl = isCantrip ? 'Cantrip' : `Level ${sp.level}`;
   const atkSave = [sp.attack, sp.save].filter(Boolean).join(' / ');
   return {
     source: 'spell', name: sp.name, category: 'spell',
     damage: sp.damage || '', range: sp.range || '', attack: atkSave,
     uses: lvl, description: sp.summary || sp.description || '', link: spellOpen5eLink(sp),
-    _timing: spellTiming(sp)
+    _timing: spellTiming(sp),
+    // Carried so the "your sheet" search can float prepared-table spells to the top.
+    _prepared: !!sp.prepared, _cantrip: isCantrip
   };
 }
 
@@ -567,7 +572,7 @@ function renderActionKitSearch(query) {
     const scope = _kitShowAll ? 'everything in D&amp;D 5e' : 'your sheet';
     const hint = timing === 'feature'
       ? (_kitShowAll ? 'Search all racial traits (Darkvision, Fey Ancestry, Breath Weapon…).' : 'Search your race’s traits — flip the toggle to browse every racial trait.')
-      : `Searching ${scope}. ${_kitShowAll ? 'All spells, cantrips &amp; Open5e items, any timing.' : 'Your weapons, spells, items &amp; the default actions — flip the toggle to search everything.'}`;
+      : `Searching ${scope}. ${_kitShowAll ? 'All spells, cantrips &amp; Open5e items, any timing.' : 'Your weapons, spells, items &amp; the default actions — your prepared spells &amp; cantrips show first. Flip the toggle to search everything.'}`;
     out.innerHTML = `<p class="kit-empty">${hint}</p>`;
     _actionKitSearchCache = [];
     return;
@@ -613,19 +618,39 @@ function renderActionKitSearch(query) {
     }
   }
 
-  matches = matches.sort((a, b) => a.name.localeCompare(b.name)).slice(0, 50);
+  // On the "your sheet" view, prepared-table spells are what the player actually
+  // has ready — float them (stable) to the top so they show first, then the rest.
+  const isReady = (c) => !_kitShowAll && c && c.source === 'spell' && c._prepared;
+  matches = matches.sort((a, b) => {
+    const ra = isReady(a) ? 0 : 1, rb = isReady(b) ? 0 : 1;
+    if (ra !== rb) return ra - rb;              // ready group first
+    return a.name.localeCompare(b.name);        // then alphabetical within group
+  }).slice(0, 50);
   _actionKitSearchCache = matches;
 
   if (!matches.length) { out.innerHTML = `<p class="kit-empty">No matches for “${escapeHtml(query)}”${!_kitShowAll ? ' on your sheet — flip the toggle to search everything.' : '.'}</p>`; return; }
+
+  const readyCount = matches.filter(isReady).length;
+  const hasGroups = readyCount > 0 && readyCount < matches.length;
 
   out.innerHTML = matches.map((c, idx) => {
     const added = have.has(`${c.source}::${c.name.toLowerCase()}`);
     const meta = [c.uses, c.damage, c.range].filter(Boolean).join(' · ');
     const link = c.link;
-    return `
-      <div class="kit-row ${added ? 'kit-row-added' : ''}">
+    const ready = isReady(c);
+    // Matches are sorted ready-first, so a header goes wherever the ready state
+    // changes from the previous row (i.e. the first row of each group).
+    let header = '';
+    if (hasGroups && (idx === 0 || isReady(matches[idx - 1]) !== ready)) {
+      header = ready
+        ? '<div class="kit-group-header">★ Ready — prepared &amp; cantrips</div>'
+        : '<div class="kit-group-header">Other spells on your sheet</div>';
+    }
+    const readyTag = ready ? `<span class="kit-ready-tag">${c._cantrip ? 'Cantrip' : 'Prepared'}</span>` : '';
+    return `${header}
+      <div class="kit-row ${added ? 'kit-row-added' : ''} ${ready ? 'kit-row-ready' : ''}">
         <div class="kit-row-info">
-          <span class="kit-row-name">${escapeHtml(c.name)}${link ? ` <a class="kit-row-link" href="${escapeHtml(link)}" target="_blank" rel="noopener" title="View on Open5e">link</a>` : ''}<span class="kit-src-tag kit-src-${c.source}">${escapeHtml(c.source)}</span></span>
+          <span class="kit-row-name">${escapeHtml(c.name)}${readyTag}${link ? ` <a class="kit-row-link" href="${escapeHtml(link)}" target="_blank" rel="noopener" title="View on Open5e">link</a>` : ''}<span class="kit-src-tag kit-src-${c.source}">${escapeHtml(c.source)}</span></span>
           <span class="kit-row-meta">${escapeHtml(meta)}</span>
         </div>
         ${added ? '<span class="kit-added-tag">✓ Added</span>'

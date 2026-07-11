@@ -50,22 +50,73 @@
 <!-- Condition Popup -->
 <div class="popup" id="conditionPopup">
   <h3>Add Condition</h3>
-  <label>Condition Name:</label>
-  <input type="text" id="condition_name" placeholder="e.g. Poisoned"/>
-  
-  <label>Duration (turns):</label>
-  <input type="number" id="condition_turns" placeholder="Leave blank for indefinite"/>
-  
-  <label>Effect:</label>
-  <textarea id="condition_effect" placeholder="Describe the effect"></textarea>
-  
-  <label>Color:</label>
-  <select id="condition_color">
-    <option value="red">Red</option>
-    <option value="blue">Blue</option>
-    <option value="green">Green</option>
-  </select>
-  
+
+  <!-- Mode toggle: SRD picker <-> Custom -->
+  <label class="condition-mode-toggle">
+    <span>Custom condition</span>
+    <span class="switch">
+      <input type="checkbox" id="condition_custom_toggle" onchange="updateConditionMode()"/>
+      <span class="slider"></span>
+    </span>
+  </label>
+
+  <!-- SRD picker mode -->
+  <div id="condition_picker_row">
+    <label>Pick a condition:</label>
+    <select id="condition_srd_select" onchange="updateConditionMode()">
+      <option value="">— Choose a 5e condition —</option>
+      <option value="blinded">Blinded</option>
+      <option value="charmed">Charmed</option>
+      <option value="deafened">Deafened</option>
+      <option value="exhaustion">Exhaustion</option>
+      <option value="frightened">Frightened</option>
+      <option value="grappled">Grappled</option>
+      <option value="incapacitated">Incapacitated</option>
+      <option value="invisible">Invisible</option>
+      <option value="paralyzed">Paralyzed</option>
+      <option value="petrified">Petrified</option>
+      <option value="poisoned">Poisoned</option>
+      <option value="prone">Prone</option>
+      <option value="restrained">Restrained</option>
+      <option value="stunned">Stunned</option>
+      <option value="unconscious">Unconscious</option>
+    </select>
+
+    <div id="condition_exhaustion_row" style="display:none;">
+      <label>Exhaustion level (1-6):</label>
+      <select id="condition_exhaustion_level">
+        <option value="1">Level 1 — Disadvantage on ability checks</option>
+        <option value="2">Level 2 — Speed halved</option>
+        <option value="3">Level 3 — Disadvantage on attacks &amp; saves</option>
+        <option value="4">Level 4 — HP maximum halved</option>
+        <option value="5">Level 5 — Speed reduced to 0</option>
+        <option value="6">Level 6 — Death</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Custom mode -->
+  <div id="condition_custom_fields" style="display:none;">
+    <label>Condition Name:</label>
+    <input type="text" id="condition_name" placeholder="e.g. Cursed"/>
+
+    <label>Effect:</label>
+    <textarea id="condition_effect" placeholder="Describe the effect"></textarea>
+
+    <label>Link (optional):</label>
+    <input type="url" id="condition_link" placeholder="https://open5e.com/conditions/… or leave blank"/>
+
+    <label>Duration (turns):</label>
+    <input type="number" id="condition_turns" placeholder="Leave blank for indefinite"/>
+
+    <label>Color:</label>
+    <select id="condition_color">
+      <option value="red">Red</option>
+      <option value="blue">Blue</option>
+      <option value="green">Green</option>
+    </select>
+  </div>
+
   <div style="margin-top: 15px; display: flex; justify-content: space-between;">
     <button onclick="addCondition()">Add Condition</button>
     <button onclick="closePopup('conditionPopup')">Cancel</button>
@@ -113,6 +164,10 @@
 <!-- Add Custom Resource Popup -->
 <div class="popup" id="addCustomResourcePopup">
   <h3>Add Custom Resource</h3>
+
+  <label>Quick templates:</label>
+  <div class="resource-template-row" id="resourceTemplateRow"></div>
+
   <label>Resource Name:</label>
   <input type="text" id="custom_resource_name" placeholder="e.g. Warlock Spell Slots, Ki Points, Bardic Inspiration"/>
   
@@ -423,6 +478,10 @@
     </div>
     <div class="spell-summary" id="spellDetailSummary" style="display: none;"></div>
     <div class="spell-description" id="spellDetailDescription"></div>
+    <div class="spell-upcast-block" id="spellDetailUpcast" style="display: none;">
+      <span class="spell-upcast-label" id="spellDetailUpcastLabel">At Higher Levels</span>
+      <span class="spell-upcast-text" id="spellDetailUpcastText"></span>
+    </div>
     <div class="spell-detail-row" id="spellDetailWikiLink" style="display: none;">
       <span class="spell-detail-label">Open5e:</span>
       <span class="spell-detail-value">
@@ -517,7 +576,7 @@
       </div>
       <div class="spell-form-full">
         <label>Open5e Link (optional):</label>
-        <input type="url" id="spellWikiLink" placeholder="https://open5e.com/spells/spell-name">
+        <input type="url" id="spellFormWikiLink" placeholder="https://open5e.com/spells/spell-name">
       </div>
       <div class="spell-form-full">
         <label>Source Book (optional):</label>

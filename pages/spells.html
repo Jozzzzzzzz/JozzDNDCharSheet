@@ -130,7 +130,7 @@
           <div class="section-help-panel" onclick="closeHelp(this)">
             <p><strong>Cantrips</strong> — your at-will spells. Cantrips never use spell slots and can be cast any number of times.</p>
             <p><strong>+ Add Cantrip</strong> — fill in a blank form with all details manually.</p>
-            <p><strong>Import Cantrips</strong> — search the built-in spell database (482 spells) and add directly. Much faster than manual entry.</p>
+            <p><strong>Import Cantrips</strong> — search the built-in spell database (1,100+ spells) and add directly. Much faster than manual entry.</p>
             <p><strong>Filter dropdown</strong> — show All, Prepared, Known, or Favorites only.</p>
             <p><strong>Search bar</strong> — live search by name as you type. Stacks with the dropdown filter.</p>
             <p>Each cantrip card shows name, school, and casting info. Expand it to see the full description. Use the ★ to favourite, the pencil to edit, or the bin to delete.</p>
@@ -153,7 +153,7 @@
             </div>
           </div>
           <div class="spell-search-bar">
-            <input type="text" id="cantrip_search" class="spell-search-input" placeholder="Search cantrips..." oninput="filterSpells('cantrip')">
+            <input type="text" id="cantrip_search" class="spell-search-input" placeholder="Search name or effect..." oninput="filterSpells('cantrip')">
           </div>
           <div class="spells-list-container" id="cantrips_list">
             <!-- Cantrips will be populated here -->
@@ -166,7 +166,7 @@
           <div class="section-help-panel" onclick="closeHelp(this)">
             <p><strong>Spells</strong> — your levelled spells (1st–9th level). These cost spell slots to cast.</p>
             <p><strong>+ Add Spell</strong> — fill in manually: name, level, school, casting time, range, components, duration, damage/effect, save type, attack roll, ritual, concentration, and description.</p>
-            <p><strong>Import Spells</strong> — search the built-in database and add with one click. Includes all PHB spells plus many supplements.</p>
+            <p><strong>Import Spells</strong> — search the built-in database (1,100+ spells, sourced from Open5e) and add with one click. Covers the SRD plus many supplements.</p>
             <p><strong>Filters</strong> — narrow by level (1st–9th), school (Evocation, Illusion, etc.), and status (Prepared, Known, Ritual, Favorites). All three stack together.</p>
             <p><strong>Search bar</strong> — live search by name, stacks with all filters.</p>
             <p><strong>Prepared checkbox</strong> — tick on a spell's card to mark it prepared. Prepared spells appear in the Prepared Spells table at the top.</p>
@@ -214,7 +214,7 @@
             </div>
           </div>
           <div class="spell-search-bar">
-            <input type="text" id="spell_search" class="spell-search-input" placeholder="Search spells..." oninput="filterSpells('spell')">
+            <input type="text" id="spell_search" class="spell-search-input" placeholder="Search name or effect..." oninput="filterSpells('spell')">
           </div>
           <div class="spells-list-container" id="spells_list">
             <!-- Spells will be populated here -->

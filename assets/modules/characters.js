@@ -12,6 +12,8 @@ async function handleSuggestionSubmit(event) {
     await handleSuggestionSubmitGeneric('suggestionType', 'suggestionText', 'suggestionStatus');
   }
 
+// Wired for the settings-page suggestion form (settingsSuggestion* IDs). That form
+// is not currently rendered in any page; kept as the ready hook if it's re-added.
 async function handleSettingsSuggestionSubmit(event) {
     event.preventDefault();
     await handleSuggestionSubmitGeneric('settingsSuggestionType', 'settingsSuggestionText', 'settingsSuggestionStatus');

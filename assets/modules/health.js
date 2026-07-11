@@ -95,7 +95,7 @@ function showCustomHPPopup() {
 function customAdjustHP(action) {
   const amount = parseInt(document.getElementById('custom_hp_amount').value) || 0;
   if (amount <= 0) {
-    alert('Please enter a valid amount greater than 0');
+    appToast('Please enter a valid amount greater than 0', 'error');
     return;
   }
   
@@ -117,7 +117,7 @@ function shortRest() {
   const hitDieSize = parseInt(document.getElementById('hit_die_size').value) || 6;
   
   if (hitDiceSpend <= 0) {
-    alert("Please enter how many Hit Dice you want to spend (minimum 1)");
+    appToast('Please enter how many Hit Dice you want to spend (minimum 1)', 'error');
     return;
   }
   
@@ -155,7 +155,7 @@ function shortRest() {
   const newCurrentHP = getCurrentHP();
   const newTempHP = getTempHP();
   const hpDisplay = newTempHP > 0 ? `${newCurrentHP} + ${newTempHP} temp` : `${newCurrentHP}`;
-  alert(`Short Rest Completed!\n\nHit Dice Rolls: ${rollSummary}\nTotal Recovery: ${totalRecovery} HP\n\nNew HP: ${hpDisplay}/${maxHPValue}`);
+  appAlert(`Hit Dice Rolls: ${rollSummary}\nTotal Recovery: ${totalRecovery} HP\nNew HP: ${hpDisplay}/${maxHPValue}`, 'Short Rest Completed!');
   
   // Reset inputs
   document.getElementById('hit_dice_spend').value = 1;
@@ -190,16 +190,18 @@ function updatePotionInfo() {
   const potionType = document.getElementById('potion_type').value;
   const potionInfo = document.getElementById('potion_info_text');
   
+  // Standard 5e healing potions (DMG). 'minor'/'lesser' are legacy keys from old
+  // saves — they map to the basic Healing Potion so those characters still work.
   const potionData = {
     minor: { dice: '2d4', bonus: 2, min: 4, max: 10 },
     lesser: { dice: '2d4', bonus: 2, min: 4, max: 10 },
-    healing: { dice: '4d4', bonus: 4, min: 8, max: 20 },
+    healing: { dice: '2d4', bonus: 2, min: 4, max: 10 },
     greater: { dice: '4d4', bonus: 4, min: 8, max: 20 },
     superior: { dice: '8d4', bonus: 8, min: 16, max: 40 },
     supreme: { dice: '10d4', bonus: 20, min: 30, max: 60 }
   };
-  
-  const data = potionData[potionType];
+
+  const data = potionData[potionType] || potionData.healing;
   potionInfo.textContent = `Heals: ${data.dice}+${data.bonus} = ${data.min}-${data.max} HP`;
 }
 
@@ -209,37 +211,35 @@ function useHealthPotion() {
   potionConfirmCount++;
   
   if (potionConfirmCount === 1) {
-    document.getElementById('use_potion_btn').textContent = 'Click Again to Confirm';
-    document.getElementById('use_potion_btn').style.background = '#FF5722';
+    setPotionBtnState('warn', 'Click Again to Confirm');
     setTimeout(() => {
       if (potionConfirmCount === 1) {
         potionConfirmCount = 0;
-        document.getElementById('use_potion_btn').textContent = 'Use Potion';
-        document.getElementById('use_potion_btn').style.background = '#9C27B0';
+        setPotionBtnState('', 'Use Potion');
       }
     }, 3000);
     return;
   }
-  
+
   if (potionConfirmCount === 2) {
-    document.getElementById('use_potion_btn').textContent = 'Final Click to Use!';
-    document.getElementById('use_potion_btn').style.background = '#D32F2F';
+    setPotionBtnState('danger', 'Final Click to Use!');
     return;
   }
   
   if (potionConfirmCount >= 3) {
     // Actually use the potion
     const potionType = document.getElementById('potion_type').value;
+    // Standard 5e potions. Legacy 'minor'/'lesser' keys fall back to Healing.
     const potionData = {
       minor: { dice: 2, sides: 4, bonus: 2 },
       lesser: { dice: 2, sides: 4, bonus: 2 },
-      healing: { dice: 4, sides: 4, bonus: 4 },
+      healing: { dice: 2, sides: 4, bonus: 2 },
       greater: { dice: 4, sides: 4, bonus: 4 },
       superior: { dice: 8, sides: 4, bonus: 8 },
       supreme: { dice: 10, sides: 4, bonus: 20 }
     };
-    
-    const data = potionData[potionType];
+
+    const data = potionData[potionType] || potionData.healing;
     let totalHealing = 0;
     let rollDetails = [];
     
@@ -269,13 +269,23 @@ function useHealthPotion() {
     const newCurrentHP = getCurrentHP();
     const newTempHP = getTempHP();
     const hpDisplay = newTempHP > 0 ? `${newCurrentHP} + ${newTempHP} temp` : `${newCurrentHP}`;
-    alert(`Health Potion Used!\n\nRolls: ${rollSummary}\nBonus: +${data.bonus}\nTotal Healing: ${totalHealing} HP\n\nNew HP: ${hpDisplay}/${maxHPValue}`);
+    appAlert(`Rolls: ${rollSummary}\nBonus: +${data.bonus}\nTotal Healing: ${totalHealing} HP\nNew HP: ${hpDisplay}/${maxHPValue}`, 'Health Potion Used!');
     
     // Reset button
     potionConfirmCount = 0;
-    document.getElementById('use_potion_btn').textContent = 'Use Potion';
-    document.getElementById('use_potion_btn').style.background = '#9C27B0';
+    setPotionBtnState('', 'Use Potion');
   }
+}
+
+// Set the Use Potion button's confirm state via themed CSS classes (no hardcoded
+// colors). state: '' (idle/accent) | 'warn' | 'danger'.
+function setPotionBtnState(state, label) {
+  const btn = document.getElementById('use_potion_btn');
+  if (!btn) return;
+  btn.classList.remove('potion-btn-warn', 'potion-btn-danger');
+  if (state === 'warn') btn.classList.add('potion-btn-warn');
+  else if (state === 'danger') btn.classList.add('potion-btn-danger');
+  if (label != null) btn.textContent = label;
 }
 
 function longRest() {
@@ -302,6 +312,6 @@ function longRest() {
   if (typeof resetCustomResources === 'function') resetCustomResources('long');
 
   autosave();
-  alert("Long rest completed - HP fully restored, death saves reset, spell slots restored");
+  appToast('Long rest completed — HP restored, death saves reset, spell slots restored', 'success');
 }
 

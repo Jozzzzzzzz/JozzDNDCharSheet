@@ -443,7 +443,7 @@ function backfillClassTagsOnKnownSpells() {
 // Show import popup
 function showImportPopup(type) {
   if (Object.keys(spellDatabase).length === 0) {
-    alert('Spell database is still loading, please try again in a moment.');
+    appToast('Spell database is still loading, please try again in a moment.', 'info');
     return;
   }
   const popup = document.getElementById('importSpellsPopup');
@@ -607,11 +607,11 @@ function executeImport() {
   renderSpells();
   autosave();
   closePopup('importSpellsPopup');
-  alert(importMode === 'cantrip' 
+  appToast(importMode === 'cantrip'
     ? `Imported ${importedCount} cantrips!`
-    : (importMode === 'spell' 
+    : (importMode === 'spell'
       ? `Imported ${importedCount} spells!`
-      : `Imported ${importedCount} spells and cantrips!`));
+      : `Imported ${importedCount} spells and cantrips!`), 'success');
 }
 
 // Create spell from name using comprehensive database
@@ -735,33 +735,32 @@ function clearAllSpells(type, event) {
   const typeName = type === 'cantrip' ? 'cantrips' : 'spells';
   
   if (spellArray.length === 0) {
-    alert(`No ${typeName} to clear!`);
+    appToast(`No ${typeName} to clear!`, 'info');
     return;
   }
-  
-  // Final confirmation
-  const confirmed = confirm(`Are you sure you want to clear ALL ${spellArray.length} ${typeName}?\n\nThis action cannot be undone!\n\nNote: This will NOT remove spells from your favorites.`);
-  
-  if (confirmed) {
-    // Clear the spells array
-    spellArray.length = 0;
-    
-    // Update the button back to normal
-    const button = event.target;
+
+  // Capture the button now — `event` is not valid inside the async callback.
+  const button = event && event.target;
+  const resetButtonLabel = () => {
+    if (!button) return;
     button.textContent = `Clear All ${typeName.charAt(0).toUpperCase() + typeName.slice(1)}`;
     button.style.backgroundColor = '#ff4444';
-    
-    // Re-render the spells
-    renderSpells();
-    autosave();
-    
-    alert(`All ${typeName} have been cleared!`);
-  } else {
-    // Reset button if user cancels
-    const button = event.target;
-    button.textContent = `Clear All ${typeName.charAt(0).toUpperCase() + typeName.slice(1)}`;
-    button.style.backgroundColor = '#ff4444';
-  }
+  };
+
+  appConfirm(
+    `Are you sure you want to clear ALL ${spellArray.length} ${typeName}?\nThis action cannot be undone!\nNote: this will NOT remove spells from your favorites.`,
+    { confirmText: 'Clear all' }
+  ).then(confirmed => {
+    if (confirmed) {
+      spellArray.length = 0;
+      resetButtonLabel();
+      renderSpells();
+      autosave();
+      appToast(`All ${typeName} have been cleared!`, 'success');
+    } else {
+      resetButtonLabel();
+    }
+  });
 }
 
 // ========== SPELL SLOTS SYSTEM ==========
@@ -771,9 +770,9 @@ function addSpellSlot() {
   const maxValue = parseInt(document.getElementById('spell_slot_max').value) || 1;
   const resetType = document.getElementById('spell_slot_reset_type').value;
 
-  if (!name) { alert("Please enter a spell slot name"); return; }
+  if (!name) { appToast('Please enter a spell slot name', 'error'); return; }
   if (manualSpellSlots.find(s => s.name.toLowerCase() === name.toLowerCase())) {
-    alert("A spell slot type with this name already exists"); return;
+    appToast('A spell slot type with this name already exists', 'error'); return;
   }
 
   const slotId = 'spell_' + Date.now();
@@ -785,12 +784,13 @@ function addSpellSlot() {
 }
 
 function removeSpellSlot(slotId) {
-  if (confirm('Are you sure you want to remove this spell slot type?')) {
+  appConfirm('Are you sure you want to remove this spell slot type?', { confirmText: 'Remove' }).then(ok => {
+    if (!ok) return;
     manualSpellSlots = manualSpellSlots.filter(s => s.id !== slotId);
     delete manualSpellSlotsUsed[slotId];
     updateSpellSlots();
     autosave();
-  }
+  });
 }
 
 // Ghost drag state for spell slots
@@ -963,11 +963,12 @@ function stepSpellSlot(slotId, delta) {
 
 function resetSpellSlots(restType = 'all') {
   if (restType === 'all') {
-    if (confirm('Are you sure you want to reset all spell slots?')) {
+    appConfirm('Are you sure you want to reset all spell slots?', { confirmText: 'Reset' }).then(ok => {
+      if (!ok) return;
       manualSpellSlots.forEach(slot => { manualSpellSlotsUsed[slot.id] = 0; });
       updateSpellSlots();
       autosave();
-    }
+    });
   } else {
     manualSpellSlots.forEach(slot => {
       if (slot.resetType === restType || (restType === 'long' && slot.resetType === 'short')) {
@@ -996,9 +997,9 @@ function saveSpellSlotEdit() {
   const name = document.getElementById('edit_spell_slot_name').value.trim();
   const maxValue = parseInt(document.getElementById('edit_spell_slot_max').value) || 1;
   const resetType = document.getElementById('edit_spell_slot_reset_type').value;
-  if (!name) { alert("Please enter a spell slot name"); return; }
+  if (!name) { appToast('Please enter a spell slot name', 'error'); return; }
   if (manualSpellSlots.find(s => s.name.toLowerCase() === name.toLowerCase() && s.id !== currentEditingSpellSlotId)) {
-    alert("A spell slot type with this name already exists"); return;
+    appToast('A spell slot type with this name already exists', 'error'); return;
   }
   const slot = manualSpellSlots.find(s => s.id === currentEditingSpellSlotId);
   if (slot) {
@@ -1017,10 +1018,44 @@ function saveSpellSlotEdit() {
 
 // ========== CUSTOM RESOURCES SYSTEM ==========
 
+// Common class resource presets (#10). max is a sensible starting value the user
+// can adjust; reset follows 5e recovery. Clicking one pre-fills the form.
+const RESOURCE_TEMPLATES = [
+  { name: 'Ki Points',            max: 5,  reset: 'short' },
+  { name: 'Sorcery Points',       max: 5,  reset: 'long'  },
+  { name: 'Bardic Inspiration',   max: 3,  reset: 'short' },
+  { name: 'Channel Divinity',     max: 1,  reset: 'short' },
+  { name: 'Rage',                 max: 3,  reset: 'long'  },
+  { name: 'Wild Shape',           max: 2,  reset: 'short' },
+  { name: 'Superiority Dice',     max: 4,  reset: 'short' },
+  { name: 'Lay on Hands',         max: 5,  reset: 'long'  },
+  { name: 'Sneak Attack',         max: 1,  reset: 'manual'},
+  { name: 'Second Wind',          max: 1,  reset: 'short' },
+  { name: 'Action Surge',         max: 1,  reset: 'short' },
+  { name: 'Indomitable',          max: 1,  reset: 'long'  },
+];
+
+function renderResourceTemplates() {
+  const row = document.getElementById('resourceTemplateRow');
+  if (!row) return;
+  row.innerHTML = RESOURCE_TEMPLATES.map((t, i) =>
+    `<button type="button" class="resource-template-btn" onclick="fillResourceTemplate(${i})">${escapeHtml(t.name)}</button>`
+  ).join('');
+}
+
+function fillResourceTemplate(i) {
+  const t = RESOURCE_TEMPLATES[i];
+  if (!t) return;
+  document.getElementById('custom_resource_name').value = t.name;
+  document.getElementById('custom_resource_max').value = String(t.max);
+  document.getElementById('custom_resource_reset_type').value = t.reset;
+}
+
 function showAddCustomResourcePopup() {
   document.getElementById('custom_resource_name').value = '';
   document.getElementById('custom_resource_max').value = '1';
   document.getElementById('custom_resource_reset_type').value = 'long';
+  renderResourceTemplates();
   showPopup('addCustomResourcePopup');
 }
 
@@ -1028,9 +1063,9 @@ function addCustomResource() {
   const name = document.getElementById('custom_resource_name').value.trim();
   const maxValue = parseInt(document.getElementById('custom_resource_max').value) || 1;
   const resetType = document.getElementById('custom_resource_reset_type').value;
-  if (!name) { alert("Please enter a resource name"); return; }
+  if (!name) { appToast('Please enter a resource name', 'error'); return; }
   if (customResources.find(r => r.name.toLowerCase() === name.toLowerCase())) {
-    alert("A resource with this name already exists"); return;
+    appToast('A resource with this name already exists', 'error'); return;
   }
   const resourceId = 'custom_' + Date.now();
   customResources.push({ id: resourceId, name, maxValue, resetType });
@@ -1041,12 +1076,13 @@ function addCustomResource() {
 }
 
 function removeCustomResource(resourceId) {
-  if (confirm('Are you sure you want to remove this custom resource?')) {
+  appConfirm('Are you sure you want to remove this custom resource?', { confirmText: 'Remove' }).then(ok => {
+    if (!ok) return;
     customResources = customResources.filter(r => r.id !== resourceId);
     delete customResourcesUsed[resourceId];
     updateCustomResources();
     autosave();
-  }
+  });
 }
 
 function updateCustomResources() {
@@ -1107,11 +1143,12 @@ function stepCustomResource(resourceId, delta) {
 
 function resetCustomResources(restType = 'all') {
   if (restType === 'all') {
-    if (confirm('Are you sure you want to reset all custom resources?')) {
+    appConfirm('Are you sure you want to reset all custom resources?', { confirmText: 'Reset' }).then(ok => {
+      if (!ok) return;
       customResources.forEach(r => { customResourcesUsed[r.id] = 0; });
       updateCustomResources();
       autosave();
-    }
+    });
   } else {
     customResources.forEach(r => {
       if (r.resetType === restType || (restType === 'long' && r.resetType === 'short')) {
@@ -1182,7 +1219,7 @@ function populateSpellForm(spell) {
   document.getElementById('spellConcentration').checked = spell.concentration || false;
   document.getElementById('spellPrepared').checked = spell.prepared || false;
   document.getElementById('spellDescription').value = spell.description || '';
-  document.getElementById('spellWikiLink').value = spell.wikiLink || '';
+  document.getElementById('spellFormWikiLink').value = spell.wikiLink || '';
 }
 
 // Save spell
@@ -1204,7 +1241,7 @@ function saveSpell(event) {
     concentration: document.getElementById('spellConcentration').checked,
     prepared: document.getElementById('spellPrepared').checked,
     description: document.getElementById('spellDescription').value,
-    wikiLink: document.getElementById('spellWikiLink').value
+    wikiLink: document.getElementById('spellFormWikiLink').value
   };
   
   const isCantrip = spell.level === 0;
@@ -1371,6 +1408,24 @@ function createSpellItem(spell, type, index) {
   return item;
 }
 
+// Pull the upcast ("At Higher Levels") text, or a cantrip's level-scaling text,
+// out of a spell's description/summary. Returns '' if none found.
+function extractSpellScaling(spell) {
+  if (!spell) return '';
+  const text = `${spell.summary || ''}\n${spell.description || ''}`;
+
+  // Explicit "At Higher Levels." section (levelled spells + some cantrips).
+  const hl = text.match(/at higher levels\.?\**\s*[:\-]?\s*([\s\S]*?)(?:\n\s*\n|$)/i);
+  if (hl && hl[1] && hl[1].trim()) return hl[1].replace(/\s+/g, ' ').trim();
+
+  // Cantrip scaling phrasing: "...when you reach 5th level ... 11th level ... 17th level..."
+  if (Number(spell.level) === 0) {
+    const scale = text.match(/([^.]*\b(?:when you reach|the spell'?s damage increases)[^.]*\b(?:5th|11th|17th|higher)\b[^.]*\.)/i);
+    if (scale && scale[1]) return scale[1].replace(/\s+/g, ' ').trim();
+  }
+  return '';
+}
+
 // Show spell details
 function showSpellDetails(type, index) {
   const spell = type === 'cantrip' ? spellsData.cantrips[index] : spellsData.spells[index];
@@ -1432,6 +1487,21 @@ function showSpellDetails(type, index) {
   const sourceBookEl = document.getElementById('spellDetailSourceBook');
   if (sourceBookEl) sourceBookEl.textContent = spell.sourceBook || '';
 
+  // Upcast / cantrip scaling — pulled from the description text (#5/#6).
+  const upBlock = document.getElementById('spellDetailUpcast');
+  const upLabel = document.getElementById('spellDetailUpcastLabel');
+  const upText = document.getElementById('spellDetailUpcastText');
+  if (upBlock && upText) {
+    const scaling = extractSpellScaling(spell);
+    if (scaling) {
+      if (upLabel) upLabel.textContent = Number(spell.level) === 0 ? 'Cantrip Scaling' : 'At Higher Levels';
+      upText.textContent = scaling;
+      upBlock.style.display = 'block';
+    } else {
+      upBlock.style.display = 'none';
+    }
+  }
+
   // Open5e link — always show, generate from slug or name
   const wikiLinkRow = document.getElementById('spellDetailWikiLink');
   const wikiLink = document.getElementById('spellWikiLink');
@@ -1455,7 +1525,8 @@ function toggleSpellPrepared(type, index) {
 
 // Remove spell
 function removeSpell(type, index) {
-  if (confirm('Are you sure you want to remove this spell?')) {
+  appConfirm('Are you sure you want to remove this spell?', { confirmText: 'Remove' }).then(ok => {
+    if (!ok) return;
     if (type === 'cantrip') {
       const removed = spellsData.cantrips.splice(index, 1)[0];
       if (removed) {
@@ -1470,7 +1541,7 @@ function removeSpell(type, index) {
     }
     renderSpells();
     autosave();
-  }
+  });
 }
 
 
@@ -1581,6 +1652,38 @@ function getSpellEffect(spell) {
   return school || '—';
 }
 
+// Parse the level a slot represents from its name ("1st Level" -> 1, "Pact
+// Magic (5th)" -> 5). Returns 0 if no number is found (unlevelled resource).
+function slotLevelFromName(name) {
+  const m = String(name || '').match(/(\d+)/);
+  return m ? parseInt(m[1], 10) : 0;
+}
+
+// #34: spend one spell slot of the given level from the prepared table. Prefers
+// an exact-level slot with availability; otherwise upcasts using the lowest
+// available higher-level slot. Toasts the outcome; never touches spell data.
+function castPreparedSpell(spellLevel) {
+  const lvl = parseInt(spellLevel, 10) || 0;
+  if (lvl <= 0) return; // cantrips don't use slots
+
+  // Candidate slots that (a) match or exceed the spell level and (b) have room.
+  const candidates = manualSpellSlots
+    .map(slot => ({ slot, lvl: slotLevelFromName(slot.name), free: (slot.maxValue || 0) - (manualSpellSlotsUsed[slot.id] || 0) }))
+    .filter(c => c.lvl >= lvl && c.free > 0)
+    .sort((a, b) => a.lvl - b.lvl); // lowest sufficient level first (don't waste high slots)
+
+  if (candidates.length === 0) {
+    appToast(`No level ${lvl}+ spell slots available.`, 'error');
+    return;
+  }
+
+  const chosen = candidates[0];
+  stepSpellSlot(chosen.slot.id, 1);
+  updateSpellSlots();
+  const upcast = chosen.lvl > lvl ? ` (upcast from a level ${chosen.lvl} slot)` : '';
+  appToast(`Spell cast — spent a ${chosen.slot.name} slot${upcast}.`, 'success');
+}
+
 function renderPreparedSpells() {
   const container = document.getElementById('prepared_spells_list');
   if (!container) return;
@@ -1650,6 +1753,12 @@ function renderPreparedSpells() {
         const effectText = getSpellEffect(spell);
         const damageDisplay = effectText && effectText !== '—' ? effectText : '<span class="prep-na">—</span>';
 
+        const spellLevel = parseInt(spell.level, 10) || 0;
+        // Cantrips are at-will (no slot); levelled spells get a one-tap Cast button.
+        const castBtn = spellLevel > 0
+          ? `<button class="spell-item-btn spell-cast-btn" onclick="castPreparedSpell(${spellLevel})" title="Spend a level ${spellLevel}+ spell slot">Cast</button>`
+          : '';
+
         const tr = document.createElement('tr');
         tr.className = 'prepared-spells-row';
         tr.innerHTML = `
@@ -1658,6 +1767,7 @@ function renderPreparedSpells() {
           <td class="prep-range">${spell.range || '—'}</td>
           <td class="prep-damage">${damageDisplay}</td>
           <td class="prep-actions">
+            ${castBtn}
             <button class="spell-item-btn" onclick="showSpellDetails('${actionType}', ${index})">View</button>
           </td>
         `;
@@ -1751,9 +1861,12 @@ function filterSpells(type) {
 
   // Filter spells
   let filteredSpells = spells.filter(spell => {
-    // Search filter
-    if (searchTerm && !spell.name.toLowerCase().includes(searchTerm)) {
-      return false;
+    // Search filter — matches name, description, school and damage/effect text so
+    // you can find e.g. "charmed" or "fire" not just spell names.
+    if (searchTerm) {
+      const haystack = [spell.name, spell.description, spell.school, spell.damage, spell.save]
+        .filter(Boolean).join(' ').toLowerCase();
+      if (!haystack.includes(searchTerm)) return false;
     }
 
     // Level filter
