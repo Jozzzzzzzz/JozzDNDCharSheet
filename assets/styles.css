@@ -1045,6 +1045,67 @@
     margin-top: 6px;
   }
 
+  /* Concentration banner — sits above the conditions list when a concentration
+     spell is active. Accent-tinted so it reads as "active status", not danger. */
+  .concentration-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    margin: 0 0 10px 0;
+    border-radius: 8px;
+    border: 1px solid var(--accent-border);
+    background: var(--accent-soft);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  }
+
+  .concentration-icon {
+    font-size: 1.1rem;
+    line-height: 1;
+  }
+
+  .concentration-text {
+    flex: 1;
+    font-size: 0.9rem;
+    color: var(--text);
+  }
+
+  .concentration-text strong {
+    color: var(--accent-text);
+  }
+
+  .concentration-clear-btn {
+    padding: 3px 10px;
+    font-size: 0.82rem;
+    white-space: nowrap;
+  }
+
+  /* Condition auto-hint chips — at-a-glance combat modifiers (display only). */
+  .condition-hints {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 6px;
+  }
+
+  .condition-hint-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    line-height: 1.4;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--accent-border);
+    color: var(--text);
+  }
+
+  .condition-hint-chip .chip-icon {
+    font-size: 0.8rem;
+    line-height: 1;
+  }
+
   .condition-exh-controls {
     display: flex;
     align-items: center;
@@ -4549,6 +4610,65 @@
   margin: 2px 0 0;
 }
 
+/* Multiclass: opt-in second-class block under the Character Info grid. */
+.add-multiclass-btn {
+  margin-top: 6px;
+  padding: 3px 9px;
+  font-size: 0.78rem;
+  background: transparent;
+  border: 1px dashed var(--accent-border);
+  color: var(--accent-text);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.add-multiclass-btn:hover {
+  background: var(--accent-soft);
+}
+
+#multiclass_block {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  background: var(--accent-soft);
+}
+
+.multiclass-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.multiclass-title {
+  font-weight: 600;
+  color: var(--accent-text);
+}
+
+.remove-multiclass-btn {
+  padding: 2px 9px;
+  font-size: 0.78rem;
+}
+
+.multiclass-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+
+.multiclass-note {
+  font-size: 0.8em;
+  opacity: 0.7;
+  margin: 8px 0 0;
+}
+
+@media (max-width: 600px) {
+  .multiclass-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .campaign-join-controls {
   display: flex;
   gap: 8px;
@@ -7364,6 +7484,81 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   .class-level-row input {
     width: 60px;
     text-align: center;
+  }
+
+  /* Spell source picker (import popup) */
+  .spell-sources {
+    background: #2a2a2a;
+    padding: 15px;
+    border-radius: 6px;
+  }
+
+  .spell-sources-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .spell-sources-header h4 {
+    margin: 0;
+  }
+
+  .spell-sources-quick {
+    display: flex;
+    gap: 6px;
+  }
+
+  .spell-source-quick-btn {
+    padding: 3px 10px;
+    font-size: 0.78rem;
+  }
+
+  .spell-sources-note {
+    font-size: 0.78em;
+    opacity: 0.65;
+    margin: 6px 0 10px;
+  }
+
+  .spell-sources-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px 12px;
+  }
+
+  .spell-source-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 0.85rem;
+    padding: 5px 9px;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.18);
+    border: 1px solid transparent;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+  }
+
+  .spell-source-item:hover {
+    background: var(--accent-soft);
+    border-color: var(--accent-border);
+  }
+
+  .spell-source-label {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .spell-source-item.official .spell-source-label {
+    color: var(--accent-text);
+    font-weight: 600;
+  }
+
+  @media (max-width: 600px) {
+    .spell-sources-grid {
+      grid-template-columns: 1fr;
+    }
   }
 
   .spell-source-badge {

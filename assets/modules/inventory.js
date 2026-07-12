@@ -1188,6 +1188,31 @@ const SRD_CONDITIONS = [
   { name: 'Unconscious', slug: 'unconscious', desc: "Incapacitated, can't move or speak, unaware, drops what it holds and falls prone. Auto-fails STR/DEX saves. Attacks have advantage and auto-crit within 5 ft." },
 ];
 
+// Combat auto-hint chips per condition (display only — no rules enforcement). Keyed by
+// slug. Each hint: { icon, label }. Rendered on the condition card so a player sees the
+// key mechanical modifiers at a glance without reading the full effect text.
+const CONDITION_HINTS = {
+  blinded:      [{ icon: '⚔️', label: 'Your attacks: Disadvantage' }, { icon: '🛡️', label: 'Attacks vs you: Advantage' }],
+  charmed:      [{ icon: '🚫', label: "Can't harm the charmer" }],
+  frightened:   [{ icon: '⚔️', label: 'Attacks & checks: Disadvantage' }],
+  grappled:     [{ icon: '👟', label: 'Speed 0' }],
+  invisible:    [{ icon: '⚔️', label: 'Your attacks: Advantage' }, { icon: '🛡️', label: 'Attacks vs you: Disadvantage' }],
+  paralyzed:    [{ icon: '🛡️', label: 'Attacks vs you: Advantage' }, { icon: '💀', label: 'Auto-crit within 5 ft' }, { icon: '🎲', label: 'Auto-fail STR/DEX saves' }],
+  petrified:    [{ icon: '🛡️', label: 'Attacks vs you: Advantage' }, { icon: '🎲', label: 'Auto-fail STR/DEX saves' }],
+  poisoned:     [{ icon: '⚔️', label: 'Attacks & checks: Disadvantage' }],
+  prone:        [{ icon: '⚔️', label: 'Your attacks: Disadvantage' }, { icon: '🛡️', label: 'Melee vs you: Advantage · Ranged: Disadvantage' }],
+  restrained:   [{ icon: '⚔️', label: 'Your attacks: Disadvantage' }, { icon: '🛡️', label: 'Attacks vs you: Advantage' }, { icon: '🎲', label: 'DEX saves: Disadvantage' }],
+  stunned:      [{ icon: '🛡️', label: 'Attacks vs you: Advantage' }, { icon: '🎲', label: 'Auto-fail STR/DEX saves' }],
+  unconscious:  [{ icon: '🛡️', label: 'Attacks vs you: Advantage' }, { icon: '💀', label: 'Auto-crit within 5 ft' }, { icon: '🎲', label: 'Auto-fail STR/DEX saves' }],
+};
+
+// Return the hint chips for a condition by name (case-insensitive), or [] if none.
+function conditionHintsFor(name) {
+  if (!name) return [];
+  const slug = String(name).trim().toLowerCase();
+  return CONDITION_HINTS[slug] || [];
+}
+
 // Exhaustion has 6 cumulative levels (SRD). Effect shown is the cumulative effect at that level.
 const EXHAUSTION_LEVELS = {
   1: 'Disadvantage on ability checks.',
@@ -1202,6 +1227,59 @@ function exhaustionLink() { return 'https://open5e.com/conditions/exhaustion'; }
 
 // In-memory conditions model. Each: { id, name, effect, link, turns, color, exhaustionLevel? }
 window.conditionsData = window.conditionsData || [];
+
+// ========== CONCENTRATION TRACKER ==========
+// Single active concentration: { spellName, castAt } | null. Saved as data.concentration.
+window.concentrationData = window.concentrationData || null;
+
+// Begin concentrating on a spell. Casting a new concentration spell replaces the old
+// one (5e: you can only concentrate on one at a time). Called from cast paths.
+// Returns true if concentration was started.
+function startConcentration(spellName) {
+  if (!spellName) return false;
+  window.concentrationData = { spellName: String(spellName), castAt: Date.now() };
+  renderConcentration();
+  if (typeof autosave === 'function') autosave();
+  return true;
+}
+
+// Cast a concentration spell — if already concentrating on a *different* spell, confirm
+// the swap first (breaking the old one). Resolves after any prompt. Used by cast buttons.
+async function castWithConcentration(spellName) {
+  const current = window.concentrationData;
+  if (current && current.spellName && current.spellName !== spellName) {
+    const ok = typeof appConfirm === 'function'
+      ? await appConfirm(`You're concentrating on ${current.spellName}. Casting ${spellName} will end it. Continue?`, { confirmText: 'Switch' })
+      : true;
+    if (!ok) return false;
+  }
+  return startConcentration(spellName);
+}
+
+function clearConcentration() {
+  window.concentrationData = null;
+  renderConcentration();
+  if (typeof autosave === 'function') autosave();
+}
+
+// Render the concentration banner. Hidden entirely when not concentrating.
+function renderConcentration() {
+  const banner = document.getElementById('concentration_banner');
+  if (!banner) return;
+  const c = window.concentrationData;
+  if (!c || !c.spellName) {
+    banner.style.display = 'none';
+    banner.innerHTML = '';
+    return;
+  }
+  const esc = typeof escapeHtml === 'function' ? escapeHtml : (s => String(s));
+  banner.style.display = 'flex';
+  banner.innerHTML = `
+    <span class="concentration-icon" aria-hidden="true">🌀</span>
+    <span class="concentration-text">Concentrating on <strong>${esc(c.spellName)}</strong></span>
+    <button type="button" class="concentration-clear-btn" onclick="clearConcentration()" title="Stop concentrating">Clear</button>
+  `;
+}
 
 function showConditionPopup() {
   // Reset to picker mode
@@ -1322,6 +1400,12 @@ function renderConditions() {
       ? `<a href="${esc(cond.link)}" target="_blank" rel="noopener noreferrer" class="condition-link">${esc(titleText)}</a>`
       : esc(titleText);
     const turns = cond.turns ? `${esc(cond.turns)} turns` : (isExh ? '' : 'Indefinite');
+    const hints = isExh ? [] : conditionHintsFor(cond.name);
+    const hintChips = hints.length
+      ? `<div class="condition-hints">${hints.map(h =>
+          `<span class="condition-hint-chip"><span class="chip-icon" aria-hidden="true">${h.icon}</span>${esc(h.label)}</span>`
+        ).join('')}</div>`
+      : '';
     const exhControls = isExh
       ? `<div class="condition-exh-controls">
            <button type="button" onclick="adjustExhaustion('${cond.id}', -1)" title="Lower level">−</button>
@@ -1336,6 +1420,7 @@ function renderConditions() {
           ${turns ? `<span class="condition-turns">${turns}</span>` : ''}
         </div>
         <div class="condition-effect">${esc(cond.effect)}</div>
+        ${hintChips}
         <div class="condition-actions">
           ${exhControls}
           <button type="button" onclick="removeCondition('${cond.id}')" class="condition-remove-btn">Remove</button>
@@ -1521,150 +1606,6 @@ function resetRoundActions() {
   appToast('Action counters reset for new round!', 'success');
 }
 
-
-// ========== LAYOUT SYSTEM ==========
-const LayoutManager = {
-  STORAGE_KEY: 'dndSheetLayout_final',
-  initialized: false,
-  
-  init() {
-    if (this.initialized) return;
-    this.initialized = true;
-    
-    window.addEventListener('load', () => {
-      this.ensureElementIds();
-      
-      // Set up save button
-      const saveBtn = document.getElementById('saveLayoutBtn');
-      if (saveBtn) {
-        saveBtn.addEventListener('click', (e) => {
-          e.preventDefault();
-          this.save();
-        });
-      }
-      
-      // Set up reset button
-      const resetBtn = document.getElementById('resetLayoutBtn');
-      if (resetBtn) {
-        resetBtn.addEventListener('click', (e) => {
-          e.preventDefault();
-          this.reset();
-        });
-      }
-      
-      this.load();
-    });
-  },
-  
-  ensureElementIds() {
-    document.querySelectorAll('.section:not([id])').forEach((el, i) => {
-      el.id = `section-${i+1}`;
-    });
-    
-    document.querySelectorAll('textarea:not([id])').forEach((el, i) => {
-      el.id = `textarea-${i+1}`;
-    });
-  },
-  
-  save() {
-    try {
-      const layout = {
-        version: 'final',
-        timestamp: new Date().toISOString(),
-        sections: {},
-        textareas: {}
-      };
-
-      document.querySelectorAll('.section').forEach(section => {
-        if (section.offsetParent) {
-          layout.sections[section.id] = {
-            width: section.style.width || `${section.offsetWidth}px`,
-            height: section.style.height || `${section.offsetHeight}px`,
-            position: window.getComputedStyle(section).position
-          };
-        }
-      });
-
-      document.querySelectorAll('textarea').forEach(textarea => {
-        if (textarea.offsetParent) {
-          layout.textareas[textarea.id] = {
-            width: textarea.style.width || `${textarea.offsetWidth}px`,
-            height: textarea.style.height || `${textarea.offsetHeight}px`
-          };
-        }
-      });
-
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(layout));
-      appToast('Layout saved successfully!', 'success');
-      return true;
-    } catch (e) {
-      console.error('Save failed:', e);
-      appToast('Save error: ' + e.message, 'error');
-      return false;
-    }
-  },
-  
-  load() {
-    try {
-      const data = localStorage.getItem(this.STORAGE_KEY);
-      if (!data) return false;
-
-      const layout = JSON.parse(data);
-
-      Object.entries(layout.sections || {}).forEach(([id, style]) => {
-        const el = document.getElementById(id);
-        if (el) {
-          el.style.width = style.width;
-          el.style.height = style.height;
-          if (style.position) el.style.position = style.position;
-        }
-      });
-
-      Object.entries(layout.textareas || {}).forEach(([id, style]) => {
-        const el = document.getElementById(id);
-        if (el) {
-          el.style.width = style.width;
-          el.style.height = style.height;
-        }
-      });
-
-      return true;
-    } catch (e) {
-      console.error('Load failed:', e);
-      return false;
-    }
-  },
-  
-  reset() {
-    const key = this.STORAGE_KEY;
-    appConfirm('Are you sure you want to reset ALL layout settings to default?', { confirmText: 'Reset' }).then(ok => {
-      if (!ok) return;
-      // Reset sections
-      document.querySelectorAll('.section').forEach(section => {
-        section.style.width = '';
-        section.style.height = '';
-        section.style.position = '';
-        section.style.left = '';
-        section.style.top = '';
-      });
-
-      // Reset textareas
-      document.querySelectorAll('textarea').forEach(textarea => {
-        textarea.style.width = '';
-        textarea.style.height = '';
-      });
-
-      // Clear storage
-      localStorage.removeItem(key);
-      appToast('Layout has been reset to default settings', 'success');
-    });
-  }
-};
-
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-  LayoutManager.init();
-});
 
 // Settings dropdown functionality
 function setSettingsModalLock(locked) {

@@ -65,6 +65,38 @@ function manualSave(btn) {
   }
 }
 
+// Global keyboard shortcuts:
+//   Ctrl/Cmd+S — save the active character (prevents the browser "Save page" dialog)
+//   Escape     — close any open popup, then any open section help panel
+// (No dice-roller shortcut: dice rolling lives on weapons, there's no standalone popup.)
+let _keyboardShortcutsBound = false;
+function bindKeyboardShortcuts() {
+  if (_keyboardShortcutsBound) return;
+  _keyboardShortcutsBound = true;
+
+  document.addEventListener('keydown', e => {
+    // Ctrl/Cmd+S → save
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 's' || e.key === 'S')) {
+      e.preventDefault();
+      if (currentCharacter) manualSave();
+      return;
+    }
+
+    // Escape → close whatever overlay is open (popup first, then help panel)
+    if (e.key === 'Escape') {
+      const openPopup = document.querySelector('.popup.show');
+      if (openPopup && typeof closeAllPopups === 'function') {
+        closeAllPopups();
+        return;
+      }
+      const openHelp = document.querySelector('.section-help-panel.open');
+      if (openHelp && typeof closeHelp === 'function') {
+        closeHelp(openHelp);
+      }
+    }
+  });
+}
+
 // Boot sequence — called by index.html after all modules are loaded
 window.initializeApp = function() {
   loadSpellDatabase();
@@ -165,12 +197,13 @@ window.initializeApp = function() {
   setupNoteBoxObserver();
   setupAutoResize();
   setupMobileTextareaAutoGrow();
-  loadLayout();
   bindGlobalAutosaveListeners();
   rollBannerMessage();
   setInterval(rollBannerMessage, 60000);
 
   if (typeof initChangelog === 'function') initChangelog();
+
+  bindKeyboardShortcuts();
 
   // Close any open help panels when clicking outside them
   document.addEventListener('click', e => {

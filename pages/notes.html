@@ -56,6 +56,14 @@
     <div id="addNoteCardPopup" class="popup-overlay" style="display:none;" onclick="if(event.target===this)closeAddNoteCardPopup()">
       <div class="popup-content" style="max-width:400px;">
         <h3>Add Note Card</h3>
+        <label>Template</label>
+        <select id="noteCardTemplateSelect" style="width:100%;margin-bottom:12px;" onchange="onNoteCardTemplateChange()">
+          <option value="">Blank card</option>
+          <option value="npc">NPC</option>
+          <option value="location">Location</option>
+          <option value="quest">Quest</option>
+          <option value="item">Item</option>
+        </select>
         <label>Card Title</label>
         <input type="text" id="noteCardTitleInput" placeholder="e.g. The Dragon's Lair" style="width:100%;margin-bottom:16px;" onkeydown="if(event.key==='Enter')confirmAddNoteCard()"/>
         <div style="display:flex;gap:8px;">

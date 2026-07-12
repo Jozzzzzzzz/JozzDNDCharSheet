@@ -380,11 +380,21 @@ function getClassTagsForSpellName(spellName) {
 
 function getCantripNamesForClass(className) {
   const fromTags = Object.entries(spellDatabase)
-    .filter(([, spell]) => spell.level === 0 && Array.isArray(spell.classes) && spell.classes.includes(className))
+    .filter(([, spell]) => spell.level === 0 && Array.isArray(spell.classes) && spell.classes.includes(className)
+      && spellSourceEnabled(spell))
     .map(([name]) => name)
     .sort();
-  const fallback = (dndClasses[className]?.cantrips || []).slice();
+  // The hardcoded dndClasses lists are core WotC (PHB) content — always allowed, but only
+  // when at least one official source is enabled (unticking all official hides them too).
+  const fallback = officialSourcesActive() ? (dndClasses[className]?.cantrips || []).slice() : [];
   return Array.from(new Set([...fromTags, ...fallback])).sort();
+}
+
+// True when any official (WotC) source is currently enabled — gates the hardcoded PHB
+// fallback lists so unticking all official books also removes core spells from the pool.
+function officialSourcesActive() {
+  const enabled = _enabledSpellSourcesCache || getEnabledSpellSources();
+  return officialSpellSourceKeys().some(k => enabled.has(k));
 }
 
 function getSpellNamesForClassUpToLevel(className, maxLevel) {
@@ -394,17 +404,22 @@ function getSpellNamesForClassUpToLevel(className, maxLevel) {
       spell.level >= 1
       && spell.level <= levelCap
       && Array.isArray(spell.classes)
-      && spell.classes.includes(className))
+      && spell.classes.includes(className)
+      && spellSourceEnabled(spell))
     .map(([name, spell]) => ({ name, level: spell.level }))
     .sort((a, b) => (a.level - b.level) || a.name.localeCompare(b.name));
 
   const mergedByName = new Map();
   fromTags.forEach(entry => mergedByName.set(entry.name, { name: entry.name, level: entry.level }));
-  for (let i = 1; i <= levelCap; i++) {
-    const levelSpells = dndClasses[className]?.spells?.[i] || [];
-    levelSpells.forEach(name => {
-      if (!mergedByName.has(name)) mergedByName.set(name, { name, level: i });
-    });
+  // Hardcoded dndClasses spell lists are core WotC (PHB) — included only when an official
+  // source is enabled, so unticking all official books removes them from the pool too.
+  if (officialSourcesActive()) {
+    for (let i = 1; i <= levelCap; i++) {
+      const levelSpells = dndClasses[className]?.spells?.[i] || [];
+      levelSpells.forEach(name => {
+        if (!mergedByName.has(name)) mergedByName.set(name, { name, level: i });
+      });
+    }
   }
   return Array.from(mergedByName.values())
     .sort((a, b) => (a.level - b.level) || a.name.localeCompare(b.name));
@@ -440,12 +455,126 @@ function backfillClassTagsOnKnownSpells() {
 }
 
 
+// ========== SPELL SOURCE PICKER ==========
+// The import pool can be filtered by publishing source. "Official" = core WotC D&D
+// (SRD 5.1 plus the locally-tagged PHB/Tasha's/Sword Coast spells); the rest are
+// third-party books from Open5e. The chosen set is a GLOBAL UI preference (localStorage),
+// not character data — it only affects what the import popup offers, never saved spells.
+const SPELL_SOURCES = [
+  { key: 'SRD 5.1',        label: 'SRD 5.1', official: true,  aliases: ['wotc-srd', 'SRD', 'srd'] },
+  { key: 'PHB',            label: "Player's Handbook", official: true },
+  { key: 'TCE',            label: "Tasha's Cauldron", official: true },
+  { key: 'SCAG/TCE',       label: 'Sword Coast', official: true },
+  { key: 'Deep Magic',     label: 'Deep Magic', official: false, aliases: ['deep-magic'] },
+  { key: 'Deep Magic Extra', label: 'Deep Magic Extra', official: false },
+  { key: 'Tome of Heroes', label: 'Tome of Heroes', official: false, aliases: ['tome-of-heroes'] },
+  { key: 'A5e',            label: 'Level Up (A5e)', official: false, aliases: ['a5e'] },
+  { key: 'Warlock',        label: 'Kobold: Warlock Mag.', official: false, aliases: ['warlock'] },
+  { key: 'Kobold Press',   label: 'Kobold Press', official: false, aliases: ['kobold-press'] },
+  { key: 'Open5e',         label: 'Open5e', official: false, aliases: ['open5e'] },
+];
+
+// Map any raw sourceBook value (canonical key or an Open5e slug/alias) to its canonical
+// SPELL_SOURCES key, or '' if unrecognised.
+function canonicalSpellSourceKey(raw) {
+  if (!raw) return '';
+  const v = String(raw).trim();
+  for (const s of SPELL_SOURCES) {
+    if (s.key === v) return s.key;
+    if (Array.isArray(s.aliases) && s.aliases.includes(v)) return s.key;
+  }
+  return '';
+}
+
+const SPELL_SOURCES_PREF_KEY = 'dndSpellSources';
+
+// The set of official source keys — the default enabled set.
+function officialSpellSourceKeys() {
+  return SPELL_SOURCES.filter(s => s.official).map(s => s.key);
+}
+
+// Load the enabled-source set from localStorage. Defaults to official-only. Unknown/legacy
+// keys are ignored; an empty saved set falls back to official so import is never empty.
+function getEnabledSpellSources() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(SPELL_SOURCES_PREF_KEY) || 'null'); } catch (e) { saved = null; }
+  const valid = new Set(SPELL_SOURCES.map(s => s.key));
+  if (Array.isArray(saved)) {
+    const filtered = saved.filter(k => valid.has(k));
+    if (filtered.length) return new Set(filtered);
+  }
+  return new Set(officialSpellSourceKeys());
+}
+
+function setEnabledSpellSources(keysSet) {
+  try { localStorage.setItem(SPELL_SOURCES_PREF_KEY, JSON.stringify(Array.from(keysSet))); } catch (e) {}
+}
+
+// True if a spell (by its sourceBook) is allowed by the current enabled-source set.
+// Spells with an unrecognised/blank source are treated as official so nothing that was
+// always available silently disappears.
+function spellSourceEnabled(spell) {
+  const enabled = _enabledSpellSourcesCache || getEnabledSpellSources();
+  const canonical = canonicalSpellSourceKey(spell && spell.sourceBook);
+  if (!canonical) return true; // blank/unknown source → don't hide it
+  return enabled.has(canonical);
+}
+
+// Cache of the enabled set for the duration of a preview/import pass, refreshed whenever
+// checkboxes change, so the pool functions don't re-read localStorage per spell.
+let _enabledSpellSourcesCache = null;
+function refreshEnabledSpellSourcesCache() {
+  _enabledSpellSourcesCache = getEnabledSpellSources();
+}
+
+// Render the source checkboxes into the import popup from the saved preference.
+function renderSpellSourceCheckboxes() {
+  const container = document.getElementById('spellSourcesContainer');
+  if (!container) return;
+  const enabled = getEnabledSpellSources();
+  container.innerHTML = SPELL_SOURCES.map(s => `
+    <div class="spell-source-item${s.official ? ' official' : ''}">
+      <span class="spell-source-label">${s.label}</span>
+      <label class="switch">
+        <input type="checkbox" value="${s.key}" ${enabled.has(s.key) ? 'checked' : ''} onchange="onSpellSourceToggle()">
+        <span class="slider round"></span>
+      </label>
+    </div>
+  `).join('');
+}
+
+// Read the checkboxes → save → refresh cache → re-preview.
+function onSpellSourceToggle() {
+  const boxes = document.querySelectorAll('#spellSourcesContainer input[type="checkbox"]');
+  const set = new Set();
+  boxes.forEach(b => { if (b.checked) set.add(b.value); });
+  // Never allow a fully-empty set — fall back to official so import isn't dead.
+  if (set.size === 0) {
+    officialSpellSourceKeys().forEach(k => set.add(k));
+  }
+  setEnabledSpellSources(set);
+  refreshEnabledSpellSourcesCache();
+  renderSpellSourceCheckboxes();
+  updateImportPreview();
+}
+
+// Quick presets: 'official' = WotC only, 'all' = every source.
+function setSpellSourcesPreset(which) {
+  const set = new Set(which === 'all' ? SPELL_SOURCES.map(s => s.key) : officialSpellSourceKeys());
+  setEnabledSpellSources(set);
+  refreshEnabledSpellSourcesCache();
+  renderSpellSourceCheckboxes();
+  updateImportPreview();
+}
+
 // Show import popup
 function showImportPopup(type) {
   if (Object.keys(spellDatabase).length === 0) {
     appToast('Spell database is still loading, please try again in a moment.', 'info');
     return;
   }
+  refreshEnabledSpellSourcesCache();
+  renderSpellSourceCheckboxes();
   const popup = document.getElementById('importSpellsPopup');
   const title = document.getElementById('importSpellsTitle');
   
@@ -1390,10 +1519,25 @@ function createSpellItem(spell, type, index) {
   });
   // Prepend star to info
   spellInfo.prepend(star);
-  
+
+  // Favourited spells get a one-tap Cast button (spends a slot / engages concentration),
+  // mirroring the prepared-spells table so you can cast straight from Favourites.
+  const spellLvl = parseInt(spell.level, 10) || 0;
+  const needsConc = spellNeedsConcentration(spell);
+  const nameArg = jsStr(spell.name);
+  let favCastBtn = '';
+  if (isFav) {
+    if (spellLvl > 0) {
+      favCastBtn = `<button class="spell-item-btn spell-cast-btn" onclick="castPreparedSpell(${spellLvl}, ${nameArg}, ${needsConc})" title="Spend a level ${spellLvl}+ spell slot${needsConc ? ' and start concentrating' : ''}">Cast</button>`;
+    } else if (needsConc) {
+      favCastBtn = `<button class="spell-item-btn spell-cast-btn" onclick="castCantripSpell(${nameArg}, true)" title="Start concentrating">Cast</button>`;
+    }
+  }
+
   const actions = document.createElement('div');
   actions.className = 'spell-item-actions';
   actions.innerHTML = `
+    ${favCastBtn}
     <button class="spell-item-btn" onclick="showSpellDetails('${actionType}', ${indexToUse})">View</button>
     <button class="spell-item-btn" onclick="showSpellForm('${actionType}', ${indexToUse})">Edit</button>
     <button class="spell-item-btn" onclick="toggleSpellPrepared('${actionType}', ${indexToUse})">
@@ -1662,7 +1806,23 @@ function slotLevelFromName(name) {
 // #34: spend one spell slot of the given level from the prepared table. Prefers
 // an exact-level slot with availability; otherwise upcasts using the lowest
 // available higher-level slot. Toasts the outcome; never touches spell data.
-function castPreparedSpell(spellLevel) {
+// Produce a safe single-quoted JS string literal for embedding in an inline onclick
+// attribute. Escapes backslashes, single quotes, and the HTML/JS-breaking chars so a
+// spell name with apostrophes or quotes (e.g. "Melf's Acid Arrow") can't break out.
+function jsStr(s) {
+  return "'" + String(s == null ? '' : s)
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/"/g, '&quot;')
+    .replace(/\r?\n/g, ' ')
+    .replace(/</g, '\\x3C') + "'";
+}
+
+// Cast a levelled spell from the sheet (prepared table or favourites). Spends the
+// lowest sufficient slot. `spellName`/`concentration` are optional — when a
+// concentration spell is cast, the concentration tracker is engaged (swapping any
+// existing concentration after a confirm).
+function castPreparedSpell(spellLevel, spellName, concentration) {
   const lvl = parseInt(spellLevel, 10) || 0;
   if (lvl <= 0) return; // cantrips don't use slots
 
@@ -1682,6 +1842,30 @@ function castPreparedSpell(spellLevel) {
   updateSpellSlots();
   const upcast = chosen.lvl > lvl ? ` (upcast from a level ${chosen.lvl} slot)` : '';
   appToast(`Spell cast — spent a ${chosen.slot.name} slot${upcast}.`, 'success');
+
+  // Engage concentration if this spell requires it.
+  if (concentration && spellName && typeof castWithConcentration === 'function') {
+    castWithConcentration(spellName);
+  }
+}
+
+// Cast a cantrip from the sheet. Cantrips spend no slot, but a concentration cantrip
+// (e.g. some subclass/feat cantrips) still engages the concentration tracker.
+function castCantripSpell(spellName, concentration) {
+  if (concentration && spellName && typeof castWithConcentration === 'function') {
+    castWithConcentration(spellName);
+    appToast(`Concentrating on ${spellName}.`, 'success');
+  }
+}
+
+// True when a spell object requires concentration. Handles the normalized boolean
+// as well as older string forms ("yes"/"concentration").
+function spellNeedsConcentration(spell) {
+  if (!spell) return false;
+  const c = spell.concentration;
+  if (c === true) return true;
+  if (typeof c === 'string') return /^(yes|true|1|concentration)$/i.test(c.trim());
+  return false;
 }
 
 function renderPreparedSpells() {
@@ -1754,10 +1938,16 @@ function renderPreparedSpells() {
         const damageDisplay = effectText && effectText !== '—' ? effectText : '<span class="prep-na">—</span>';
 
         const spellLevel = parseInt(spell.level, 10) || 0;
+        const needsConc = spellNeedsConcentration(spell);
+        const nameArg = jsStr(spell.name);
         // Cantrips are at-will (no slot); levelled spells get a one-tap Cast button.
-        const castBtn = spellLevel > 0
-          ? `<button class="spell-item-btn spell-cast-btn" onclick="castPreparedSpell(${spellLevel})" title="Spend a level ${spellLevel}+ spell slot">Cast</button>`
-          : '';
+        // A concentration cantrip still gets a Cast button to engage the tracker.
+        let castBtn = '';
+        if (spellLevel > 0) {
+          castBtn = `<button class="spell-item-btn spell-cast-btn" onclick="castPreparedSpell(${spellLevel}, ${nameArg}, ${needsConc})" title="Spend a level ${spellLevel}+ spell slot${needsConc ? ' and start concentrating' : ''}">Cast</button>`;
+        } else if (needsConc) {
+          castBtn = `<button class="spell-item-btn spell-cast-btn" onclick="castCantripSpell(${nameArg}, true)" title="Start concentrating">Cast</button>`;
+        }
 
         const tr = document.createElement('tr');
         tr.className = 'prepared-spells-row';

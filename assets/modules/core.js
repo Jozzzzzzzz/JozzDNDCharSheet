@@ -421,10 +421,6 @@ function setupMobileTextareaAutoGrow() {
   });
 }
 
-function loadLayout() {
-  // Add layout loading logic here if needed
-}
-
 // ========== GLOBAL VARIABLES ==========
 let weaponsData = [];
 let equipmentData = [];
@@ -1349,12 +1345,48 @@ function confirmAddFolder() {
 
 // --- add card popup ---
 
+// Pre-fill bodies for note card templates. Chosen in the Add Note Card popup; a blank
+// template ('') just makes an empty card. Titles suggest a starting name via placeholder.
+const NOTE_CARD_TEMPLATES = {
+  npc: {
+    titlePlaceholder: 'e.g. Captain Aldric',
+    body: 'Race / Role:\nAppearance:\nPersonality:\nWants / Motivation:\nSecret:\nRelationship to party:\nNotes:\n',
+  },
+  location: {
+    titlePlaceholder: "e.g. The Dragon's Lair",
+    body: 'Type (town / dungeon / wilds):\nWho / what is here:\nKey features:\nDangers:\nHooks / rumours:\nLoot / rewards:\nNotes:\n',
+  },
+  quest: {
+    titlePlaceholder: 'e.g. Recover the Sunstone',
+    body: 'Quest giver:\nObjective:\nReward:\nDeadline / stakes:\nLeads / clues:\nStatus (not started / in progress / done):\nNotes:\n',
+  },
+  item: {
+    titlePlaceholder: 'e.g. Ring of Warmth',
+    body: 'Type:\nRarity:\nAttunement:\nProperties / effects:\nCharges:\nWhere found:\nNotes:\n',
+  },
+};
+
 function showAddNoteCardPopup() {
   const popup = document.getElementById('addNoteCardPopup');
   if (!popup) return;
   popup.style.display = 'flex';
+  const select = document.getElementById('noteCardTemplateSelect');
+  if (select) select.value = '';
   const input = document.getElementById('noteCardTitleInput');
-  if (input) { input.value = ''; setTimeout(() => input.focus(), 50); }
+  if (input) {
+    input.value = '';
+    input.placeholder = "e.g. The Dragon's Lair";
+    setTimeout(() => input.focus(), 50);
+  }
+}
+
+// Update the title placeholder to hint at the chosen template's naming.
+function onNoteCardTemplateChange() {
+  const select = document.getElementById('noteCardTemplateSelect');
+  const input = document.getElementById('noteCardTitleInput');
+  if (!select || !input) return;
+  const tpl = NOTE_CARD_TEMPLATES[select.value];
+  input.placeholder = tpl ? tpl.titlePlaceholder : "e.g. The Dragon's Lair";
 }
 
 function closeAddNoteCardPopup() {
@@ -1368,7 +1400,9 @@ function confirmAddNoteCard() {
   if (!title) { appToast('Please enter a card title.', 'error'); return; }
   const folder = noteFolders.find(f => f.id === notesActiveFolderId);
   if (!folder) return;
-  const newCard = { id: 'nc_' + Date.now(), title, body: '' };
+  const select = document.getElementById('noteCardTemplateSelect');
+  const tpl = select ? NOTE_CARD_TEMPLATES[select.value] : null;
+  const newCard = { id: 'nc_' + Date.now(), title, body: tpl ? tpl.body : '' };
   folder.cards.push(newCard);
   renderNoteCards(folder.id);
   closeAddNoteCardPopup();
@@ -2275,11 +2309,14 @@ function loadCharacterList() {
 // Clear all form fields to prevent old character data from persisting
 function clearAllFormFields() {
   // Clear character info fields
-  const charInfoFields = ['char_name', 'char_race', 'char_background', 'char_class', 'char_subclass', 'char_level', 'char_campaign'];
+  const charInfoFields = ['char_name', 'char_race', 'char_background', 'char_class', 'char_subclass', 'char_level', 'char_campaign',
+                          'char_class2', 'char_subclass2', 'char_level2'];
   charInfoFields.forEach(id => {
     const element = document.getElementById(id);
     if (element) element.value = '';
   });
+  // Collapse the multiclass block for a fresh character (silent — no autosave).
+  if (typeof toggleMulticlass === 'function') toggleMulticlass(false, false);
   if (typeof updateCampaignIndicator === 'function') updateCampaignIndicator('');
 
   // Clear ability scores and bonuses
@@ -2432,6 +2469,9 @@ function clearAllFormFields() {
   if (conditionsContainer) {
     conditionsContainer.innerHTML = '';
   }
+
+  window.concentrationData = null;
+  if (typeof renderConcentration === 'function') renderConcentration();
 
   // Clear inventory containers
   const extraContainers = document.getElementById('extra_containers');
@@ -2633,6 +2673,9 @@ function autosave() {
     class: val('char_class'),
     subclass: val('char_subclass'),
     level: val('char_level'),
+    class2: val('char_class2') || '',
+    subclass2: val('char_subclass2') || '',
+    level2: val('char_level2') || '',
     campaignId: val('char_campaign') || ''
   } : existing.characterInfo;
 
@@ -2801,7 +2844,10 @@ function autosave() {
       turns: c.turns || '',
       color: c.color || 'red',
       exhaustionLevel: typeof c.exhaustionLevel === 'number' ? c.exhaustionLevel : undefined
-    })) : []
+    })) : [],
+    concentration: (window.concentrationData && window.concentrationData.spellName)
+      ? { spellName: window.concentrationData.spellName, castAt: window.concentrationData.castAt || Date.now() }
+      : null
   };
 
   characters[charIndex].data = data;
@@ -2841,6 +2887,22 @@ function loadData() {
     document.getElementById('char_class').value = data.characterInfo.class || '';
     document.getElementById('char_subclass').value = data.characterInfo.subclass || '';
     document.getElementById('char_level').value = data.characterInfo.level || '';
+
+    // Multiclass second-class fields. Show the block only if the saved character has a
+    // second class or level; otherwise keep it collapsed. save=false so loading is silent.
+    const class2 = data.characterInfo.class2 || '';
+    const subclass2 = data.characterInfo.subclass2 || '';
+    const level2 = data.characterInfo.level2 || '';
+    const c2 = document.getElementById('char_class2');
+    const s2 = document.getElementById('char_subclass2');
+    const l2 = document.getElementById('char_level2');
+    if (c2) c2.value = class2;
+    if (s2) s2.value = subclass2;
+    if (l2) l2.value = level2;
+    if (typeof toggleMulticlass === 'function') {
+      toggleMulticlass(!!(class2 || subclass2 || level2), false);
+    }
+
     restoreCampaignField(data.characterInfo.campaignId || '');
   }
 
@@ -3390,6 +3452,12 @@ function loadData() {
     exhaustionLevel: typeof c.exhaustionLevel === 'number' ? c.exhaustionLevel : undefined
   }));
   if (typeof renderConditions === 'function') renderConditions();
+
+  // Concentration tracker (single active spell, or null).
+  window.concentrationData = (data.concentration && data.concentration.spellName)
+    ? { spellName: data.concentration.spellName, castAt: data.concentration.castAt || Date.now() }
+    : null;
+  if (typeof renderConcentration === 'function') renderConcentration();
 
   // Re-sync note sizing after data is loaded into textareas.
   setupNoteBoxHandlers();

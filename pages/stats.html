@@ -33,6 +33,28 @@
     <div>
       <label>Level</label>
       <input id="char_level" oninput="updateProficiencyBonus(); autosave()" type="number" min="1" placeholder="Level"/>
+      <button type="button" id="addMulticlassBtn" class="add-multiclass-btn" onclick="toggleMulticlass(true)">+ Add multiclass</button>
+    </div>
+    <div id="multiclass_block" style="display:none; grid-column: 1 / -1;">
+      <div class="multiclass-header">
+        <span class="multiclass-title">Second Class</span>
+        <button type="button" class="remove-multiclass-btn" onclick="toggleMulticlass(false)" title="Remove second class">Remove</button>
+      </div>
+      <div class="multiclass-grid">
+        <div>
+          <label>Class</label>
+          <input id="char_class2" oninput="autosave()" placeholder="2nd class"/>
+        </div>
+        <div>
+          <label>Subclass</label>
+          <input id="char_subclass2" oninput="autosave()" placeholder="2nd subclass"/>
+        </div>
+        <div>
+          <label>Level</label>
+          <input id="char_level2" oninput="updateProficiencyBonus(); autosave()" type="number" min="1" placeholder="Level"/>
+        </div>
+      </div>
+      <p class="multiclass-note">Proficiency bonus uses your <strong>total</strong> level (both classes combined). Set spell slots manually in the Spells tab.</p>
     </div>
     <input id="char_campaign" type="hidden"/>
     <div id="char_campaign_indicator" style="display:none;"><span id="char_campaign_indicator_name"></span></div>
@@ -618,6 +640,9 @@
         </div>
         <h2>Long Term Conditions</h2>
         <button onclick="showConditionPopup()" class="condition-add-btn">+ Add Condition</button>
+        <div id="concentration_banner" class="concentration-banner" style="display:none;">
+          <!-- Rendered by renderConcentration() when concentrating -->
+        </div>
         <div id="conditions_container">
           <!-- Conditions are rendered dynamically by renderConditions() -->
         </div>

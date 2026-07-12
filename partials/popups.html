@@ -601,6 +601,19 @@
       </div>
       <button onclick="addClassLevel()" style="margin-top: 10px;">+ Add Another Class</button>
     </div>
+    <div class="spell-sources">
+      <div class="spell-sources-header">
+        <h4>Spell Sources:</h4>
+        <div class="spell-sources-quick">
+          <button type="button" class="spell-source-quick-btn" onclick="setSpellSourcesPreset('official')">Official only</button>
+          <button type="button" class="spell-source-quick-btn" onclick="setSpellSourcesPreset('all')">All sources</button>
+        </div>
+      </div>
+      <p class="spell-sources-note">Official = core WotC D&D (SRD 5.1, Player's Handbook, Tasha's, Sword Coast). Tick extra books to include third-party spells.</p>
+      <div id="spellSourcesContainer" class="spell-sources-grid">
+        <!-- Source checkboxes injected by renderSpellSourceCheckboxes() -->
+      </div>
+    </div>
     <div class="import-preview">
       <h4>Spells to Import:</h4>
       <div id="importPreview" style="max-height: 200px; overflow-y: auto; background: #2a2a2a; padding: 10px; border-radius: 4px;">

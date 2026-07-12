@@ -180,14 +180,14 @@ function bindAutoMathOverrideInputs() {
 }
 
 function enforceAutoMathNumericInputs() {
-  const unsignedNumericIds = ['str','dex','con','int','wis','cha','char_level','max_hp','curr_hp','hit_dice_spend','ac','speed'];
+  const unsignedNumericIds = ['str','dex','con','int','wis','cha','char_level','char_level2','max_hp','curr_hp','hit_dice_spend','ac','speed'];
   unsignedNumericIds.forEach(id => {
     const input = document.getElementById(id);
     if (!input || input.dataset.numericOnlyBound === '1') return;
     input.dataset.numericOnlyBound = '1';
     input.inputMode = 'numeric';
     input.addEventListener('input', () => {
-      const maxLength = input.id === 'char_level' ? 2 : (input.id.length === 3 ? 2 : null);
+      const maxLength = (input.id === 'char_level' || input.id === 'char_level2') ? 2 : (input.id.length === 3 ? 2 : null);
       const next = sanitizeDigits(input.value, maxLength);
       if (input.value !== next) input.value = next;
     });
@@ -431,17 +431,47 @@ function calculateSavingThrow(ability) {
   saveInput.value = saveMod >= 0 ? `+${saveMod}` : `${saveMod}`;
 }
 
+// Total character level across all classes. For multiclass, proficiency bonus is based
+// on the SUM of class levels (5e PHB), so this is what the prof-bonus math keys off.
+function getTotalCharacterLevel() {
+  const l1 = parseInt(document.getElementById('char_level')?.value, 10) || 0;
+  const l2 = parseInt(document.getElementById('char_level2')?.value, 10) || 0;
+  return Math.max(1, l1 + l2);
+}
+
 function calculateProficiencyBonus() {
   const levelInput = document.getElementById('char_level');
   if (!levelInput) return '+2';
 
-  const level = parseInt(levelInput.value) || 1;
+  const level = getTotalCharacterLevel();
   let profBonus = 2;
   if (level >= 5) profBonus = 3;
   if (level >= 9) profBonus = 4;
   if (level >= 13) profBonus = 5;
   if (level >= 17) profBonus = 6;
   return `+${profBonus}`;
+}
+
+// Show/hide the second-class (multiclass) block. When turning it OFF, the second-class
+// fields are cleared so their levels stop counting toward total level / prof bonus.
+// `save` defaults true so UI toggles persist; the loader calls with save=false.
+function toggleMulticlass(on, save = true) {
+  const block = document.getElementById('multiclass_block');
+  const addBtn = document.getElementById('addMulticlassBtn');
+  if (!block || !addBtn) return;
+
+  block.style.display = on ? 'block' : 'none';
+  addBtn.style.display = on ? 'none' : '';
+
+  if (!on) {
+    ['char_class2', 'char_subclass2', 'char_level2'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+  }
+
+  updateProficiencyBonus();
+  if (save && typeof autosave === 'function') autosave();
 }
 
 function updateProficiencyBonus() {

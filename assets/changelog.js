@@ -6,9 +6,28 @@
 // the Home button until they visit the home page.
 // ============================================================
 
-const CHANGELOG_LATEST_VERSION = '1.14';
+const CHANGELOG_LATEST_VERSION = '1.15';
 
 const CHANGELOG = [
+  {
+    version: '1.15',
+    date: '2026-07-12',
+    title: 'v1.15 — Concentration, Multiclass & Spell Sources',
+    updates: [
+      'Concentration tracker: cast a concentration spell and a "Concentrating on…" banner appears in your Conditions area. Casting a different concentration spell asks first (since you can only hold one), and one tap clears it. It saves with your character',
+      'You can now cast straight from your Favourites — favourited spells get the same one-tap "Cast" button as prepared spells, spending a matching slot and starting concentration where needed',
+      'Multiclass support: an optional "+ Add multiclass" button under your Level reveals a second Class / Subclass / Level. Your proficiency bonus then uses your combined total level automatically. Single-class characters are completely unaffected',
+      'Spell import now has a source picker: by default you only pull official D&D (SRD 5.1, Player\'s Handbook, Tasha\'s, Sword Coast), and you can flip on third-party books (Deep Magic, Tome of Heroes, Level Up A5e, Kobold Press and more) with smooth toggles. Your choice is remembered',
+      'Conditions now show at-a-glance combat hint chips — e.g. Poisoned shows "Attacks & checks: Disadvantage", Prone shows the melee/ranged split — so you can see the key effects without reading the full text',
+      'Note cards have templates: pick NPC, Location, Quest or Item when adding a card and it pre-fills a handy structure to fill in (blank cards still available)',
+      'Keyboard shortcuts: Ctrl/Cmd+S saves your character, and Escape closes any open pop-up or help panel',
+    ],
+    fixes: [
+      'The spell source options use smooth on/off toggle switches with a clean hover, matching the rest of the app',
+      'Clarified that the "Warlock" spell source is Kobold Press\'s Warlock Magazine, not the Warlock class',
+      'Removed unused internal layout code that never did anything',
+    ],
+  },
   {
     version: '1.14',
     date: '2026-07-11',
