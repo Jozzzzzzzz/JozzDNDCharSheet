@@ -398,7 +398,9 @@ async function ensureUserProfile(user) {
   const promptKey = `dndNicknamePrompted_${uid}`;
   const alreadyPrompted = (localStorage.getItem(promptKey) || '') === '1';
   if (!hasNickname && !alreadyPrompted && !isOwnerEmail(email)) {
-    const nickname = prompt('Pick a name/nickname to show in the app (you can change it later):') || '';
+    const nickname = (typeof appPrompt === 'function'
+      ? await appPrompt('Pick a name/nickname to show in the app (you can change it later):', { title: 'Welcome!', placeholder: 'Your name', confirmText: 'Save' })
+      : prompt('Pick a name/nickname to show in the app (you can change it later):')) || '';
     localStorage.setItem(promptKey, '1');
     const clean = nickname.trim().slice(0, 40);
     if (clean) update.nickname = clean;

@@ -80,6 +80,9 @@
           <input type="text" id="noteEditorTitle" class="note-editor-title-input" placeholder="Note title..." oninput="onNoteEditorTitleChange()"/>
           <button onclick="closeNoteEditor()" class="note-editor-close">&#10005;</button>
         </div>
+        <div class="note-editor-colors" id="noteEditorColors" title="Colour tag">
+          <!-- Colour swatches injected by renderNoteColorPicker() -->
+        </div>
         <textarea id="noteEditorBody" class="note-editor-body" placeholder="Write your note here..." spellcheck="true" autocorrect="on" autocapitalize="sentences" oninput="onNoteEditorBodyChange()"></textarea>
       </div>
     </div>

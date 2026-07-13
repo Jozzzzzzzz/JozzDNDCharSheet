@@ -6,9 +6,29 @@
 // the Home button until they visit the home page.
 // ============================================================
 
-const CHANGELOG_LATEST_VERSION = '1.15';
+const CHANGELOG_LATEST_VERSION = '1.16';
 
 const CHANGELOG = [
+  {
+    version: '1.16',
+    date: '2026-07-14',
+    title: 'v1.16 — Hit Dice Pool, Offline Mode & Polish',
+    updates: [
+      'Hit Dice Pool tracker: a proper pool that shows how many hit dice you have left, with Spend / Restore buttons. Max auto-fills from your level (editable), a short rest spends from it, and a long rest regains half — the 5e way. Multiclass characters get a second pool only if their two classes use different die sizes',
+      'The app now works offline and is installable: pages and data are cached so it loads fast and keeps working with no connection. An "Install app" button appears where your browser supports it, and an "Offline" badge shows when you lose connection (your changes still save locally)',
+      'Note cards can be colour-tagged — pick from 8 colours in the note editor and the card shows a coloured stripe, so you can group quests / NPCs / places at a glance',
+      'DM: "Export Log" button on encounters copies the full initiative order with HP and AC to your clipboard, ready to paste into notes, a VTT or Discord',
+      'Character portraits are now automatically resized and compressed on upload, so they take far less space, sync reliably, and no longer risk breaking cloud save on large images',
+      'Spell links that were dead on Open5e now fall back to a working 5esrd.com page (or a 5esrd search) — 71 spells fixed, including some official ones like Counterspell',
+      'The Ritual / Concentration / Prepared checkboxes on the spell form are now smooth toggle switches, matching the rest of the app',
+    ],
+    fixes: [
+      'All remaining pop-up prompts (nickname, image URL, delete confirmations, DM/admin dialogs) are now in-app dialogs instead of the browser\'s native boxes, so they work properly on mobile and as an installed app',
+      'Fixed spell reference links being re-broken on every load — repaired 5esrd links now stick instead of reverting to a dead Open5e page',
+      'The spell detail link now correctly reads "View on 5esrd" or "View on Open5e" depending on where it actually points',
+      'Removed unused internal layout code that never did anything',
+    ],
+  },
   {
     version: '1.15',
     date: '2026-07-12',

@@ -67,7 +67,7 @@ async function unlockAdminPortal() {
     const enteredHash = await sha256Hex(pin.trim());
 
     if (!data.portalPinHash) {
-      const confirmPin = prompt('Admin PIN not set yet. Re-enter PIN to set it now:') || '';
+      const confirmPin = (await appPrompt('Admin PIN not set yet. Re-enter PIN to set it now:', { title: 'Set Admin PIN', inputType: 'password', confirmText: 'Set PIN' })) || '';
       if (confirmPin.trim() !== pin.trim()) {
         setAdminPortalStatus('PINs did not match. Not set.', 'error');
         return;
@@ -704,7 +704,9 @@ async function adminChangeCampaignPassword(campaignId, which) {
   const isDm = which === 'dm';
   const label = isDm ? 'DM control password (DM uses to take control)' : 'player join password (players enter to join)';
   const field = isDm ? 'dmPasswordHash' : 'passwordHash';
-  const password = prompt(`Enter new ${label} for this campaign:\n(Leave blank to remove it)`);
+  const password = await appPrompt(`Enter new ${label} for this campaign (leave blank to remove it):`, {
+    title: 'Campaign Password', inputType: 'password', confirmText: 'Save'
+  });
   if (password === null) return; // cancelled
   const db = window.db;
   if (!db) return;
@@ -721,7 +723,9 @@ async function adminChangeCampaignPassword(campaignId, which) {
 async function adminEditCampaignDm(campaignId) {
   const db = window.db;
   if (!db) return;
-  const email = prompt('Enter DM email (leave blank to clear):');
+  const email = await appPrompt('Enter DM email (leave blank to clear):', {
+    title: 'Assign DM', inputType: 'email', placeholder: 'dm@example.com', confirmText: 'Save'
+  });
   if (email === null) return; // cancelled
   const clean = email.trim().toLowerCase();
   try {

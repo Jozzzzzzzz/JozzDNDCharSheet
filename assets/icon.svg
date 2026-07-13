@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="96" fill="#0e0c0a"/>
+  <g fill="none" stroke="#c9a227" stroke-width="14" stroke-linejoin="round" stroke-linecap="round">
+    <!-- d20 silhouette -->
+    <polygon points="256,64 432,168 432,344 256,448 80,344 80,168" fill="#161310"/>
+    <polygon points="256,120 360,180 320,300 192,300 152,180"/>
+    <line x1="256" y1="120" x2="256" y2="64"/>
+    <line x1="360" y1="180" x2="432" y2="168"/>
+    <line x1="152" y1="180" x2="80" y2="168"/>
+    <line x1="320" y1="300" x2="432" y2="344"/>
+    <line x1="192" y1="300" x2="80" y2="344"/>
+    <line x1="256" y1="448" x2="320" y2="300"/>
+    <line x1="256" y1="448" x2="192" y2="300"/>
+  </g>
+  <text x="256" y="252" font-family="Georgia, serif" font-size="88" fill="#c9a227" text-anchor="middle" font-weight="bold">20</text>
+</svg>

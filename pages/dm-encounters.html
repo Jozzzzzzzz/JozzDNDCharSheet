@@ -129,7 +129,10 @@
     <div class="dm-card dm-encounter-builder">
       <div class="dm-card-header">
         <h3>Combatants</h3>
-        <button class="dm-action-btn" onclick="dmClearEncounter()">Clear</button>
+        <div class="dm-header-actions">
+          <button class="dm-action-btn" onclick="dmExportCombatLog()" title="Copy the initiative order + HP/AC to the clipboard">Export Log</button>
+          <button class="dm-action-btn" onclick="dmClearEncounter()">Clear</button>
+        </div>
       </div>
       <div class="dm-encounter-name-row">
         <input type="text" id="dmEncounterName" placeholder="Encounter name (e.g. Goblin Ambush)" maxlength="80">

@@ -559,16 +559,28 @@
         <label>Attack:</label>
         <input type="text" id="spellAttack" placeholder="e.g., Ranged spell attack">
       </div>
-      <div class="spell-form-full">
-        <label>
-          <input type="checkbox" id="spellRitual"> Ritual
-        </label>
-        <label>
-          <input type="checkbox" id="spellConcentration"> Concentration
-        </label>
-        <label>
-          <input type="checkbox" id="spellPrepared"> Prepared
-        </label>
+      <div class="spell-form-full spell-form-toggles">
+        <div class="spell-toggle-row">
+          <span class="spell-toggle-label">Ritual</span>
+          <label class="switch">
+            <input type="checkbox" id="spellRitual">
+            <span class="slider round"></span>
+          </label>
+        </div>
+        <div class="spell-toggle-row">
+          <span class="spell-toggle-label">Concentration</span>
+          <label class="switch">
+            <input type="checkbox" id="spellConcentration">
+            <span class="slider round"></span>
+          </label>
+        </div>
+        <div class="spell-toggle-row">
+          <span class="spell-toggle-label">Prepared</span>
+          <label class="switch">
+            <input type="checkbox" id="spellPrepared">
+            <span class="slider round"></span>
+          </label>
+        </div>
       </div>
       <div class="spell-form-full">
         <label>Description:</label>

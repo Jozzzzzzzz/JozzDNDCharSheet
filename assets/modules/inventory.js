@@ -1613,21 +1613,70 @@ function setSettingsModalLock(locked) {
   document.documentElement.classList.toggle('settings-open', locked);
 }
 
+// Render a portrait image into the preview box from any src (data URL or URL).
+function setPortraitPreviewImg(src) {
+  const portraitPreview = document.getElementById('portraitPreview');
+  if (!portraitPreview) return;
+  portraitPreview.innerHTML = '';
+  const img = document.createElement('img');
+  img.src = src;
+  img.style.width = '100%';
+  img.style.height = '100%';
+  img.style.objectFit = 'cover';
+  img.style.borderRadius = '12px';
+  portraitPreview.appendChild(img);
+}
+
+// Max portrait dimension (px) and JPEG quality. A sheet portrait doesn't need to be
+// full-res; downscaling + JPEG re-encoding takes a multi-MB photo down to ~50-150 KB so
+// the base64 stays small, syncs cheaply, and never trips Firestore's 1 MB doc limit.
+const PORTRAIT_MAX_DIM = 512;
+const PORTRAIT_JPEG_QUALITY = 0.82;
+
+// Downscale + compress an image data URL via canvas. Resolves to a compressed JPEG data
+// URL. On any failure (e.g. an exotic format) it falls back to the original so a portrait
+// is never lost — just not shrunk.
+function compressPortraitDataUrl(dataUrl) {
+  return new Promise(resolve => {
+    try {
+      const img = new Image();
+      img.onload = function() {
+        const w = img.naturalWidth || img.width;
+        const h = img.naturalHeight || img.height;
+        if (!w || !h) { resolve(dataUrl); return; }
+        const scale = Math.min(1, PORTRAIT_MAX_DIM / Math.max(w, h));
+        const cw = Math.max(1, Math.round(w * scale));
+        const ch = Math.max(1, Math.round(h * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = cw;
+        canvas.height = ch;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, cw, ch);
+        let out;
+        try {
+          out = canvas.toDataURL('image/jpeg', PORTRAIT_JPEG_QUALITY);
+        } catch (e) {
+          out = dataUrl; // e.g. tainted canvas — keep original
+        }
+        // If compression somehow produced something bigger, keep the original.
+        resolve(out && out.length < dataUrl.length ? out : dataUrl);
+      };
+      img.onerror = function() { resolve(dataUrl); };
+      img.src = dataUrl;
+    } catch (e) {
+      resolve(dataUrl);
+    }
+  });
+}
+
 function handlePortraitUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = function(e) {
-    const portraitPreview = document.getElementById('portraitPreview');
-    portraitPreview.innerHTML = '';
-    const img = document.createElement('img');
-    img.src = e.target.result;
-    img.style.width = '100%';
-    img.style.height = '100%';
-    img.style.objectFit = 'cover';
-    img.style.borderRadius = '12px';
-    portraitPreview.appendChild(img);
+  reader.onload = async function(e) {
+    const compressed = await compressPortraitDataUrl(e.target.result);
+    setPortraitPreviewImg(compressed);
     autosave();
   };
   reader.readAsDataURL(file);
@@ -1635,8 +1684,9 @@ function handlePortraitUpload(event) {
 
 function removePortrait() {
   const portraitPreview = document.getElementById('portraitPreview');
-  portraitPreview.innerHTML = '<span style="color: #666;">No image</span>';
-  document.getElementById('portraitUpload').value = '';
+  if (portraitPreview) portraitPreview.innerHTML = '<span style="color: #666;">No image</span>';
+  const uploadEl = document.getElementById('portraitUpload');
+  if (uploadEl) uploadEl.value = '';
   autosave();
 }
 

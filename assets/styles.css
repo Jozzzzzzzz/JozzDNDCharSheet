@@ -1820,6 +1820,56 @@
     background: var(--accent-soft);
   }
 
+  /* Colour tag — a coloured left accent bar on tagged cards. */
+  .notes-note-card.has-color-tag {
+    overflow: hidden;
+  }
+  .notes-note-card.has-color-tag::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 6px;
+    background: var(--note-tag-color, transparent);
+  }
+  .notes-note-card.has-color-tag {
+    padding-left: 1.4rem;
+  }
+
+  /* Colour picker swatches in the note editor. */
+  .note-editor-colors {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 8px 0 4px;
+  }
+  .note-color-swatch {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    cursor: pointer;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.12s ease, border-color 0.12s ease;
+  }
+  .note-color-swatch:hover {
+    transform: scale(1.12);
+  }
+  .note-color-swatch.selected {
+    border-color: var(--accent-text);
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+  .note-color-swatch.none {
+    background: transparent;
+    color: var(--text);
+    font-size: 0.9rem;
+    opacity: 0.7;
+  }
+
   .notes-note-title-row {
     display: flex;
     align-items: center;
@@ -2441,6 +2491,70 @@
     margin: 0 0 15px 0;
     color: var(--text);
     font-size: 1.1em;
+  }
+
+  /* Hit dice pool tracker */
+  .hd-pool {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .hd-pool.hd-pool-secondary {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--accent-border);
+  }
+
+  .hd-pool-primary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .hd-pool-remaining {
+    font-size: 1.05em;
+  }
+
+  .hd-pool-remaining strong {
+    font-size: 1.4em;
+    color: var(--accent-text);
+  }
+
+  .hd-pool-die {
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-border);
+    font-size: 0.85em;
+  }
+
+  .hd-pool-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .hd-pool-controls button {
+    padding: 4px 12px;
+    font-size: 0.9em;
+  }
+
+  .hd-pool-max-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85em;
+    opacity: 0.85;
+  }
+
+  .hd-pool-max-label input {
+    width: 56px;
+    text-align: center;
   }
 
   .hit-dice-inputs {
@@ -4474,6 +4588,57 @@
   background: rgba(33, 150, 243, 0.2);
   color: #2196F3;
   border: 1px solid #2196F3;
+}
+
+/* Offline indicator — fixed bottom-centre pill, shown only when offline. */
+.offline-indicator {
+  position: fixed;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  color: #f2e6c8;
+  background: rgba(120, 70, 20, 0.95);
+  border: 1px solid rgba(220, 160, 70, 0.6);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+.offline-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffb020;
+  box-shadow: 0 0 6px #ffb020;
+}
+
+/* Install app button — fixed bottom-right, shown only when installable. */
+.install-app-btn {
+  position: fixed;
+  bottom: 14px;
+  right: 14px;
+  z-index: 4000;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  color: var(--accent-contrast);
+  background: var(--accent);
+  border: 1px solid var(--accent-border);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+}
+
+.install-app-btn:hover {
+  filter: brightness(1.08);
 }
 
 .rolling-banner {
@@ -6548,7 +6713,37 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   .spell-form-full {
     grid-column: 1 / -1;
   }
-  
+
+  /* Ritual / Concentration / Prepared toggles in the spell form */
+  .spell-form-toggles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+  }
+
+  .spell-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex: 1 1 auto;
+    min-width: 150px;
+    padding: 6px 11px;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.18);
+    border: 1px solid transparent;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+  }
+
+  .spell-toggle-row:hover {
+    background: var(--accent-soft);
+    border-color: var(--accent-border);
+  }
+
+  .spell-toggle-label {
+    font-size: 0.9rem;
+  }
+
   .spell-form-actions {
     grid-column: 1 / -1;
     display: flex;
@@ -8426,6 +8621,12 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   margin-bottom: 14px;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--accent-border);
+}
+
+.dm-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .dm-card-header h3 {

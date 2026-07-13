@@ -72,6 +72,7 @@ Flat keys (not per-character):
 - `dndBgImage` — active background image URL (preset path or data URL or remote URL)
 - `dndBgCustoms` — JSON array of user-added custom backgrounds `[{ id, label, url }]`
 - `dndLightModeJokeAt` — timestamp of last light mode joke, used for 24h cooldown
+- `dndSpellSources` — JSON array of enabled spell-import source keys (UI pref, NOT character data; defaults to official-only). See "Spell import source picker".
 
 Per-character data is **not** namespaced by character ID in localStorage. All character data lives inside the `data` field of each entry in `dndCharacters`. Always use `getStoredJSON`/`setStoredJSON` helpers for reads/writes.
 
@@ -112,6 +113,9 @@ auth_signins/{uid}                      — sign-in history and per-device prese
 ```
 
 **Rules:** the `characters` subcollection requires an explicit `match /characters/{charId}` rule in Firestore security rules — without it subcollection writes are denied even if the parent `userData/{uid}` rule allows writes.
+
+#### Portraits — compressed base64 (v1.16+)
+Portraits stay in the character blob as a base64 data URL (`page2.portrait`), NOT Firebase Storage — Storage requires the Blaze billing plan, which the owner declined. Instead `handlePortraitUpload()` (inventory.js) **downscales + JPEG-compresses** the image via a `<canvas>` before saving: `compressPortraitDataUrl()` caps the longest side at `PORTRAIT_MAX_DIM` (512px) and re-encodes at `PORTRAIT_JPEG_QUALITY` (0.82), taking a multi-MB photo down to ~50–150 KB. This keeps the base64-in-sheet approach (syncs with the blob, works offline, no Firebase changes) but small enough to sync cheaply and stay under Firestore's 1 MB doc limit. Fallbacks: if compression fails (exotic format / tainted canvas) or would grow the file, the original data URL is kept — a portrait is never lost. Old base64 portraits load unchanged (save/load are src-agnostic).
 
 #### Firebase CLI (rules/index deploys)
 The Firebase CLI (`firebase-tools`) is installed globally and logged in as the owner account. The repo is linked to the `dndcharproject` project via `.firebaserc`, and `firebase.json` points at `firestore.rules`. This means security rules and indexes are deployed from the command line, **not** by pasting into the Firebase Console.
@@ -184,7 +188,15 @@ Stored as a JSON array under `dndBgCustoms` in localStorage. Each entry: `{ id, 
 
 ### PWA
 
-`sw.js` is a minimal service worker — it registers but passes all fetches through to the browser. The `.sixth` directory appears to be a PWA/build artifact directory; don't modify it.
+`sw.js` is a **cache-first service worker** (was a pass-through stub until v1.16). It's registered from `index.html`'s `bootstrapModularApp()` as `sw.js?v=<scriptVersion>` after boot.
+- **Version lockstep:** the SW reads `?v=` from its own registration URL into `CACHE_NAME = jozzdnd-<version>`. Bumping `scriptVersion` in `index.html` creates a fresh cache; the old one is deleted on `activate`. So the `?v=` query-string cache-busting on scripts and the SW cache always agree — **bump `scriptVersion` whenever assets change or users get stale JS**.
+- **Precache list** in `sw.js` (`PRECACHE_URLS`) mirrors `index.html`'s `loadText()` + `scriptOrder` lists — 38 files (shell, partials, all pages, all JS modules, styles.css, spells.json). **If you add a page/partial/module to index.html, add it here too**, or it won't be available offline.
+- **Network-only** (never cached): all cross-origin requests + anything Firebase/googleapis/gstatic (`isNetworkOnly()`), so live data always hits the network. Only same-origin static GETs are cache-first. Cache key strips the `?v=` query (the cache name already scopes the version).
+
+The `.sixth` directory appears to be a PWA/build artifact directory; don't modify it.
+
+### Hit dice pool
+`page1.health.hitDicePool = { max, used, max2, used2, maxTouched }` (in-memory `_hdPool` in `health.js`). Tracks hit dice remaining across short rests (5e). `max` auto-fills from `getTotalCharacterLevel()` via `syncHitDicePoolToLevel()` (called at end of `loadData()` and from `updateProficiencyBonus()`), unless the user edits Max (`maxTouched` locks auto-sync). `spendHitDie(delta, poolNum)` ± the pool; `shortRest()` deducts the dice it rolled; `longRest()` calls `recoverHitDiceOnLongRest()` (regain floor(max/2), min 1). **Second pool (`max2`/`used2`) only appears for multiclass when the two classes use different hit-die sizes** (`hit_die_size` vs `hit_die_size2` in the multiclass block) — same die size → one combined pool. UI in `pages/stats.html` (`#hd_pool`, `#hd_pool2`). Old saves: no `hitDicePool` → `max` null → auto-derives from level. Safe.
 
 ## Spells Page
 
@@ -192,14 +204,24 @@ Stored as a JSON array under `dndBgCustoms` in localStorage. Each entry: `{ id, 
 Every spell object is normalised through `normalizeSpellRecord()` on load — all fields are guaranteed to exist as strings/booleans even if missing from saved data. Fields: `name`, `level`, `school`, `castingTime`, `range`, `components`, `duration`, `damage`, `save`, `attack`, `ritual`, `concentration`, `prepared`, `classes`, `sourceBook`, `description`, `wikiLink`, `open5eSlug`.
 
 ### Spell database
-`assets/data/spells.json` — 1122 unique spells from all Open5e sources (SRD 5.1, Deep Magic, A5e, Tome of Heroes, Deep Magic Extra, Warlock, Kobold Press, Open5e originals). Zero duplicates. All `wikiLink` fields point to `open5e.com/spells/{slug}`. Rebuild with `node tools/build-spells.js && node tools/patch-spell-effects.js`.
+`assets/data/spells.json` — 1122 unique spells from all Open5e sources (SRD 5.1, Deep Magic, A5e, Tome of Heroes, Deep Magic Extra, Warlock, Kobold Press, Open5e originals). Zero duplicates. Rebuild with `node tools/build-spells.js && node tools/patch-spell-effects.js`.
 
 `loadSpellDatabase()` in `spells.js`:
 1. Loads `spells.json` immediately (fast, works offline)
 2. Calls `enrichSpellDatabaseFromOpen5e()` in the background — fetches SRD spells from Open5e API, upgrades descriptions and class lists, adds any new spells not in the local file
 3. Upgrades any wikidot.com links in the local file to open5e.com on load
 
-**Never use wikidot.com links anywhere.** All spell links must point to `open5e.com`. The helper `open5eSpellLink(nameOrSlug)` in `spells.js` generates the correct URL. `loadData()` in `core.js` migrates any wikidot links still saved in a user's localStorage spell objects to Open5e on first character load.
+**Never use wikidot.com links anywhere.** The helper `open5eSpellLink(nameOrSlug)` in `spells.js` generates an Open5e URL. `loadData()` in `core.js` migrates any wikidot links still saved in a user's localStorage spell objects to Open5e on first character load (it does NOT touch open5e.com or 5esrd.com links).
+
+#### Spell reference links (Open5e → 5esrd fallback)
+Most `wikiLink` fields point to `open5e.com/spells/{slug}`, but **not all** — some Open5e pages 404 (all A5e `-a5e` slugs, plus a handful of SRD spells like Counterspell/Creation that the API returns yet the website 404s). `tools/verify-spell-links.js` pings every spell's Open5e URL and repairs dead ones: → a verified `5esrd.com/database/spell/{slug}/` page if one returns 200, else `5esrd.com/?s={name}` search (always live). It writes the resolved URL back to `wikiLink` and tags `linkSource` (`open5e` | `5esrd` | `5esrd-search`). Re-run with `node tools/verify-spell-links.js` (cached in `tools/.link-cache.json`, gitignored; `--dry-run` to preview). As of the last run: 1051 Open5e, 25 5esrd direct, 46 5esrd search.
+
+- **`linkSource` is reference-DB-only** — it is NOT in `normalizeSpellRecord`'s whitelist, so it never enters saved character data (only `wikiLink` carries into imports).
+- **CRITICAL — enrichment must not clobber 5esrd repairs.** `enrichSpellDatabaseFromOpen5e()` upgrades `existing.wikiLink` to an Open5e URL, but is guarded to skip any link already pointing at `5esrd.com`. Without that guard the SRD spells the API returns-but-404s (Counterspell, Creation) get silently re-broken on every load. Keep the guard.
+- The spell-details popup labels the link "View on 5esrd" vs "View on Open5e" based on the actual host (`showSpellDetails` in `spells.js`).
+
+#### Spell import source picker
+The Import Cantrips / Import Spells popup has a per-source toggle list (`SPELL_SOURCES` in `spells.js`) filtering the import pool by publisher. Default = **official only** (SRD 5.1 + locally-tagged PHB/TCE/SCAG). Saved as the global UI pref `dndSpellSources` (localStorage) — NOT character data. `getEnabledSpellSources()` is defensive: bad/legacy/empty values fall back to official (import is never empty). `spellSourceEnabled(spell)` gates the pool via `canonicalSpellSourceKey()` (maps Open5e slugs like `wotc-srd`/`a5e` to canonical keys); unknown sources are never hidden. The hardcoded `dndClasses` PHB lists only feed the pool when an official source is active (`officialSourcesActive()`). Source toggles use the shared `.switch`/`.slider round` component (not bare checkboxes).
 
 ### Spell slot drag-reorder
 `updateSpellSlots()` renders each slot row with a `⠿` drag handle. HTML5 drag-and-drop reorders `manualSpellSlots` array in place and calls `autosave()`. The order in the array is what gets saved — no extra field needed.
@@ -209,6 +231,20 @@ Every spell object is normalised through `normalizeSpellRecord()` on load — al
 
 ### Spell search
 `filterSpells('cantrip')` reads `#cantrip_search` and `filterSpells('spell')` reads `#spell_search`. Both inputs use `oninput` so filtering is live. Search stacks with the existing dropdown filters.
+
+### Concentration tracker
+`window.concentrationData = { spellName, castAt } | null`, saved as `data.concentration` (alongside `data.conditions`, NOT under a page). Functions in `inventory.js`: `startConcentration`, `castWithConcentration` (confirms the swap when already concentrating on a different spell — 5e one-at-a-time rule), `clearConcentration`, `renderConcentration`. The banner (`#concentration_banner` in `pages/stats.html`) sits in the Conditions section and is hidden when not concentrating. Cast triggers: the prepared-table Cast button and the Favourites Cast button both pass the spell name + concentration flag into `castPreparedSpell(level, name, concentration)` / `castCantripSpell(name, concentration)`. `spellNeedsConcentration(spell)` handles boolean and legacy string forms. Old saves with no `data.concentration` load as `null` (not concentrating) — safe.
+
+### Cast from Favourites / prepared
+Favourited spells get a one-tap **Cast** button in `createSpellItem()` (spends the lowest sufficient slot via `castPreparedSpell`, engages concentration). `jsStr()` in `spells.js` safely escapes spell names for inline `onclick` (apostrophes, quotes, `<`). Cantrips only get a Cast button if they need concentration.
+
+## Multiclass
+
+Opt-in second class. A "+ Add multiclass" button under the Level field (`pages/stats.html`) calls `toggleMulticlass(on, save)` (`stats.js`) which shows/hides `#multiclass_block` (a second Class/Subclass/Level: `#char_class2`/`#char_subclass2`/`#char_level2`). Saved as `characterInfo.class2`/`subclass2`/`level2`. **Proficiency bonus uses total level** — `getTotalCharacterLevel()` (`stats.js`) sums `char_level` + `char_level2` and `calculateProficiencyBonus()` keys off it. Spell slots stay manual (no multiclass caster-table math). Old-data safe: no `class2` → block collapsed, prof bonus = single-class level. Load path null-checks each field and calls `toggleMulticlass(!!(class2||subclass2||level2), false)`; `clearAllFormFields()` clears all three + collapses. `char_level2` is in the unsigned-numeric maxlength-2 list in `enforceAutoMathNumericInputs`.
+
+## App-wide dialogs
+
+`appToast` / `appAlert` / `appConfirm` / `appPrompt` (all in `core.js`, on `window`) are thin wrappers over dm.js's `dmToast`/`dmModal` that render into a floating root and work everywhere (mobile Safari / installed PWA), each with a native fallback if dm.js hasn't loaded. **Use these, never native `alert`/`confirm`/`prompt`** — natives break in PWA mode. `appPrompt(message, {title, placeholder, value, inputType, confirmText, cancelText})` resolves the entered string or `null` on cancel (matches native `prompt` cancel semantics, so blank-to-clear flows still work). The only remaining native calls in the codebase are the intentional fallback branches inside these four wrappers.
 
 ## Known Gotchas
 

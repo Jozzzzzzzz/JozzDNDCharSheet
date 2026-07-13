@@ -4,6 +4,13 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=0.85, maximum-scale=0.85, user-scalable=no">
 <title>Joz's Homebrew DND Sheet (Modular)</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0e0c0a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" type="image/svg+xml" href="assets/icon.svg">
+<link rel="apple-touch-icon" href="assets/icon.svg">
 
 <script>
 (function applySavedSettingsBeforePaint() {
@@ -111,6 +118,14 @@
 <div id="popups-root"></div>
 <div id="dm-chrome-root" style="display:none;"></div>
 <div id="dm-pages-root" style="display:none;"></div>
+
+<!-- Offline indicator: shown when the browser loses connectivity (sync paused). -->
+<div id="offlineIndicator" class="offline-indicator" style="display:none;" role="status" aria-live="polite">
+  <span class="offline-dot" aria-hidden="true"></span> Offline — changes saved locally, sync paused
+</div>
+
+<!-- Install app button: appears only when the browser offers PWA install. -->
+<button id="installAppBtn" class="install-app-btn" style="display:none;" onclick="promptInstallApp()" title="Install this app">⤓ Install app</button>
 
 <script>
 async function loadText(path) {
@@ -277,7 +292,7 @@ function activateRoute() {
 })();
 
 async function bootstrapModularApp() {
-  const scriptVersion = '20260712a-v1.15';
+  const scriptVersion = '20260714a-v1.16';
   // Expose so modules can cache-bust their own data fetches (e.g. spells.json).
   window.__SCRIPT_VERSION__ = scriptVersion;
   const [chrome, home, settings, stats, background, spells, inventory, notes, popups,
@@ -347,6 +362,57 @@ async function bootstrapModularApp() {
 
   activateRoute();
   window.addEventListener('hashchange', activateRoute);
+
+  // Register the cache-first service worker. The version query keeps the SW cache in
+  // lockstep with scriptVersion — bumping the version publishes a fresh cache and the
+  // old one is purged on activate, so users never get stale JS.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register(`sw.js?v=${scriptVersion}`).catch(err => {
+        console.warn('Service worker registration failed (app still works online):', err);
+      });
+    });
+  }
+
+  initOfflineIndicator();
+  initInstallPrompt();
+}
+
+// Offline indicator — reflects navigator.onLine, updated on the online/offline events.
+function initOfflineIndicator() {
+  const el = document.getElementById('offlineIndicator');
+  if (!el) return;
+  const update = () => { el.style.display = navigator.onLine ? 'none' : 'flex'; };
+  window.addEventListener('online', update);
+  window.addEventListener('offline', update);
+  update();
+}
+
+// PWA install prompt — capture the browser's beforeinstallprompt so we can offer a
+// themed "Install app" button instead of relying on the browser's own UI. The button
+// hides once installed or dismissed.
+let _deferredInstallPrompt = null;
+function initInstallPrompt() {
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    _deferredInstallPrompt = e;
+    const btn = document.getElementById('installAppBtn');
+    if (btn) btn.style.display = 'inline-flex';
+  });
+  window.addEventListener('appinstalled', () => {
+    _deferredInstallPrompt = null;
+    const btn = document.getElementById('installAppBtn');
+    if (btn) btn.style.display = 'none';
+  });
+}
+
+async function promptInstallApp() {
+  const btn = document.getElementById('installAppBtn');
+  if (!_deferredInstallPrompt) { if (btn) btn.style.display = 'none'; return; }
+  _deferredInstallPrompt.prompt();
+  try { await _deferredInstallPrompt.userChoice; } catch (e) {}
+  _deferredInstallPrompt = null;
+  if (btn) btn.style.display = 'none';
 }
 
 bootstrapModularApp().catch(err => {

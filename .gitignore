@@ -13,3 +13,6 @@ ui-debug.log
 # OS / editor noise
 .DS_Store
 Thumbs.db
+
+# Transient tool caches
+tools/.link-cache.json

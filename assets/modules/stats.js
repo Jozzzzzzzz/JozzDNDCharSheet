@@ -486,6 +486,9 @@ function updateProficiencyBonus() {
   ABILITY_LIST.forEach(ability => calculateSavingThrow(ability));
   updateAllSkillBonuses();
   updateAllDerivedStats();
+
+  // Total level drives the auto hit-dice pool max too (unless user overrode it).
+  if (typeof syncHitDicePoolToLevel === 'function') syncHitDicePoolToLevel();
 }
 
 function handleProfBonusInput() {

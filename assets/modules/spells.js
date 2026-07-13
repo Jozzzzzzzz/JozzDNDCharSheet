@@ -154,8 +154,13 @@ async function enrichSpellDatabaseFromOpen5e() {
         const existing = spellDatabase[s.name];
         const link = `https://open5e.com/spells/${s.slug}`;
         if (existing) {
-          // Enrich existing entry — preserve user-facing fields, upgrade link + description
-          existing.wikiLink = link;
+          // Enrich existing entry — preserve user-facing fields, upgrade description.
+          // Only upgrade the link if it's still an Open5e link (or blank). Some SRD spells
+          // are returned by the Open5e API but 404 on the website (e.g. Counterspell,
+          // Creation); those were repaired to 5esrd.com by tools/verify-spell-links.js, so
+          // we must NOT overwrite a 5esrd link back to a dead Open5e one.
+          const repairedTo5esrd = existing.wikiLink && /5esrd\.com/i.test(existing.wikiLink);
+          if (!repairedTo5esrd) existing.wikiLink = link;
           existing.open5eSlug = s.slug;
           if (s.desc && s.desc.length > (existing.description || '').length) {
             existing.description = s.desc;
@@ -1646,12 +1651,13 @@ function showSpellDetails(type, index) {
     }
   }
 
-  // Open5e link — always show, generate from slug or name
+  // Reference link — always show. Label reflects the actual host, since dead Open5e
+  // pages are repaired to 5esrd.com (see tools/verify-spell-links.js).
   const wikiLinkRow = document.getElementById('spellDetailWikiLink');
   const wikiLink = document.getElementById('spellWikiLink');
   const link = spell.wikiLink || open5eSpellLink(spell.name);
   wikiLink.href = link;
-  wikiLink.textContent = 'View on Open5e';
+  wikiLink.textContent = /5esrd\.com/i.test(link) ? 'View on 5esrd' : 'View on Open5e';
   wikiLinkRow.style.display = 'block';
   
   showPopup('spellDetailsPopup');

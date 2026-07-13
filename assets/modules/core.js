@@ -673,8 +673,8 @@ function bgHandleUpload(event) {
   event.target.value = '';
 }
 
-function bgPromptUrl() {
-  const url = window.prompt('Paste an image URL:');
+async function bgPromptUrl() {
+  const url = await appPrompt('Paste an image URL:', { title: 'Add Background', placeholder: 'https://…', inputType: 'url', confirmText: 'Add' });
   if (!url || !url.trim()) return;
   const trimmed = url.trim();
   const name = trimmed.split('/').pop().replace(/\?.*$/, '').replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || 'Custom';
@@ -1178,6 +1178,12 @@ function makeNoteCardEl(folder, card, index) {
   wrap.className = 'notes-note-card';
   wrap.dataset.cardId = card.id;
 
+  // Colour tag — a coloured left accent bar. 'none' (or missing) = no tag.
+  if (card.color && card.color !== 'none') {
+    wrap.classList.add('has-color-tag');
+    wrap.style.setProperty('--note-tag-color', noteTagColorValue(card.color));
+  }
+
   const titleRow = document.createElement('div');
   titleRow.className = 'notes-note-title-row';
 
@@ -1345,6 +1351,23 @@ function confirmAddFolder() {
 
 // --- add card popup ---
 
+// Note card colour tags. Keys are stable (saved on the card); values are the display
+// colour. 'none' = untagged. Backward-compatible: old cards have no `color` → untagged.
+const NOTE_TAG_COLORS = {
+  none:   'transparent',
+  red:    '#d9534f',
+  orange: '#e08a3c',
+  yellow: '#d9b13b',
+  green:  '#4f9d69',
+  blue:   '#4f7fd9',
+  purple: '#8a5cd0',
+  pink:   '#cf6ba9',
+  grey:   '#8a8a8a',
+};
+function noteTagColorValue(key) {
+  return NOTE_TAG_COLORS[key] || 'transparent';
+}
+
 // Pre-fill bodies for note card templates. Chosen in the Add Note Card popup; a blank
 // template ('') just makes an empty card. Titles suggest a starting name via placeholder.
 const NOTE_CARD_TEMPLATES = {
@@ -1424,8 +1447,33 @@ function openNoteEditor(folderId, cardId) {
   if (!popup) return;
   document.getElementById('noteEditorTitle').value = card.title || '';
   document.getElementById('noteEditorBody').value = card.body || '';
+  renderNoteColorPicker(card.color || 'none');
   popup.style.display = 'flex';
   setTimeout(() => document.getElementById('noteEditorBody').focus(), 50);
+}
+
+// Render the colour-tag swatches in the note editor, highlighting the active one.
+function renderNoteColorPicker(active) {
+  const container = document.getElementById('noteEditorColors');
+  if (!container) return;
+  container.innerHTML = Object.keys(NOTE_TAG_COLORS).map(key => {
+    const isNone = key === 'none';
+    const sel = key === (active || 'none') ? ' selected' : '';
+    const style = isNone ? '' : `background:${NOTE_TAG_COLORS[key]};`;
+    return `<button type="button" class="note-color-swatch${isNone ? ' none' : ''}${sel}" style="${style}" title="${key}" onclick="setNoteCardColor('${key}')">${isNone ? '∅' : ''}</button>`;
+  }).join('');
+}
+
+// Set the active note card's colour tag and persist.
+function setNoteCardColor(key) {
+  if (!notesEditingCardId || !notesActiveFolderId) return;
+  const folder = noteFolders.find(f => f.id === notesActiveFolderId);
+  if (!folder) return;
+  const card = folder.cards.find(c => c.id === notesEditingCardId);
+  if (!card) return;
+  card.color = key;
+  renderNoteColorPicker(key);
+  autosave();
 }
 
 function closeNoteEditor() {
@@ -2341,11 +2389,17 @@ function clearAllFormFields() {
   });
 
   // Clear health fields
-  const healthFields = ['max_hp', 'curr_hp', 'hit_dice_spend', 'con_modifier', 'hit_die_size', 'potion_type'];
+  const healthFields = ['max_hp', 'curr_hp', 'hit_dice_spend', 'con_modifier', 'hit_die_size', 'hit_die_size2', 'potion_type'];
   healthFields.forEach(id => {
     const element = document.getElementById(id);
     if (element) element.value = '';
   });
+
+  // Reset hit dice pool for a fresh character (max re-derives from level on next load).
+  if (typeof setHitDicePool === 'function') {
+    setHitDicePool({});
+    if (typeof renderHitDicePool === 'function') renderHitDicePool();
+  }
 
   // Clear temp HP display
   const tempHPDisplay = document.getElementById('temp_hp_display');
@@ -2716,7 +2770,9 @@ function autosave() {
       hit_dice_spend: val('hit_dice_spend'),
       con_modifier: val('con_modifier'),
       hit_die_size: val('hit_die_size'),
-      potion_type: val('potion_type')
+      hit_die_size2: val('hit_die_size2'),
+      potion_type: val('potion_type'),
+      hitDicePool: (typeof getHitDicePool === 'function') ? { ...getHitDicePool() } : undefined
     },
     skills: ['acrobatics','animal_handling','arcana','athletics','deception','history',
              'insight','intimidation','investigation','medicine','nature','perception',
@@ -2823,7 +2879,7 @@ function autosave() {
     id: f.id,
     title: f.title,
     isDefault: !!f.isDefault,
-    cards: f.cards.map(c => ({ id: c.id, title: c.title, body: c.body, isDefault: !!c.isDefault }))
+    cards: f.cards.map(c => ({ id: c.id, title: c.title, body: c.body, isDefault: !!c.isDefault, color: c.color || 'none' }))
   })) };
 
   const data = {
@@ -2999,6 +3055,15 @@ function loadData() {
       document.getElementById('hit_dice_spend').value = data.page1.health.hit_dice_spend || '1';
       document.getElementById('con_modifier').value = data.page1.health.con_modifier || '0';
       document.getElementById('hit_die_size').value = data.page1.health.hit_die_size || '8';
+      const hd2 = document.getElementById('hit_die_size2');
+      if (hd2) hd2.value = data.page1.health.hit_die_size2 || '8';
+
+      // Hit dice pool. Old saves have no hitDicePool → max stays null and gets
+      // auto-filled from level by syncHitDicePoolToLevel() below (called after level loads).
+      if (typeof setHitDicePool === 'function') {
+        setHitDicePool(data.page1.health.hitDicePool || {});
+      }
+
       // Potion type: migrate removed legacy values ('minor'/'lesser') to 'healing'
       // so the dropdown still shows a valid selection for old saves.
       const savedPotion = data.page1.health.potion_type;
@@ -3402,7 +3467,7 @@ function loadData() {
       id: f.id,
       title: f.title || 'Folder',
       isDefault: !!f.isDefault,
-      cards: Array.isArray(f.cards) ? f.cards.map(c => ({ id: c.id, title: c.title || '', body: c.body || '', isDefault: !!c.isDefault })) : []
+      cards: Array.isArray(f.cards) ? f.cards.map(c => ({ id: c.id, title: c.title || '', body: c.body || '', isDefault: !!c.isDefault, color: c.color || 'none' })) : []
     }));
   } else {
     noteFolders = [];
@@ -3458,6 +3523,10 @@ function loadData() {
     ? { spellName: data.concentration.spellName, castAt: data.concentration.castAt || Date.now() }
     : null;
   if (typeof renderConcentration === 'function') renderConcentration();
+
+  // Hit dice pool — now that level + multiclass are loaded, auto-fill max from level
+  // (unless the user overrode it) and render.
+  if (typeof syncHitDicePoolToLevel === 'function') syncHitDicePoolToLevel();
 
   // Re-sync note sizing after data is loaded into textareas.
   setupNoteBoxHandlers();
@@ -4404,33 +4473,35 @@ function confirmContainerDeletion(containerId) {
   const deleteBtn = container.querySelector('.delete-container-btn');
   
   if (deleteBtn.classList.contains('confirm')) {
-    // Check if user typed "delete"
-    const userInput = prompt('Type "delete" to confirm deletion of this storage container and all its contents:');
-    if (userInput === 'delete') {
-      // Remove from inventoryData
-      if (inventoryData.storageContainers) {
-        inventoryData.storageContainers = inventoryData.storageContainers.filter(s => s.id !== containerId);
+    appConfirm('Delete this storage container and all its contents? This cannot be undone.', {
+      title: 'Delete Container', confirmText: 'Delete', danger: true
+    }).then(ok => {
+      if (ok) {
+        // Remove from inventoryData
+        if (inventoryData.storageContainers) {
+          inventoryData.storageContainers = inventoryData.storageContainers.filter(s => s.id !== containerId);
+        }
+
+        // Remove from dropdown
+        const containerDropdown = document.getElementById('item_container');
+        if (containerDropdown) {
+          const option = containerDropdown.querySelector(`option[value="${containerId}"]`);
+          if (option) containerDropdown.removeChild(option);
+        }
+
+        // Remove from DOM
+        container.remove();
+
+        // Save and update
+        saveInventory();
+        updateWeightDisplay();
+        autosave();
+      } else {
+        // Reset button if cancelled
+        deleteBtn.textContent = 'Delete Container';
+        deleteBtn.classList.remove('confirm');
       }
-      
-      // Remove from dropdown
-      const containerDropdown = document.getElementById('item_container');
-      if (containerDropdown) {
-        const option = containerDropdown.querySelector(`option[value="${containerId}"]`);
-        if (option) containerDropdown.removeChild(option);
-      }
-      
-      // Remove from DOM
-      container.remove();
-      
-      // Save and update
-      saveInventory();
-      updateWeightDisplay();
-      autosave();
-    } else {
-      // Reset button if user didn't type "delete"
-      deleteBtn.textContent = 'Delete Container';
-      deleteBtn.classList.remove('confirm');
-    }
+    });
   } else {
     deleteBtn.textContent = 'Are you sure?';
     deleteBtn.classList.add('confirm');
@@ -4495,9 +4566,31 @@ function appConfirm(message, opts) {
   return Promise.resolve(confirm(message));
 }
 
+// Text-input dialog. Returns a Promise<string|null> — the entered text, or null if
+// cancelled. opts: { title, placeholder, value, inputType, confirmText, cancelText }.
+// Falls back to native prompt() if dm.js hasn't loaded yet.
+function appPrompt(message, opts) {
+  const o = opts || {};
+  if (typeof dmModal === 'function') {
+    return dmModal({
+      title: o.title || '',
+      message,
+      input: true,
+      inputType: o.inputType || 'text',
+      placeholder: o.placeholder || '',
+      value: o.value || '',
+      confirmText: o.confirmText || 'OK',
+      cancelText: o.cancelText || 'Cancel'
+    }).then(r => (typeof r === 'string' ? r : null));
+  }
+  const res = prompt(message, o.value || '');
+  return Promise.resolve(res);
+}
+
 window.appToast = appToast;
 window.appAlert = appAlert;
 window.appConfirm = appConfirm;
+window.appPrompt = appPrompt;
 
 // ========== POPUP FUNCTIONS ==========
 function showPopup(id) {

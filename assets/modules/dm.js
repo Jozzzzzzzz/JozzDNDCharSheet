@@ -1044,6 +1044,50 @@ function dmSetOrderMode(mode) {
   dmRenderCombatants();
 }
 
+// Export the current encounter as a plain-text combat log (initiative order + HP/AC),
+// copied to the clipboard so a DM can paste it into notes, a VTT, or Discord.
+function dmExportCombatLog() {
+  if (!dmCombatants.length) { dmToast('No combatants to export.', 'error'); return; }
+
+  const name = (document.getElementById('dmEncounterName')?.value || '').trim();
+  const rows = dmCombatants.slice().sort((a, b) => (b.initiative || 0) - (a.initiative || 0));
+
+  const lines = [];
+  lines.push(name ? `Combat Log — ${name}` : 'Combat Log');
+  lines.push(new Date().toLocaleString());
+  lines.push('');
+  lines.push('Init | Name                     | HP        | AC');
+  lines.push('-----+--------------------------+-----------+----');
+  rows.forEach(c => {
+    const init = String(c.initiative ?? 0).padStart(4, ' ');
+    const nm = String(c.name || '?').slice(0, 24).padEnd(24, ' ');
+    const hp = (c.hp != null || c.maxHp != null)
+      ? `${c.hp ?? '?'}/${c.maxHp ?? '?'}`.padEnd(9, ' ')
+      : '—        ';
+    const ac = c.ac != null && c.ac !== '' ? String(c.ac) : '—';
+    lines.push(` ${init} | ${nm} | ${hp} | ${ac}`);
+  });
+  lines.push('');
+  lines.push(`${rows.length} combatant${rows.length === 1 ? '' : 's'}.`);
+  const text = lines.join('\n');
+
+  const done = () => dmToast('Combat log copied to clipboard.', 'success');
+  const fail = () => {
+    // Fallback: show it in a modal so the DM can copy manually.
+    if (typeof dmModal === 'function') {
+      dmModal({ title: 'Combat Log', message: text, confirmText: 'Close', cancelText: 'Close' });
+    } else {
+      dmToast('Could not copy — clipboard blocked.', 'error');
+    }
+  };
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done).catch(fail);
+  } else {
+    fail();
+  }
+}
+
 function dmRenderCombatants() {
   const list = document.getElementById('dmCombatantList');
   if (!list) return;

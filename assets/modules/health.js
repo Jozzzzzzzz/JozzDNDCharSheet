@@ -144,6 +144,13 @@ function shortRest() {
   currHP.value = newTotalHP;
   updateHPDisplay();
 
+  // Deduct the spent dice from the pool (clamped to what's available).
+  if (_hdPool.max != null) {
+    const avail = Math.max(0, _hdPool.max - _hdPool.used);
+    _hdPool.used += Math.min(hitDiceSpend, avail);
+    renderHitDicePool();
+  }
+
   // Reset spell slots and custom resources marked for short rest
   if (typeof resetSpellSlots === 'function') resetSpellSlots('short');
   if (typeof resetCustomResources === 'function') resetCustomResources('short');
@@ -182,6 +189,160 @@ function calculateHitDiceRecovery() {
 
   const conPart = conMod === 0 ? '' : conMod > 0 ? ` + ${conMod} per die` : ` ${conMod} per die`;
   recoveryText.textContent = `Potential Recovery: ${hitDiceSpend}d${hitDieSize}${conPart} = ${minRecovery}–${maxRecovery} HP`;
+}
+
+// ========== HIT DICE POOL ==========
+// Tracks total hit dice remaining across short rests (5e: you have your level in hit
+// dice; a long rest regains up to half your max, rounded down, minimum 1). Data lives in
+// page1.health.hitDicePool = { max, used, max2, used2 }. A second pool (max2/used2) is only
+// used when a multiclass character's two classes have different hit-die sizes.
+// `_hdPoolMaxTouched` tracks whether the user manually edited max, so auto-from-level
+// never clobbers a deliberate override.
+let _hdPool = { max: null, used: 0, max2: 0, used2: 0, maxTouched: false };
+
+function getHitDicePool() { return _hdPool; }
+
+function setHitDicePool(p) {
+  _hdPool = {
+    max: (p && typeof p.max === 'number') ? p.max : null,
+    used: (p && typeof p.used === 'number') ? Math.max(0, p.used) : 0,
+    max2: (p && typeof p.max2 === 'number') ? p.max2 : 0,
+    used2: (p && typeof p.used2 === 'number') ? Math.max(0, p.used2) : 0,
+    maxTouched: !!(p && p.maxTouched),
+  };
+}
+
+// Primary pool die size follows the main class die-size dropdown; the secondary pool
+// die size comes from the multiclass second class (only when it differs).
+function hitDiePrimarySize() {
+  return parseInt(document.getElementById('hit_die_size')?.value, 10) || 8;
+}
+
+// Auto-populate max from total character level the first time (or whenever the user
+// hasn't manually overridden it). Keeps single-class simple; multiclass splits into a
+// second pool only if the two class die sizes differ.
+function syncHitDicePoolToLevel() {
+  const totalLevel = (typeof getTotalCharacterLevel === 'function') ? getTotalCharacterLevel() : (parseInt(document.getElementById('char_level')?.value, 10) || 1);
+
+  // Determine if a second, differently-sized pool applies.
+  const mcBlock = document.getElementById('multiclass_block');
+  const multiclassOn = mcBlock && mcBlock.style.display !== 'none';
+  const l1 = parseInt(document.getElementById('char_level')?.value, 10) || 0;
+  const l2 = parseInt(document.getElementById('char_level2')?.value, 10) || 0;
+
+  const die1 = hitDiePrimarySize();
+  const die2 = parseInt(document.getElementById('hit_die_size2')?.value, 10) || die1;
+  const differentDice = multiclassOn && l2 > 0 && die2 !== die1;
+
+  if (!_hdPool.maxTouched) {
+    if (differentDice) {
+      // Two differently-sized pools: split by class level.
+      _hdPool.max = l1 || totalLevel;
+      _hdPool.max2 = l2;
+    } else {
+      // Single combined pool (same die size, or single-class).
+      _hdPool.max = totalLevel;
+      _hdPool.max2 = 0;
+    }
+  }
+  clampHitDicePool();
+  renderHitDicePool();
+}
+
+function clampHitDicePool() {
+  const max = _hdPool.max == null ? 0 : _hdPool.max;
+  if (_hdPool.used > max) _hdPool.used = max;
+  if (_hdPool.used < 0) _hdPool.used = 0;
+  if (_hdPool.used2 > _hdPool.max2) _hdPool.used2 = _hdPool.max2;
+  if (_hdPool.used2 < 0) _hdPool.used2 = 0;
+}
+
+// Should a distinct second pool be shown? Only when multiclass is on, a 2nd level exists,
+// and there's a real second-pool count to track.
+function hitDicePool2Active() {
+  const mcBlock = document.getElementById('multiclass_block');
+  const multiclassOn = mcBlock && mcBlock.style.display !== 'none';
+  return !!(multiclassOn && _hdPool.max2 > 0);
+}
+
+function renderHitDicePool() {
+  const max = _hdPool.max == null ? 0 : _hdPool.max;
+  const remaining = Math.max(0, max - _hdPool.used);
+  const remEl = document.getElementById('hd_pool_remaining');
+  const maxDisp = document.getElementById('hd_pool_max_display');
+  const maxInput = document.getElementById('hd_pool_max');
+  const dieLabel = document.getElementById('hd_pool_die_label');
+  if (remEl) remEl.textContent = remaining;
+  if (maxDisp) maxDisp.textContent = max;
+  if (maxInput && document.activeElement !== maxInput) maxInput.value = max;
+  if (dieLabel) dieLabel.textContent = 'd' + hitDiePrimarySize();
+
+  const pool2 = document.getElementById('hd_pool2');
+  if (pool2) {
+    if (hitDicePool2Active()) {
+      pool2.style.display = '';
+      const rem2 = Math.max(0, _hdPool.max2 - _hdPool.used2);
+      const r2 = document.getElementById('hd_pool2_remaining');
+      const m2 = document.getElementById('hd_pool2_max_display');
+      const mi2 = document.getElementById('hd_pool2_max');
+      const dl2 = document.getElementById('hd_pool2_die_label');
+      if (r2) r2.textContent = rem2;
+      if (m2) m2.textContent = _hdPool.max2;
+      if (mi2 && document.activeElement !== mi2) mi2.value = _hdPool.max2;
+      // Second-class die size: read from a mapping if we track it, else show a generic label.
+      if (dl2) dl2.textContent = 'd' + (parseInt(document.getElementById('hit_die_size2')?.value, 10) || 6);
+    } else {
+      pool2.style.display = 'none';
+    }
+  }
+}
+
+// Spend (delta=1) or restore (delta=-1) a hit die from pool 1 or 2.
+function spendHitDie(delta, poolNum) {
+  if (poolNum === 2) {
+    const next = _hdPool.used2 + delta;
+    if (next < 0 || next > _hdPool.max2) return;
+    _hdPool.used2 = next;
+  } else {
+    const max = _hdPool.max == null ? 0 : _hdPool.max;
+    const next = _hdPool.used + delta;
+    if (next < 0 || next > max) return;
+    _hdPool.used = next;
+  }
+  renderHitDicePool();
+  autosave();
+}
+
+function onHitDicePoolMaxInput() {
+  const maxInput = document.getElementById('hd_pool_max');
+  const mi2 = document.getElementById('hd_pool2_max');
+  if (maxInput) _hdPool.max = Math.max(0, parseInt(maxInput.value, 10) || 0);
+  if (mi2) _hdPool.max2 = Math.max(0, parseInt(mi2.value, 10) || 0);
+  _hdPool.maxTouched = true; // user override — stop auto-syncing from level
+  clampHitDicePool();
+  renderHitDicePool();
+  autosave();
+}
+
+// Long rest: regain up to half your maximum hit dice (rounded down, min 1), 5e rule.
+// Applied per pool. Returns the total regained for the toast.
+function recoverHitDiceOnLongRest() {
+  let regained = 0;
+  const max1 = _hdPool.max == null ? 0 : _hdPool.max;
+  if (max1 > 0 && _hdPool.used > 0) {
+    const regain = Math.max(1, Math.floor(max1 / 2));
+    const before = _hdPool.used;
+    _hdPool.used = Math.max(0, _hdPool.used - regain);
+    regained += before - _hdPool.used;
+  }
+  if (_hdPool.max2 > 0 && _hdPool.used2 > 0) {
+    const regain2 = Math.max(1, Math.floor(_hdPool.max2 / 2));
+    const before2 = _hdPool.used2;
+    _hdPool.used2 = Math.max(0, _hdPool.used2 - regain2);
+    regained += before2 - _hdPool.used2;
+  }
+  renderHitDicePool();
+  return regained;
 }
 
 
@@ -311,7 +472,11 @@ function longRest() {
   if (typeof resetSpellSlots === 'function') resetSpellSlots('long');
   if (typeof resetCustomResources === 'function') resetCustomResources('long');
 
+  // Regain up to half your max hit dice (5e rule).
+  const hdRegained = (typeof recoverHitDiceOnLongRest === 'function') ? recoverHitDiceOnLongRest() : 0;
+
   autosave();
-  appToast('Long rest completed — HP restored, death saves reset, spell slots restored', 'success');
+  const hdPart = hdRegained > 0 ? `, ${hdRegained} hit ${hdRegained === 1 ? 'die' : 'dice'} regained` : '';
+  appToast(`Long rest completed — HP restored, death saves reset, spell slots restored${hdPart}`, 'success');
 }
 
