@@ -1,110 +1,48 @@
 # D&D Character Sheet — Full To-Do List & Plans
-Last updated: 2026-06-17
+Last updated: 2026-07-11 (post-v1.14)
+
+> **Everything in the old "Bugs/Issues" and "To-Do (Prioritised)" sections has been
+> completed** (verified against code at v1.14). The full record is in the UPDATE LOG
+> below. Only one item was found to be a non-issue rather than a fix — see #12.
 
 ---
 
-## BUGS / ISSUES
+## OPEN — genuinely still to do
 
-### CRITICAL (Fix These First)
+### Low-risk cleanup (optional)
+- [ ] **Remove dead layout code** (was to-do #12, "dual layout systems"). Investigated: NOT a conflict — `core.js loadLayout()` is an empty stub and `LayoutManager` (inventory.js) has `save/load/reset` methods with **no callers and no UI** (their buttons don't exist), and its key `dndSheetLayout_final` is never written. Safe cleanup: delete the stub + the orphaned methods. Not urgent (fully inert).
 
-1. **`dndInventory`, `dndActions` are orphaned localStorage keys**
-   - `inventory.js` and `actions.js` write to separate keys (`dndInventory`, `dndActions`) that are NOT inside the character blob and NOT synced to cloud. Need to verify if `core.js` loadData covers these or if data is silently lost on cloud restore/export.
-
-2. **Conditions are DOM-only — never saved**
-   - `addCondition()` appends raw HTML to `#conditions_container`. No array, no save, no load. Conditions wipe on every refresh or character switch.
-
-3. **Action tracker not persisted**
-   - `action_counter`, `bonus_action_counter`, `action_tick`, `bonus_action_tick` are not saved/loaded in the character data cycle. Reset on reload.
-
-4. **Long rest / short rest don't reset spell slots or custom resources**
-   - `longRest()` in `health.js` does NOT call `resetSpellSlots('long')` or `resetCustomResources('long')`.
-   - `shortRest()` does NOT call `resetSpellSlots('short')` or `resetCustomResources('short')`.
-   - Users have to manually reset these after resting.
-
-5. **`displayStorageItems()` container ID mismatch**
-   - `loadStorageContainers()` creates elements with id `${storage.id}_items`
-   - `displayStorageItems()` looks for `storage_${storageId}_items` (extra `storage_` prefix)
-   - Storage container items never render.
-
-6. **`saveSpell()` edit detection is fragile**
-   - Detects edit mode by checking if the form title contains "Edit", then finds the spell by its current name in the form.
-   - Renaming a spell while editing silently creates a duplicate instead of updating.
-
-7. **`autoMathOverrideState` not persisted**
-   - Override flags for initiative, passive perception, spell save DC, spell attack, and ability bonuses reset on every page load.
-   - Manual overrides to bonuses are lost on refresh.
-
----
-
-### MEDIUM PRIORITY
-
-8. **XSS risk — missing `escapeHtml()` in several places**
-   - `createEquipmentCard()` — equipment name, type, description inserted as raw HTML
-   - `addCondition()` — condition name, turns, effect inserted as raw HTML
-   - `showWeaponNotes()` / `showEquipmentNotes()` — content inserted via innerHTML without escaping
-
-9. **`deductCurrency()` only handles GP, SP, CP**
-   - Silently does nothing for EP or custom currency names even though the refill popup offers those options.
-
-10. **Potion button uses hardcoded colors**
-    - `useHealthPotion()` sets `btn.style.background = '#9C27B0'` and `'#D32F2F'` directly, ignoring the accent color system.
-
-11. **`clearAllSpells()` uses implicit `event` global**
-    - Reads `event.target` without it being passed as a parameter. Crashes if called programmatically.
-
-12. **Dual layout save systems conflict**
-    - `LayoutManager` (in `inventory.js`, key `dndSheetLayout_final`) and `loadLayout()`/`saveLayout()` in `core.js` are two separate layout persistence systems that likely stomp each other.
-
-13. **`con_modifier` has hardcoded dark background**
-    - Inline style `background: #2a2a2a` doesn't respect theme or accent color system.
-
-14. **All `alert()` and `confirm()` calls should be replaced**
-    - Breaks on mobile Safari/PWA. Affects: `health.js` (rest, potion), `actions.js` (delete, clear), `inventory.js` (delete, weight warning), `spells.js` (clear all, import count).
-    - Use in-UI toasts and inline confirmations instead.
-
----
-
-### MINOR
-
-15. **Home page tip says "Drag and drop items"** — inventory drag-and-drop doesn't exist yet. Misleading.
-16. **`importCommonCantrips()` / `importCommonSpells()`** — stale 5-spell hardcoded lists that predate the full import system. Dead weight, confusing to users.
-17. **`minor` and `lesser` healing potions are identical** — both listed as `2d4+2`. Minor Healing Potion is not a standard 5e item.
-18. **Settings "Sync Up Now" / "Sync Down Now" buttons have no `onclick`** — rely on event delegation elsewhere. If that wiring breaks, buttons silently do nothing with no feedback.
-19. **Skill expertise not supported** — only a binary proficiency checkbox. No half-proficiency (Bard Jack of All Trades) or expertise (double proficiency).
-
----
-
-## TO-DO LIST (Prioritized)
-
-### Phase 1 — Data Integrity (Do These Now)
-- [x] Verify inventory/actions save path — both persist inside character blob via `core.js` `page1.inventoryData` / `page1.actionsData`. `dndInventory`/`dndActions` keys are legacy artifacts, safe to ignore.
-- [x] Fix conditions persistence — already implemented in `core.js` (save: line 2911, load: line 3450). Was never broken.
-- [x] Fix action tracker persistence — already implemented in `core.js` (save: line 2761, load: line 2965). Was never broken.
-- [x] Wire `longRest()` → `resetSpellSlots('long')` + `resetCustomResources('long')` — fixed 2026-06-16
-- [x] Wire `shortRest()` → `resetSpellSlots('short')` + `resetCustomResources('short')` — fixed 2026-06-16
-- [x] Fix `displayStorageItems()` container ID mismatch — fixed 2026-06-16 (was `storage_${id}_items`, now `${id}_items`)
-
-### Phase 2 — Bug Fixes
-- [x] Fix `saveSpell()` edit mode — stores index + type in `form.dataset`, handles renames and level changes correctly (2026-06-16)
-- [x] Persist `autoMathOverrideState` with character data — `profBonusOverride` and `abilityBonusOverrides` now saved in `page1.combatStats` and restored on load (2026-06-16)
-- [x] Fix `deductCurrency()` to handle EP and custom currency names — EP mapped to `currency_ep`, custom currencies matched by name in DOM rows (2026-06-16)
-- [x] Escape HTML in `createEquipmentCard()` and `addCondition()` — `escapeHtml()` applied to all user-supplied fields (2026-06-16)
-- [x] Fix `clearAllSpells()` to receive `event` as parameter — updated function signature and both HTML call sites (2026-06-16)
-- [ ] Fix potion button colors to use CSS variables
-
-### Phase 3 — Polish & UX
-- [ ] Replace all `alert()` / `confirm()` with in-UI toasts and inline multi-step confirmations
-- [ ] Remove or update `importCommonCantrips()` / `importCommonSpells()`
-- [ ] Resolve dual layout save systems
-- [ ] Fix `con_modifier` background to use a CSS variable
-- [x] Update home page — hero section rewritten for 1.0 clean slate, version number now dynamic from CHANGELOG_LATEST_VERSION (2026-06-17)
-- [ ] Add admin portal character count badge per user in the user list
-- [ ] Add admin portal "Export JSON" button per character
+### Features not yet built (from the ideas list — see below for the rest)
+- [ ] **#3 Concentration tracker** — banner "Concentrating on: [spell]" when a concentration spell is cast, one-tap clear. Spells already carry the `concentration` flag, so this is low-effort/high-value. **Top pick.**
+- [ ] **#4 Multiclass support** — 2nd class+level, separate hit dice, combined slots. Bigger, data-model work.
+- [ ] **#8 Hit-dice pool tracker** — track total hit dice remaining across short rests.
+- [ ] **#28 Service worker caching** — `sw.js` is a pass-through stub; cache-first = true offline + faster loads.
+- [ ] **#30 Portraits in Firebase Storage** — base64 data URLs are huge and don't cloud-sync; store a URL reference instead.
 
 ---
 
 ## UPDATE LOG (Already Done)
 
+### v1.14 (2026-07-11) — the big one
+- **Skill expertise** — proficiency cycle button (None/Half/Prof/Expertise), `SKILL_PROF_LEVELS` maths, tinted rows. (closed old #19 + idea #9, #16)
+- **Conditions picker** — 14 SRD conditions + custom + exhaustion levels + Open5e links; array-model save with back-compat migration. (closed old #2, #8)
+- **In-app dialogs** — all native `alert()`/`confirm()` → `appToast`/`appAlert`/`appConfirm`. (closed old #14)
+- **Prepared spells first** in Add-from-sheet ("★ Ready" group).
+- **Upcast/cantrip-scaling display** on spell cards. (idea #5, #6)
+- **Quick-cast** button on prepared spells. (idea #34)
+- **Spell search matches effect text**. (idea #17)
+- **Class resource templates** (Ki/Sorcery/Bardic…). (idea #10)
+- **Potion + con_modifier colours** now themed. (closed old #10, #13)
+- **Real 5e healing potions** with legacy migration. (closed old #17)
+- **Sync buttons** hardened with inline onclick. (closed old #18)
+- **Custom-spell Open5e link** save/load bug fixed (duplicate id).
+- **Admin: per-character Export JSON + char-count badge.** (closed old #101, #102; idea #26)
+- **Dead-code cleanup** — removed `app.monolith.backup.js`, 6 stray root HTML shims, shadowed suggestion code, `importCommonCantrips/Spells`. (closed old #16)
+- **DM encounter generator overhaul** — 18 new themes (37 total), 8 new battle shapes (19 total), 5-6 intros/theme + Reroll Intro, difficulty helper (auto even-spread elites → one smart menu: borrow/troops/change/build), manual Elite ★ toggle per creature.
+- **Export schema versioning** — `schemaVersion` in exports + tolerant import. (idea #31)
+- Home tip drag-drop wording fixed (old #15); spell counts corrected to 1,100+ (idea #29 partial — 1,122 spells).
+
+### Earlier
 - **Admin portal fixed** (2026-06-16) — rewrote to read from `userData/{uid}/characters/` subcollection instead of old flat array
 - **Spell slot drag-and-drop** — ghost drag with tilt animation, touch support, placeholder drop indicator
 - **Spell effect extraction** — `getSpellEffect()` for the prepared spells table, keyword scan of description as fallback
@@ -127,49 +65,48 @@ Last updated: 2026-06-17
 
 ## IDEAS & EXPLORATION LIST
 
-### Gameplay Features
-1. **Dice roller** — inline roller; click a damage value like "2d6+3" and it rolls, shows result in a toast or floating panel
-2. **Initiative tracker** — combat order list, enter enemy names and their initiatives for a fight
-3. **Concentration tracker** — when a concentration spell is active, show a prominent banner "Concentrating on: [spell]" clearable with one tap
-4. **Multiclass support** — second class + level field, separate hit dice sizes, combined spell slot table
-5. **Spell upcast notes** — per-spell field for "at higher levels" text (e.g. "+1d6 per slot level above 2nd")
-6. **Cantrip scaling display** — auto-show damage dice at character levels 5 / 11 / 17
-7. **Temp HP as a first-class field** — separate `temp_hp` input instead of the current curr_hp > max_hp trick
-8. **Hit dice pool tracker** — track total hit dice remaining across short rests, not just "spend this rest"
-9. **Expertise toggle on skills** — half-proficiency and double proficiency (expertise) alongside the current binary checkbox
-10. **Sorcery points / Ki / other class resources** — pre-built custom resource templates for common classes
+> ✅ **Shipped:** #1 dice roller · #2 initiative tracker (DM) · #5/#6 upcast+cantrip
+> display · #7 temp HP field · #9 expertise · #10 resource templates · #16
+> colour-coded skills · #17 spell desc search · #26 admin char count · #27 bulk
+> export (console tool) · #31 schema versioning · #34 quick-cast. Removed below.
 
-### UI / UX
-11. **Compact list view for inventory + spells** — toggle between current card view and a dense table row view for power users
-12. **Pinned quick-reference panel** — floating/sticky toggle showing AC, HP, initiative, passive perception, spell save DC at a glance from any page
-13. **Keyboard shortcuts** — Ctrl+S manual save, Escape closes any popup, Ctrl+/ opens dice roller
-14. **Drag-and-drop reorder for inventory items** — currently only spell slots have this
-15. **Drag-and-drop reorder for actions/features** — same gap
-16. **Color-coded skill rows** — highlight proficient skills in accent color for faster scanning
-17. **Spell search across description text** — find "all spells that cause charmed" not just by name
-18. **Per-character accent color** — each character loads its own accent color when selected (useful across different campaigns)
-19. **Dark/light mode per user preference** — remove the 60-second joke gate, just let the user toggle freely
+### Gameplay Features (open)
+- **Concentration tracker** — banner "Concentrating on: [spell]" when a concentration spell is cast, one-tap clear (spells already have the `concentration` flag). ← **strong next pick**
+- **Multiclass support** — second class + level field, separate hit dice sizes, combined spell slot table.
+- **Hit dice pool tracker** — track total hit dice remaining across short rests, not just "spend this rest".
 
-### Notes Improvements
-20. **Markdown rendering** — render bold, italic, bullet lists, headers in note card read mode
-21. **Note card templates** — NPC, Location, Quest, Item pre-filled templates beyond the current generic one
-22. **Note card color tags** — color badge per card for visual organization
-23. **Note card image attachments** — drag an image into a note card body
+### UI / UX (open)
+- **Compact list view for inventory + spells** — toggle between card view and a dense table view.
+- **Pinned quick-reference panel** — sticky AC / HP / initiative / passive perception / spell save DC from any page.
+- **Keyboard shortcuts** — Ctrl+S save, Escape closes popups, Ctrl+/ opens dice roller.
+- **Drag-and-drop reorder for inventory items** and **for actions/features** (spell slots already have it).
+- **Per-character accent colour** — each character loads its own accent when selected.
+- **Free dark/light toggle** — remove the 60-second joke gate.
 
-### Admin / Owner Tools
-24. **Admin: character diff viewer** — show what changed between two cloud saves of a character
-25. **Admin: push notification to user** — write a message that appears as a banner on the user's next login
-26. **Admin: character count visible in user list** — see at a glance without clicking each user
-27. **Admin: bulk export all characters** — download everything from all users as a single JSON backup file
+### Notes Improvements (open)
+- **Markdown rendering** in note card read mode (bold/italic/lists/headers).
+- **Note card templates** — NPC / Location / Quest / Item pre-fills.
+- **Note card colour tags** — a colour badge per card.
+- **Note card image attachments** — drag an image into a card body.
 
-### Tech / Infrastructure
-28. **Service worker caching** — `sw.js` is currently a pass-through stub. Cache-first for assets = fully offline + faster on slow connections
-29. **`spells.json` expansion** — currently 482 spells. Missing content from Xanathar's, Tasha's, Fizban's, Spelljammer, etc.
-30. **Character portraits in Firebase Storage** — base64 data URLs in localStorage are huge and never cloud-synced. Store in Firebase Storage with a URL reference instead
-31. **Export schema versioning** — add a `schemaVersion` field to exported JSON so future format changes don't silently break old imports
-32. **Offline indicator** — subtle badge when the user is offline so they know sync is paused
-33. **PWA install prompt** — prompt the user to install the PWA on mobile if they haven't already
-34. **Spell slot quick-use from prepared spells table** — a "Cast" button in the prepared spells table that spends a slot of the appropriate level in one tap
+### Admin / Owner Tools (open)
+- **Character diff viewer** — what changed between two cloud saves.
+- **Push notification to user** — a banner message shown on their next login.
+
+### Tech / Infrastructure (open)
+- **Service worker caching** — `sw.js` is a pass-through stub; cache-first = offline + faster. (also open above)
+- **`spells.json` expansion** — now 1,122 spells (from Open5e). Could pull more sources via the Open5e picker (see Track C in CLAUDE.md).
+- **Portraits in Firebase Storage** — base64 in localStorage is huge and un-synced; store a URL reference. (also open above)
+- **Offline indicator** — subtle badge when offline so the user knows sync is paused.
+- **PWA install prompt** — prompt to install on mobile.
+
+### New ideas (from v1.14 work)
+- **DM: save the upscale as a template** — remember an "elite bandit" build so the same buffed foe can be re-added.
+- **DM: encounter → combat log export** — dump the initiative order + HP/AC to the Notes page or clipboard.
+- **DM: creatures across all Open5e sources** — the encounter pool is SRD-only; a source picker (Track C) would widen it hugely.
+- **Player: condition auto-effects** — e.g. Poisoned auto-flags disadvantage hints on attack rolls (display only, no rules enforcement).
+- **Player: "cast from favourites"** — the quick-cast Cast button on the Favourites panel too, not just the prepared table.
+- **Concentration ↔ conditions link** — casting a concentration spell auto-adds a clearable "Concentrating" condition card.
 
 ---
 
@@ -181,13 +118,14 @@ Last updated: 2026-06-17
 - `noteFolders` — in `page6`
 - `weaponsData` — in `page2` or `page4`
 
-### Things that may NOT save per-character (needs verification):
-- `inventoryData` — written to `dndInventory` key directly in `inventory.js`
-- `actionsData` — written to `dndActions` key directly in `actions.js`
-- Conditions DOM content — never saved at all
-- Layout (`dndSheetLayout_final`) — not per-character, shared across all characters
+- `conditionsData` — saved as `data.conditions` (array with id/link/exhaustionLevel) since v1.14
+- `inventoryData` / `actionsData` — persist inside the character blob (`page1.inventoryData` / `page1.actionsData`); the flat `dndInventory` / `dndActions` keys are harmless legacy artifacts
+- Skill proficiency levels — `page1.skills.proflvl_<skill>` (with legacy `prof_<skill>` bool migration)
+
+### Resolved (previously "may not save"):
+- Conditions ✅ now saved (v1.14). Inventory/actions ✅ save inside the blob. Layout system (`dndSheetLayout_final`) is inert dead code — never written (see OPEN #12 cleanup).
 
 ### Cloud sync covers:
 - Everything inside `dndCharacters[].data` → `userData/{uid}/characters/{charId}`
 - Theme, accent color → `userData/{uid}` meta doc
-- Does NOT cover: `dndInventory`, `dndActions`, `dndSheetLayout_final`, `dndInventory` (if separate)
+- Does NOT cover the harmless legacy `dndInventory` / `dndActions` keys (real data is in the blob, which does sync)
