@@ -616,6 +616,15 @@ function updateAccentColor(color) {
   document.documentElement.style.setProperty('--accent', color);
   localStorage.setItem('dndAccentColor', color);
   setAccentDerivedColors(color);
+  // Notes folder/card elements are built with some accent styling baked in at render
+  // time (inline styles for colour tags etc.), so re-render them if visible to pick up
+  // the new accent immediately rather than only after navigating away and back.
+  if (typeof renderNoteFolders === 'function') {
+    const folderView = document.getElementById('notesFolderView');
+    const cardView = document.getElementById('notesCardView');
+    if (folderView && folderView.style.display !== 'none') renderNoteFolders();
+    if (cardView && cardView.style.display !== 'none' && notesActiveFolderId) renderNoteCards(notesActiveFolderId);
+  }
 }
 
 // ========== BACKGROUND PICKER ==========
@@ -1018,6 +1027,8 @@ const NOTES_DEFAULT_FOLDERS = [
 let noteFolders = [];
 let notesReorderMode = false;
 let notesCardReorderMode = false;
+let notesDeleteMode = false;       // folder delete mode (separate from reorder)
+let notesCardDeleteMode = false;   // card delete mode
 let notesActiveFolderId = null;
 let notesEditingCardId = null;
 
@@ -1134,17 +1145,6 @@ function makeNoteFolderEl(folder, index) {
 
     controls.appendChild(upBtn);
     controls.appendChild(downBtn);
-    if (!folder.isDefault) {
-      const delBtn = document.createElement('button');
-      delBtn.className = 'notes-delete-btn';
-      notesSetDeleteBtn(delBtn, notesDeleteState[folder.id] || 0);
-      delBtn.onclick = () => notesHandleDelete(folder.id, delBtn, () => {
-        noteFolders.splice(index, 1);
-        renderNoteFolders();
-        autosave();
-      });
-      controls.appendChild(delBtn);
-    }
     wrap.appendChild(controls);
 
     // drag handle
@@ -1155,6 +1155,26 @@ function makeNoteFolderEl(folder, index) {
     dragHandle.addEventListener('mousedown', notesFolderDragStart);
     dragHandle.addEventListener('touchstart', notesFolderDragStart, { passive: false });
     wrap.appendChild(dragHandle);
+  } else if (notesDeleteMode) {
+    const controls = document.createElement('div');
+    controls.className = 'notes-reorder-controls';
+    if (!folder.isDefault) {
+      const delBtn = document.createElement('button');
+      delBtn.className = 'notes-delete-btn';
+      notesSetDeleteBtn(delBtn, notesDeleteState[folder.id] || 0);
+      delBtn.onclick = () => notesHandleDelete(folder.id, delBtn, () => {
+        noteFolders.splice(index, 1);
+        renderNoteFolders();
+        autosave();
+      });
+      controls.appendChild(delBtn);
+    } else {
+      const locked = document.createElement('span');
+      locked.className = 'notes-delete-locked';
+      locked.textContent = 'Default — can\'t delete';
+      controls.appendChild(locked);
+    }
+    wrap.appendChild(controls);
   } else {
     wrap.style.cursor = 'pointer';
     wrap.addEventListener('click', () => openFolderView(folder.id));
@@ -1222,19 +1242,6 @@ function makeNoteCardEl(folder, card, index) {
 
     controls.appendChild(upBtn);
     controls.appendChild(downBtn);
-
-    if (!card.isDefault) {
-      const delBtn = document.createElement('button');
-      delBtn.className = 'notes-delete-btn';
-      notesSetDeleteBtn(delBtn, notesDeleteState[card.id] || 0);
-      delBtn.onclick = () => notesHandleDelete(card.id, delBtn, () => {
-        folder.cards.splice(index, 1);
-        renderNoteCards(folder.id);
-        autosave();
-      });
-      controls.appendChild(delBtn);
-    }
-
     wrap.appendChild(controls);
 
     if (!card.isDefault) {
@@ -1246,6 +1253,26 @@ function makeNoteCardEl(folder, card, index) {
       dragHandle.addEventListener('touchstart', notesCardDragStart, { passive: false });
       wrap.appendChild(dragHandle);
     }
+  } else if (notesCardDeleteMode) {
+    const controls = document.createElement('div');
+    controls.className = 'notes-reorder-controls';
+    if (!card.isDefault) {
+      const delBtn = document.createElement('button');
+      delBtn.className = 'notes-delete-btn';
+      notesSetDeleteBtn(delBtn, notesDeleteState[card.id] || 0);
+      delBtn.onclick = () => notesHandleDelete(card.id, delBtn, () => {
+        folder.cards.splice(index, 1);
+        renderNoteCards(folder.id);
+        autosave();
+      });
+      controls.appendChild(delBtn);
+    } else {
+      const locked = document.createElement('span');
+      locked.className = 'notes-delete-locked';
+      locked.textContent = 'Template — can\'t delete';
+      controls.appendChild(locked);
+    }
+    wrap.appendChild(controls);
   } else {
     wrap.style.cursor = 'pointer';
     wrap.addEventListener('click', () => openNoteEditor(folder.id, card.id));
@@ -1261,19 +1288,20 @@ function openFolderView(folderId) {
   if (!folder) return;
   notesActiveFolderId = folderId;
   notesCardReorderMode = false;
+  notesCardDeleteMode = false;
   document.getElementById('notesFolderView').style.display = 'none';
   const cardView = document.getElementById('notesCardView');
   cardView.style.display = '';
   const crumb = document.getElementById('notesBreadcrumb');
   if (crumb) crumb.textContent = folder.title;
-  const cardToggle = document.getElementById('notesCardReorderToggle');
-  if (cardToggle) cardToggle.classList.remove('active');
+  syncNotesModeButtons();
   renderNoteCards(folderId);
 }
 
 function notesGoBack() {
   notesActiveFolderId = null;
   notesCardReorderMode = false;
+  notesCardDeleteMode = false;
   const cardView = document.getElementById('notesCardView');
   const folderView = document.getElementById('notesFolderView');
   if (cardView) cardView.style.display = 'none';
@@ -1288,16 +1316,44 @@ function notesGoBack() {
 
 function toggleNotesReorderMode() {
   notesReorderMode = !notesReorderMode;
-  const btn = document.getElementById('notesReorderToggle');
-  if (btn) btn.classList.toggle('active', notesReorderMode);
+  if (notesReorderMode) notesDeleteMode = false; // reorder and delete are mutually exclusive
+  syncNotesModeButtons();
+  renderNoteFolders();
+}
+
+function toggleNotesDeleteMode() {
+  notesDeleteMode = !notesDeleteMode;
+  if (notesDeleteMode) notesReorderMode = false;
+  syncNotesModeButtons();
   renderNoteFolders();
 }
 
 function toggleNotesCardReorderMode() {
   notesCardReorderMode = !notesCardReorderMode;
-  const btn = document.getElementById('notesCardReorderToggle');
-  if (btn) btn.classList.toggle('active', notesCardReorderMode);
+  if (notesCardReorderMode) notesCardDeleteMode = false;
+  syncNotesModeButtons();
   if (notesActiveFolderId) renderNoteCards(notesActiveFolderId);
+}
+
+function toggleNotesCardDeleteMode() {
+  notesCardDeleteMode = !notesCardDeleteMode;
+  if (notesCardDeleteMode) notesCardReorderMode = false;
+  syncNotesModeButtons();
+  if (notesActiveFolderId) renderNoteCards(notesActiveFolderId);
+}
+
+// Reflect the active reorder/delete modes on their toggle buttons.
+function syncNotesModeButtons() {
+  const map = [
+    ['notesReorderToggle', notesReorderMode],
+    ['notesDeleteToggle', notesDeleteMode],
+    ['notesCardReorderToggle', notesCardReorderMode],
+    ['notesCardDeleteToggle', notesCardDeleteMode],
+  ];
+  map.forEach(([id, active]) => {
+    const btn = document.getElementById(id);
+    if (btn) btn.classList.toggle('active', active);
+  });
 }
 
 // --- move ---
@@ -1707,6 +1763,8 @@ function initNotesPage() {
   if (!folderView) return;
   notesReorderMode = false;
   notesCardReorderMode = false;
+  notesDeleteMode = false;
+  notesCardDeleteMode = false;
   if (noteFolders.length === 0) {
     noteFolders = NOTES_DEFAULT_FOLDERS.map(f => ({ ...f, cards: f.cards.map(c => ({ ...c })) }));
   }
@@ -2492,6 +2550,8 @@ function clearAllFormFields() {
   notesEditingCardId = null;
   notesReorderMode = false;
   notesCardReorderMode = false;
+  notesDeleteMode = false;
+  notesCardDeleteMode = false;
   initNotesPage();
 
   // Clear actions and features

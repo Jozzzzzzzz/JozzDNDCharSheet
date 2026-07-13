@@ -12,13 +12,14 @@
           <p><strong>Cards</strong> — inside a folder, each card is a separate note. Click a card to open the full editor and write as much as you like. The card title and body both save automatically as you type.</p>
           <p><strong>+ Add Folder</strong> — creates a new custom folder. Name it anything (e.g. "Gods & Religion", "Merchant Contacts", "House Rules").</p>
           <p><strong>+ Add Card</strong> — inside a folder, adds a new note card. Give it a title to find it quickly later.</p>
-          <p><strong>Reorder</strong> — drag folders (or cards inside a folder) into any order you like. Click Reorder again to exit.</p>
-          <p><strong>Delete</strong> — multi-step confirmation to prevent accidents. Default folders and their template cards cannot be deleted, but you can edit the template content freely.</p>
+          <p><strong>Reorder</strong> — turns on arrows + drag handles so you can move folders (or cards inside a folder) into any order. Click Reorder again to exit.</p>
+          <p><strong>Delete</strong> — a separate mode that reveals a delete button on each folder/card, with multi-step confirmation to prevent accidents. Default folders and their template cards can't be deleted, but you can edit the template content freely. Reorder and Delete are separate — turning one on turns the other off.</p>
           <p>← Back returns you to the folder grid from inside a folder. The tab also resets to folder view every time you switch pages.</p>
         </div>
       </div>
       <div class="notes-toolbar">
         <button class="notes-reorder-toggle" id="notesReorderToggle" onclick="toggleNotesReorderMode()">Reorder</button>
+        <button class="notes-reorder-toggle notes-delete-toggle" id="notesDeleteToggle" onclick="toggleNotesDeleteMode()">Delete</button>
         <button class="notes-add-btn" onclick="showAddFolderPopup()">+ Add Folder</button>
       </div>
       <div class="notes-folders-grid" id="notesFoldersGrid">
@@ -32,6 +33,7 @@
         <button class="notes-back-btn" onclick="notesGoBack()">&#8592; Back</button>
         <span class="notes-breadcrumb" id="notesBreadcrumb"></span>
         <button class="notes-reorder-toggle" id="notesCardReorderToggle" onclick="toggleNotesCardReorderMode()">Reorder</button>
+        <button class="notes-reorder-toggle notes-delete-toggle" id="notesCardDeleteToggle" onclick="toggleNotesCardDeleteMode()">Delete</button>
         <button class="notes-add-btn" onclick="showAddNoteCardPopup()">+ Add Card</button>
       </div>
       <div class="notes-cards-grid" id="notesCardsGrid">

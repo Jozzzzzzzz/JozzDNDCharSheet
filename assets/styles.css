@@ -1743,6 +1743,20 @@
     border-color: var(--accent);
   }
 
+  /* Delete-mode toggle — danger tint when active so it reads as destructive. */
+  .notes-delete-toggle.active {
+    background: rgba(200, 70, 70, 0.9);
+    color: #fff;
+    border-color: rgba(200, 70, 70, 0.9);
+  }
+
+  .notes-delete-locked {
+    font-size: 0.75em;
+    opacity: 0.55;
+    font-style: italic;
+    align-self: center;
+  }
+
   .notes-add-btn {
     background: var(--accent);
     color: var(--accent-contrast, #fff);

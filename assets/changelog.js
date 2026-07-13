@@ -21,8 +21,11 @@ const CHANGELOG = [
       'Character portraits are now automatically resized and compressed on upload, so they take far less space, sync reliably, and no longer risk breaking cloud save on large images',
       'Spell links that were dead on Open5e now fall back to a working 5esrd.com page (or a 5esrd search) — 71 spells fixed, including some official ones like Counterspell',
       'The Ritual / Concentration / Prepared checkboxes on the spell form are now smooth toggle switches, matching the rest of the app',
+      'Notes: Delete is now its own mode with a dedicated button, separate from Reorder — turn on Delete to remove folders or cards (with the same multi-step confirm), turn on Reorder just to rearrange',
+      'Your appearance settings — accent colour, font, text size and background — now sync to your account and apply automatically on any device you sign in on',
     ],
     fixes: [
+      'Accent colour now updates the Notes folders instantly instead of only after leaving and reopening the page',
       'All remaining pop-up prompts (nickname, image URL, delete confirmations, DM/admin dialogs) are now in-app dialogs instead of the browser\'s native boxes, so they work properly on mobile and as an installed app',
       'Fixed spell reference links being re-broken on every load — repaired 5esrd links now stick instead of reverting to a dead Open5e page',
       'The spell detail link now correctly reads "View on 5esrd" or "View on Open5e" depending on where it actually points',

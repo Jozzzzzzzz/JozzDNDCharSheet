@@ -534,6 +534,54 @@ function userMetaRef() {
   return db.collection('userData').doc(currentUser.uid);
 }
 
+// All account-level appearance preferences that sync across devices (NOT character
+// data). Gathered from localStorage for upload, and applied on download so the account
+// looks the same however/wherever you open the app.
+function gatherUserPrefs() {
+  return {
+    theme: localStorage.getItem('dndTheme') || 'dark',
+    accentColor: localStorage.getItem('dndAccentColor') || '#ffd700',
+    fontFamily: localStorage.getItem('dndFontFamily') || '',
+    textScalePercent: localStorage.getItem('dndTextScalePercent') || '',
+    bgImage: localStorage.getItem('dndBgImage') || '',
+    bgCustoms: localStorage.getItem('dndBgCustoms') || '',
+  };
+}
+
+// Apply pulled-down prefs to localStorage + the live UI. Only writes keys that are
+// present in the cloud doc, and only repaints if something actually changed — so a
+// device that just set a pref locally isn't fought by an older cloud value on boot.
+function applyUserPrefs(meta) {
+  if (!meta || typeof meta !== 'object') return;
+  let visualChanged = false;
+
+  if (meta.theme) localStorage.setItem('dndTheme', meta.theme);
+
+  if (meta.accentColor && meta.accentColor !== localStorage.getItem('dndAccentColor')) {
+    localStorage.setItem('dndAccentColor', meta.accentColor);
+    visualChanged = true;
+  }
+  if (typeof meta.fontFamily === 'string' && meta.fontFamily && meta.fontFamily !== localStorage.getItem('dndFontFamily')) {
+    localStorage.setItem('dndFontFamily', meta.fontFamily);
+    if (typeof applyFontFamily === 'function') applyFontFamily(meta.fontFamily);
+  }
+  if (typeof meta.textScalePercent !== 'undefined' && String(meta.textScalePercent) !== '' && String(meta.textScalePercent) !== localStorage.getItem('dndTextScalePercent')) {
+    localStorage.setItem('dndTextScalePercent', String(meta.textScalePercent));
+    if (typeof applyTextScalePercent === 'function') applyTextScalePercent(meta.textScalePercent);
+  }
+  if (typeof meta.bgCustoms === 'string' && meta.bgCustoms) {
+    localStorage.setItem('dndBgCustoms', meta.bgCustoms);
+  }
+  if (typeof meta.bgImage === 'string' && meta.bgImage !== localStorage.getItem('dndBgImage')) {
+    localStorage.setItem('dndBgImage', meta.bgImage);
+    if (typeof bgApply === 'function') bgApply(meta.bgImage || null);
+    if (typeof bgRenderPicker === 'function') bgRenderPicker();
+  }
+
+  // Accent needs the full derive+repaint (and a notes re-render) — reuse loadThemeSettings.
+  if (visualChanged && typeof loadThemeSettings === 'function') loadThemeSettings();
+}
+
 function showCloudToast(message) {
   const existing = document.getElementById('__cloudToast');
   if (existing) existing.remove();
@@ -602,10 +650,8 @@ async function syncActiveCharacterToCloud() {
       updatedAt: FieldValue.serverTimestamp()
     });
 
-    // Keep user meta (theme/accent) in sync
-    const theme = localStorage.getItem('dndTheme') || 'dark';
-    const accentColor = localStorage.getItem('dndAccentColor') || '#ffd700';
-    await userMetaRef().set({ theme, accentColor, lastModified: FieldValue.serverTimestamp() }, { merge: true });
+    // Keep account appearance prefs (theme/accent/font/text-scale/background) in sync
+    await userMetaRef().set({ ...gatherUserPrefs(), lastModified: FieldValue.serverTimestamp() }, { merge: true });
   } catch (err) {
     console.error('[sync] Upload failed:', err);
   }
@@ -679,10 +725,8 @@ async function syncToCloud(silent = false) {
       await Promise.all(toDelete.map(d => d.ref.delete()));
     }
 
-    // Keep user meta in sync
-    const theme = localStorage.getItem('dndTheme') || 'dark';
-    const accentColor = localStorage.getItem('dndAccentColor') || '#ffd700';
-    await userMetaRef().set({ theme, accentColor, lastModified: FieldValue.serverTimestamp() }, { merge: true });
+    // Keep account appearance prefs in sync
+    await userMetaRef().set({ ...gatherUserPrefs(), lastModified: FieldValue.serverTimestamp() }, { merge: true });
 
     if (!silent) {
       setSyncStatus(`Uploaded to cloud (${localChars.length} character${localChars.length !== 1 ? 's' : ''})`);
@@ -715,11 +759,11 @@ async function syncFromCloud(silent = false) {
 
     const cloudChars = snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
 
-    // Pull theme/accent from meta doc
+    // Pull appearance prefs (theme/accent/font/text-scale/background) from meta doc and
+    // apply them live — so the account looks the same however/wherever you open the app.
     const metaSnap = await userMetaRef().get();
     const meta = metaSnap.exists ? (metaSnap.data() || {}) : {};
-    if (meta.theme) localStorage.setItem('dndTheme', meta.theme);
-    if (meta.accentColor) localStorage.setItem('dndAccentColor', meta.accentColor);
+    applyUserPrefs(meta);
 
     let finalChars;
 
