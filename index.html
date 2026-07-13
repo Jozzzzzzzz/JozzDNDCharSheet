@@ -10,7 +10,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="icon" type="image/svg+xml" href="assets/icon.svg">
-<link rel="apple-touch-icon" href="assets/icon.svg">
+<!-- iOS home-screen icon. Prefers a real PNG if present; drop assets/icon-192.png in to
+     use your exact artwork (iOS ignores SVG here). Falls back cleanly if absent. -->
+<link rel="apple-touch-icon" href="assets/icon-192.png">
 
 <script>
 (function applySavedSettingsBeforePaint() {
@@ -292,7 +294,7 @@ function activateRoute() {
 })();
 
 async function bootstrapModularApp() {
-  const scriptVersion = '20260714b-v1.16';
+  const scriptVersion = '20260714c-v1.16';
   // Expose so modules can cache-bust their own data fetches (e.g. spells.json).
   window.__SCRIPT_VERSION__ = scriptVersion;
   const [chrome, home, settings, stats, background, spells, inventory, notes, popups,

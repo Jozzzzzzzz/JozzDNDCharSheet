@@ -106,7 +106,7 @@ Notes are no longer flat textarea fields. `data.page6` contains:
 
 #### Firestore structure
 ```
-userData/{uid}                          — user prefs: theme, accentColor, lastModified
+userData/{uid}                          — account appearance prefs (theme, accentColor, fontFamily, textScalePercent, bgImage, bgCustoms), lastModified
 userData/{uid}/characters/{charId}      — one document per character (mirrors localStorage shape + server updatedAt)
 userProfiles/{uid}                      — display name / nickname
 auth_signins/{uid}                      — sign-in history and per-device presence
@@ -139,6 +139,16 @@ The Firebase CLI (`firebase-tools`) is installed globally and logged in as the o
 - `lastOwnSaveAt` — `Date.now()` timestamp of last write we initiated; used to suppress snapshot echoes
 - `activeCharacterUnsubscribe` — cleanup handle for the active onSnapshot listener
 - `cloudSyncTimer` — debounce handle for `scheduleSyncToCloud`
+
+#### Appearance settings sync (v1.16+)
+Account-level UI prefs — **accent colour, theme, font, text scale, background image + custom backgrounds** — sync via the `userData/{uid}` meta doc (NOT character data). `gatherUserPrefs()` (cloud-skills.js) collects them from localStorage on every upload; `applyUserPrefs(meta)` writes them back to localStorage AND applies them live on download (calls `applyFontFamily`/`applyTextScalePercent`/`bgApply`/`bgRenderPicker`, and `loadThemeSettings()` for accent). Key points:
+- **Applied live on pull, not just on reload** — the old code wrote theme/accent to localStorage but never repainted, so a pulled-down accent only showed after a manual refresh. `applyUserPrefs` fixes that.
+- **Change-guarded** — only repaints when a value actually differs from local, so a device that just set a pref isn't fought by an older cloud value on boot.
+- **Gotcha:** a large *custom uploaded* background is a base64 data URL in `bgCustoms`/`bgImage` — it rides in the meta doc and could approach Firestore's 1 MB doc limit. Preset backgrounds are tiny path strings. Low risk, but don't add more heavy blobs to the meta doc.
+- Accent also re-renders the Notes folder/card grid (`updateAccentColor` → `renderNoteFolders`/`renderNoteCards`) since those bake some accent styling in at render time.
+
+#### PWA / app icon
+`manifest.webmanifest` (linked in `index.html` head) makes the app installable; registered SW gives offline. **Icon is `assets/icon.svg`** (a recreation of the red-D20 + flourish-ring artwork) — works on Android/desktop. **iOS home-screen needs a PNG**: `manifest` + `apple-touch-icon` already reference `assets/icon-192.png` / `assets/icon-512.png`, which don't exist yet — drop them in to use the real artwork (browsers fall back to the SVG cleanly until then). See `assets/ICON-README.txt`. If you add the PNGs, also add them to `PRECACHE_URLS` in `sw.js` and bump `scriptVersion`.
 
 ### Styling
 
@@ -192,6 +202,8 @@ Stored as a JSON array under `dndBgCustoms` in localStorage. Each entry: `{ id, 
 - **Version lockstep:** the SW reads `?v=` from its own registration URL into `CACHE_NAME = jozzdnd-<version>`. Bumping `scriptVersion` in `index.html` creates a fresh cache; the old one is deleted on `activate`. So the `?v=` query-string cache-busting on scripts and the SW cache always agree — **bump `scriptVersion` whenever assets change or users get stale JS**.
 - **Precache list** in `sw.js` (`PRECACHE_URLS`) mirrors `index.html`'s `loadText()` + `scriptOrder` lists — 38 files (shell, partials, all pages, all JS modules, styles.css, spells.json). **If you add a page/partial/module to index.html, add it here too**, or it won't be available offline.
 - **Network-only** (never cached): all cross-origin requests + anything Firebase/googleapis/gstatic (`isNetworkOnly()`), so live data always hits the network. Only same-origin static GETs are cache-first. Cache key strips the `?v=` query (the cache name already scopes the version).
+
+**Offline indicator + install button** (index.html, `initOfflineIndicator()` / `initInstallPrompt()`): `#offlineIndicator` (a fixed pill) toggles on `navigator.onLine` + online/offline events. `#installAppBtn` appears when the browser fires `beforeinstallprompt` (captured in `_deferredInstallPrompt`); `promptInstallApp()` triggers the native install; hides on `appinstalled`.
 
 The `.sixth` directory appears to be a PWA/build artifact directory; don't modify it.
 
@@ -255,6 +267,8 @@ Opt-in second class. A "+ Add multiclass" button under the Level field (`pages/s
 - **Notes page is JS-rendered** — `pages/notes.html` contains only the shell markup (toolbar, grid containers, popups). All folder and card elements are built by `renderNoteFolders()` / `renderNoteCards()` in `core.js`. Do not add static note content to the HTML.
 - **Notes `isDefault` must be preserved through save/load** — both folder and card objects carry `isDefault: boolean`. The autosave block and the load block both map this flag explicitly. If you add new fields to the notes data shape, update both the save block (`page6 = { noteFolders: ... }`) and the load block in `loadData()`.
 - **Notes delete is multi-step** — uses `notesHandleDelete(id, btn, onConfirm)` with state tracked in `notesDeleteState`. Pattern: Delete → Sure? → Wait 3s… → Confirm. Do not replace with `confirm()` dialogs.
+- **Notes Reorder and Delete are separate modes** (v1.16+). Four state flags: `notesReorderMode`/`notesDeleteMode` (folders) + `notesCardReorderMode`/`notesCardDeleteMode` (cards). Each has a toolbar toggle (`toggleNotesReorderMode`/`toggleNotesDeleteMode`/`toggleNotesCardReorderMode`/`toggleNotesCardDeleteMode`); turning one on turns its sibling off (mutually exclusive). `syncNotesModeButtons()` reflects all four on their buttons. Reorder mode shows arrows + drag handle (no delete); Delete mode shows the multi-step delete button (default/template items show a locked label instead). All four flags are reset in `openFolderView`, `notesGoBack`, `initNotesPage`, and `clearAllFormFields` — keep them in sync if you add another reset point.
+- **Note card colour tags** (v1.16+) — `card.color` (key into `NOTE_TAG_COLORS`, default `'none'`). Picked in the editor via `renderNoteColorPicker`/`setNoteCardColor`; tagged cards get a coloured left bar (`.has-color-tag` + `--note-tag-color` inline var). Saved/loaded in the page6 card map (`color: c.color || 'none'`), backward-compatible.
 - **`.section:hover` and `.home-card:hover` do NOT use `transform: translateY`** — the lift was removed because it caused jitter whenever any input inside the section was hovered (inputs have their own hover transform). The hover state only adjusts `box-shadow` now. Do not re-add `translateY` to these selectors.
 - **`input:hover` has a `translateY(-1px)` lift** — suppressed for `.skill-row input` and `input[readonly]` via an override rule. If you add new read-only or dense-layout inputs that shouldn't lift, add them to that override group.
 - **Never use `transition: all` in styles.css** — it causes all elements to animate colour/border/background at different stagger offsets when the accent colour changes, making the UI look broken. Always use explicit per-property transitions: `background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.3s ...`
@@ -386,6 +400,8 @@ Rating is on **RAW summed monster XP** vs the party's DMG thresholds — **there
 - **Reroll Intro:** the encounter card stores `theme`/`shape` on `dmCurrentEncounterCard`; `dmRerollIntro()` redraws a fresh intro from `DM_ENCOUNTER_INTROS[theme]` (+ `DM_SHAPE_INTROS[shape]`), overwriting only the intro field. Button sits beside the Intro label, mirroring `dmRerollInitiative()`.
 
 **Nothing in the encounter system touches character data** — it only reads/writes `dndDmEncounters` and in-memory `dmCombatants`, never `dndCharacters`/`autosave`/cloud sync.
+
+**Combat-log export** (v1.16+): `dmExportCombatLog()` (dm.js, "Export Log" button on the encounter builder) builds a plain-text table of the current `dmCombatants` sorted by initiative (init / name / HP cur-max / AC + timestamp + encounter name) and copies it to the clipboard via `navigator.clipboard`; on failure it falls back to a `dmModal` so the DM can copy manually. Read-only — never mutates the encounter.
 
 ### NPC Generator
 Name pools in `DM_NPC_NAMES` (male/female/surname). Traits in `DM_NPC_TRAITS`. Secrets in `DM_NPC_SECRETS`. Loot in `dmRollLoot()` — three tiers: scraps (35%), low-level gear (35%), gold+gem (30%).
