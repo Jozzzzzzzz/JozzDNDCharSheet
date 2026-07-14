@@ -791,6 +791,10 @@
 <!-- Searchable item catalogue picker -->
 <div class="popup" id="itemCataloguePopup">
   <h3>Item Catalogue</h3>
+  <p class="dm-note" id="itemCatNote" style="display:none;">Loading item catalogue…</p>
+  <div class="dm-load-progress" id="itemCatProgress" style="display:none;">
+    <div class="dm-load-progress-bar" id="itemCatProgressBar"></div>
+  </div>
   <div class="item-cat-controls">
     <input type="text" id="itemCatSearch" placeholder="Search items… (fuzzy — e.g. 'holy avngr')" autocomplete="off"/>
     <div class="item-cat-filters">

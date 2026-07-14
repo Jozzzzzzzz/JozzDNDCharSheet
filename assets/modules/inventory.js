@@ -42,14 +42,53 @@ function setEnabledItemSources(set) {
   try { localStorage.setItem(ITEM_SOURCES_PREF_KEY, JSON.stringify(Array.from(set))); } catch (e) {}
 }
 
-async function loadItemCatalogue() {
-  if (itemCatalogueLoaded) return;
+// Drive the item catalogue progress bar. pct: 0-100, or null for an indeterminate pulse
+// (when the file size isn't known). show=false hides it.
+function setItemCatProgress(pct, show) {
+  const wrap = document.getElementById('itemCatProgress');
+  const bar = document.getElementById('itemCatProgressBar');
+  const note = document.getElementById('itemCatNote');
+  if (wrap && bar) {
+    wrap.style.display = show ? 'block' : 'none';
+    if (pct === null) { wrap.classList.add('indeterminate'); bar.style.width = '35%'; }
+    else { wrap.classList.remove('indeterminate'); bar.style.width = Math.max(0, Math.min(100, pct)) + '%'; }
+  }
+  if (note) note.style.display = show ? 'block' : 'none';
+}
+
+// Load the item catalogue with real download progress (byte stream + Content-Length).
+// `onProgress(pct|null)` is called as bytes arrive. Falls back to a plain fetch if
+// streaming isn't supported.
+async function loadItemCatalogue(onProgress) {
+  if (itemCatalogueLoaded) { if (onProgress) onProgress(100); return; }
   try {
     const v = (typeof window !== 'undefined' && window.__SCRIPT_VERSION__) || Date.now();
     const resp = await fetch(`assets/data/items.json?v=${v}`);
-    if (resp.ok) {
+    if (!resp.ok) return;
+
+    // Streamed read for a real progress %; total from Content-Length when present.
+    if (resp.body && resp.body.getReader && onProgress) {
+      const total = parseInt(resp.headers.get('Content-Length') || '0', 10);
+      const reader = resp.body.getReader();
+      const chunks = [];
+      let received = 0;
+      onProgress(total ? 0 : null);
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        received += value.length;
+        onProgress(total ? Math.round((received / total) * 100) : null);
+      }
+      const blob = new Blob(chunks);
+      const text = await blob.text();
+      itemCatalogue = JSON.parse(text);
+      itemCatalogueLoaded = true;
+      onProgress(100);
+    } else {
       itemCatalogue = await resp.json();
       itemCatalogueLoaded = true;
+      if (onProgress) onProgress(100);
     }
   } catch (e) {
     console.warn('Item catalogue unavailable (offline?):', e && e.message);
@@ -65,15 +104,25 @@ async function showItemCataloguePicker() {
   const saveBtn = document.getElementById('saveItemBtn');
   _itemPickerTargetContainer = saveBtn ? saveBtn.getAttribute('data-container') : null;
 
-  if (!itemCatalogueLoaded) {
-    await loadItemCatalogue();
-    if (!itemCatalogueLoaded) { appToast('Item catalogue is still loading — try again in a moment.', 'info'); return; }
-  }
   const search = document.getElementById('itemCatSearch');
   if (search) search.value = '';
   renderItemSourceToggles();
-  initItemBrowser();
+
+  // Open the popup first so the progress bar is visible while the file downloads.
   showPopup('itemCataloguePopup');
+
+  if (!itemCatalogueLoaded) {
+    setItemCatProgress(null, true);
+    await loadItemCatalogue(pct => setItemCatProgress(pct, true));
+    setTimeout(() => setItemCatProgress(0, false), 400);
+    if (!itemCatalogueLoaded) {
+      const note = document.getElementById('itemCatNote');
+      if (note) { note.style.display = 'block'; note.textContent = 'Could not load the item catalogue (offline?). Try again in a moment.'; }
+      return;
+    }
+  }
+
+  initItemBrowser();
   setTimeout(() => { if (search) search.focus(); }, 60);
 }
 
