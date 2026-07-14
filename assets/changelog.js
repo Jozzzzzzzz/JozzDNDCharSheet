@@ -6,9 +6,20 @@
 // the Home button until they visit the home page.
 // ============================================================
 
-const CHANGELOG_LATEST_VERSION = '1.18';
+const CHANGELOG_LATEST_VERSION = '1.19';
 
 const CHANGELOG = [
+  {
+    version: '1.19',
+    date: '2026-07-14',
+    title: 'v1.19 — Instant Monsters, Saved Creatures & DM Item Upgrade',
+    updates: [
+      'The DM monster browser is now instant and works fully offline — the SRD monsters are bundled with the app, so there\'s no waiting on a download when you open the tab (hit Refresh to pull the very latest from Open5e if you want)',
+      'Save your favourite creatures: tap the ★ on any monster (in the list or on its stat block) and it pins to the top of the browser, highlighted, so your go-to monsters are always one glance away',
+      'The DM Item archive got the same smart treatment as monsters: typo-tolerant fuzzy search, smooth scrolling of the whole list, grouped filters (category, rarity, attunement) with sort, a live result count, a loading progress bar, and it\'s cached so it opens instantly after the first load',
+    ],
+    fixes: [],
+  },
   {
     version: '1.18',
     date: '2026-07-14',

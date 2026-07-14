@@ -475,31 +475,80 @@ let dmAllMonsters = [];
 const DM_MONSTER_CACHE_KEY = 'dndDmMonsterCache';
 const DM_MONSTER_CACHE_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days
 
-// Load monsters: use the localStorage cache first (instant, offline), then refresh from
-// the Open5e API in the background if the cache is stale/missing. `force` re-fetches now.
+// --- Saved / favourite creatures (pinned to the top of the browser) ---
+const DM_SAVED_MONSTERS_KEY = 'dndDmSavedMonsters';
+let _dmSavedMonsterSlugs = null;
+
+function dmGetSavedMonsterSet() {
+  if (_dmSavedMonsterSlugs) return _dmSavedMonsterSlugs;
+  let arr = [];
+  try { arr = JSON.parse(localStorage.getItem(DM_SAVED_MONSTERS_KEY) || '[]'); } catch (e) { arr = []; }
+  _dmSavedMonsterSlugs = new Set(Array.isArray(arr) ? arr : []);
+  return _dmSavedMonsterSlugs;
+}
+function dmIsMonsterSaved(slug) {
+  return !!slug && dmGetSavedMonsterSet().has(slug);
+}
+function dmToggleSavedMonster(slug, ev) {
+  if (ev) { ev.stopPropagation(); }
+  if (!slug) return;
+  const set = dmGetSavedMonsterSet();
+  if (set.has(slug)) set.delete(slug); else set.add(slug);
+  try { localStorage.setItem(DM_SAVED_MONSTERS_KEY, JSON.stringify(Array.from(set))); } catch (e) {}
+  if (_dmMonsterBrowser) _dmMonsterBrowser.refresh(); // re-sort so saved float to top
+}
+function dmRefreshDetailSaveBtn(slug) {
+  const btn = document.getElementById('dmDetailSaveBtn');
+  if (btn) btn.textContent = dmIsMonsterSaved(slug) ? '★ Saved' : '☆ Save creature';
+}
+
+// Load monsters. Order: (1) in-memory, (2) bundled local file assets/data/monsters.json
+// (instant, offline — no network needed at all), (3) localStorage cache, and only on an
+// explicit `force` (Refresh button) do we hit the Open5e API for the latest.
 async function dmLoadMonsters(force) {
   const note = document.getElementById('dmMonstersNote');
 
-  // 1) Serve cache immediately if present.
-  let servedFromCache = false;
+  // Already loaded this session → just (re)build the browser.
+  if (!force && dmAllMonsters.length) { dmInitMonsterBrowser(); return; }
+
+  let servedLocal = false;
+
+  // 1) Bundled local file — the default, instant path.
   if (!force) {
+    try {
+      const v = (typeof window !== 'undefined' && window.__SCRIPT_VERSION__) || Date.now();
+      const resp = await fetch(`assets/data/monsters.json?v=${v}`);
+      if (resp.ok) {
+        const arr = await resp.json();
+        if (Array.isArray(arr) && arr.length) {
+          dmAllMonsters = arr;
+          servedLocal = true;
+          if (note) note.textContent = `${arr.length} monsters ready.`;
+          dmInitMonsterBrowser();
+          return; // local file is authoritative for the default view — no network
+        }
+      }
+    } catch (e) { /* fall through to cache/API */ }
+  }
+
+  // 2) localStorage cache (e.g. a previous API refresh) if the local file was unavailable.
+  if (!force && !servedLocal) {
     try {
       const raw = localStorage.getItem(DM_MONSTER_CACHE_KEY);
       if (raw) {
         const cache = JSON.parse(raw);
         if (cache && Array.isArray(cache.monsters) && cache.monsters.length) {
           dmAllMonsters = cache.monsters;
-          servedFromCache = true;
-          if (note) note.textContent = `${cache.monsters.length} monsters ready${cache.savedAt ? ' (cached)' : ''}.`;
+          if (note) note.textContent = `${cache.monsters.length} monsters ready (cached).`;
           dmInitMonsterBrowser();
-          // If cache is fresh, don't hit the network.
-          if (cache.savedAt && (Date.now() - cache.savedAt) < DM_MONSTER_CACHE_TTL) return;
+          return;
         }
       }
     } catch (e) { /* ignore bad cache */ }
   }
 
-  // 2) Fetch from API (refresh or first load). Shows a progress bar driven by the
+  const servedFromCache = servedLocal;
+  // 3) Fetch from API (only on Refresh, or if no local/cache). Shows a progress bar driven by the
   // Open5e `count` (total) vs how many we've pulled, so the user sees real load speed.
   if (note) note.textContent = servedFromCache ? 'Refreshing monsters from Open5e…' : 'Loading monsters from Open5e…';
   dmSetMonsterProgress(null, true); // indeterminate pulse until the first response gives a total
@@ -647,19 +696,32 @@ function dmInitMonsterBrowser() {
       { el: document.getElementById('dmMonsterLegendaryFilter'), match: (m, v) => v === '' || (v === 'yes' ? dmMonsterIsLegendary(m) : !dmMonsterIsLegendary(m)) },
       { el: document.getElementById('dmMonsterEnvFilter'), match: (m, v) => v === '' || (Array.isArray(m.environments) && m.environments.includes(v)) },
     ],
-    sorts: {
-      name: (a, b) => (a.name || '').localeCompare(b.name || ''),
-      crAsc: (a, b) => dmMonsterCrNum(a) - dmMonsterCrNum(b) || (a.name || '').localeCompare(b.name || ''),
-      crDesc: (a, b) => dmMonsterCrNum(b) - dmMonsterCrNum(a) || (a.name || '').localeCompare(b.name || ''),
-      hpAsc: (a, b) => dmMonsterHpNum(a) - dmMonsterHpNum(b) || (a.name || '').localeCompare(b.name || ''),
-      hpDesc: (a, b) => dmMonsterHpNum(b) - dmMonsterHpNum(a) || (a.name || '').localeCompare(b.name || ''),
-    },
+    // Saved creatures always float to the top, then the chosen sort applies within groups.
+    sorts: (() => {
+      const savedFirst = (base) => (a, b) => {
+        const sa = dmIsMonsterSaved(a.slug) ? 0 : 1;
+        const sb = dmIsMonsterSaved(b.slug) ? 0 : 1;
+        return (sa - sb) || base(a, b);
+      };
+      const byName = (a, b) => (a.name || '').localeCompare(b.name || '');
+      return {
+        name: savedFirst(byName),
+        crAsc: savedFirst((a, b) => dmMonsterCrNum(a) - dmMonsterCrNum(b) || byName(a, b)),
+        crDesc: savedFirst((a, b) => dmMonsterCrNum(b) - dmMonsterCrNum(a) || byName(a, b)),
+        hpAsc: savedFirst((a, b) => dmMonsterHpNum(a) - dmMonsterHpNum(b) || byName(a, b)),
+        hpDesc: savedFirst((a, b) => dmMonsterHpNum(b) - dmMonsterHpNum(a) || byName(a, b)),
+      };
+    })(),
     rowHeight: 52,
     rowClass: 'dm-monster-row',
     emptyText: 'No monsters match. Try a different search or filters.',
-    renderRow: m => `
+    renderRow: m => {
+      const saved = dmIsMonsterSaved(m.slug);
+      return `
+      <button type="button" class="dm-save-star${saved ? ' saved' : ''}" title="${saved ? 'Remove from saved' : 'Save creature'}" onclick="dmToggleSavedMonster('${escapeHtml(m.slug || '')}', event)">${saved ? '★' : '☆'}</button>
       <span class="dm-monster-name">${escapeHtml(m.name)}</span>
-      <span class="dm-monster-meta">${escapeHtml(m.type || '')} · CR ${m.challenge_rating ?? '?'} · HP ${m.hit_points ?? '?'} · AC ${m.armor_class ?? '?'}</span>`,
+      <span class="dm-monster-meta">${escapeHtml(m.type || '')} · CR ${m.challenge_rating ?? '?'} · HP ${m.hit_points ?? '?'} · AC ${m.armor_class ?? '?'}</span>`;
+    },
     onRowClick: m => dmShowMonster(m.slug),
   });
   _dmMonsterBrowser.refresh();
@@ -679,8 +741,12 @@ async function dmShowMonster(slug) {
   // Cache the full record so the Add-to-Encounter path can carry the whole
   // stat block into the combatant (for the click-to-expand card + Dex init).
   if (m.slug && !dmAllMonsters.find(x => x.slug === m.slug)) dmAllMonsters.push(m);
+  const savedNow = dmIsMonsterSaved(m.slug);
   body.innerHTML = dmRenderStatBlockHtml(m) +
-    `<button class="dm-action-btn" style="margin-top:12px;" onclick="dmAddMonsterToEncounter('${escapeHtml(m.slug || '')}')">Add to Encounter</button>`;
+    `<div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+       <button class="dm-action-btn" onclick="dmAddMonsterToEncounter('${escapeHtml(m.slug || '')}')">Add to Encounter</button>
+       <button class="dm-action-btn" id="dmDetailSaveBtn" onclick="dmToggleSavedMonster('${escapeHtml(m.slug || '')}'); dmRefreshDetailSaveBtn('${escapeHtml(m.slug || '')}');">${savedNow ? '★ Saved' : '☆ Save creature'}</button>
+     </div>`;
   detail.style.display = 'block';
   detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
@@ -801,6 +867,8 @@ function dmCrToXp(cr) {
 window.dmLoadMonsters = dmLoadMonsters;
 window.dmInitMonsterBrowser = dmInitMonsterBrowser;
 window.dmSetMonsterProgress = dmSetMonsterProgress;
+window.dmToggleSavedMonster = dmToggleSavedMonster;
+window.dmRefreshDetailSaveBtn = dmRefreshDetailSaveBtn;
 window.dmShowMonster = dmShowMonster;
 
 // ─── Items (Open5e magic items — reference only) ───────────────────────────
@@ -824,10 +892,41 @@ async function dmFetchAll(baseUrl) {
   return results;
 }
 
+const DM_ITEM_CACHE_KEY = 'dndDmItemCache';
+const DM_ITEM_CACHE_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+// Drive the DM item-archive progress bar (mirrors dmSetMonsterProgress).
+function dmSetItemProgress(pct, show) {
+  const wrap = document.getElementById('dmItemProgress');
+  const bar = document.getElementById('dmItemProgressBar');
+  if (!wrap || !bar) return;
+  wrap.style.display = show ? 'block' : 'none';
+  if (pct === null) { wrap.classList.add('indeterminate'); bar.style.width = '35%'; }
+  else { wrap.classList.remove('indeterminate'); bar.style.width = Math.max(0, Math.min(100, pct)) + '%'; }
+}
+
 async function dmLoadItems(force) {
-  if (dmAllItems.length && !force) { dmFilterItems(); return; }
+  if (dmAllItems.length && !force) { dmInitItemBrowser(); return; }
   const note = document.getElementById('dmItemsNote');
-  if (note) note.textContent = 'Loading the full item archive from Open5e…';
+
+  // Cache-first (instant, offline) unless forcing a reload.
+  if (!force) {
+    try {
+      const raw = localStorage.getItem(DM_ITEM_CACHE_KEY);
+      if (raw) {
+        const cache = JSON.parse(raw);
+        if (cache && Array.isArray(cache.items) && cache.items.length) {
+          dmAllItems = cache.items;
+          if (note) note.textContent = `${cache.items.length} items ready (cached).`;
+          dmInitItemBrowser();
+          if (cache.savedAt && (Date.now() - cache.savedAt) < DM_ITEM_CACHE_TTL) return;
+        }
+      }
+    } catch (e) { /* ignore bad cache */ }
+  }
+
+  if (note) note.textContent = dmAllItems.length ? 'Refreshing the item archive…' : 'Loading the full item archive from Open5e…';
+  dmSetItemProgress(null, true);
 
   try {
     const [magic, weapons, armor] = await Promise.all([
@@ -835,6 +934,7 @@ async function dmLoadItems(force) {
       dmFetchAll('https://api.open5e.com/v1/weapons/?limit=100'),
       dmFetchAll('https://api.open5e.com/v1/armor/?limit=100')
     ]);
+    dmSetItemProgress(80, true);
 
     const norm = [];
     magic.forEach(m => norm.push({
@@ -858,42 +958,56 @@ async function dmLoadItems(force) {
 
     norm.sort((a, b) => a.name.localeCompare(b.name));
     dmAllItems = norm;
-    dmFilterItems();
+    try { localStorage.setItem(DM_ITEM_CACHE_KEY, JSON.stringify({ items: norm, savedAt: Date.now() })); } catch (e) { /* quota */ }
+    dmSetItemProgress(100, true);
+    if (note) note.textContent = `${norm.length} items ready.`;
+    dmInitItemBrowser();
+    setTimeout(() => dmSetItemProgress(0, false), 500);
   } catch (e) {
-    if (note) note.textContent = 'Failed to load items. Check your internet connection, then hit Reload.';
+    if (!dmAllItems.length && note) note.textContent = 'Failed to load items. Check your internet connection, then hit Reload.';
     console.error('Item load failed:', e);
+    dmSetItemProgress(0, false);
   }
 }
 
-function dmFilterItems() {
-  const q = (document.getElementById('dmItemSearch')?.value || '').toLowerCase();
-  const rarity = (document.getElementById('dmItemRarityFilter')?.value || '').toLowerCase();
-  const cat = document.getElementById('dmItemTypeFilter')?.value || '';
-  let filtered = dmAllItems;
-  if (cat) filtered = filtered.filter(it => it.category === cat);
-  if (rarity) filtered = filtered.filter(it => (it.rarity || '').toLowerCase() === rarity);
-  if (q) filtered = filtered.filter(it =>
-    it.name.toLowerCase().includes(q) || (it.type || '').toLowerCase().includes(q));
-  dmRenderItemList(filtered);
+// Rarity order for DM item sort (mundane sits below common).
+const DM_ITEM_RARITY_ORDER = { mundane: 0, unknown: 0, common: 1, uncommon: 2, rare: 3, 'very rare': 4, legendary: 5, artifact: 6 };
+let _dmItemBrowser = null;
 
-  const note = document.getElementById('dmItemsNote');
-  if (note) note.textContent = dmAllItems.length
-    ? `Showing ${filtered.length} of ${dmAllItems.length} items.`
-    : '';
-}
+// Build (or refresh) the virtualized DM item browser over dmAllItems.
+function dmInitItemBrowser() {
+  const root = document.getElementById('dmItemsList');
+  const search = document.getElementById('dmItemSearch');
+  if (!root || !search) return;
+  if (_dmItemBrowser) { _dmItemBrowser.refresh(); return; }
 
-function dmRenderItemList(items) {
-  const list = document.getElementById('dmItemsList');
-  if (!list) return;
-  if (!items.length) { list.innerHTML = '<p class="dm-empty-state">No items match your filters.</p>'; return; }
-
-  // Map key → index so the row click can find the full record without globals.
-  list.innerHTML = items.map((it, i) => `
-    <div class="dm-monster-row" onclick="dmShowItem('${escapeHtml(it.key)}')">
+  const rk = it => (it.rarity || '').toLowerCase();
+  _dmItemBrowser = createListBrowser({
+    data: () => dmAllItems,
+    root,
+    searchInput: search,
+    countEl: document.getElementById('dmItemCount'),
+    sortEl: document.getElementById('dmItemSort'),
+    searchFields: it => `${it.name} ${it.type || ''} ${it.category || ''} ${it.desc || ''}`,
+    filters: [
+      { el: document.getElementById('dmItemTypeFilter'), match: (it, v) => v === '' || it.category === v },
+      { el: document.getElementById('dmItemRarityFilter'), match: (it, v) => v === '' || rk(it) === v },
+      { el: document.getElementById('dmItemAttuneFilter'), match: (it, v) => v === '' || (v === 'yes' ? (it.attune && it.attune !== 'No') : (!it.attune || it.attune === 'No')) },
+    ],
+    sorts: {
+      name: (a, b) => a.name.localeCompare(b.name),
+      rarity: (a, b) => ((DM_ITEM_RARITY_ORDER[rk(a)] || 0) - (DM_ITEM_RARITY_ORDER[rk(b)] || 0)) || a.name.localeCompare(b.name),
+      rarityDesc: (a, b) => ((DM_ITEM_RARITY_ORDER[rk(b)] || 0) - (DM_ITEM_RARITY_ORDER[rk(a)] || 0)) || a.name.localeCompare(b.name),
+    },
+    rowHeight: 52,
+    rowClass: 'dm-monster-row',
+    emptyText: 'No items match. Try a different search or filters.',
+    renderRow: it => `
       <span class="dm-monster-name">${escapeHtml(it.name)}</span>
-      <span class="dm-monster-meta">${escapeHtml(it.category)} · ${escapeHtml(it.type)}${it.rarity && it.rarity !== 'mundane' ? ' · ' + escapeHtml(it.rarity) : ''}${it.attune && it.attune !== 'No' ? ' · attunement' : ''}</span>
-    </div>
-  `).join('');
+      <span class="dm-monster-meta">${escapeHtml(it.category)} · ${escapeHtml(it.type)}${it.rarity && it.rarity !== 'mundane' ? ' · ' + escapeHtml(it.rarity) : ''}${it.attune && it.attune !== 'No' ? ' · attunement' : ''}</span>`,
+    onRowClick: it => dmShowItem(it.key),
+  });
+  _dmItemBrowser.refresh();
 }
 
 function dmShowItem(key) {
@@ -942,7 +1056,7 @@ function dmAddItemToNpcLoot(itemName) {
 }
 
 window.dmLoadItems = dmLoadItems;
-window.dmFilterItems = dmFilterItems;
+window.dmInitItemBrowser = dmInitItemBrowser;
 window.dmShowItem = dmShowItem;
 window.dmAddItemToNpcLoot = dmAddItemToNpcLoot;
 

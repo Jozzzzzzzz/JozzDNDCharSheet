@@ -10,14 +10,17 @@
       <button class="dm-action-btn" onclick="dmLoadItems(true)" title="Reload from Open5e">Reload</button>
     </div>
     <div class="dm-search-bar">
-      <input type="text" id="dmItemSearch" placeholder="Search by name or type... (e.g. Sword, Ring, Healing)" oninput="dmFilterItems()" autocomplete="off">
-      <select id="dmItemTypeFilter" onchange="dmFilterItems()">
+      <input type="text" id="dmItemSearch" placeholder="Search items… (fuzzy — e.g. 'holy avngr', 'ring')" autocomplete="off">
+    </div>
+    <div class="lb-filter-group">
+      <span class="lb-filter-group-label">Filter</span>
+      <select id="dmItemTypeFilter" title="Category">
         <option value="">All categories</option>
         <option value="Magic Item">Magic Items</option>
         <option value="Weapon">Weapons</option>
         <option value="Armor">Armor</option>
       </select>
-      <select id="dmItemRarityFilter" onchange="dmFilterItems()">
+      <select id="dmItemRarityFilter" title="Rarity">
         <option value="">All rarities</option>
         <option value="common">Common</option>
         <option value="uncommon">Uncommon</option>
@@ -27,9 +30,26 @@
         <option value="artifact">Artifact</option>
         <option value="mundane">Mundane (weapons/armor)</option>
       </select>
+      <select id="dmItemAttuneFilter" title="Attunement">
+        <option value="">Any attunement</option>
+        <option value="yes">Needs attunement</option>
+        <option value="no">No attunement</option>
+      </select>
+    </div>
+    <div class="lb-filter-group">
+      <span class="lb-filter-group-label">Sort</span>
+      <select id="dmItemSort">
+        <option value="name">Name (A–Z)</option>
+        <option value="rarity">Rarity (low→high)</option>
+        <option value="rarityDesc">Rarity (high→low)</option>
+      </select>
+      <span class="lb-count" id="dmItemCount"></span>
     </div>
     <p class="dm-note" id="dmItemsNote">Loading the archive…</p>
-    <div id="dmItemsList" class="dm-monsters-list"></div>
+    <div class="dm-load-progress" id="dmItemProgress" style="display:none;">
+      <div class="dm-load-progress-bar" id="dmItemProgressBar"></div>
+    </div>
+    <div class="lb-viewport"><div id="dmItemsList" class="dm-monsters-list lb-list"></div></div>
   </div>
 
   <!-- Item detail panel -->

@@ -9085,8 +9085,28 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   border-color: var(--accent-border);
 }
 
-.dm-monster-name { font-weight: 600; font-size: 0.9rem; color: rgba(255,255,255,0.92); }
-.dm-monster-meta { font-size: 0.78rem; color: rgba(255,255,255,0.45); text-align: right; }
+.dm-monster-name { font-weight: 600; font-size: 0.9rem; color: rgba(255,255,255,0.92); flex: 1 1 auto; min-width: 0; }
+.dm-monster-meta { font-size: 0.78rem; color: rgba(255,255,255,0.45); text-align: right; flex: 0 0 auto; }
+
+/* Save (favourite) star on monster rows + saved-row highlight */
+.dm-save-star {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.05rem;
+  line-height: 1;
+  padding: 0 8px 0 0;
+  color: rgba(255, 255, 255, 0.35);
+  transition: color 0.15s ease, transform 0.15s ease;
+  flex: 0 0 auto;
+}
+.dm-save-star:hover { transform: scale(1.2); color: var(--accent-text); }
+.dm-save-star.saved { color: #e0b23c; }
+/* A saved creature's whole row reads as pinned/highlighted. */
+.lb-list .dm-monster-row:has(.dm-save-star.saved) {
+  background: rgba(224, 178, 60, 0.10);
+  border-color: rgba(224, 178, 60, 0.4);
+}
 
 /* Monster stat block */
 .dm-monster-detail {

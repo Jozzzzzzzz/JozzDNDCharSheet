@@ -20,6 +20,7 @@ const PRECACHE_URLS = [
   'assets/styles.css',
   'assets/data/spells.json',
   'assets/data/items.json',
+  'assets/data/monsters.json',
   // Partials
   'partials/chrome.html',
   'partials/popups.html',
