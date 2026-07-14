@@ -294,11 +294,11 @@ function activateRoute() {
 })();
 
 async function bootstrapModularApp() {
-  const scriptVersion = '20260714j-v1.19';
+  const scriptVersion = '20260715a-v1.20';
   // Expose so modules can cache-bust their own data fetches (e.g. spells.json).
   window.__SCRIPT_VERSION__ = scriptVersion;
   const [chrome, home, settings, stats, background, spells, inventory, notes, popups,
-         dmChrome, dmHome, dmLore, dmPlayers, dmSpells, dmMonsters, dmItems, dmEncounters, dmNpcs, dmNotes, dmSettings] = await Promise.all([
+         dmChrome, dmHome, dmLore, dmPlayers, dmSpells, dmMonsters, dmItems, dmEncounters, dmNpcs, dmLoot, dmNotes, dmSettings] = await Promise.all([
     loadText('partials/chrome.html'),
     loadText('pages/home.html'),
     loadText('pages/settings.html'),
@@ -317,6 +317,7 @@ async function bootstrapModularApp() {
     loadText('pages/dm-items.html'),
     loadText('pages/dm-encounters.html'),
     loadText('pages/dm-npcs.html'),
+    loadText('pages/dm-loot.html'),
     loadText('pages/dm-notes.html'),
     loadText('pages/dm-settings.html')
   ]);
@@ -328,7 +329,7 @@ async function bootstrapModularApp() {
 
   // DM portal roots (hidden until DM enters portal)
   document.getElementById('dm-chrome-root').innerHTML = dmChrome;
-  document.getElementById('dm-pages-root').innerHTML = [dmHome, dmLore, dmPlayers, dmSpells, dmMonsters, dmItems, dmEncounters, dmNpcs, dmNotes, dmSettings].join('\n');
+  document.getElementById('dm-pages-root').innerHTML = [dmHome, dmLore, dmPlayers, dmSpells, dmMonsters, dmItems, dmEncounters, dmNpcs, dmLoot, dmNotes, dmSettings].join('\n');
 
   const scriptOrder = [
     'assets/banner-messages.js',
@@ -344,6 +345,7 @@ async function bootstrapModularApp() {
     'assets/modules/inventory.js',
     'assets/modules/spells.js',
     'assets/modules/admin.js',
+    'assets/modules/loot.js',
     'assets/modules/dm.js',
     'assets/changelog.js',
     'assets/app.js'

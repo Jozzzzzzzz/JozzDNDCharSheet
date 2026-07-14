@@ -42,6 +42,7 @@ const PRECACHE_URLS = [
   'pages/dm-items.html',
   'pages/dm-encounters.html',
   'pages/dm-npcs.html',
+  'pages/dm-loot.html',
   'pages/dm-notes.html',
   'pages/dm-settings.html',
   // JS modules (loaded with ?v=, but we cache the bare path; see fetch handler)
@@ -58,6 +59,7 @@ const PRECACHE_URLS = [
   'assets/modules/inventory.js',
   'assets/modules/spells.js',
   'assets/modules/admin.js',
+  'assets/modules/loot.js',
   'assets/modules/dm.js',
   'assets/changelog.js',
   'assets/app.js',

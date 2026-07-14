@@ -151,6 +151,14 @@ function onItemSourceToggle() {
 // Rarity ordering for the "Sort: Rarity" option.
 const ITEM_RARITY_ORDER = { '': 0, common: 1, uncommon: 2, rare: 3, 'very rare': 4, legendary: 5, artifact: 6 };
 
+// Format a gp value for display: "50 gp", "1,500 gp", "64,000 gp". Artifacts (huge
+// nominal) show as "priceless".
+function formatGp(v) {
+  const n = Number(v) || 0;
+  if (n >= 250000) return 'priceless';
+  return n.toLocaleString('en-US') + ' gp';
+}
+
 // Normalize the messy free-text `type` into a tidy category for the Category filter.
 function itemCategory(it) {
   const t = (it.type || '').toLowerCase();
@@ -241,7 +249,8 @@ function initItemBrowser() {
     renderRow: it => {
       const rarityBadge = it.rarity ? `<span class="item-cat-rarity rarity-${it.rarity.replace(/\s+/g, '-')}">${esc(it.rarity)}</span>` : '';
       const attune = it.attunement ? '<span class="item-cat-attune" title="Requires attunement">A</span>' : '';
-      return `<span class="item-cat-name">${esc(it.name)} ${attune}</span><span class="item-cat-meta">${esc(it.type || '')} ${rarityBadge}</span>`;
+      const price = it.valueGp ? `<span class="item-cat-price">${formatGp(it.valueGp)}</span>` : '';
+      return `<span class="item-cat-name">${esc(it.name)} ${attune}</span><span class="item-cat-meta">${esc(it.type || '')} ${rarityBadge} ${price}</span>`;
     },
     onRowClick: it => {
       const idx = itemCatalogue.indexOf(it);
@@ -271,8 +280,8 @@ function pickCatalogueItem(idx) {
     const kindToType = { weapon: 'tool', armor: 'tool', magic: 'treasure' };
     typeSel.value = kindToType[it.kind] || 'misc';
   }
-  // Value: catalogue weapons/armor carry a cost string like "10 gp"; pull the number.
-  const costNum = (typeof it.value === 'string') ? (it.value.match(/[\d.]+/) || [])[0] : it.value;
+  // Value: prefer the assigned valueGp (DMG-based); fall back to any raw cost string.
+  const costNum = it.valueGp || (typeof it.value === 'string' ? (it.value.match(/[\d.]+/) || [])[0] : it.value);
   set('item_value', costNum || '');
   const rarityLine = it.rarity ? `Rarity: ${it.rarity}${it.attunement ? ' (requires attunement)' : ''}\n` : '';
   set('item_description', `${rarityLine}${it.desc || ''}`.trim());

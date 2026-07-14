@@ -42,6 +42,7 @@ All JS lives in `assets/`. Files are loaded **in this exact order** via dynamic 
 | `assets/modules/cloud-skills.js` | Firebase Auth + Firestore sync (`syncToCloud`, `syncFromCloud`, `scheduleSyncToCloud`, `signInWithGoogle`, `signOut`, `onActiveCharacterChanged`) | ~700 |
 | `assets/modules/core.js` | localStorage helpers, note box system, theme/accent/font, character CRUD (`loadData`, `autosave`, `createNewCharacter`, etc.), popup/tab system, `escapeHtml`, `initializeWebApp`, weapons/equipment system, **notes folder+card system** | ~3580 |
 | `assets/modules/browser-engine.js` | Shared list-browser engine: `fuzzyScore`/`levenshtein` (typo-tolerant search) + `createListBrowser(config)` (filter/sort/virtualized-scroll/live-count). Used by the item catalogue picker and DM monster browser. Loads after core.js. | ~180 |
+| `assets/modules/loot.js` | Loot generator engine: DMG gems/art tables, compositions + themes, ±15% item-fill algorithm (`lootGenerate`, `lootGeneratePile`, `lootCoinString`). Reads `itemCatalogue`/`valueGp` from inventory.js. Loads after inventory.js, before dm.js. | ~230 |
 | `assets/modules/layout.js` | Flex-wrap sizing, section resize handles (`makeContainersResizable`, `applyFlexWrapSizing`), `setupAutoResize` | ~241 |
 | `assets/modules/characters.js` | Currency system (CP/SP/GP + custom — saved under `page4.currency`), banner wealth messages, suggestion form, autosave scheduling (`scheduleAutosave`, `bindGlobalAutosaveListeners`), deleted-character tracking | ~379 |
 | `assets/modules/health.js` | HP display, death saves, potion use, short/long rest | ~292 |
@@ -261,6 +262,11 @@ The Import Cantrips / Import Spells popup has a per-source toggle list (`SPELL_S
 ### DM Items archive (v1.19+)
 `dmLoadItems(force)` is **cache-first** (`localStorage['dndDmItemCache']`, 30-day TTL) → Open5e API (magicitems + weapons + armor) on miss/`force`, with a progress bar (`dmSetItemProgress`). Uses the shared **browser engine** via `dmInitItemBrowser()`/`_dmItemBrowser`: fuzzy search, virtualized scroll, grouped filters (category/rarity/attunement), sort (name/rarity), live count. Auto-loads on `dm-items` tab open. (Kept on the API — not the bundled `items.json` the player picker uses — since it pulls all sources incl. non-SRD.)
 
+### Item gold values + Loot Generator (v1.20+)
+**Every item in `items.json` has a numeric `valueGp`** — assigned by `node tools/build-item-values.js`: real prices parsed first (`"400 gp"`→400), else rolled within DMG rarity bands (common 50–100 … legendary 50k–200k, artifact=priceless nominal 250k), consumables halved, name-seeded RNG so rebuilds are stable. Shown as a price badge in the player item picker (`formatGp` in inventory.js) and fills the Add Item value on pick. (The DM *items archive* uses live API data without values — separate from the player `items.json`.)
+
+**Loot generator** (`assets/modules/loot.js`, DM Screen → Loot tab): `lootGenerate(totalGp, pileCount, compKey, themeKey)` splits the total across N piles (±20% variance, normalised to sum), fills each with catalogue items whose `valueGp` is within **±15%** of the running target (`lootPickItemNear`), then converts the remainder to coins (`lootCoinsFromGp`) + DMG gems/art (`lootGemsArtFromGp`). `LOOT_COMPOSITIONS` (balanced/treasure/pureItems/weapons/supplies/magic/coins) set the coin/gem/item split + item filter; `LOOT_THEMES` (bandit/wizard/dragon/merchant/temple/wild) bias by `itemLikelySource` + category. **Honours the item source toggle** (`getEnabledItemSources`). UI in dm.js: `dmGenerateLoot`/`dmRenderLootResult`/`dmSaveLoot` (saved to `localStorage['dndDmLoot']`)/`dmCopyLoot`. **Reference/UI only — never writes to a saved character.** NPC pockets (`dmRollLoot`) now call `lootGenerate` scaled by wealth tier (`DM_WEALTH_GP`), with the legacy flat table as fallback.
+
 ### Inventory drag-reorder (v1.17+)
 Item cards (`createItemCard`) are `draggable`; whole-card HTML5 drag reorders items **within their own list** — main inventory or one storage container (`itemListFor(container)` resolves which array). Handlers `itemDragStart/Over/Drop/End`; a guard in `itemDragStart` skips drags starting on a button/select so those stay usable; cross-container drops are rejected (reorder only, not move — moving still uses the Move-to dropdown). Reorders the array in place → `saveInventory()` + `autosave()`. Relies on `item.id` (every saved item already has one), so old inventories work untouched.
 
@@ -373,7 +379,7 @@ Access is gated by the **campaign DM control password** (`campaigns/{id}.dmPassw
 - **In-app dialogs:** `dmModal(opts)` (promise-based; `{title, message, input, inputType, placeholder, value, confirmText, cancelText, danger}` → resolves the input string / `true` / `null` on cancel) and `dmToast(msg, type)` replace ALL native `prompt/alert/confirm` in the DM side. Themed to the player popup language (`.dm-modal*`, `.dm-toast*`). Use these, not native dialogs, for any new DM interaction.
 
 ### DM Pages
-Tab order (in `partials/dm-chrome.html`): Home · Lore · Players · Player Spells & Actions · Monsters · Items · Encounters · NPCs · Notes · Settings.
+Tab order (in `partials/dm-chrome.html`): Home · Lore · Notes · Players · Player Spells & Actions · Monsters · Items · Encounters · NPCs · **Loot** · Settings. (Loot added v1.20 — `pages/dm-loot.html`, wired in index.html's 3 places + precached in sw.js; opens via `switchDmTab` which renders saved loot + warms the item catalogue.)
 
 | Page | File | Status | Key IDs |
 |---|---|---|---|

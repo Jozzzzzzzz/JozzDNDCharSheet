@@ -6,9 +6,22 @@
 // the Home button until they visit the home page.
 // ============================================================
 
-const CHANGELOG_LATEST_VERSION = '1.19';
+const CHANGELOG_LATEST_VERSION = '1.20';
 
 const CHANGELOG = [
+  {
+    version: '1.20',
+    date: '2026-07-15',
+    title: 'v1.20 — Loot Generator & Item Prices',
+    updates: [
+      'New DM Loot Generator (DM Screen → Loot): set a total gold value and how many piles/people need loot, and it builds treasure from real D&D items — matching item values within ±15% of the target, then filling the rest with coins and DMG gems / art objects',
+      'Composition options shape each pile: Balanced, Treasure hoard, Pure items, Weapons & armour, Supplies, Magic-focused, or Coins & gems only — and Themes (Bandit stash, Wizard\'s study, Dragon hoard, Merchant caravan, Temple/crypt, Wild) bias what turns up',
+      'Every item in the catalogue now has a gold value (real prices where known, otherwise DMG rarity-based pricing) — shown as a price in the item picker and used to build loot',
+      'Loot honours your item source picker (SRD-only or third-party books), can be saved for reuse, and copied to the clipboard',
+      'NPC pockets now use the real loot generator too — an NPC\'s wealth tier produces actual items, gems and coins instead of a flat list',
+    ],
+    fixes: [],
+  },
   {
     version: '1.19',
     date: '2026-07-14',

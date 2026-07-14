@@ -7862,6 +7862,11 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
     font-size: 0.7rem;
     border: 1px solid var(--accent-border);
   }
+  .item-cat-price {
+    color: #d9b13b;
+    font-weight: 600;
+    white-space: nowrap;
+  }
   .rarity-uncommon { color: #4f9d69; border-color: #4f9d69; }
   .rarity-rare { color: #4f7fd9; border-color: #4f7fd9; }
   .rarity-very-rare { color: #8a5cd0; border-color: #8a5cd0; }
@@ -9039,6 +9044,57 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 .dm-search-bar input[type="text"] { flex: 1; min-width: 160px; }
 
 /* ── Monsters ── */
+/* Loot generator */
+.dm-loot-result { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+.dm-loot-summary {
+  font-size: 0.82rem;
+  opacity: 0.75;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--accent-border);
+}
+.dm-loot-pile {
+  background: var(--card-bg);
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.dm-loot-pile-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.dm-loot-pile-total { color: #d9b13b; font-weight: 700; }
+.dm-loot-items { list-style: none; margin: 0; padding: 0; }
+.dm-loot-items li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 3px 0;
+  font-size: 0.88rem;
+  border-bottom: 1px dashed rgba(255,255,255,0.06);
+}
+.dm-loot-val { color: #d9b13b; white-space: nowrap; opacity: 0.85; }
+.dm-loot-coins { margin-top: 8px; font-size: 0.9rem; color: var(--accent-text); }
+.dm-saved-loot-list { display: flex; flex-direction: column; gap: 6px; }
+.dm-saved-loot { border: 1px solid var(--accent-border); border-radius: 8px; overflow: hidden; }
+.dm-saved-loot-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 12px;
+  cursor: pointer;
+  background: rgba(0,0,0,0.15);
+  font-size: 0.88rem;
+}
+.dm-saved-loot-head:hover { background: var(--accent-soft); }
+.dm-loot-del {
+  background: none; border: none; color: rgba(255,255,255,0.4);
+  cursor: pointer; font-size: 0.9rem; padding: 0 4px;
+}
+.dm-loot-del:hover { color: rgba(200,70,70,0.9); }
+.dm-saved-loot-body { padding: 8px 12px; display: flex; flex-direction: column; gap: 8px; }
+
 /* Monster load progress bar */
 .dm-load-progress {
   height: 8px;

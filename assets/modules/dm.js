@@ -445,6 +445,11 @@ function switchDmTab(btn) {
   if (target === 'dm-monsters' && typeof dmLoadMonsters === 'function') {
     dmLoadMonsters();
   }
+  // Render saved loot on open (+ warm the item catalogue so Generate is instant)
+  if (target === 'dm-loot') {
+    if (typeof dmRenderSavedLoot === 'function') dmRenderSavedLoot();
+    if ((!Array.isArray(itemCatalogue) || !itemCatalogue.length) && typeof loadItemCatalogue === 'function') loadItemCatalogue();
+  }
 }
 
 function switchDmTabById(id) {
@@ -3078,15 +3083,155 @@ function dmResolveWealth() {
   return DM_WEALTH_TIERS[dmWeightedTier(weights)];
 }
 
+// Wealth tier → rough gp target for an NPC's pockets (a single small pile).
+const DM_WEALTH_GP = { Destitute: 2, Poor: 12, Modest: 60, Comfortable: 250, Wealthy: 1200 };
+
 function dmRollLoot() {
   const tier = dmResolveWealth();
-  const table = DM_LOOT_BY_WEALTH[tier] || DM_LOOT_BY_WEALTH.Modest;
-  const coins = table.coins();
-  const item = dmPick(table.items);
-  const loot = `[${tier}] ${coins} · ${item}`;
   const el = document.getElementById('dmNpcLootResult');
-  if (el) { el.textContent = loot; el.classList.remove('dm-empty-state'); }
+  if (!el) return;
+
+  // Prefer the real loot generator (items + coins scaled to wealth). Falls back to the
+  // old flat table if the generator/catalogue isn't available.
+  const target = DM_WEALTH_GP[tier] || 60;
+  const jitter = 0.8 + Math.random() * 0.4;
+  if (typeof lootGenerate === 'function' && Array.isArray(itemCatalogue) && itemCatalogue.length) {
+    const pile = lootGenerate(Math.round(target * jitter), 1, tier === 'Wealthy' ? 'balanced' : 'balanced', 'any')[0];
+    const parts = [];
+    (pile.items || []).forEach(it => parts.push(it.name));
+    (pile.gemsArt || []).forEach(g => parts.push(g.desc));
+    const coins = (typeof lootCoinString === 'function') ? lootCoinString(pile.coins) : '';
+    const line = `[${tier}] ${coins}${parts.length ? ' · ' + parts.join(', ') : ''}`;
+    el.textContent = line.trim();
+    el.classList.remove('dm-empty-state');
+    return;
+  }
+
+  // Fallback: legacy flat table.
+  const table = DM_LOOT_BY_WEALTH[tier] || DM_LOOT_BY_WEALTH.Modest;
+  el.textContent = `[${tier}] ${table.coins()} · ${dmPick(table.items)}`;
+  el.classList.remove('dm-empty-state');
 }
+
+// ─── Loot Generator tab ─────────────────────────────────────────────────────
+let _dmLastLoot = null; // last generated result (for Save / Copy)
+
+function dmGenerateLoot() {
+  const total = parseFloat(document.getElementById('dmLootTotal')?.value) || 0;
+  const piles = parseInt(document.getElementById('dmLootPiles')?.value, 10) || 1;
+  const comp = document.getElementById('dmLootComp')?.value || 'balanced';
+  const theme = document.getElementById('dmLootTheme')?.value || 'any';
+  const note = document.getElementById('dmLootNote');
+
+  if (total <= 0) { dmToast('Enter a total gold value first.', 'error'); return; }
+  if (typeof lootGenerate !== 'function') { dmToast('Loot generator not loaded.', 'error'); return; }
+  if (!Array.isArray(itemCatalogue) || !itemCatalogue.length) {
+    // Item catalogue lazy-loads on the inventory page; trigger it.
+    if (typeof loadItemCatalogue === 'function') { loadItemCatalogue().then(() => dmGenerateLoot()); }
+    if (note) note.textContent = 'Loading the item catalogue… hit Generate again in a moment.';
+    return;
+  }
+
+  const result = lootGenerate(total, piles, comp, theme);
+  _dmLastLoot = { total, piles, comp, theme, result, at: new Date().toISOString() };
+  dmRenderLootResult(_dmLastLoot);
+
+  document.getElementById('dmLootSaveBtn').style.display = '';
+  document.getElementById('dmLootCopyBtn').style.display = '';
+}
+
+function dmLootPileHtml(pile, index) {
+  const items = (pile.items || []).map(it =>
+    `<li>${escapeHtml(it.name)} <span class="dm-loot-val">${typeof formatGp === 'function' ? formatGp(it.valueGp) : it.valueGp + ' gp'}</span></li>`).join('');
+  const gems = (pile.gemsArt || []).map(g =>
+    `<li>${escapeHtml(g.desc)} <span class="dm-loot-val">${g.valueGp.toLocaleString('en-US')} gp</span></li>`).join('');
+  const coins = (typeof lootCoinString === 'function') ? lootCoinString(pile.coins) : '';
+  const hasItems = items || gems;
+  return `
+    <div class="dm-loot-pile">
+      <div class="dm-loot-pile-head">
+        <strong>Pile ${index + 1}</strong>
+        <span class="dm-loot-pile-total">${Math.round(pile.totalGp).toLocaleString('en-US')} gp</span>
+      </div>
+      ${hasItems ? `<ul class="dm-loot-items">${items}${gems}</ul>` : ''}
+      ${coins && coins !== '—' ? `<div class="dm-loot-coins">💰 ${escapeHtml(coins)}</div>` : ''}
+    </div>`;
+}
+
+function dmRenderLootResult(loot) {
+  const el = document.getElementById('dmLootResult');
+  if (!el) return;
+  const compLabel = (LOOT_COMPOSITIONS[loot.comp] || {}).label || loot.comp;
+  const themeLabel = (LOOT_THEMES[loot.theme] || {}).label || loot.theme;
+  const grand = loot.result.reduce((s, p) => s + p.totalGp, 0);
+  el.innerHTML = `
+    <div class="dm-loot-summary">${compLabel}${themeLabel && themeLabel !== 'Any' ? ' · ' + themeLabel : ''} · ${loot.result.length} pile${loot.result.length === 1 ? '' : 's'} · ${Math.round(grand).toLocaleString('en-US')} gp total</div>
+    ${loot.result.map(dmLootPileHtml).join('')}`;
+}
+
+// Saved loot piles (localStorage dndDmLoot).
+function dmGetSavedLoot() {
+  try { const a = JSON.parse(localStorage.getItem('dndDmLoot') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+}
+function dmSaveLoot() {
+  if (!_dmLastLoot) { dmToast('Generate some loot first.', 'error'); return; }
+  const saved = dmGetSavedLoot();
+  saved.unshift({ id: Date.now(), ..._dmLastLoot });
+  try { localStorage.setItem('dndDmLoot', JSON.stringify(saved.slice(0, 50))); } catch (e) {}
+  dmRenderSavedLoot();
+  dmToast('Loot saved.', 'success');
+}
+function dmDeleteSavedLoot(id) {
+  const saved = dmGetSavedLoot().filter(l => l.id !== id);
+  try { localStorage.setItem('dndDmLoot', JSON.stringify(saved)); } catch (e) {}
+  dmRenderSavedLoot();
+}
+function dmRenderSavedLoot() {
+  const list = document.getElementById('dmSavedLootList');
+  if (!list) return;
+  const saved = dmGetSavedLoot();
+  if (!saved.length) { list.innerHTML = '<p class="dm-empty-state">No saved loot yet. Generate a pile you like and hit "Save this loot".</p>'; return; }
+  list.innerHTML = saved.map(l => {
+    const grand = (l.result || []).reduce((s, p) => s + p.totalGp, 0);
+    const compLabel = (LOOT_COMPOSITIONS[l.comp] || {}).label || l.comp;
+    return `
+      <div class="dm-saved-loot" id="dmSavedLoot_${l.id}">
+        <div class="dm-saved-loot-head" onclick="dmToggleSavedLoot(${l.id})">
+          <span>${escapeHtml(compLabel)} · ${(l.result || []).length} pile${(l.result || []).length === 1 ? '' : 's'} · ${Math.round(grand).toLocaleString('en-US')} gp</span>
+          <button class="dm-loot-del" onclick="event.stopPropagation(); dmDeleteSavedLoot(${l.id});" title="Delete">✕</button>
+        </div>
+        <div class="dm-saved-loot-body" style="display:none;">${(l.result || []).map(dmLootPileHtml).join('')}</div>
+      </div>`;
+  }).join('');
+}
+function dmToggleSavedLoot(id) {
+  const body = document.querySelector(`#dmSavedLoot_${id} .dm-saved-loot-body`);
+  if (body) body.style.display = body.style.display === 'none' ? 'block' : 'none';
+}
+
+// Copy the current loot as plain text.
+function dmCopyLoot() {
+  if (!_dmLastLoot) return;
+  const lines = [];
+  _dmLastLoot.result.forEach((p, i) => {
+    lines.push(`Pile ${i + 1} — ${Math.round(p.totalGp).toLocaleString('en-US')} gp`);
+    (p.items || []).forEach(it => lines.push(`  • ${it.name} (${it.valueGp} gp)`));
+    (p.gemsArt || []).forEach(g => lines.push(`  • ${g.desc} (${g.valueGp} gp)`));
+    const coins = lootCoinString(p.coins);
+    if (coins && coins !== '—') lines.push(`  • Coins: ${coins}`);
+    lines.push('');
+  });
+  const text = lines.join('\n');
+  if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => dmToast('Loot copied.', 'success')).catch(() => dmModal({ title: 'Loot', message: text, confirmText: 'Close' }));
+  else dmModal({ title: 'Loot', message: text, confirmText: 'Close' });
+}
+
+window.dmGenerateLoot = dmGenerateLoot;
+window.dmSaveLoot = dmSaveLoot;
+window.dmDeleteSavedLoot = dmDeleteSavedLoot;
+window.dmToggleSavedLoot = dmToggleSavedLoot;
+window.dmCopyLoot = dmCopyLoot;
+window.dmRenderSavedLoot = dmRenderSavedLoot;
 
 // Read every NPC field from the form into a plain object.
 function dmReadNpcForm() {

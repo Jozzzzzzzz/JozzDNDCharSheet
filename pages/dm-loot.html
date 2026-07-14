@@ -1,0 +1,68 @@
+<div class="dm-page" id="dm-loot" style="display:none;">
+  <div class="dm-page-header">
+    <h2>Loot Generator</h2>
+    <p class="dm-page-subtitle">Build treasure piles to a target value from real D&amp;D items, gems &amp; coins</p>
+  </div>
+
+  <div class="dm-card">
+    <div class="dm-card-header">
+      <h3>Generate Loot</h3>
+    </div>
+
+    <div class="dm-field-row">
+      <div class="dm-field">
+        <label for="dmLootTotal">Total value (gp)</label>
+        <input type="number" id="dmLootTotal" min="1" max="1000000" value="500" placeholder="e.g. 500">
+      </div>
+      <div class="dm-field">
+        <label for="dmLootPiles">Piles / people</label>
+        <input type="number" id="dmLootPiles" min="1" max="50" value="1" placeholder="e.g. 4">
+      </div>
+    </div>
+
+    <div class="dm-field-row">
+      <div class="dm-field">
+        <label for="dmLootComp">Composition</label>
+        <select id="dmLootComp">
+          <option value="balanced">Balanced (items + coins + gems)</option>
+          <option value="treasure">Treasure hoard (magic + gems + coins)</option>
+          <option value="pureItems">Pure items (no coins)</option>
+          <option value="weapons">Weapons &amp; armour</option>
+          <option value="supplies">Supplies (potions/scrolls/ammo)</option>
+          <option value="magic">Magic-focused</option>
+          <option value="coins">Coins &amp; gems only</option>
+        </select>
+      </div>
+      <div class="dm-field">
+        <label for="dmLootTheme">Theme</label>
+        <select id="dmLootTheme">
+          <option value="any">Any</option>
+          <option value="bandit">Bandit stash</option>
+          <option value="wizard">Wizard's study</option>
+          <option value="dragon">Dragon hoard</option>
+          <option value="merchant">Merchant caravan</option>
+          <option value="temple">Temple / crypt</option>
+          <option value="wild">Wild / druidic</option>
+        </select>
+      </div>
+    </div>
+
+    <p class="dm-note" id="dmLootNote">Loot pulls from the item catalogue using your source picker (Inventory → Add item → Browse catalogue → Sources). Values within ±15% of the target are matched; the rest becomes coins &amp; gems.</p>
+
+    <div class="dm-field-row" style="gap:8px;">
+      <button class="dm-action-btn dm-save-btn" onclick="dmGenerateLoot()">Generate</button>
+      <button class="dm-action-btn" onclick="dmSaveLoot()" id="dmLootSaveBtn" style="display:none;">Save this loot</button>
+      <button class="dm-action-btn" onclick="dmCopyLoot()" id="dmLootCopyBtn" style="display:none;">Copy to clipboard</button>
+    </div>
+
+    <div id="dmLootResult" class="dm-loot-result"></div>
+  </div>
+
+  <!-- Saved loot piles -->
+  <div class="dm-card">
+    <div class="dm-card-header">
+      <h3>Saved Loot</h3>
+    </div>
+    <div id="dmSavedLootList" class="dm-saved-loot-list"></div>
+  </div>
+</div>
