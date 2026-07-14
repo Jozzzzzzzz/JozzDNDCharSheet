@@ -12,8 +12,9 @@
       <input type="text" id="dmMonsterSearch" placeholder="Search monsters… (fuzzy — e.g. 'gobln', 'drgn')" autocomplete="off">
       <button class="dm-action-btn" onclick="dmLoadMonsters(true)" title="Re-download the latest from Open5e">Refresh</button>
     </div>
-    <div class="lb-filter-bar">
-      <select id="dmMonsterCrFilter">
+    <div class="lb-filter-group">
+      <span class="lb-filter-group-label">Filter</span>
+      <select id="dmMonsterCrFilter" title="Challenge rating">
         <option value="">All CRs</option>
         <option value="0">CR 0</option>
         <option value="0.125">CR 1/8</option>
@@ -27,12 +28,39 @@
         <option value="16">CR 16</option><option value="17">CR 17</option><option value="18">CR 18</option>
         <option value="19">CR 19</option><option value="20">CR 20</option><option value="21">CR 21+</option>
       </select>
-      <select id="dmMonsterTypeFilter"><option value="">All types</option></select>
-      <select id="dmMonsterSizeFilter"><option value="">All sizes</option></select>
+      <select id="dmMonsterTypeFilter" title="Creature type"><option value="">All types</option></select>
+      <select id="dmMonsterSizeFilter" title="Size"><option value="">All sizes</option></select>
+      <select id="dmMonsterAlignFilter" title="Alignment">
+        <option value="">Any alignment</option>
+        <option value="good">Good</option>
+        <option value="evil">Evil</option>
+        <option value="lawful">Lawful</option>
+        <option value="chaotic">Chaotic</option>
+        <option value="neutral">Neutral</option>
+        <option value="unaligned">Unaligned</option>
+      </select>
+      <select id="dmMonsterMoveFilter" title="Movement">
+        <option value="">Any movement</option>
+        <option value="ground">Walks</option>
+        <option value="fly">Flies</option>
+        <option value="swim">Swims</option>
+        <option value="burrow">Burrows</option>
+        <option value="climb">Climbs</option>
+      </select>
+      <select id="dmMonsterLegendaryFilter" title="Legendary">
+        <option value="">Any</option>
+        <option value="yes">Legendary only</option>
+        <option value="no">Non-legendary</option>
+      </select>
+    </div>
+    <div class="lb-filter-group">
+      <span class="lb-filter-group-label">Sort</span>
       <select id="dmMonsterSort">
-        <option value="name">Sort: Name</option>
-        <option value="crAsc">Sort: CR ↑</option>
-        <option value="crDesc">Sort: CR ↓</option>
+        <option value="name">Name (A–Z)</option>
+        <option value="crAsc">CR (low→high)</option>
+        <option value="crDesc">CR (high→low)</option>
+        <option value="hpAsc">HP (low→high)</option>
+        <option value="hpDesc">HP (high→low)</option>
       </select>
       <span class="lb-count" id="dmMonsterCount"></span>
     </div>

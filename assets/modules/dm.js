@@ -560,6 +560,43 @@ function dmMonsterCrNum(m) {
   const v = parseFloat(m && m.challenge_rating);
   return Number.isFinite(v) ? v : -1;
 }
+function dmMonsterHpNum(m) {
+  const v = parseInt(m && m.hit_points, 10);
+  return Number.isFinite(v) ? v : -1;
+}
+
+// Does a monster have a given movement type? Reads the Open5e `speed` object
+// (e.g. { walk:30, fly:60, swim:40 }); falls back to scanning any speed text.
+function dmMonsterHasMove(m, kind) {
+  const sp = m && m.speed;
+  if (sp && typeof sp === 'object') {
+    if (kind === 'ground') return (sp.walk || 0) > 0;
+    return (sp[kind] || 0) > 0;
+  }
+  const txt = (m && (m.speed_json || m.speed_desc || '')) + '';
+  return new RegExp(kind === 'ground' ? 'walk|\\d+\\s*ft' : kind, 'i').test(txt);
+}
+
+function dmMonsterIsLegendary(m) {
+  if (!m) return false;
+  const la = m.legendary_actions || m.legendary_actions_json;
+  if (Array.isArray(la)) return la.length > 0;
+  if (typeof la === 'string') return la.trim() !== '' && la.trim() !== '[]';
+  return !!(m.legendary_desc && String(m.legendary_desc).trim());
+}
+
+// Coarse alignment bucket for filtering.
+function dmMonsterAlignmentBucket(m) {
+  const a = (m && m.alignment || '').toLowerCase();
+  if (!a || /unaligned|any alignment/.test(a)) return 'unaligned';
+  const out = [];
+  if (/good/.test(a)) out.push('good');
+  if (/evil/.test(a)) out.push('evil');
+  if (/lawful/.test(a)) out.push('lawful');
+  if (/chaotic/.test(a)) out.push('chaotic');
+  if (!out.length && /neutral/.test(a)) out.push('neutral');
+  return out;
+}
 
 let _dmMonsterBrowser = null;
 
@@ -595,13 +632,18 @@ function dmInitMonsterBrowser() {
     searchFields: m => `${m.name} ${m.type || ''} ${m.size || ''}`,
     filters: [
       { el: document.getElementById('dmMonsterCrFilter'), match: (m, v) => v === '' || String(m.challenge_rating) === v || (v === '21' && dmMonsterCrNum(m) >= 21) },
-      { el: document.getElementById('dmMonsterTypeFilter'), match: (m, v) => v === '' || (m.type || '') === v },
-      { el: document.getElementById('dmMonsterSizeFilter'), match: (m, v) => v === '' || (m.size || '') === v },
+      { el: document.getElementById('dmMonsterTypeFilter'), match: (m, v) => v === '' || (m.type || '').toLowerCase() === v.toLowerCase() },
+      { el: document.getElementById('dmMonsterSizeFilter'), match: (m, v) => v === '' || (m.size || '').toLowerCase() === v.toLowerCase() },
+      { el: document.getElementById('dmMonsterAlignFilter'), match: (m, v) => v === '' || dmMonsterAlignmentBucket(m).includes(v) },
+      { el: document.getElementById('dmMonsterMoveFilter'), match: (m, v) => v === '' || dmMonsterHasMove(m, v) },
+      { el: document.getElementById('dmMonsterLegendaryFilter'), match: (m, v) => v === '' || (v === 'yes' ? dmMonsterIsLegendary(m) : !dmMonsterIsLegendary(m)) },
     ],
     sorts: {
       name: (a, b) => (a.name || '').localeCompare(b.name || ''),
       crAsc: (a, b) => dmMonsterCrNum(a) - dmMonsterCrNum(b) || (a.name || '').localeCompare(b.name || ''),
       crDesc: (a, b) => dmMonsterCrNum(b) - dmMonsterCrNum(a) || (a.name || '').localeCompare(b.name || ''),
+      hpAsc: (a, b) => dmMonsterHpNum(a) - dmMonsterHpNum(b) || (a.name || '').localeCompare(b.name || ''),
+      hpDesc: (a, b) => dmMonsterHpNum(b) - dmMonsterHpNum(a) || (a.name || '').localeCompare(b.name || ''),
     },
     rowHeight: 52,
     rowClass: 'dm-monster-row',

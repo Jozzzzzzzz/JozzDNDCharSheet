@@ -797,14 +797,29 @@
   </div>
   <div class="item-cat-controls">
     <input type="text" id="itemCatSearch" placeholder="Search items… (fuzzy — e.g. 'holy avngr')" autocomplete="off"/>
-    <div class="item-cat-filters">
-      <select id="itemCatKind">
-        <option value="all">All types</option>
+    <div class="lb-filter-group">
+      <span class="lb-filter-group-label">Filter</span>
+      <select id="itemCatKind" title="Item kind">
+        <option value="all">All kinds</option>
         <option value="magic">Magic items</option>
         <option value="weapon">Weapons</option>
         <option value="armor">Armor</option>
       </select>
-      <select id="itemCatRarity">
+      <select id="itemCatCategory" title="Category">
+        <option value="all">All categories</option>
+        <option value="Wondrous">Wondrous</option>
+        <option value="Weapon">Weapon</option>
+        <option value="Armor">Armor</option>
+        <option value="Potion">Potion</option>
+        <option value="Ring">Ring</option>
+        <option value="Staff">Staff</option>
+        <option value="Wand">Wand</option>
+        <option value="Rod">Rod</option>
+        <option value="Scroll">Scroll</option>
+        <option value="Ammunition">Ammunition</option>
+        <option value="Other">Other</option>
+      </select>
+      <select id="itemCatRarity" title="Rarity">
         <option value="all">Any rarity</option>
         <option value="common">Common</option>
         <option value="uncommon">Uncommon</option>
@@ -813,9 +828,18 @@
         <option value="legendary">Legendary</option>
         <option value="artifact">Artifact</option>
       </select>
+      <select id="itemCatAttune" title="Attunement">
+        <option value="all">Any attunement</option>
+        <option value="yes">Needs attunement</option>
+        <option value="no">No attunement</option>
+      </select>
+    </div>
+    <div class="lb-filter-group">
+      <span class="lb-filter-group-label">Sort</span>
       <select id="itemCatSort">
-        <option value="name">Sort: Name</option>
-        <option value="rarity">Sort: Rarity</option>
+        <option value="name">Name (A–Z)</option>
+        <option value="rarity">Rarity (low→high)</option>
+        <option value="rarityDesc">Rarity (high→low)</option>
       </select>
       <span class="lb-count" id="itemCatCount"></span>
     </div>

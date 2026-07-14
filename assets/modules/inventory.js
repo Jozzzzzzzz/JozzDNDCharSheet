@@ -151,6 +151,33 @@ function onItemSourceToggle() {
 // Rarity ordering for the "Sort: Rarity" option.
 const ITEM_RARITY_ORDER = { '': 0, common: 1, uncommon: 2, rare: 3, 'very rare': 4, legendary: 5, artifact: 6 };
 
+// Normalize the messy free-text `type` into a tidy category for the Category filter.
+function itemCategory(it) {
+  const t = (it.type || '').toLowerCase();
+  if (it.kind === 'armor' || /armor|shield/.test(t)) return 'Armor';
+  if (it.kind === 'weapon' || /weapon|sword|axe|bow|dagger|mace|spear|hammer|blade|flail|whip|lance|club|glaive|halberd|pike|rapier|scimitar|trident|quarterstaff/.test(t)) return 'Weapon';
+  if (/ammunition|arrow|bolt|bullet|sling/.test(t)) return 'Ammunition';
+  if (/potion|oil|elixir/.test(t)) return 'Potion';
+  if (/scroll/.test(t)) return 'Scroll';
+  if (/\bring\b/.test(t)) return 'Ring';
+  if (/staff/.test(t)) return 'Staff';
+  if (/wand/.test(t)) return 'Wand';
+  if (/\brod\b/.test(t)) return 'Rod';
+  if (/wondrous/.test(t)) return 'Wondrous';
+  return 'Other';
+}
+const ITEM_CATEGORIES = ['Wondrous', 'Weapon', 'Armor', 'Potion', 'Ring', 'Staff', 'Wand', 'Rod', 'Scroll', 'Ammunition', 'Other'];
+
+// Bucket a possibly-compound rarity string ("uncommon (+1), rare (+2)…") to its primary
+// rarity for filtering, so those items still show under a clean rarity option.
+function itemPrimaryRarity(it) {
+  const r = (it.rarity || '').toLowerCase();
+  for (const key of ['artifact', 'legendary', 'very rare', 'rare', 'uncommon', 'common']) {
+    if (r.includes(key)) return key;
+  }
+  return '';
+}
+
 let _itemBrowser = null;
 
 // Build (or refresh) the virtualized item catalogue browser. Called when the picker opens.
@@ -171,13 +198,16 @@ function initItemBrowser() {
     searchFields: it => `${it.name} ${it.type || ''} ${it.desc || ''}`,
     filters: [
       { el: document.getElementById('itemCatKind'), match: (it, v) => v === 'all' || it.kind === v },
-      { el: document.getElementById('itemCatRarity'), match: (it, v) => v === 'all' || (it.rarity || '') === v },
+      { el: document.getElementById('itemCatCategory'), match: (it, v) => v === 'all' || itemCategory(it) === v },
+      { el: document.getElementById('itemCatRarity'), match: (it, v) => v === 'all' || itemPrimaryRarity(it) === v },
+      { el: document.getElementById('itemCatAttune'), match: (it, v) => v === 'all' || (v === 'yes' ? !!it.attunement : !it.attunement) },
       // Source toggle isn't a <select> — read the live enabled set each compute.
       { el: null, match: (it) => getEnabledItemSources().has(it.source) },
     ],
     sorts: {
       name: (a, b) => (a.name || '').localeCompare(b.name || ''),
-      rarity: (a, b) => (ITEM_RARITY_ORDER[a.rarity || ''] - ITEM_RARITY_ORDER[b.rarity || '']) || (a.name || '').localeCompare(b.name || ''),
+      rarity: (a, b) => ((ITEM_RARITY_ORDER[itemPrimaryRarity(a)] || 0) - (ITEM_RARITY_ORDER[itemPrimaryRarity(b)] || 0)) || (a.name || '').localeCompare(b.name || ''),
+      rarityDesc: (a, b) => ((ITEM_RARITY_ORDER[itemPrimaryRarity(b)] || 0) - (ITEM_RARITY_ORDER[itemPrimaryRarity(a)] || 0)) || (a.name || '').localeCompare(b.name || ''),
     },
     rowHeight: 50,
     rowClass: 'item-cat-row',
