@@ -178,6 +178,31 @@ function itemPrimaryRarity(it) {
   return '';
 }
 
+// Heuristic "likely source" of an item (NOT authoritative D&D data — inferred from
+// rarity + category to help a DM decide where loot would plausibly turn up):
+//   shop    — mundane/low-rarity gear, potions, scrolls, ammunition (buyable)
+//   wild    — nature/beast/druidic-flavoured items (found out in the world)
+//   dungeon — rare-and-up magic items (treasure / boss loot)
+function itemLikelySource(it) {
+  const name = (it.name || '').toLowerCase();
+  const rarity = itemPrimaryRarity(it);
+  const cat = itemCategory(it);
+  const highTier = rarity === 'rare' || rarity === 'very rare' || rarity === 'legendary' || rarity === 'artifact';
+
+  // Wild / natural flavour by name keywords.
+  if (/druid|beast|nature|antler|feather|bark|thorn|vine|moss|bone|hide|fang|totem|shillelagh|nature|elemental|seed/.test(name)) return 'wild';
+
+  // Buyable-feeling: mundane gear, common/uncommon potions/scrolls/ammo.
+  if (cat === 'Ammunition') return 'shop';
+  if ((cat === 'Potion' || cat === 'Scroll') && !highTier) return 'shop';
+  if ((cat === 'Weapon' || cat === 'Armor') && (rarity === '' || rarity === 'common' || rarity === 'uncommon')) return 'shop';
+  if (rarity === 'common') return 'shop';
+
+  // Everything rare-and-up (and unclassified magic) reads as dungeon/treasure.
+  if (highTier) return 'dungeon';
+  return 'shop';
+}
+
 let _itemBrowser = null;
 
 // Build (or refresh) the virtualized item catalogue browser. Called when the picker opens.
@@ -201,6 +226,7 @@ function initItemBrowser() {
       { el: document.getElementById('itemCatCategory'), match: (it, v) => v === 'all' || itemCategory(it) === v },
       { el: document.getElementById('itemCatRarity'), match: (it, v) => v === 'all' || itemPrimaryRarity(it) === v },
       { el: document.getElementById('itemCatAttune'), match: (it, v) => v === 'all' || (v === 'yes' ? !!it.attunement : !it.attunement) },
+      { el: document.getElementById('itemCatWhere'), match: (it, v) => v === 'all' || itemLikelySource(it) === v },
       // Source toggle isn't a <select> — read the live enabled set each compute.
       { el: null, match: (it) => getEnabledItemSources().has(it.source) },
     ],

@@ -20,7 +20,7 @@ const CHANGELOG = [
       'The DM monster browser now preloads and is cached — it opens instantly, remembers the monster list between visits, and keeps working offline after the first download (hit Refresh to re-pull the latest)',
       'When monsters are downloading, a progress bar now shows how far along the load is (and how many of the total have arrived), so you can see it working and how fast',
       'The item catalogue shows the same download progress bar the first time it loads',
-      'More filters, grouped tidily: items filter by category (Wondrous, Weapon, Armor, Potion, Ring, Staff, Wand, Rod, Scroll, Ammunition), rarity and attunement; monsters filter by type, size, alignment, movement (flies / swims / burrows / climbs) and legendary — plus extra sort options (rarity for items, CR and HP for monsters)',
+      'More filters, grouped tidily: items filter by category (Wondrous, Weapon, Armor, Potion, Ring, Staff, Wand, Rod, Scroll, Ammunition), rarity, attunement and a rough "likely source" (shop / dungeon / wild); monsters filter by type, size, alignment, movement (flies / swims / burrows / climbs), legendary and habitat/environment (Underdark, desert, urban, swamp, coastal…) — plus extra sort options (rarity for items, CR and HP for monsters)',
     ],
     fixes: [],
   },

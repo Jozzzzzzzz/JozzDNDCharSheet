@@ -620,6 +620,14 @@ function dmInitMonsterBrowser() {
     sizes.sort((a, b) => order.indexOf(a) - order.indexOf(b));
     sizeSel.innerHTML = '<option value="">All sizes</option>' + sizes.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
   }
+  // Environment/habitat options, gathered from the data (each monster has an array).
+  const envSel = document.getElementById('dmMonsterEnvFilter');
+  if (envSel && envSel.options.length <= 1) {
+    const envs = new Set();
+    dmAllMonsters.forEach(m => (Array.isArray(m.environments) ? m.environments : []).forEach(e => { if (e) envs.add(String(e).trim()); }));
+    const sorted = Array.from(envs).sort();
+    envSel.innerHTML = '<option value="">Any habitat</option>' + sorted.map(e => `<option value="${escapeHtml(e)}">${escapeHtml(e)}</option>`).join('');
+  }
 
   if (_dmMonsterBrowser) { _dmMonsterBrowser.refresh(); return; }
 
@@ -637,6 +645,7 @@ function dmInitMonsterBrowser() {
       { el: document.getElementById('dmMonsterAlignFilter'), match: (m, v) => v === '' || dmMonsterAlignmentBucket(m).includes(v) },
       { el: document.getElementById('dmMonsterMoveFilter'), match: (m, v) => v === '' || dmMonsterHasMove(m, v) },
       { el: document.getElementById('dmMonsterLegendaryFilter'), match: (m, v) => v === '' || (v === 'yes' ? dmMonsterIsLegendary(m) : !dmMonsterIsLegendary(m)) },
+      { el: document.getElementById('dmMonsterEnvFilter'), match: (m, v) => v === '' || (Array.isArray(m.environments) && m.environments.includes(v)) },
     ],
     sorts: {
       name: (a, b) => (a.name || '').localeCompare(b.name || ''),
