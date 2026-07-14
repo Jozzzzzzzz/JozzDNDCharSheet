@@ -749,6 +749,8 @@
 <div class="popup" id="itemFormPopup">
   <h3 id="itemFormTitle">Add Item</h3>
 
+  <button type="button" class="item-catalogue-open-btn" onclick="showItemCataloguePicker()">🔍 Browse item catalogue</button>
+
   <label>Name:</label>
   <input type="text" id="item_name" placeholder="e.g. Rope, Potion of Healing, Rations"/>
 
@@ -783,6 +785,43 @@
   <div style="margin-top: 15px; display: flex; justify-content: space-between;">
     <button onclick="saveItem()" id="saveItemBtn">Add Item</button>
     <button onclick="closePopup('itemFormPopup')">Cancel</button>
+  </div>
+</div>
+
+<!-- Searchable item catalogue picker -->
+<div class="popup" id="itemCataloguePopup">
+  <h3>Item Catalogue</h3>
+  <div class="item-cat-controls">
+    <input type="text" id="itemCatSearch" placeholder="Search items…" oninput="renderItemCatalogueResults()" autocomplete="off"/>
+    <div class="item-cat-filters">
+      <select id="itemCatKind" onchange="renderItemCatalogueResults()">
+        <option value="all">All types</option>
+        <option value="magic">Magic items</option>
+        <option value="weapon">Weapons</option>
+        <option value="armor">Armor</option>
+      </select>
+      <select id="itemCatRarity" onchange="renderItemCatalogueResults()">
+        <option value="all">Any rarity</option>
+        <option value="common">Common</option>
+        <option value="uncommon">Uncommon</option>
+        <option value="rare">Rare</option>
+        <option value="very rare">Very Rare</option>
+        <option value="legendary">Legendary</option>
+        <option value="artifact">Artifact</option>
+      </select>
+    </div>
+  </div>
+  <div class="item-cat-sources">
+    <span class="item-cat-sources-label">Sources:</span>
+    <div id="itemCatSources" class="item-cat-sources-list">
+      <!-- source toggles injected by renderItemSourceToggles() -->
+    </div>
+  </div>
+  <div id="itemCatResults" class="item-cat-results">
+    <!-- results injected by renderItemCatalogueResults() -->
+  </div>
+  <div style="margin-top: 12px; display: flex; justify-content: flex-end;">
+    <button onclick="closePopup('itemCataloguePopup')">Close</button>
   </div>
 </div>
 

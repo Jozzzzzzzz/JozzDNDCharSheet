@@ -235,6 +235,17 @@ Most `wikiLink` fields point to `open5e.com/spells/{slug}`, but **not all** — 
 #### Spell import source picker
 The Import Cantrips / Import Spells popup has a per-source toggle list (`SPELL_SOURCES` in `spells.js`) filtering the import pool by publisher. Default = **official only** (SRD 5.1 + locally-tagged PHB/TCE/SCAG). Saved as the global UI pref `dndSpellSources` (localStorage) — NOT character data. `getEnabledSpellSources()` is defensive: bad/legacy/empty values fall back to official (import is never empty). `spellSourceEnabled(spell)` gates the pool via `canonicalSpellSourceKey()` (maps Open5e slugs like `wotc-srd`/`a5e` to canonical keys); unknown sources are never hidden. The hardcoded `dndClasses` PHB lists only feed the pool when an official source is active (`officialSourcesActive()`). Source toggles use the shared `.switch`/`.slider round` component (not bare checkboxes).
 
+## Inventory
+
+### Item catalogue (searchable Add from catalogue, v1.17+)
+`assets/data/items.json` (1,474 items: magic items + weapons + armor) is the item reference DB — the inventory equivalent of `spells.json`. **Regenerate, don't hand-edit:** `node tools/build-items.js` flattens the Open5e Django-fixture dumps in `assets/data/open5e/{magicitems,weapons,armor}.json` (it recovers each source's numeric `document` id → slug by matching per-source counts in `_manifest.json`). Each item: `{ name, kind (magic|weapon|armor), type, rarity, attunement, weight, value, source, desc, wikiLink }`.
+- **Reference-only** (Track C safety invariant): the catalogue NEVER writes to a saved character. Picking an item just pre-fills the Add Item form with a self-contained copy (`pickCatalogueItem` → `showItemForm` + fills fields). Loaded async via `loadItemCatalogue()` in `initializeInventory()`; cached in the SW precache for offline.
+- **Picker UI** (`itemCataloguePopup`, opened by `showItemCataloguePicker()` from the Add Item form's "Browse item catalogue" button): live search + kind/rarity filters + a per-source toggle list. `renderItemCatalogueResults()` filters (capped at 200 rows) and shows rarity badges + attunement flags.
+- **Source picker:** `ITEM_SOURCES` in `inventory.js`, saved as the global UI pref `dndItemSources` (localStorage, NOT character data). Default = official only (`wotc-srd`). `getEnabledItemSources()` is defensive (bad/empty → official). Same pattern as `dndSpellSources`.
+
+### Inventory drag-reorder (v1.17+)
+Item cards (`createItemCard`) are `draggable`; whole-card HTML5 drag reorders items **within their own list** — main inventory or one storage container (`itemListFor(container)` resolves which array). Handlers `itemDragStart/Over/Drop/End`; a guard in `itemDragStart` skips drags starting on a button/select so those stay usable; cross-container drops are rejected (reorder only, not move — moving still uses the Move-to dropdown). Reorders the array in place → `saveInventory()` + `autosave()`. Relies on `item.id` (every saved item already has one), so old inventories work untouched.
+
 ### Spell slot drag-reorder
 `updateSpellSlots()` renders each slot row with a `⠿` drag handle. HTML5 drag-and-drop reorders `manualSpellSlots` array in place and calls `autosave()`. The order in the array is what gets saved — no extra field needed.
 

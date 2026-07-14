@@ -7417,6 +7417,14 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
     background: linear-gradient(135deg, var(--card-bg) 0%, rgba(255,255,255,0.02) 100%);
   }
 
+  /* Inventory item drag-reorder */
+  .item-card[draggable="true"] { cursor: grab; }
+  .item-card.item-dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+    border-color: var(--accent);
+  }
+
   /* Light mode card enhancement */
   [data-theme="light"] .equipment-card, 
   [data-theme="light"] .item-card, 
@@ -7694,6 +7702,104 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
     width: 60px;
     text-align: center;
   }
+
+  /* Item catalogue picker */
+  .item-catalogue-open-btn {
+    width: 100%;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-border);
+    color: var(--accent-text);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  .item-catalogue-open-btn:hover { background: var(--accent-muted); }
+
+  .item-cat-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .item-cat-filters {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .item-cat-filters select { flex: 1; min-width: 120px; }
+
+  .item-cat-sources {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--accent-border);
+  }
+  .item-cat-sources-label { font-size: 0.8rem; opacity: 0.7; padding-top: 3px; }
+  .item-cat-sources-list { display: flex; gap: 6px 12px; flex-wrap: wrap; }
+  .item-cat-source {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.82rem;
+    cursor: pointer;
+  }
+  .item-cat-source input { width: auto; margin: 0; }
+  .item-cat-source.official span { color: var(--accent-text); font-weight: 600; }
+
+  .item-cat-results {
+    max-height: 45vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .item-cat-row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    width: 100%;
+    text-align: left;
+    padding: 8px 10px;
+    background: rgba(0, 0, 0, 0.18);
+    border: 1px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+  }
+  .item-cat-row:hover {
+    background: var(--accent-soft);
+    border-color: var(--accent-border);
+  }
+  .item-cat-name { font-weight: 600; color: var(--text); }
+  .item-cat-meta { font-size: 0.78rem; opacity: 0.75; display: flex; align-items: center; gap: 6px; }
+  .item-cat-attune {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0 4px;
+    border-radius: 3px;
+    background: var(--accent);
+    color: var(--accent-contrast);
+    vertical-align: middle;
+  }
+  .item-cat-rarity {
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    border: 1px solid var(--accent-border);
+  }
+  .rarity-uncommon { color: #4f9d69; border-color: #4f9d69; }
+  .rarity-rare { color: #4f7fd9; border-color: #4f7fd9; }
+  .rarity-very-rare { color: #8a5cd0; border-color: #8a5cd0; }
+  .rarity-legendary { color: #e08a3c; border-color: #e08a3c; }
+  .rarity-artifact { color: #cf6ba9; border-color: #cf6ba9; }
+  .item-cat-empty, .item-cat-more { font-size: 0.82rem; opacity: 0.65; text-align: center; padding: 10px; }
 
   /* Spell source picker (import popup) */
   .spell-sources {

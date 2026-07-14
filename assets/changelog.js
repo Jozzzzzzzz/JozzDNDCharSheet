@@ -6,9 +6,22 @@
 // the Home button until they visit the home page.
 // ============================================================
 
-const CHANGELOG_LATEST_VERSION = '1.16';
+const CHANGELOG_LATEST_VERSION = '1.17';
 
 const CHANGELOG = [
+  {
+    version: '1.17',
+    date: '2026-07-14',
+    title: 'v1.17 — Searchable Item Catalogue & Inventory Reorder',
+    updates: [
+      'Add items by searching a built-in catalogue of 1,400+ items — magic items, weapons and armour. Open "Browse item catalogue" from Add Item, search by name, filter by type and rarity, and click one to auto-fill the form (name, type, rarity, attunement, description). Much faster than typing it all out',
+      'Item sources are pickable: default to official SRD only, or toggle on third-party books (Level Up A5e, Tome of Heroes, Vault of Magic, Tal\'Dorei). Your choice is remembered',
+      'Rarity shows as a coloured badge and items that need attunement are flagged, so you can spot the good loot at a glance',
+      'Inventory items can now be dragged to reorder them — within your main inventory or inside any storage container (spell slots already had this; now your gear does too)',
+      'The item catalogue is cached for offline use, like your spells',
+    ],
+    fixes: [],
+  },
   {
     version: '1.16',
     date: '2026-07-14',

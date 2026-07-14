@@ -7,6 +7,166 @@ let inventoryData = {
   purchaseHistory: []
 };
 
+// ---- Item catalogue (reference data for the "Add from catalogue" picker) ----
+// Loaded async from assets/data/items.json at boot. Reference-only — like the spell
+// catalogue, it is NEVER written to a saved character; picking an item just pre-fills the
+// Add Item form with a self-contained copy.
+let itemCatalogue = [];
+let itemCatalogueLoaded = false;
+
+// Item source picker — which publishers to include. Global UI pref (localStorage), not
+// character data. Default = official only (wotc-srd).
+const ITEM_SOURCES = [
+  { key: 'wotc-srd', label: 'SRD 5.1', official: true },
+  { key: 'a5e',      label: 'Level Up (A5e)', official: false },
+  { key: 'toh',      label: 'Tome of Heroes', official: false },
+  { key: 'vom',      label: 'Vault of Magic', official: false },
+  { key: 'taldorei', label: 'Tal\'Dorei', official: false },
+];
+const ITEM_SOURCES_PREF_KEY = 'dndItemSources';
+
+function officialItemSourceKeys() {
+  return ITEM_SOURCES.filter(s => s.official).map(s => s.key);
+}
+function getEnabledItemSources() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(ITEM_SOURCES_PREF_KEY) || 'null'); } catch (e) { saved = null; }
+  const valid = new Set(ITEM_SOURCES.map(s => s.key));
+  if (Array.isArray(saved)) {
+    const filtered = saved.filter(k => valid.has(k));
+    if (filtered.length) return new Set(filtered);
+  }
+  return new Set(officialItemSourceKeys());
+}
+function setEnabledItemSources(set) {
+  try { localStorage.setItem(ITEM_SOURCES_PREF_KEY, JSON.stringify(Array.from(set))); } catch (e) {}
+}
+
+async function loadItemCatalogue() {
+  if (itemCatalogueLoaded) return;
+  try {
+    const v = (typeof window !== 'undefined' && window.__SCRIPT_VERSION__) || Date.now();
+    const resp = await fetch(`assets/data/items.json?v=${v}`);
+    if (resp.ok) {
+      itemCatalogue = await resp.json();
+      itemCatalogueLoaded = true;
+    }
+  } catch (e) {
+    console.warn('Item catalogue unavailable (offline?):', e && e.message);
+  }
+}
+
+// The container the picker should add the chosen item into — captured from the currently
+// open Add Item form so click-to-fill returns to the right place.
+let _itemPickerTargetContainer = null;
+
+async function showItemCataloguePicker() {
+  // Remember where the Add Item form was targeting so we can fill it back.
+  const saveBtn = document.getElementById('saveItemBtn');
+  _itemPickerTargetContainer = saveBtn ? saveBtn.getAttribute('data-container') : null;
+
+  if (!itemCatalogueLoaded) {
+    await loadItemCatalogue();
+    if (!itemCatalogueLoaded) { appToast('Item catalogue is still loading — try again in a moment.', 'info'); return; }
+  }
+  const search = document.getElementById('itemCatSearch');
+  if (search) search.value = '';
+  renderItemSourceToggles();
+  renderItemCatalogueResults();
+  showPopup('itemCataloguePopup');
+  setTimeout(() => { if (search) search.focus(); }, 60);
+}
+
+function renderItemSourceToggles() {
+  const container = document.getElementById('itemCatSources');
+  if (!container) return;
+  const enabled = getEnabledItemSources();
+  container.innerHTML = ITEM_SOURCES.map(s => `
+    <label class="item-cat-source${s.official ? ' official' : ''}">
+      <input type="checkbox" value="${s.key}" ${enabled.has(s.key) ? 'checked' : ''} onchange="onItemSourceToggle()">
+      <span>${s.label}</span>
+    </label>
+  `).join('');
+}
+
+function onItemSourceToggle() {
+  const boxes = document.querySelectorAll('#itemCatSources input[type="checkbox"]');
+  const set = new Set();
+  boxes.forEach(b => { if (b.checked) set.add(b.value); });
+  if (set.size === 0) officialItemSourceKeys().forEach(k => set.add(k)); // never empty
+  setEnabledItemSources(set);
+  renderItemSourceToggles();
+  renderItemCatalogueResults();
+}
+
+function renderItemCatalogueResults() {
+  const results = document.getElementById('itemCatResults');
+  if (!results) return;
+  const term = (document.getElementById('itemCatSearch')?.value || '').toLowerCase().trim();
+  const kind = document.getElementById('itemCatKind')?.value || 'all';
+  const rarity = document.getElementById('itemCatRarity')?.value || 'all';
+  const enabledSources = getEnabledItemSources();
+
+  const esc = typeof escapeHtml === 'function' ? escapeHtml : (s => String(s));
+  const matches = itemCatalogue.filter(it => {
+    if (!enabledSources.has(it.source)) return false;
+    if (kind !== 'all' && it.kind !== kind) return false;
+    if (rarity !== 'all' && (it.rarity || '') !== rarity) return false;
+    if (term) {
+      const hay = (it.name + ' ' + (it.type || '') + ' ' + (it.desc || '')).toLowerCase();
+      if (!hay.includes(term)) return false;
+    }
+    return true;
+  });
+
+  const shown = matches.slice(0, 200); // cap for performance
+  if (matches.length === 0) {
+    results.innerHTML = '<p class="item-cat-empty">No items match. Try a different search or enable more sources.</p>';
+    return;
+  }
+
+  results.innerHTML = shown.map((it, i) => {
+    const rarityBadge = it.rarity ? `<span class="item-cat-rarity rarity-${it.rarity.replace(/\s+/g, '-')}">${esc(it.rarity)}</span>` : '';
+    const attune = it.attunement ? '<span class="item-cat-attune" title="Requires attunement">A</span>' : '';
+    // Store the catalogue index so click-to-fill can resolve the exact item.
+    const idx = itemCatalogue.indexOf(it);
+    return `
+      <button type="button" class="item-cat-row" onclick="pickCatalogueItem(${idx})">
+        <span class="item-cat-name">${esc(it.name)} ${attune}</span>
+        <span class="item-cat-meta">${esc(it.type || '')} ${rarityBadge}</span>
+      </button>`;
+  }).join('') + (matches.length > shown.length ? `<p class="item-cat-more">Showing first ${shown.length} of ${matches.length} — refine your search.</p>` : '');
+}
+
+// Fill the Add Item form from a catalogue entry and return to it.
+function pickCatalogueItem(idx) {
+  const it = itemCatalogue[idx];
+  if (!it) return;
+  closePopup('itemCataloguePopup');
+
+  // Make sure the Add Item form is open + targeting the right container.
+  if (_itemPickerTargetContainer) {
+    showItemForm(_itemPickerTargetContainer);
+  }
+
+  const set = (id, val) => { const el = document.getElementById(id); if (el != null && el) el.value = val; };
+  set('item_name', it.name || '');
+  set('item_weight', it.weight ? String(it.weight) : '');
+  // Map catalogue kind → the form's type dropdown where sensible.
+  const typeSel = document.getElementById('item_type');
+  if (typeSel) {
+    const kindToType = { weapon: 'tool', armor: 'tool', magic: 'treasure' };
+    typeSel.value = kindToType[it.kind] || 'misc';
+  }
+  // Value: catalogue weapons/armor carry a cost string like "10 gp"; pull the number.
+  const costNum = (typeof it.value === 'string') ? (it.value.match(/[\d.]+/) || [])[0] : it.value;
+  set('item_value', costNum || '');
+  const rarityLine = it.rarity ? `Rarity: ${it.rarity}${it.attunement ? ' (requires attunement)' : ''}\n` : '';
+  set('item_description', `${rarityLine}${it.desc || ''}`.trim());
+
+  appToast(`Filled from catalogue: ${it.name}. Review and click Add Item.`, 'success');
+}
+
 // Initialize inventory system
 function initializeInventory() {
   loadInventory();
@@ -16,6 +176,7 @@ function initializeInventory() {
   loadStorageContainers();
   updateWeightDisplay();
   displayPurchaseHistory();
+  loadItemCatalogue(); // async, non-blocking — powers the "Add from catalogue" picker
 
   // Restore encumbrance toggle state
   const encToggle = document.getElementById('encumbrance_toggle');
@@ -587,6 +748,13 @@ function createItemCard(item, container) {
   card.className = 'item-card';
   card.dataset.itemName = (item.name || '').toLowerCase();
   card.dataset.itemType = (item.type || '').toLowerCase();
+  card.dataset.itemId = item.id;
+  card.dataset.container = container;
+  card.draggable = true;
+  card.addEventListener('dragstart', itemDragStart);
+  card.addEventListener('dragover', itemDragOver);
+  card.addEventListener('drop', itemDrop);
+  card.addEventListener('dragend', itemDragEnd);
 
   const qty = item.stackable ? (item.quantity || 1) : 1;
   const totalWeight = ((item.weight || 0) * qty).toFixed(2).replace(/\.00$/, '');
@@ -632,6 +800,67 @@ function createItemCard(item, container) {
     </div>
   `;
   return card;
+}
+
+// ---- Inventory drag-reorder ----
+// Whole-card drag reorders items within their own list (main inventory or one storage
+// container). A guard skips drags that start on a button/select so those stay usable.
+let _itemDragId = null;
+let _itemDragContainer = null;
+
+function itemListFor(container) {
+  if (container === 'main') return inventoryData.mainInventory;
+  const sc = (inventoryData.storageContainers || []).find(s => s.id === container);
+  return sc ? sc.items : null;
+}
+
+function itemDragStart(e) {
+  // Don't start a drag from an interactive control inside the card.
+  if (e.target.closest('button, select, input, a, .item-move-select')) {
+    e.preventDefault();
+    return;
+  }
+  const card = e.currentTarget;
+  _itemDragId = card.dataset.itemId;
+  _itemDragContainer = card.dataset.container;
+  card.classList.add('item-dragging');
+  if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', _itemDragId); } catch (x) {} }
+}
+
+function itemDragOver(e) {
+  if (_itemDragId == null) return;
+  // Only allow reorder within the same container/list.
+  if (e.currentTarget.dataset.container !== _itemDragContainer) return;
+  e.preventDefault();
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+}
+
+function itemDrop(e) {
+  if (_itemDragId == null) return;
+  const targetCard = e.currentTarget;
+  if (targetCard.dataset.container !== _itemDragContainer) return;
+  e.preventDefault();
+  const targetId = targetCard.dataset.itemId;
+  if (targetId === _itemDragId) return;
+
+  const list = itemListFor(_itemDragContainer);
+  if (!list) return;
+  const from = list.findIndex(i => i.id === _itemDragId);
+  const to = list.findIndex(i => i.id === targetId);
+  if (from < 0 || to < 0) return;
+  const [moved] = list.splice(from, 1);
+  list.splice(to, 0, moved);
+
+  saveInventory();
+  autosave();
+  if (_itemDragContainer === 'main') displayMainInventory();
+  else displayStorageItems(_itemDragContainer);
+}
+
+function itemDragEnd(e) {
+  e.currentTarget.classList.remove('item-dragging');
+  _itemDragId = null;
+  _itemDragContainer = null;
 }
 
 // Edit item
