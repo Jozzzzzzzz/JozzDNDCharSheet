@@ -18,6 +18,7 @@ const CHANGELOG = [
       'Both browsers now scroll the whole list smoothly, even at thousands of entries, and show a live result count as you search and filter',
       'Hunt by category: filter items by type, rarity and source; filter monsters by CR, creature type and size — and sort the results (name, rarity, or CR up/down)',
       'The DM monster browser now preloads and is cached — it opens instantly, remembers the monster list between visits, and keeps working offline after the first download (hit Refresh to re-pull the latest)',
+      'When monsters are downloading, a progress bar now shows how far along the load is (and how many of the total have arrived), so you can see it working and how fast',
     ],
     fixes: [],
   },

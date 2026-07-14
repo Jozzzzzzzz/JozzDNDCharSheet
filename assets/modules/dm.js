@@ -499,28 +499,59 @@ async function dmLoadMonsters(force) {
     } catch (e) { /* ignore bad cache */ }
   }
 
-  // 2) Fetch from API (refresh or first load).
-  if (note && !servedFromCache) note.textContent = 'Loading monsters from Open5e…';
+  // 2) Fetch from API (refresh or first load). Shows a progress bar driven by the
+  // Open5e `count` (total) vs how many we've pulled, so the user sees real load speed.
+  if (note) note.textContent = servedFromCache ? 'Refreshing monsters from Open5e…' : 'Loading monsters from Open5e…';
+  dmSetMonsterProgress(null, true); // indeterminate pulse until the first response gives a total
+  const startedAt = Date.now();
   try {
     let results = [];
+    let total = 0;
     let url = 'https://api.open5e.com/v1/monsters/?limit=100&document__slug=wotc-srd';
     while (url) {
       const res = await fetch(url);
       const data = await res.json();
+      if (!total && typeof data.count === 'number') total = data.count;
       results = results.concat(data.results || []);
+      const pct = total ? Math.min(100, Math.round((results.length / total) * 100)) : null;
+      dmSetMonsterProgress(pct, true);
+      if (note) note.textContent = `Loading monsters from Open5e… ${results.length}${total ? ' / ' + total : ''}`;
       url = data.next || null;
     }
     if (results.length) {
       dmAllMonsters = results;
       try { localStorage.setItem(DM_MONSTER_CACHE_KEY, JSON.stringify({ monsters: results, savedAt: Date.now() })); } catch (e) { /* quota */ }
-      if (note) note.textContent = `${results.length} monsters ready.`;
+      const secs = ((Date.now() - startedAt) / 1000).toFixed(1);
+      dmSetMonsterProgress(100, true);
+      if (note) note.textContent = `${results.length} monsters ready (loaded in ${secs}s).`;
       dmInitMonsterBrowser();
+      setTimeout(() => dmSetMonsterProgress(0, false), 600); // hide the bar shortly after
     } else if (!servedFromCache && note) {
       note.textContent = 'No monsters returned. Try again later.';
+      dmSetMonsterProgress(0, false);
+    } else {
+      dmSetMonsterProgress(0, false);
     }
   } catch (e) {
     console.error('Monster load failed:', e);
     if (!servedFromCache && note) note.textContent = 'Offline and no cached monsters yet. Connect once to download them.';
+    dmSetMonsterProgress(0, false);
+  }
+}
+
+// Drive the monster-load progress bar. pct: 0-100, or null for an indeterminate pulse
+// (when total isn't known yet). show=false hides it.
+function dmSetMonsterProgress(pct, show) {
+  const wrap = document.getElementById('dmMonsterProgress');
+  const bar = document.getElementById('dmMonsterProgressBar');
+  if (!wrap || !bar) return;
+  wrap.style.display = show ? 'block' : 'none';
+  if (pct === null) {
+    wrap.classList.add('indeterminate');
+    bar.style.width = '35%';
+  } else {
+    wrap.classList.remove('indeterminate');
+    bar.style.width = Math.max(0, Math.min(100, pct)) + '%';
   }
 }
 
@@ -718,6 +749,7 @@ function dmCrToXp(cr) {
 
 window.dmLoadMonsters = dmLoadMonsters;
 window.dmInitMonsterBrowser = dmInitMonsterBrowser;
+window.dmSetMonsterProgress = dmSetMonsterProgress;
 window.dmShowMonster = dmShowMonster;
 
 // ─── Items (Open5e magic items — reference only) ───────────────────────────

@@ -9014,6 +9014,33 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 .dm-search-bar input[type="text"] { flex: 1; min-width: 160px; }
 
 /* ── Monsters ── */
+/* Monster load progress bar */
+.dm-load-progress {
+  height: 8px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--accent-border);
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 4px 0 10px;
+}
+.dm-load-progress-bar {
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.25s ease;
+}
+/* Indeterminate phase (total not known yet) — slide the bar back and forth. */
+.dm-load-progress.indeterminate .dm-load-progress-bar {
+  animation: dmProgressSlide 1.1s ease-in-out infinite;
+  transition: none;
+}
+@keyframes dmProgressSlide {
+  0%   { margin-left: -35%; }
+  100% { margin-left: 100%; }
+}
+
 .dm-monsters-list { display: flex; flex-direction: column; gap: 4px; max-height: 420px; overflow-y: auto; }
 
 .dm-monster-row {
