@@ -9,38 +9,35 @@
       <h3>Browse Monsters</h3>
     </div>
     <div class="dm-search-bar">
-      <input type="text" id="dmMonsterSearch" placeholder="Search monsters... (e.g. Goblin, Dragon, Undead)" oninput="dmFilterMonsters()" autocomplete="off">
-      <select id="dmMonsterCrFilter" onchange="dmFilterMonsters()">
+      <input type="text" id="dmMonsterSearch" placeholder="Search monsters… (fuzzy — e.g. 'gobln', 'drgn')" autocomplete="off">
+      <button class="dm-action-btn" onclick="dmLoadMonsters(true)" title="Re-download the latest from Open5e">Refresh</button>
+    </div>
+    <div class="lb-filter-bar">
+      <select id="dmMonsterCrFilter">
         <option value="">All CRs</option>
         <option value="0">CR 0</option>
         <option value="0.125">CR 1/8</option>
         <option value="0.25">CR 1/4</option>
         <option value="0.5">CR 1/2</option>
-        <option value="1">CR 1</option>
-        <option value="2">CR 2</option>
-        <option value="3">CR 3</option>
-        <option value="4">CR 4</option>
-        <option value="5">CR 5</option>
-        <option value="6">CR 6</option>
-        <option value="7">CR 7</option>
-        <option value="8">CR 8</option>
-        <option value="9">CR 9</option>
-        <option value="10">CR 10</option>
-        <option value="11">CR 11</option>
-        <option value="12">CR 12</option>
-        <option value="13">CR 13</option>
-        <option value="14">CR 14</option>
-        <option value="15">CR 15</option>
-        <option value="16">CR 16</option>
-        <option value="17">CR 17</option>
-        <option value="18">CR 18</option>
-        <option value="19">CR 19</option>
-        <option value="20">CR 20+</option>
+        <option value="1">CR 1</option><option value="2">CR 2</option><option value="3">CR 3</option>
+        <option value="4">CR 4</option><option value="5">CR 5</option><option value="6">CR 6</option>
+        <option value="7">CR 7</option><option value="8">CR 8</option><option value="9">CR 9</option>
+        <option value="10">CR 10</option><option value="11">CR 11</option><option value="12">CR 12</option>
+        <option value="13">CR 13</option><option value="14">CR 14</option><option value="15">CR 15</option>
+        <option value="16">CR 16</option><option value="17">CR 17</option><option value="18">CR 18</option>
+        <option value="19">CR 19</option><option value="20">CR 20</option><option value="21">CR 21+</option>
       </select>
-      <button class="dm-action-btn" onclick="dmLoadMonsters()">Load Monsters</button>
+      <select id="dmMonsterTypeFilter"><option value="">All types</option></select>
+      <select id="dmMonsterSizeFilter"><option value="">All sizes</option></select>
+      <select id="dmMonsterSort">
+        <option value="name">Sort: Name</option>
+        <option value="crAsc">Sort: CR ↑</option>
+        <option value="crDesc">Sort: CR ↓</option>
+      </select>
+      <span class="lb-count" id="dmMonsterCount"></span>
     </div>
-    <p class="dm-note" id="dmMonstersNote">Click "Load Monsters" to fetch from Open5e API. Requires internet connection.</p>
-    <div id="dmMonstersList" class="dm-monsters-list"></div>
+    <p class="dm-note" id="dmMonstersNote">Loading monsters…</p>
+    <div class="lb-viewport"><div id="dmMonstersList" class="dm-monsters-list lb-list"></div></div>
   </div>
 
   <!-- Monster detail panel -->

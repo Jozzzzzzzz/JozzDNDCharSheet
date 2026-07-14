@@ -48,6 +48,7 @@ const PRECACHE_URLS = [
   'assets/modules/stats.js',
   'assets/modules/cloud-skills.js',
   'assets/modules/core.js',
+  'assets/modules/browser-engine.js',
   'assets/modules/layout.js',
   'assets/modules/characters.js',
   'assets/modules/health.js',

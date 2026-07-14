@@ -294,7 +294,7 @@ function activateRoute() {
 })();
 
 async function bootstrapModularApp() {
-  const scriptVersion = '20260714d-v1.17';
+  const scriptVersion = '20260714e-v1.18';
   // Expose so modules can cache-bust their own data fetches (e.g. spells.json).
   window.__SCRIPT_VERSION__ = scriptVersion;
   const [chrome, home, settings, stats, background, spells, inventory, notes, popups,
@@ -335,6 +335,7 @@ async function bootstrapModularApp() {
     'assets/modules/stats.js',
     'assets/modules/cloud-skills.js',
     'assets/modules/core.js',
+    'assets/modules/browser-engine.js',
     'assets/modules/layout.js',
     'assets/modules/characters.js',
     'assets/modules/health.js',

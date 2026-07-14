@@ -441,6 +441,10 @@ function switchDmTab(btn) {
   if (target === 'dm-items' && typeof dmLoadItems === 'function') {
     dmLoadItems();
   }
+  // Auto-load (cache-first) the monster browser on open
+  if (target === 'dm-monsters' && typeof dmLoadMonsters === 'function') {
+    dmLoadMonsters();
+  }
 }
 
 function switchDmTabById(id) {
@@ -468,12 +472,35 @@ window.switchDmTabById = switchDmTabById;
 
 let dmAllMonsters = [];
 
-async function dmLoadMonsters() {
-  const note = document.getElementById('dmMonstersNote');
-  const list = document.getElementById('dmMonstersList');
-  if (note) note.textContent = 'Loading from Open5e...';
-  if (list) list.innerHTML = '';
+const DM_MONSTER_CACHE_KEY = 'dndDmMonsterCache';
+const DM_MONSTER_CACHE_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days
 
+// Load monsters: use the localStorage cache first (instant, offline), then refresh from
+// the Open5e API in the background if the cache is stale/missing. `force` re-fetches now.
+async function dmLoadMonsters(force) {
+  const note = document.getElementById('dmMonstersNote');
+
+  // 1) Serve cache immediately if present.
+  let servedFromCache = false;
+  if (!force) {
+    try {
+      const raw = localStorage.getItem(DM_MONSTER_CACHE_KEY);
+      if (raw) {
+        const cache = JSON.parse(raw);
+        if (cache && Array.isArray(cache.monsters) && cache.monsters.length) {
+          dmAllMonsters = cache.monsters;
+          servedFromCache = true;
+          if (note) note.textContent = `${cache.monsters.length} monsters ready${cache.savedAt ? ' (cached)' : ''}.`;
+          dmInitMonsterBrowser();
+          // If cache is fresh, don't hit the network.
+          if (cache.savedAt && (Date.now() - cache.savedAt) < DM_MONSTER_CACHE_TTL) return;
+        }
+      }
+    } catch (e) { /* ignore bad cache */ }
+  }
+
+  // 2) Fetch from API (refresh or first load).
+  if (note && !servedFromCache) note.textContent = 'Loading monsters from Open5e…';
   try {
     let results = [];
     let url = 'https://api.open5e.com/v1/monsters/?limit=100&document__slug=wotc-srd';
@@ -483,35 +510,77 @@ async function dmLoadMonsters() {
       results = results.concat(data.results || []);
       url = data.next || null;
     }
-    dmAllMonsters = results;
-    if (note) note.textContent = `Loaded ${results.length} monsters from Open5e SRD.`;
-    dmRenderMonsterList(results);
+    if (results.length) {
+      dmAllMonsters = results;
+      try { localStorage.setItem(DM_MONSTER_CACHE_KEY, JSON.stringify({ monsters: results, savedAt: Date.now() })); } catch (e) { /* quota */ }
+      if (note) note.textContent = `${results.length} monsters ready.`;
+      dmInitMonsterBrowser();
+    } else if (!servedFromCache && note) {
+      note.textContent = 'No monsters returned. Try again later.';
+    }
   } catch (e) {
-    if (note) note.textContent = 'Failed to load monsters. Check your internet connection.';
     console.error('Monster load failed:', e);
+    if (!servedFromCache && note) note.textContent = 'Offline and no cached monsters yet. Connect once to download them.';
   }
 }
 
-function dmFilterMonsters() {
-  const q = (document.getElementById('dmMonsterSearch')?.value || '').toLowerCase();
-  const cr = document.getElementById('dmMonsterCrFilter')?.value || '';
-  let filtered = dmAllMonsters;
-  if (q) filtered = filtered.filter(m => m.name.toLowerCase().includes(q) || (m.type || '').toLowerCase().includes(q));
-  if (cr !== '') filtered = filtered.filter(m => String(m.challenge_rating) === cr);
-  dmRenderMonsterList(filtered);
+// Numeric CR for sorting/labels ("1/8" style comes through as 0.125 already).
+function dmMonsterCrNum(m) {
+  const v = parseFloat(m && m.challenge_rating);
+  return Number.isFinite(v) ? v : -1;
 }
 
-function dmRenderMonsterList(monsters) {
-  const list = document.getElementById('dmMonstersList');
-  if (!list) return;
-  if (!monsters.length) { list.innerHTML = '<p class="dm-empty-state">No monsters match.</p>'; return; }
+let _dmMonsterBrowser = null;
 
-  list.innerHTML = monsters.map(m => `
-    <div class="dm-monster-row" onclick="dmShowMonster('${escapeHtml(m.slug)}')">
+// Build (or refresh) the virtualized monster browser over dmAllMonsters. Idempotent —
+// safe to call every time monsters load or the tab opens.
+function dmInitMonsterBrowser() {
+  const root = document.getElementById('dmMonstersList');
+  const search = document.getElementById('dmMonsterSearch');
+  if (!root || !search) return;
+
+  // Populate type + size dropdowns from the data (once per dataset).
+  const typeSel = document.getElementById('dmMonsterTypeFilter');
+  const sizeSel = document.getElementById('dmMonsterSizeFilter');
+  if (typeSel && typeSel.options.length <= 1) {
+    const types = Array.from(new Set(dmAllMonsters.map(m => (m.type || '').trim()).filter(Boolean))).sort();
+    typeSel.innerHTML = '<option value="">All types</option>' + types.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t[0].toUpperCase() + t.slice(1))}</option>`).join('');
+  }
+  if (sizeSel && sizeSel.options.length <= 1) {
+    const sizes = Array.from(new Set(dmAllMonsters.map(m => (m.size || '').trim()).filter(Boolean)));
+    const order = ['Tiny', 'Small', 'Medium', 'Large', 'Huge', 'Gargantuan'];
+    sizes.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+    sizeSel.innerHTML = '<option value="">All sizes</option>' + sizes.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+  }
+
+  if (_dmMonsterBrowser) { _dmMonsterBrowser.refresh(); return; }
+
+  _dmMonsterBrowser = createListBrowser({
+    data: () => dmAllMonsters,
+    root,
+    searchInput: search,
+    countEl: document.getElementById('dmMonsterCount'),
+    sortEl: document.getElementById('dmMonsterSort'),
+    searchFields: m => `${m.name} ${m.type || ''} ${m.size || ''}`,
+    filters: [
+      { el: document.getElementById('dmMonsterCrFilter'), match: (m, v) => v === '' || String(m.challenge_rating) === v || (v === '21' && dmMonsterCrNum(m) >= 21) },
+      { el: document.getElementById('dmMonsterTypeFilter'), match: (m, v) => v === '' || (m.type || '') === v },
+      { el: document.getElementById('dmMonsterSizeFilter'), match: (m, v) => v === '' || (m.size || '') === v },
+    ],
+    sorts: {
+      name: (a, b) => (a.name || '').localeCompare(b.name || ''),
+      crAsc: (a, b) => dmMonsterCrNum(a) - dmMonsterCrNum(b) || (a.name || '').localeCompare(b.name || ''),
+      crDesc: (a, b) => dmMonsterCrNum(b) - dmMonsterCrNum(a) || (a.name || '').localeCompare(b.name || ''),
+    },
+    rowHeight: 52,
+    rowClass: 'dm-monster-row',
+    emptyText: 'No monsters match. Try a different search or filters.',
+    renderRow: m => `
       <span class="dm-monster-name">${escapeHtml(m.name)}</span>
-      <span class="dm-monster-meta">${escapeHtml(m.type || '')} · CR ${m.challenge_rating ?? '?'} · HP ${m.hit_points ?? '?'} · AC ${m.armor_class ?? '?'}</span>
-    </div>
-  `).join('');
+      <span class="dm-monster-meta">${escapeHtml(m.type || '')} · CR ${m.challenge_rating ?? '?'} · HP ${m.hit_points ?? '?'} · AC ${m.armor_class ?? '?'}</span>`,
+    onRowClick: m => dmShowMonster(m.slug),
+  });
+  _dmMonsterBrowser.refresh();
 }
 
 async function dmShowMonster(slug) {
@@ -648,7 +717,7 @@ function dmCrToXp(cr) {
 }
 
 window.dmLoadMonsters = dmLoadMonsters;
-window.dmFilterMonsters = dmFilterMonsters;
+window.dmInitMonsterBrowser = dmInitMonsterBrowser;
 window.dmShowMonster = dmShowMonster;
 
 // ─── Items (Open5e magic items — reference only) ───────────────────────────

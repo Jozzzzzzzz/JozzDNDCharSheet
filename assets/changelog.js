@@ -6,9 +6,21 @@
 // the Home button until they visit the home page.
 // ============================================================
 
-const CHANGELOG_LATEST_VERSION = '1.17';
+const CHANGELOG_LATEST_VERSION = '1.18';
 
 const CHANGELOG = [
+  {
+    version: '1.18',
+    date: '2026-07-14',
+    title: 'v1.18 — Smarter Item & Monster Browsing',
+    updates: [
+      'Item catalogue and the DM monster browser now use a smart, fast search: it\'s typo-tolerant, so "firebal", "gobln" or "holy avngr" still find the right thing',
+      'Both browsers now scroll the whole list smoothly, even at thousands of entries, and show a live result count as you search and filter',
+      'Hunt by category: filter items by type, rarity and source; filter monsters by CR, creature type and size — and sort the results (name, rarity, or CR up/down)',
+      'The DM monster browser now preloads and is cached — it opens instantly, remembers the monster list between visits, and keeps working offline after the first download (hit Refresh to re-pull the latest)',
+    ],
+    fixes: [],
+  },
   {
     version: '1.17',
     date: '2026-07-14',

@@ -72,7 +72,7 @@ async function showItemCataloguePicker() {
   const search = document.getElementById('itemCatSearch');
   if (search) search.value = '';
   renderItemSourceToggles();
-  renderItemCatalogueResults();
+  initItemBrowser();
   showPopup('itemCataloguePopup');
   setTimeout(() => { if (search) search.focus(); }, 60);
 }
@@ -96,46 +96,54 @@ function onItemSourceToggle() {
   if (set.size === 0) officialItemSourceKeys().forEach(k => set.add(k)); // never empty
   setEnabledItemSources(set);
   renderItemSourceToggles();
-  renderItemCatalogueResults();
+  if (_itemBrowser) _itemBrowser.refresh();
 }
 
-function renderItemCatalogueResults() {
-  const results = document.getElementById('itemCatResults');
-  if (!results) return;
-  const term = (document.getElementById('itemCatSearch')?.value || '').toLowerCase().trim();
-  const kind = document.getElementById('itemCatKind')?.value || 'all';
-  const rarity = document.getElementById('itemCatRarity')?.value || 'all';
-  const enabledSources = getEnabledItemSources();
+// Rarity ordering for the "Sort: Rarity" option.
+const ITEM_RARITY_ORDER = { '': 0, common: 1, uncommon: 2, rare: 3, 'very rare': 4, legendary: 5, artifact: 6 };
 
+let _itemBrowser = null;
+
+// Build (or refresh) the virtualized item catalogue browser. Called when the picker opens.
+function initItemBrowser() {
+  const root = document.getElementById('itemCatResults');
+  const search = document.getElementById('itemCatSearch');
+  if (!root || !search) return;
   const esc = typeof escapeHtml === 'function' ? escapeHtml : (s => String(s));
-  const matches = itemCatalogue.filter(it => {
-    if (!enabledSources.has(it.source)) return false;
-    if (kind !== 'all' && it.kind !== kind) return false;
-    if (rarity !== 'all' && (it.rarity || '') !== rarity) return false;
-    if (term) {
-      const hay = (it.name + ' ' + (it.type || '') + ' ' + (it.desc || '')).toLowerCase();
-      if (!hay.includes(term)) return false;
-    }
-    return true;
+
+  if (_itemBrowser) { _itemBrowser.refresh(); return; }
+
+  _itemBrowser = createListBrowser({
+    data: () => itemCatalogue,
+    root,
+    searchInput: search,
+    countEl: document.getElementById('itemCatCount'),
+    sortEl: document.getElementById('itemCatSort'),
+    searchFields: it => `${it.name} ${it.type || ''} ${it.desc || ''}`,
+    filters: [
+      { el: document.getElementById('itemCatKind'), match: (it, v) => v === 'all' || it.kind === v },
+      { el: document.getElementById('itemCatRarity'), match: (it, v) => v === 'all' || (it.rarity || '') === v },
+      // Source toggle isn't a <select> — read the live enabled set each compute.
+      { el: null, match: (it) => getEnabledItemSources().has(it.source) },
+    ],
+    sorts: {
+      name: (a, b) => (a.name || '').localeCompare(b.name || ''),
+      rarity: (a, b) => (ITEM_RARITY_ORDER[a.rarity || ''] - ITEM_RARITY_ORDER[b.rarity || '']) || (a.name || '').localeCompare(b.name || ''),
+    },
+    rowHeight: 50,
+    rowClass: 'item-cat-row',
+    emptyText: 'No items match. Try a different search or enable more sources.',
+    renderRow: it => {
+      const rarityBadge = it.rarity ? `<span class="item-cat-rarity rarity-${it.rarity.replace(/\s+/g, '-')}">${esc(it.rarity)}</span>` : '';
+      const attune = it.attunement ? '<span class="item-cat-attune" title="Requires attunement">A</span>' : '';
+      return `<span class="item-cat-name">${esc(it.name)} ${attune}</span><span class="item-cat-meta">${esc(it.type || '')} ${rarityBadge}</span>`;
+    },
+    onRowClick: it => {
+      const idx = itemCatalogue.indexOf(it);
+      if (idx >= 0) pickCatalogueItem(idx);
+    },
   });
-
-  const shown = matches.slice(0, 200); // cap for performance
-  if (matches.length === 0) {
-    results.innerHTML = '<p class="item-cat-empty">No items match. Try a different search or enable more sources.</p>';
-    return;
-  }
-
-  results.innerHTML = shown.map((it, i) => {
-    const rarityBadge = it.rarity ? `<span class="item-cat-rarity rarity-${it.rarity.replace(/\s+/g, '-')}">${esc(it.rarity)}</span>` : '';
-    const attune = it.attunement ? '<span class="item-cat-attune" title="Requires attunement">A</span>' : '';
-    // Store the catalogue index so click-to-fill can resolve the exact item.
-    const idx = itemCatalogue.indexOf(it);
-    return `
-      <button type="button" class="item-cat-row" onclick="pickCatalogueItem(${idx})">
-        <span class="item-cat-name">${esc(it.name)} ${attune}</span>
-        <span class="item-cat-meta">${esc(it.type || '')} ${rarityBadge}</span>
-      </button>`;
-  }).join('') + (matches.length > shown.length ? `<p class="item-cat-more">Showing first ${shown.length} of ${matches.length} — refine your search.</p>` : '');
+  _itemBrowser.refresh();
 }
 
 // Fill the Add Item form from a catalogue entry and return to it.

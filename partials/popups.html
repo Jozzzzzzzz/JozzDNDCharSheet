@@ -792,15 +792,15 @@
 <div class="popup" id="itemCataloguePopup">
   <h3>Item Catalogue</h3>
   <div class="item-cat-controls">
-    <input type="text" id="itemCatSearch" placeholder="Search items…" oninput="renderItemCatalogueResults()" autocomplete="off"/>
+    <input type="text" id="itemCatSearch" placeholder="Search items… (fuzzy — e.g. 'holy avngr')" autocomplete="off"/>
     <div class="item-cat-filters">
-      <select id="itemCatKind" onchange="renderItemCatalogueResults()">
+      <select id="itemCatKind">
         <option value="all">All types</option>
         <option value="magic">Magic items</option>
         <option value="weapon">Weapons</option>
         <option value="armor">Armor</option>
       </select>
-      <select id="itemCatRarity" onchange="renderItemCatalogueResults()">
+      <select id="itemCatRarity">
         <option value="all">Any rarity</option>
         <option value="common">Common</option>
         <option value="uncommon">Uncommon</option>
@@ -809,6 +809,11 @@
         <option value="legendary">Legendary</option>
         <option value="artifact">Artifact</option>
       </select>
+      <select id="itemCatSort">
+        <option value="name">Sort: Name</option>
+        <option value="rarity">Sort: Rarity</option>
+      </select>
+      <span class="lb-count" id="itemCatCount"></span>
     </div>
   </div>
   <div class="item-cat-sources">
@@ -817,8 +822,10 @@
       <!-- source toggles injected by renderItemSourceToggles() -->
     </div>
   </div>
-  <div id="itemCatResults" class="item-cat-results">
-    <!-- results injected by renderItemCatalogueResults() -->
+  <div class="lb-viewport">
+    <div id="itemCatResults" class="item-cat-results lb-list">
+      <!-- results injected by the browser engine -->
+    </div>
   </div>
   <div style="margin-top: 12px; display: flex; justify-content: flex-end;">
     <button onclick="closePopup('itemCataloguePopup')">Close</button>
