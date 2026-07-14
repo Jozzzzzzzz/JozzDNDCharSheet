@@ -5,7 +5,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Working With Jozsua
 
 - The repo owner is **Jozsua** (Jozsua Van Ree, vanreejoz33@gmail.com — also the app's owner/admin email). Address him as **"Jozsua"** in responses.
-- **Never `git push` or `firebase deploy` without asking first**, unless he already said "push"/"deploy"/"ship it" in the active request. Committing locally is fine; publishing is the gated step.
+- **NEVER `git push` or `firebase deploy` without Jozsua explicitly saying so in the CURRENT message.** Committing locally is fine and encouraged; **publishing is always gated.**
+  - **Push permission does NOT carry over.** A "push"/"deploy"/"ship it" authorises exactly one push, for the work in front of you at that moment. The next feature request is a fresh, un-authorised context — do NOT treat earlier approval (even earlier in the same session) as standing permission. When in doubt, commit and ask.
+  - Requests like "do X", "add Y", "keep going", "do the same for Z" are **build-and-commit** requests, **not** push requests. Finish, commit locally, then say it's committed and ask whether to push.
 - **Pre-push checklist** — when a push is requested or imminent, scan what changed this session and handle these before pushing:
   1. **Version bump?** If any JS/HTML/CSS changed, bump `CHANGELOG_LATEST_VERSION` in `assets/changelog.js`, add a changelog entry (updates/fixes from the session), and bump `scriptVersion` in `index.html`.
   2. **Firestore deploy?** If `firestore.rules` or `firestore.indexes.json` changed, they must be deployed — editing the files alone does nothing. Ask before deploying.
