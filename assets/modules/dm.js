@@ -2938,6 +2938,69 @@ function dmNpcStatblockFor(role) {
   return DM_NPC_STATBLOCKS[role] || DM_NPC_STATBLOCKS.Commoner;
 }
 
+// ─── NPC class mechanics (column 2) ─────────────────────────────────────────
+// Compact class table: hit die, primary ability (drives attack/AC feel), save profs,
+// a default weapon, and a features-by-level generator for the moveset pre-fill. This is
+// the "quick pull-and-go" kit — fully editable in the form afterward.
+const DM_NPC_CLASSES = {
+  Barbarian: { hd: 12, primary: 'str', saves: ['str', 'con'], weapon: 'Greataxe (1d12 slashing)', armor: 'unarmored (10 + Dex + Con)' },
+  Bard:      { hd: 8,  primary: 'cha', saves: ['dex', 'cha'], weapon: 'Rapier (1d8 piercing)', armor: 'Leather (11 + Dex)' },
+  Cleric:    { hd: 8,  primary: 'wis', saves: ['wis', 'cha'], weapon: 'Mace (1d6 bludgeoning)', armor: 'Chain shirt (13 + Dex, max 2)' },
+  Druid:     { hd: 8,  primary: 'wis', saves: ['int', 'wis'], weapon: 'Scimitar (1d6 slashing)', armor: 'Leather (11 + Dex)' },
+  Fighter:   { hd: 10, primary: 'str', saves: ['str', 'con'], weapon: 'Longsword (1d8 slashing)', armor: 'Chain mail (16)' },
+  Monk:      { hd: 8,  primary: 'dex', saves: ['str', 'dex'], weapon: 'Unarmed strike / quarterstaff', armor: 'unarmored (10 + Dex + Wis)' },
+  Paladin:   { hd: 10, primary: 'str', saves: ['wis', 'cha'], weapon: 'Longsword (1d8 slashing)', armor: 'Chain mail (16)' },
+  Ranger:    { hd: 10, primary: 'dex', saves: ['str', 'dex'], weapon: 'Longbow (1d8 piercing)', armor: 'Leather (11 + Dex)' },
+  Rogue:     { hd: 8,  primary: 'dex', saves: ['dex', 'int'], weapon: 'Shortsword (1d6 piercing)', armor: 'Leather (11 + Dex)' },
+  Sorcerer:  { hd: 6,  primary: 'cha', saves: ['con', 'cha'], weapon: 'Dagger (1d4 piercing)', armor: 'unarmored (10 + Dex)' },
+  Warlock:   { hd: 8,  primary: 'cha', saves: ['wis', 'cha'], weapon: 'Eldritch Blast (1d10 force, ranged)', armor: 'Leather (11 + Dex)' },
+  Wizard:    { hd: 6,  primary: 'int', saves: ['int', 'wis'], weapon: 'Dagger (1d4 piercing)', armor: 'unarmored (10 + Dex)' },
+  Artificer: { hd: 8,  primary: 'int', saves: ['con', 'int'], weapon: 'Light crossbow (1d8 piercing)', armor: 'Studded leather (12 + Dex)' },
+};
+
+// Core features a class has gained by a given level — the basics, not an exhaustive list.
+const DM_NPC_CLASS_FEATURES = {
+  Barbarian: [[1,'Rage (bonus action, +damage, resist physical)'],[1,'Unarmored Defense'],[2,'Reckless Attack, Danger Sense'],[3,'Primal Path'],[5,'Extra Attack, Fast Movement']],
+  Bard:      [[1,'Spellcasting, Bardic Inspiration (d6)'],[2,'Jack of All Trades, Song of Rest'],[3,'Expertise, Bard College'],[5,'Font of Inspiration'],[6,'Countercharm']],
+  Cleric:    [[1,'Spellcasting, Divine Domain'],[2,'Channel Divinity (Turn Undead)'],[5,'Destroy Undead (CR 1/2)'],[8,'Divine Strike / Potent Spellcasting']],
+  Druid:     [[1,'Spellcasting, Druidic'],[2,'Wild Shape, Druid Circle'],[4,'Wild Shape improvement'],[10,'—']],
+  Fighter:   [[1,'Second Wind, Fighting Style'],[2,'Action Surge'],[3,'Martial Archetype'],[5,'Extra Attack'],[9,'Indomitable']],
+  Monk:      [[1,'Unarmored Defense, Martial Arts'],[2,'Ki, Unarmored Movement'],[3,'Deflect Missiles, Monastic Tradition'],[4,'Slow Fall'],[5,'Extra Attack, Stunning Strike']],
+  Paladin:   [[1,'Divine Sense, Lay on Hands'],[2,'Fighting Style, Spellcasting, Divine Smite'],[3,'Divine Health, Sacred Oath'],[5,'Extra Attack'],[6,'Aura of Protection']],
+  Ranger:    [[1,"Favored Enemy, Natural Explorer"],[2,'Fighting Style, Spellcasting'],[3,'Ranger Archetype, Primeval Awareness'],[5,'Extra Attack']],
+  Rogue:     [[1,'Sneak Attack, Expertise, Thieves\' Cant'],[2,'Cunning Action'],[3,'Roguish Archetype'],[5,'Uncanny Dodge'],[7,'Evasion']],
+  Sorcerer:  [[1,'Spellcasting, Sorcerous Origin'],[2,'Font of Magic (Sorcery Points)'],[3,'Metamagic'],[5,'—']],
+  Warlock:   [[1,'Otherworldly Patron, Pact Magic'],[2,'Eldritch Invocations'],[3,'Pact Boon'],[5,'—']],
+  Wizard:    [[1,'Spellcasting, Arcane Recovery'],[2,'Arcane Tradition'],[5,'—'],[6,'—']],
+  Artificer: [[1,'Magical Tinkering, Spellcasting'],[2,'Infuse Item'],[3,'Artificer Specialist'],[5,'—']],
+};
+
+function dmAbilityMod(score) { return Math.floor(((parseInt(score, 10) || 10) - 10) / 2); }
+function dmProfBonusForLevel(level) { return 2 + Math.floor((Math.max(1, Math.min(20, parseInt(level, 10) || 1)) - 1) / 4); }
+function dmRoll4d6DropLowest() {
+  const rolls = [0, 0, 0, 0].map(() => Math.floor(Math.random() * 6) + 1).sort((a, b) => a - b);
+  return rolls[1] + rolls[2] + rolls[3]; // drop the lowest
+}
+
+// Build the moveset pre-fill for a class at a level: weapon attack line + the core
+// features gained by that level. Editable afterward.
+function dmNpcMovesetFor(className, level, scores) {
+  const c = DM_NPC_CLASSES[className];
+  if (!c) return '';
+  const lvl = Math.max(1, Math.min(20, parseInt(level, 10) || 1));
+  const prof = dmProfBonusForLevel(lvl);
+  const atkMod = dmAbilityMod(scores ? scores[c.primary] : 10) + prof;
+  const lines = [];
+  lines.push(`Attack: ${c.weapon} — +${atkMod} to hit`);
+  const feats = (DM_NPC_CLASS_FEATURES[className] || [])
+    .filter(([l]) => l <= lvl)
+    .map(([, f]) => f)
+    .filter(f => f && f !== '—');
+  if (feats.length) lines.push('Features: ' + feats.join(', '));
+  lines.push(`Armor: ${c.armor}`);
+  return lines.join('\n');
+}
+
 function dmPick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 function dmCap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 
@@ -3079,20 +3142,110 @@ function dmRenderNpcStatline() {
   wrap.style.display = 'flex';
 }
 
-// Drop the current NPC into the encounter builder as a combatant using its role statblock.
-function dmDropNpcToEncounter() {
-  const role = document.getElementById('dmNpcRole')?.value || 'Commoner';
-  const name = (document.getElementById('dmNpcName')?.value || '').trim() || 'NPC';
-  const sb = dmNpcStatblockFor(role);
-  if (!Array.isArray(dmCombatants)) return;
-  dmCombatants.push({
-    id: Date.now(), name: `${name} (${sb.name})`, maxHp: sb.hp, hp: sb.hp, ac: sb.ac,
-    initiative: 0, isMonster: true, xp: sb.xp || 0, cr: sb.cr,
+// ─── Column 2 mechanics: read scores, recompute derived, roll, fill moveset ───
+function dmNpcScores() {
+  return {
+    str: parseInt(document.getElementById('dmNpcStr')?.value, 10) || 10,
+    dex: parseInt(document.getElementById('dmNpcDex')?.value, 10) || 10,
+    con: parseInt(document.getElementById('dmNpcCon')?.value, 10) || 10,
+    int: parseInt(document.getElementById('dmNpcInt')?.value, 10) || 10,
+    wis: parseInt(document.getElementById('dmNpcWis')?.value, 10) || 10,
+    cha: parseInt(document.getElementById('dmNpcCha')?.value, 10) || 10,
+  };
+}
+function dmFmtMod(m) { return (m >= 0 ? '+' : '') + m; }
+
+// Recompute modifiers + AC/HP/prof/saves from level/class/scores. Everything stays
+// editable — this only writes the read-only derived readouts + mod chips.
+function dmNpcRecalc() {
+  const scores = dmNpcScores();
+  ['Str','Dex','Con','Int','Wis','Cha'].forEach(a => {
+    const el = document.getElementById('dmNpc' + a + 'Mod');
+    if (el) el.textContent = dmFmtMod(dmAbilityMod(scores[a.toLowerCase()]));
   });
+  const level = parseInt(document.getElementById('dmNpcLevel')?.value, 10) || 1;
+  const className = document.getElementById('dmNpcClass')?.value || '';
+  const c = DM_NPC_CLASSES[className];
+  const prof = dmProfBonusForLevel(level);
+
+  const setD = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  setD('dmNpcProf', dmFmtMod(prof));
+
+  if (c) {
+    // HP: max at level 1, average per level after (hit die avg = hd/2 + 1) + Con each level.
+    const conMod = dmAbilityMod(scores.con);
+    const avg = Math.floor(c.hd / 2) + 1;
+    const hp = (c.hd + conMod) + (level - 1) * (avg + conMod);
+    // AC: rough — unarmored 10+Dex(+ability for monk/barb), else the class's typical armor value if numeric.
+    const dexMod = dmAbilityMod(scores.dex);
+    let ac = 10 + dexMod;
+    const armorNum = (c.armor.match(/\((\d+)/) || [])[1];
+    if (armorNum && !/unarmored/i.test(c.armor)) ac = parseInt(armorNum, 10) + (/max 2|\+ Dex/i.test(c.armor) ? Math.min(2, dexMod) : 0);
+    else if (/Con|Wis/.test(c.armor)) ac = 10 + dexMod + dmAbilityMod(scores[/Wis/.test(c.armor) ? 'wis' : 'con']);
+    setD('dmNpcAC', Math.max(1, ac));
+    setD('dmNpcHP', Math.max(1, hp));
+    const saves = (c.saves || []).map(s => s.toUpperCase() + ' ' + dmFmtMod(dmAbilityMod(scores[s]) + prof)).join(', ');
+    setD('dmNpcSaves', saves || '—');
+  } else {
+    setD('dmNpcAC', 10 + dmAbilityMod(scores.dex));
+    setD('dmNpcHP', '—');
+    setD('dmNpcSaves', '—');
+  }
+}
+
+function dmRollNpcAbilities() {
+  ['Str','Dex','Con','Int','Wis','Cha'].forEach(a => {
+    const el = document.getElementById('dmNpc' + a);
+    if (el) el.value = dmRoll4d6DropLowest();
+  });
+  dmNpcRecalc();
+}
+
+// Class changed: recalc, and if the moveset is empty, pre-fill the class basics.
+function dmNpcClassChanged() {
+  dmNpcRecalc();
+  const moves = document.getElementById('dmNpcMoves');
+  if (moves && !moves.value.trim()) dmFillNpcMoveset();
+}
+
+// Pre-fill (overwrite) the moveset with the class's basic kit for its level.
+function dmFillNpcMoveset() {
+  const className = document.getElementById('dmNpcClass')?.value || '';
+  if (!className) { dmToast('Pick a class first.', 'error'); return; }
+  const level = document.getElementById('dmNpcLevel')?.value || 1;
+  const el = document.getElementById('dmNpcMoves');
+  if (el) el.value = dmNpcMovesetFor(className, level, dmNpcScores());
+}
+
+// Drop the current NPC into the encounter builder as a combatant. Uses the rolled
+// class stats (AC/HP) when a class is set; otherwise falls back to the role statblock.
+function dmDropNpcToEncounter() {
+  const name = (document.getElementById('dmNpcName')?.value || '').trim() || 'NPC';
+  const className = document.getElementById('dmNpcClass')?.value || '';
+  if (!Array.isArray(dmCombatants)) return;
+
+  let combatant;
+  if (className && DM_NPC_CLASSES[className]) {
+    dmNpcRecalc();
+    const ac = parseInt(document.getElementById('dmNpcAC')?.textContent, 10) || 12;
+    const hp = parseInt(document.getElementById('dmNpcHP')?.textContent, 10) || 10;
+    const level = parseInt(document.getElementById('dmNpcLevel')?.value, 10) || 1;
+    const dex = dmNpcScores().dex;
+    combatant = { id: Date.now(), name: `${name} (${className} ${level})`, maxHp: hp, hp, ac, initiative: 0, isMonster: true, xp: level * 100, dex };
+  } else {
+    const role = document.getElementById('dmNpcRole')?.value || 'Commoner';
+    const sb = dmNpcStatblockFor(role);
+    combatant = { id: Date.now(), name: `${name} (${sb.name})`, maxHp: sb.hp, hp: sb.hp, ac: sb.ac, initiative: 0, isMonster: true, xp: sb.xp || 0, cr: sb.cr };
+  }
+  dmCombatants.push(combatant);
   if (typeof dmRenderCombatants === 'function') dmRenderCombatants();
   if (typeof dmUpdateDifficultyMeter === 'function') dmUpdateDifficultyMeter();
   dmToast(`${name} added to the encounter.`, 'success');
 }
+window.dmNpcRecalc = dmNpcRecalc;
+window.dmRollNpcAbilities = dmRollNpcAbilities;
+window.dmNpcClassChanged = dmNpcClassChanged;
+window.dmFillNpcMoveset = dmFillNpcMoveset;
 
 // Reroll All: clear every field and build a completely fresh NPC.
 function dmRerollNpc() {
@@ -3335,7 +3488,13 @@ function dmReadNpcForm() {
     plot: v('dmNpcPlot'),
     hook: v('dmNpcHook'),
     notes: v('dmNpcNotes'),
-    loot: loot.includes('Roll Loot') ? '' : loot
+    loot: loot.includes('Roll Loot') ? '' : loot,
+    // mechanics (column 2)
+    npcClass: v('dmNpcClass'),
+    level: v('dmNpcLevel'),
+    str: v('dmNpcStr'), dex: v('dmNpcDex'), con: v('dmNpcCon'),
+    int: v('dmNpcInt'), wis: v('dmNpcWis'), cha: v('dmNpcCha'),
+    moves: v('dmNpcMoves')
   };
 }
 
@@ -3372,7 +3531,12 @@ function dmEditNpc(id) {
   set('dmNpcVoice', npc.voice); set('dmNpcBond', npc.bond); set('dmNpcIdeal', npc.ideal);
   set('dmNpcFlaw', npc.flaw); set('dmNpcSecret', npc.secret); set('dmNpcRelationship', npc.relationship);
   set('dmNpcOccupation', npc.occupation); set('dmNpcPlot', npc.plot);
+  set('dmNpcClass', npc.npcClass); set('dmNpcLevel', npc.level || '');
+  set('dmNpcStr', npc.str); set('dmNpcDex', npc.dex); set('dmNpcCon', npc.con);
+  set('dmNpcInt', npc.int); set('dmNpcWis', npc.wis); set('dmNpcCha', npc.cha);
+  set('dmNpcMoves', npc.moves);
   dmRenderNpcStatline();
+  dmNpcRecalc();
   set('dmNpcHook', npc.hook); set('dmNpcNotes', npc.notes);
 
   const lootEl = document.getElementById('dmNpcLootResult');
@@ -3399,11 +3563,14 @@ function dmCancelEditNpc() {
 // Clear the form and reset edit state + button labels.
 function dmResetNpcForm() {
   _dmEditingNpcId = null;
-  ['dmNpcName','dmNpcNotes','dmNpcAppearance','dmNpcPersonality','dmNpcVoice','dmNpcBond','dmNpcIdeal','dmNpcFlaw','dmNpcSecret','dmNpcRelationship','dmNpcOccupation','dmNpcPlot','dmNpcHook']
+  ['dmNpcName','dmNpcNotes','dmNpcAppearance','dmNpcPersonality','dmNpcVoice','dmNpcBond','dmNpcIdeal','dmNpcFlaw','dmNpcSecret','dmNpcRelationship','dmNpcOccupation','dmNpcPlot','dmNpcHook',
+   'dmNpcClass','dmNpcStr','dmNpcDex','dmNpcCon','dmNpcInt','dmNpcWis','dmNpcCha','dmNpcMoves']
     .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const lvlEl = document.getElementById('dmNpcLevel'); if (lvlEl) lvlEl.value = '1';
   ['dmNpcRace','dmNpcRole','dmNpcAlignment']
     .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   const sl = document.getElementById('dmNpcStatline'); if (sl) sl.style.display = 'none';
+  if (typeof dmNpcRecalc === 'function') dmNpcRecalc();
   const wealthEl = document.getElementById('dmNpcWealth');
   if (wealthEl) wealthEl.value = 'Random';
   const lootEl = document.getElementById('dmNpcLootResult');
@@ -3477,10 +3644,14 @@ function dmTogglePinNpc(id) {
 // Build a plain-text sheet for an NPC object.
 function dmNpcToText(n) {
   const line = (label, val) => val ? `${label}: ${val}` : null;
+  const classLine = n.npcClass ? `${n.npcClass}${n.level ? ' ' + n.level : ''}` : '';
+  const statLine = (n.str || n.dex || n.con) ? `STR ${n.str||'—'} DEX ${n.dex||'—'} CON ${n.con||'—'} INT ${n.int||'—'} WIS ${n.wis||'—'} CHA ${n.cha||'—'}` : '';
   return [
     n.name || 'Unnamed NPC',
-    [n.race, n.role, n.alignment, (n.wealth && n.wealth !== 'Random') ? n.wealth : ''].filter(Boolean).join(' · '),
+    [n.race, n.role, classLine, n.alignment, (n.wealth && n.wealth !== 'Random') ? n.wealth : ''].filter(Boolean).join(' · '),
     '',
+    line('Ability scores', statLine),
+    line('Moveset', n.moves),
     line('Appearance', n.appearance),
     line('Personality', n.personality),
     line('Voice', n.voice),

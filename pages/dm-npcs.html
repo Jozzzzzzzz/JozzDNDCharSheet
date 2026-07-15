@@ -17,7 +17,8 @@
       </div>
       <p class="dm-note">Fill in what you want and leave the rest to <strong>Generate</strong> (it keeps your picks). Use the Reroll on any line to redo just that part. Everything is editable.</p>
 
-      <div class="dm-npc-form">
+      <div class="dm-npc-form dm-npc-two-col">
+       <div class="dm-npc-col dm-npc-col-base">
         <!-- Identity -->
         <div class="dm-field-row">
           <label>Name</label>
@@ -181,12 +182,59 @@
           </div>
           <div id="dmNpcLootResult" class="dm-loot-result dm-empty-state">Hit "Roll Loot" to generate a loot drop.</div>
         </div>
+       </div><!-- /col base -->
 
-        <div class="dm-name-row" style="margin-top:12px;">
+       <!-- Column 2 — mechanics -->
+       <div class="dm-npc-col dm-npc-col-mech">
+        <div class="dm-npc-mech-head">Class &amp; Stats <span style="font-size:0.78em;opacity:0.5;font-weight:400;">— all editable</span></div>
+
+        <div class="dm-field-row">
+          <label>Class</label>
+          <select id="dmNpcClass" onchange="dmNpcClassChanged()">
+            <option value="">— none —</option>
+            <option>Barbarian</option><option>Bard</option><option>Cleric</option><option>Druid</option>
+            <option>Fighter</option><option>Monk</option><option>Paladin</option><option>Ranger</option>
+            <option>Rogue</option><option>Sorcerer</option><option>Warlock</option><option>Wizard</option><option>Artificer</option>
+          </select>
+        </div>
+        <div class="dm-field-row">
+          <label>Level</label>
+          <input type="number" id="dmNpcLevel" min="1" max="20" value="1" oninput="dmNpcRecalc()">
+        </div>
+
+        <div class="dm-npc-abilities">
+          <div class="dm-npc-ability"><label>STR</label><input type="number" id="dmNpcStr" min="1" max="30" oninput="dmNpcRecalc()"><span class="dm-npc-mod" id="dmNpcStrMod">+0</span></div>
+          <div class="dm-npc-ability"><label>DEX</label><input type="number" id="dmNpcDex" min="1" max="30" oninput="dmNpcRecalc()"><span class="dm-npc-mod" id="dmNpcDexMod">+0</span></div>
+          <div class="dm-npc-ability"><label>CON</label><input type="number" id="dmNpcCon" min="1" max="30" oninput="dmNpcRecalc()"><span class="dm-npc-mod" id="dmNpcConMod">+0</span></div>
+          <div class="dm-npc-ability"><label>INT</label><input type="number" id="dmNpcInt" min="1" max="30" oninput="dmNpcRecalc()"><span class="dm-npc-mod" id="dmNpcIntMod">+0</span></div>
+          <div class="dm-npc-ability"><label>WIS</label><input type="number" id="dmNpcWis" min="1" max="30" oninput="dmNpcRecalc()"><span class="dm-npc-mod" id="dmNpcWisMod">+0</span></div>
+          <div class="dm-npc-ability"><label>CHA</label><input type="number" id="dmNpcCha" min="1" max="30" oninput="dmNpcRecalc()"><span class="dm-npc-mod" id="dmNpcChaMod">+0</span></div>
+        </div>
+        <div class="dm-name-row">
+          <button class="dm-action-btn" onclick="dmRollNpcAbilities()" title="Roll all six with 4d6 drop lowest">Roll stats (4d6)</button>
+        </div>
+
+        <div class="dm-npc-derived" id="dmNpcDerived">
+          <span>AC <strong id="dmNpcAC">—</strong></span>
+          <span>HP <strong id="dmNpcHP">—</strong></span>
+          <span>Prof <strong id="dmNpcProf">—</strong></span>
+          <span>Saves <strong id="dmNpcSaves">—</strong></span>
+        </div>
+
+        <div class="dm-field-row">
+          <label>Moveset / Features <span style="font-size:0.78em;opacity:0.5;font-weight:400;">— add anything</span></label>
+          <div class="dm-name-row">
+            <textarea id="dmNpcMoves" placeholder="Attacks, features, spells — anything they can do..." rows="6" maxlength="1500"></textarea>
+          </div>
+          <button class="dm-action-btn dm-reroll-btn" onclick="dmFillNpcMoveset()" title="Pre-fill the basic class kit for this level (overwrites)">Fill class basics</button>
+        </div>
+       </div><!-- /col mech -->
+      </div>
+
+      <div class="dm-name-row" style="margin-top:12px;">
           <button class="dm-action-btn dm-save-btn" onclick="dmSaveNpc()" id="dmNpcSaveBtn">Save NPC</button>
           <button class="dm-action-btn" onclick="dmCopyNpc()" title="Copy this NPC as text">Copy</button>
           <button class="dm-action-btn" onclick="dmCancelEditNpc()" id="dmNpcCancelBtn" style="display:none;">Cancel Edit</button>
-        </div>
       </div>
     </div>
 

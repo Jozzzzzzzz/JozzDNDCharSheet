@@ -20,6 +20,7 @@ const CHANGELOG = [
       'Loot honours your item source picker (SRD-only or third-party books), can be saved for reuse, and copied to the clipboard',
       'NPC pockets now use the real loot generator too — an NPC\'s wealth tier produces actual items, gems and coins instead of a flat list',
       'NPC maker overhaul: generate a Voice, Bond, Ideal, Flaw, a hidden Secret and a Relationship hook (each rerollable); a combat stat line (AC/HP/CR by role) with a one-tap "+ Encounter" to drop the NPC into the encounter builder; plus searchable, pinnable saved NPCs and a Copy button to grab the whole NPC as text',
+      'NPC builder is now two columns: the roleplay side on the left, and a full mechanical side on the right — pick a class and level, roll ability scores (4d6 drop lowest) with AC / HP / proficiency / saves calculated automatically (all editable), and a Moveset box that pre-fills the class\'s basic attacks and features for that level so you can drop an NPC into a fight instantly or write up anything custom',
     ],
     fixes: [],
   },
