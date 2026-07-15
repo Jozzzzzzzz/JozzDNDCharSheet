@@ -2942,20 +2942,22 @@ function dmNpcStatblockFor(role) {
 // Compact class table: hit die, primary ability (drives attack/AC feel), save profs,
 // a default weapon, and a features-by-level generator for the moveset pre-fill. This is
 // the "quick pull-and-go" kit — fully editable in the form afterward.
+// `dmgDie` = weapon damage die; `dmgType`; `cast` = spellcasting ability (null = none);
+// `speed` in ft; `extraAttackAt` = level Extra Attack kicks in (999 = never).
 const DM_NPC_CLASSES = {
-  Barbarian: { hd: 12, primary: 'str', saves: ['str', 'con'], weapon: 'Greataxe (1d12 slashing)', armor: 'unarmored (10 + Dex + Con)' },
-  Bard:      { hd: 8,  primary: 'cha', saves: ['dex', 'cha'], weapon: 'Rapier (1d8 piercing)', armor: 'Leather (11 + Dex)' },
-  Cleric:    { hd: 8,  primary: 'wis', saves: ['wis', 'cha'], weapon: 'Mace (1d6 bludgeoning)', armor: 'Chain shirt (13 + Dex, max 2)' },
-  Druid:     { hd: 8,  primary: 'wis', saves: ['int', 'wis'], weapon: 'Scimitar (1d6 slashing)', armor: 'Leather (11 + Dex)' },
-  Fighter:   { hd: 10, primary: 'str', saves: ['str', 'con'], weapon: 'Longsword (1d8 slashing)', armor: 'Chain mail (16)' },
-  Monk:      { hd: 8,  primary: 'dex', saves: ['str', 'dex'], weapon: 'Unarmed strike / quarterstaff', armor: 'unarmored (10 + Dex + Wis)' },
-  Paladin:   { hd: 10, primary: 'str', saves: ['wis', 'cha'], weapon: 'Longsword (1d8 slashing)', armor: 'Chain mail (16)' },
-  Ranger:    { hd: 10, primary: 'dex', saves: ['str', 'dex'], weapon: 'Longbow (1d8 piercing)', armor: 'Leather (11 + Dex)' },
-  Rogue:     { hd: 8,  primary: 'dex', saves: ['dex', 'int'], weapon: 'Shortsword (1d6 piercing)', armor: 'Leather (11 + Dex)' },
-  Sorcerer:  { hd: 6,  primary: 'cha', saves: ['con', 'cha'], weapon: 'Dagger (1d4 piercing)', armor: 'unarmored (10 + Dex)' },
-  Warlock:   { hd: 8,  primary: 'cha', saves: ['wis', 'cha'], weapon: 'Eldritch Blast (1d10 force, ranged)', armor: 'Leather (11 + Dex)' },
-  Wizard:    { hd: 6,  primary: 'int', saves: ['int', 'wis'], weapon: 'Dagger (1d4 piercing)', armor: 'unarmored (10 + Dex)' },
-  Artificer: { hd: 8,  primary: 'int', saves: ['con', 'int'], weapon: 'Light crossbow (1d8 piercing)', armor: 'Studded leather (12 + Dex)' },
+  Barbarian: { hd: 12, primary: 'str', saves: ['str', 'con'], weapon: 'Greataxe', dmgDie: '1d12', dmgType: 'slashing', armor: 'unarmored (10 + Dex + Con)', cast: null, speed: 30, extraAttackAt: 5 },
+  Bard:      { hd: 8,  primary: 'cha', saves: ['dex', 'cha'], weapon: 'Rapier', dmgDie: '1d8', dmgType: 'piercing', armor: 'Leather (11 + Dex)', cast: 'cha', speed: 30, extraAttackAt: 999 },
+  Cleric:    { hd: 8,  primary: 'wis', saves: ['wis', 'cha'], weapon: 'Mace', dmgDie: '1d6', dmgType: 'bludgeoning', armor: 'Chain shirt (13 + Dex, max 2)', cast: 'wis', speed: 30, extraAttackAt: 999 },
+  Druid:     { hd: 8,  primary: 'wis', saves: ['int', 'wis'], weapon: 'Scimitar', dmgDie: '1d6', dmgType: 'slashing', armor: 'Leather (11 + Dex)', cast: 'wis', speed: 30, extraAttackAt: 999 },
+  Fighter:   { hd: 10, primary: 'str', saves: ['str', 'con'], weapon: 'Longsword', dmgDie: '1d8', dmgType: 'slashing', armor: 'Chain mail (16)', cast: null, speed: 30, extraAttackAt: 5 },
+  Monk:      { hd: 8,  primary: 'dex', saves: ['str', 'dex'], weapon: 'Unarmed / quarterstaff', dmgDie: '1d6', dmgType: 'bludgeoning', armor: 'unarmored (10 + Dex + Wis)', cast: null, speed: 40, extraAttackAt: 5 },
+  Paladin:   { hd: 10, primary: 'str', saves: ['wis', 'cha'], weapon: 'Longsword', dmgDie: '1d8', dmgType: 'slashing', armor: 'Chain mail (16)', cast: 'cha', speed: 30, extraAttackAt: 5 },
+  Ranger:    { hd: 10, primary: 'dex', saves: ['str', 'dex'], weapon: 'Longbow', dmgDie: '1d8', dmgType: 'piercing', armor: 'Leather (11 + Dex)', cast: 'wis', speed: 30, extraAttackAt: 5 },
+  Rogue:     { hd: 8,  primary: 'dex', saves: ['dex', 'int'], weapon: 'Shortsword', dmgDie: '1d6', dmgType: 'piercing', armor: 'Leather (11 + Dex)', cast: null, speed: 30, extraAttackAt: 999 },
+  Sorcerer:  { hd: 6,  primary: 'cha', saves: ['con', 'cha'], weapon: 'Dagger', dmgDie: '1d4', dmgType: 'piercing', armor: 'unarmored (10 + Dex)', cast: 'cha', speed: 30, extraAttackAt: 999 },
+  Warlock:   { hd: 8,  primary: 'cha', saves: ['wis', 'cha'], weapon: 'Eldritch Blast (ranged)', dmgDie: '1d10', dmgType: 'force', armor: 'Leather (11 + Dex)', cast: 'cha', speed: 30, extraAttackAt: 999 },
+  Wizard:    { hd: 6,  primary: 'int', saves: ['int', 'wis'], weapon: 'Dagger', dmgDie: '1d4', dmgType: 'piercing', armor: 'unarmored (10 + Dex)', cast: 'int', speed: 30, extraAttackAt: 999 },
+  Artificer: { hd: 8,  primary: 'int', saves: ['con', 'int'], weapon: 'Light crossbow', dmgDie: '1d8', dmgType: 'piercing', armor: 'Studded leather (12 + Dex)', cast: 'int', speed: 30, extraAttackAt: 999 },
 };
 
 // Core features a class has gained by a given level — the basics, not an exhaustive list.
@@ -2975,6 +2977,22 @@ const DM_NPC_CLASS_FEATURES = {
   Artificer: [[1,'Magical Tinkering, Spellcasting'],[2,'Infuse Item'],[3,'Artificer Specialist'],[5,'—']],
 };
 
+// Sensible class + level range suggestion per NPC role (for one-click Generate).
+const DM_ROLE_TO_CLASS = {
+  Commoner:  { classes: [''], lvl: [1, 1] },
+  Guard:     { classes: ['Fighter'], lvl: [1, 3] },
+  Merchant:  { classes: [''], lvl: [1, 2] },
+  Innkeeper: { classes: [''], lvl: [1, 2] },
+  Bandit:    { classes: ['Fighter', 'Rogue'], lvl: [1, 4] },
+  Cultist:   { classes: ['Cleric', 'Warlock'], lvl: [1, 4] },
+  Noble:     { classes: ['Bard', 'Fighter'], lvl: [2, 6] },
+  Mage:      { classes: ['Wizard', 'Sorcerer'], lvl: [4, 9] },
+  Priest:    { classes: ['Cleric'], lvl: [2, 6] },
+  Spy:       { classes: ['Rogue'], lvl: [2, 6] },
+  Assassin:  { classes: ['Rogue'], lvl: [6, 12] },
+  Gladiator: { classes: ['Fighter', 'Barbarian'], lvl: [4, 8] },
+};
+
 function dmAbilityMod(score) { return Math.floor(((parseInt(score, 10) || 10) - 10) / 2); }
 function dmProfBonusForLevel(level) { return 2 + Math.floor((Math.max(1, Math.min(20, parseInt(level, 10) || 1)) - 1) / 4); }
 function dmRoll4d6DropLowest() {
@@ -2989,15 +3007,28 @@ function dmNpcMovesetFor(className, level, scores) {
   if (!c) return '';
   const lvl = Math.max(1, Math.min(20, parseInt(level, 10) || 1));
   const prof = dmProfBonusForLevel(lvl);
-  const atkMod = dmAbilityMod(scores ? scores[c.primary] : 10) + prof;
+  const sc = scores || {};
+  const atkAbilMod = dmAbilityMod(sc[c.primary] ?? 10);
+  const atkMod = atkAbilMod + prof;
+  const dmgBonus = (atkAbilMod >= 0 ? '+' : '') + atkAbilMod;
+  const attacks = lvl >= (c.extraAttackAt || 999) ? (lvl >= 20 ? 4 : lvl >= 11 ? 3 : 2) : 1;
+  const attackNote = attacks > 1 ? ` (${attacks} attacks)` : '';
+
   const lines = [];
-  lines.push(`Attack: ${c.weapon} — +${atkMod} to hit`);
+  lines.push(`Attack: ${c.weapon} — ${atkMod >= 0 ? '+' : ''}${atkMod} to hit, ${c.dmgDie}${dmgBonus} ${c.dmgType}${attackNote}`);
+
+  // Spellcaster line: save DC + spell attack from the casting ability.
+  if (c.cast) {
+    const cm = dmAbilityMod(sc[c.cast] ?? 10);
+    lines.push(`Spellcasting: save DC ${8 + prof + cm}, spell attack ${cm + prof >= 0 ? '+' : ''}${cm + prof} (${c.cast.toUpperCase()})`);
+  }
+
   const feats = (DM_NPC_CLASS_FEATURES[className] || [])
     .filter(([l]) => l <= lvl)
     .map(([, f]) => f)
     .filter(f => f && f !== '—');
   if (feats.length) lines.push('Features: ' + feats.join(', '));
-  lines.push(`Armor: ${c.armor}`);
+  lines.push(`Armor: ${c.armor} · Speed ${c.speed} ft`);
   return lines.join('\n');
 }
 
@@ -3127,7 +3158,48 @@ function dmGenerateNpc() {
   if (hookEl && !hookEl.value.trim() && Math.random() < 0.5) {
     hookEl.value = dmGenNpcField('hook', ctx);
   }
+
+  // Column 2 — fill class/level/stats if the DM hasn't set them (keeps their picks).
+  dmGenerateNpcMechanics(ctx);
+
   dmRenderNpcStatline();
+}
+
+// Fill the mechanical column (class, level, ability scores, moveset) if empty. Class +
+// level are suggested from the role; scores are rolled 4d6-drop-lowest and arranged so
+// the class's primary ability gets the best score.
+function dmGenerateNpcMechanics(ctx) {
+  ctx = ctx || dmNpcContext();
+  const classEl = document.getElementById('dmNpcClass');
+  const levelEl = document.getElementById('dmNpcLevel');
+  const strEl = document.getElementById('dmNpcStr');
+  const anyScoreSet = ['dmNpcStr','dmNpcDex','dmNpcCon','dmNpcInt','dmNpcWis','dmNpcCha']
+    .some(id => (document.getElementById(id)?.value || '').trim());
+
+  const suggestion = DM_ROLE_TO_CLASS[ctx.role] || { classes: [''], lvl: [1, 3] };
+  // Class: only fill if empty.
+  if (classEl && !classEl.value) classEl.value = dmPick(suggestion.classes);
+  // Level: only fill if empty/default-ish and role suggests a range.
+  if (levelEl && (!levelEl.value || levelEl.value === '1')) {
+    const [lo, hi] = suggestion.lvl;
+    levelEl.value = lo + Math.floor(Math.random() * (hi - lo + 1));
+  }
+  // Scores: only roll if none are set yet.
+  if (!anyScoreSet) {
+    const rolled = [0,0,0,0,0,0].map(() => dmRoll4d6DropLowest()).sort((a, b) => b - a); // high→low
+    const cls = classEl && classEl.value ? DM_NPC_CLASSES[classEl.value] : null;
+    // Priority: primary ability first, then CON, then the rest.
+    const order = cls ? [cls.primary, 'con', ...['str','dex','con','int','wis','cha'].filter(a => a !== cls.primary && a !== 'con')]
+                      : ['str','dex','con','int','wis','cha'];
+    const idMap = { str: 'dmNpcStr', dex: 'dmNpcDex', con: 'dmNpcCon', int: 'dmNpcInt', wis: 'dmNpcWis', cha: 'dmNpcCha' };
+    order.forEach((abil, i) => { const el = document.getElementById(idMap[abil]); if (el) el.value = rolled[i]; });
+  }
+  dmNpcRecalc();
+  // Moveset: fill class basics if a class is set and the box is empty.
+  const moves = document.getElementById('dmNpcMoves');
+  if (moves && !moves.value.trim() && classEl && classEl.value) {
+    moves.value = dmNpcMovesetFor(classEl.value, levelEl?.value || 1, dmNpcScores());
+  }
 }
 
 // Show the combat stat line (AC/HP/CR) from the chosen role + the Drop-into-Encounter button.
@@ -3170,6 +3242,8 @@ function dmNpcRecalc() {
 
   const setD = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   setD('dmNpcProf', dmFmtMod(prof));
+  setD('dmNpcInit', dmFmtMod(dmAbilityMod(scores.dex)));
+  setD('dmNpcSpeed', (c ? c.speed : 30) + ' ft');
 
   if (c) {
     // HP: max at level 1, average per level after (hit die avg = hd/2 + 1) + Con each level.
@@ -3250,8 +3324,10 @@ window.dmFillNpcMoveset = dmFillNpcMoveset;
 // Reroll All: clear every field and build a completely fresh NPC.
 function dmRerollNpc() {
   dmCancelEditNpc(); // drop any in-progress edit
-  ['dmNpcName','dmNpcNotes','dmNpcAppearance','dmNpcPersonality','dmNpcVoice','dmNpcBond','dmNpcIdeal','dmNpcFlaw','dmNpcSecret','dmNpcRelationship','dmNpcOccupation','dmNpcPlot','dmNpcHook']
+  ['dmNpcName','dmNpcNotes','dmNpcAppearance','dmNpcPersonality','dmNpcVoice','dmNpcBond','dmNpcIdeal','dmNpcFlaw','dmNpcSecret','dmNpcRelationship','dmNpcOccupation','dmNpcPlot','dmNpcHook',
+   'dmNpcClass','dmNpcStr','dmNpcDex','dmNpcCon','dmNpcInt','dmNpcWis','dmNpcCha','dmNpcMoves']
     .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const lvlR = document.getElementById('dmNpcLevel'); if (lvlR) lvlR.value = '';
   ['dmNpcRace','dmNpcRole','dmNpcAlignment']
     .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   const wealthEl = document.getElementById('dmNpcWealth');
@@ -3365,26 +3441,28 @@ function dmGenerateLoot() {
     return;
   }
 
+  const label = document.getElementById('dmLootLabel')?.value || 'Pile';
   const result = lootGenerate(total, piles, comp, theme);
-  _dmLastLoot = { total, piles, comp, theme, result, at: new Date().toISOString() };
+  _dmLastLoot = { total, piles, comp, theme, label, result, at: new Date().toISOString() };
   dmRenderLootResult(_dmLastLoot);
 
   document.getElementById('dmLootSaveBtn').style.display = '';
   document.getElementById('dmLootCopyBtn').style.display = '';
 }
 
-function dmLootPileHtml(pile, index) {
+function dmLootPileHtml(pile, index, label) {
   const items = (pile.items || []).map(it =>
     `<li>${escapeHtml(it.name)} <span class="dm-loot-val">${typeof formatGp === 'function' ? formatGp(it.valueGp) : it.valueGp + ' gp'}</span></li>`).join('');
   const gems = (pile.gemsArt || []).map(g =>
     `<li>${escapeHtml(g.desc)} <span class="dm-loot-val">${g.valueGp.toLocaleString('en-US')} gp</span></li>`).join('');
   const coins = (typeof lootCoinString === 'function') ? lootCoinString(pile.coins) : '';
   const hasItems = items || gems;
+  const wt = (pile.weightLb != null && pile.weightLb > 0) ? ` · ${pile.weightLb} lb` : '';
   return `
     <div class="dm-loot-pile">
       <div class="dm-loot-pile-head">
-        <strong>Pile ${index + 1}</strong>
-        <span class="dm-loot-pile-total">${Math.round(pile.totalGp).toLocaleString('en-US')} gp</span>
+        <strong>${escapeHtml(label || 'Pile')} ${index + 1}</strong>
+        <span class="dm-loot-pile-total">${Math.round(pile.totalGp).toLocaleString('en-US')} gp${wt}</span>
       </div>
       ${hasItems ? `<ul class="dm-loot-items">${items}${gems}</ul>` : ''}
       ${coins && coins !== '—' ? `<div class="dm-loot-coins">💰 ${escapeHtml(coins)}</div>` : ''}
@@ -3397,9 +3475,10 @@ function dmRenderLootResult(loot) {
   const compLabel = (LOOT_COMPOSITIONS[loot.comp] || {}).label || loot.comp;
   const themeLabel = (LOOT_THEMES[loot.theme] || {}).label || loot.theme;
   const grand = loot.result.reduce((s, p) => s + p.totalGp, 0);
+  const lbl = loot.label || 'Pile';
   el.innerHTML = `
-    <div class="dm-loot-summary">${compLabel}${themeLabel && themeLabel !== 'Any' ? ' · ' + themeLabel : ''} · ${loot.result.length} pile${loot.result.length === 1 ? '' : 's'} · ${Math.round(grand).toLocaleString('en-US')} gp total</div>
-    ${loot.result.map(dmLootPileHtml).join('')}`;
+    <div class="dm-loot-summary">${compLabel}${themeLabel && themeLabel !== 'Any' ? ' · ' + themeLabel : ''} · ${loot.result.length} ${lbl.toLowerCase()}${loot.result.length === 1 ? '' : 's'} · ${Math.round(grand).toLocaleString('en-US')} gp total</div>
+    ${loot.result.map((p, i) => dmLootPileHtml(p, i, lbl)).join('')}`;
 }
 
 // Saved loot piles (localStorage dndDmLoot).
@@ -3433,7 +3512,7 @@ function dmRenderSavedLoot() {
           <span>${escapeHtml(compLabel)} · ${(l.result || []).length} pile${(l.result || []).length === 1 ? '' : 's'} · ${Math.round(grand).toLocaleString('en-US')} gp</span>
           <button class="dm-loot-del" onclick="event.stopPropagation(); dmDeleteSavedLoot(${l.id});" title="Delete">✕</button>
         </div>
-        <div class="dm-saved-loot-body" style="display:none;">${(l.result || []).map(dmLootPileHtml).join('')}</div>
+        <div class="dm-saved-loot-body" style="display:none;">${(l.result || []).map((p, i) => dmLootPileHtml(p, i, l.label || 'Pile')).join('')}</div>
       </div>`;
   }).join('');
 }
@@ -3446,8 +3525,9 @@ function dmToggleSavedLoot(id) {
 function dmCopyLoot() {
   if (!_dmLastLoot) return;
   const lines = [];
+  const lbl = _dmLastLoot.label || 'Pile';
   _dmLastLoot.result.forEach((p, i) => {
-    lines.push(`Pile ${i + 1} — ${Math.round(p.totalGp).toLocaleString('en-US')} gp`);
+    lines.push(`${lbl} ${i + 1} — ${Math.round(p.totalGp).toLocaleString('en-US')} gp${p.weightLb ? ' · ' + p.weightLb + ' lb' : ''}`);
     (p.items || []).forEach(it => lines.push(`  • ${it.name} (${it.valueGp} gp)`));
     (p.gemsArt || []).forEach(g => lines.push(`  • ${g.desc} (${g.valueGp} gp)`));
     const coins = lootCoinString(p.coins);

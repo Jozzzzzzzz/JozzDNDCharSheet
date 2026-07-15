@@ -168,7 +168,21 @@ function lootGeneratePile(targetGp, comp, theme) {
   const gemTotal = gemsArt.reduce((s, g) => s + g.valueGp, 0);
   const totalGp = Math.round((spentOnItems + gemTotal + coinTotal) * 100) / 100;
 
-  return { targetGp, items, gemsArt, coins, totalGp };
+  // Total weight of the physical loot (items carry weight; coins ~0.02 lb each in 5e).
+  const coinCount = (coins.pp || 0) + (coins.gp || 0) + (coins.sp || 0) + (coins.cp || 0);
+  const itemWeight = items.reduce((s, it) => s + (Number(it.weight) || 0), 0);
+  const weightLb = Math.round((itemWeight + coinCount * 0.02) * 10) / 10;
+
+  // Guarantee a pile is never completely empty: if no items, no gems and no coins landed
+  // (tiny target with a filter that matched nothing), drop in the cheapest eligible item,
+  // or a handful of coins as a last resort.
+  if (!items.length && !gemsArt.length && coinTotal < 0.01) {
+    const cheapest = pool.slice().sort((a, b) => a.valueGp - b.valueGp)[0];
+    if (cheapest) { items.push(cheapest); }
+    else { coins.gp = Math.max(1, Math.round(targetGp)); }
+  }
+
+  return { targetGp, items, gemsArt, coins, totalGp, weightLb };
 }
 
 // Generate N piles for a grand total. Splits the total across piles with a little
