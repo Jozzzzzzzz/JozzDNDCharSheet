@@ -2904,6 +2904,40 @@ const DM_NPC_PLOT = {
 // Quest hooks — a job/lead the party could take ON (optional, on demand).
 const DM_NPC_HOOK = ['needs the party to recover a stolen heirloom, no questions asked','is offering coin to escort them safely out of the city','begs for help finding a missing family member','will pay to have a rival quietly dealt with','hires the party to investigate strange noises beneath their cellar','wants an item retrieved from a place no sane person goes','offers a map in exchange for clearing a nearby ruin','seeks bodyguards for a journey they refuse to explain','knows a secret they\'ll trade for a dangerous favour','warns the party of a threat only they seem to see'];
 
+// Voice / how they sound — the thing DMs most need to improvise a character.
+const DM_NPC_VOICE = ['a low, gravelly rumble','a fast, clipped patter','a slow drawl that tests your patience','a sing-song lilt','a nasal whine','a warm, honeyed tone','a raspy near-whisper','a booming parade-ground bark','a nervous stammer','an overly formal, precise diction','a rough dockside accent','a breathy, secretive murmur','a flat monotone that never changes','a theatrical, over-enunciated flourish'];
+
+// Bond / Ideal / Flaw — the classic D&D trait trio.
+const DM_NPC_BOND = ['would die for their family','is devoted to a mentor long dead','owes everything to the town that took them in','guards a keepsake from a lost love','is sworn to an oath they can never speak of','protects a younger sibling from afar','carries a debt of honour to a stranger','is loyal to a faction above all else'];
+const DM_NPC_IDEAL = ['freedom above all — chains of any kind are intolerable','order and law keep the dark at bay','power is the only thing that lasts','kindness costs nothing and buys everything','the strong should protect the weak','tradition is the spine of the world','change, at any price, beats stagnation','coin is the only honest measure of a person'];
+const DM_NPC_FLAW = ['cannot resist a wager, even a foolish one','trusts far too easily','holds a grudge to the grave','drinks to forget, and forgets too often','is a coward when it truly counts','lies even when the truth would serve','greed overrides good sense','pride blinds them to obvious danger','cannot keep a secret to save their life'];
+
+// A discrete hidden truth the party could uncover.
+const DM_NPC_SECRET = ['is not who they claim to be','is secretly in debt to a crime lord','killed someone years ago and buried it','is a spy for a rival power','carries a disease they hide from everyone','is the heir to a title they abandoned','is being blackmailed','worships a god they publicly denounce','stole the fortune they live on','is dying and telling no one'];
+
+// A tie to another person / faction.
+const DM_NPC_RELATIONSHIP = ['owes money to the local thieves\' guild','is secretly related to a prominent noble','is watched by the town watch','has a rival who wants them ruined','answers quietly to a hidden patron','is estranged from a family that still looks for them','is in love with someone forbidden to them','betrayed a former friend who now seeks revenge'];
+
+// SRD statblock by role — [name, AC, HP, CR, xp]. Used for the quick-stats line and
+// "Drop into Encounter". Falls back to Commoner for unmapped roles.
+const DM_NPC_STATBLOCKS = {
+  Commoner:  { name: 'Commoner', ac: 10, hp: 4, cr: '0', xp: 10 },
+  Guard:     { name: 'Guard', ac: 16, hp: 11, cr: '0.125', xp: 25 },
+  Merchant:  { name: 'Commoner', ac: 10, hp: 4, cr: '0', xp: 10 },
+  Innkeeper: { name: 'Commoner', ac: 10, hp: 4, cr: '0', xp: 10 },
+  Bandit:    { name: 'Bandit', ac: 12, hp: 11, cr: '0.125', xp: 25 },
+  Cultist:   { name: 'Cultist', ac: 12, hp: 9, cr: '0.125', xp: 25 },
+  Noble:     { name: 'Noble', ac: 15, hp: 9, cr: '0.125', xp: 25 },
+  Mage:      { name: 'Mage', ac: 12, hp: 40, cr: '6', xp: 2300 },
+  Priest:    { name: 'Priest', ac: 13, hp: 27, cr: '2', xp: 450 },
+  Spy:       { name: 'Spy', ac: 12, hp: 27, cr: '1', xp: 200 },
+  Assassin:  { name: 'Assassin', ac: 15, hp: 78, cr: '8', xp: 3900 },
+  Gladiator: { name: 'Gladiator', ac: 16, hp: 112, cr: '5', xp: 1800 },
+};
+function dmNpcStatblockFor(role) {
+  return DM_NPC_STATBLOCKS[role] || DM_NPC_STATBLOCKS.Commoner;
+}
+
 function dmPick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 function dmCap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 
@@ -2955,6 +2989,18 @@ function dmGenNpcField(field, ctx) {
     }
     case 'hook':
       return dmCap(`${dmPick(DM_NPC_HOOK)}.`);
+    case 'voice':
+      return dmCap(`${dmPick(DM_NPC_VOICE)}.`);
+    case 'bond':
+      return dmCap(`${dmPick(DM_NPC_BOND)}.`);
+    case 'ideal':
+      return dmCap(`${dmPick(DM_NPC_IDEAL)}.`);
+    case 'flaw':
+      return dmCap(`${dmPick(DM_NPC_FLAW)}.`);
+    case 'secret':
+      return dmCap(`${dmPick(DM_NPC_SECRET)}.`);
+    case 'relationship':
+      return dmCap(`${dmPick(DM_NPC_RELATIONSHIP)}.`);
     default:
       return '';
   }
@@ -2963,6 +3009,12 @@ function dmGenNpcField(field, ctx) {
 const DM_NPC_FIELD_IDS = {
   appearance: 'dmNpcAppearance',
   personality: 'dmNpcPersonality',
+  voice: 'dmNpcVoice',
+  bond: 'dmNpcBond',
+  ideal: 'dmNpcIdeal',
+  flaw: 'dmNpcFlaw',
+  secret: 'dmNpcSecret',
+  relationship: 'dmNpcRelationship',
   occupation: 'dmNpcOccupation',
   plot: 'dmNpcPlot',
   hook: 'dmNpcHook'
@@ -3003,7 +3055,7 @@ function dmGenerateNpc() {
   }
 
   // Fill each detail field only if it's currently empty (don't clobber edits).
-  ['appearance','personality','occupation','plot'].forEach(field => {
+  ['appearance','personality','voice','bond','ideal','flaw','secret','relationship','occupation','plot'].forEach(field => {
     const el = document.getElementById(DM_NPC_FIELD_IDS[field]);
     if (el && !el.value.trim()) el.value = dmGenNpcField(field, ctx);
   });
@@ -3012,12 +3064,40 @@ function dmGenerateNpc() {
   if (hookEl && !hookEl.value.trim() && Math.random() < 0.5) {
     hookEl.value = dmGenNpcField('hook', ctx);
   }
+  dmRenderNpcStatline();
+}
+
+// Show the combat stat line (AC/HP/CR) from the chosen role + the Drop-into-Encounter button.
+function dmRenderNpcStatline() {
+  const wrap = document.getElementById('dmNpcStatline');
+  const text = document.getElementById('dmNpcStatText');
+  if (!wrap || !text) return;
+  const role = document.getElementById('dmNpcRole')?.value || '';
+  if (!role) { wrap.style.display = 'none'; return; }
+  const sb = dmNpcStatblockFor(role);
+  text.textContent = `Stats (${sb.name}): AC ${sb.ac} · HP ${sb.hp} · CR ${sb.cr}`;
+  wrap.style.display = 'flex';
+}
+
+// Drop the current NPC into the encounter builder as a combatant using its role statblock.
+function dmDropNpcToEncounter() {
+  const role = document.getElementById('dmNpcRole')?.value || 'Commoner';
+  const name = (document.getElementById('dmNpcName')?.value || '').trim() || 'NPC';
+  const sb = dmNpcStatblockFor(role);
+  if (!Array.isArray(dmCombatants)) return;
+  dmCombatants.push({
+    id: Date.now(), name: `${name} (${sb.name})`, maxHp: sb.hp, hp: sb.hp, ac: sb.ac,
+    initiative: 0, isMonster: true, xp: sb.xp || 0, cr: sb.cr,
+  });
+  if (typeof dmRenderCombatants === 'function') dmRenderCombatants();
+  if (typeof dmUpdateDifficultyMeter === 'function') dmUpdateDifficultyMeter();
+  dmToast(`${name} added to the encounter.`, 'success');
 }
 
 // Reroll All: clear every field and build a completely fresh NPC.
 function dmRerollNpc() {
   dmCancelEditNpc(); // drop any in-progress edit
-  ['dmNpcName','dmNpcNotes','dmNpcAppearance','dmNpcPersonality','dmNpcOccupation','dmNpcPlot','dmNpcHook']
+  ['dmNpcName','dmNpcNotes','dmNpcAppearance','dmNpcPersonality','dmNpcVoice','dmNpcBond','dmNpcIdeal','dmNpcFlaw','dmNpcSecret','dmNpcRelationship','dmNpcOccupation','dmNpcPlot','dmNpcHook']
     .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   ['dmNpcRace','dmNpcRole','dmNpcAlignment']
     .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
@@ -3245,6 +3325,12 @@ function dmReadNpcForm() {
     wealth: v('dmNpcWealth'),
     appearance: v('dmNpcAppearance'),
     personality: v('dmNpcPersonality'),
+    voice: v('dmNpcVoice'),
+    bond: v('dmNpcBond'),
+    ideal: v('dmNpcIdeal'),
+    flaw: v('dmNpcFlaw'),
+    secret: v('dmNpcSecret'),
+    relationship: v('dmNpcRelationship'),
     occupation: v('dmNpcOccupation'),
     plot: v('dmNpcPlot'),
     hook: v('dmNpcHook'),
@@ -3283,7 +3369,10 @@ function dmEditNpc(id) {
   set('dmNpcRace', npc.race); set('dmNpcRole', npc.role); set('dmNpcAlignment', npc.alignment);
   set('dmNpcWealth', npc.wealth || 'Random');
   set('dmNpcAppearance', npc.appearance); set('dmNpcPersonality', npc.personality);
+  set('dmNpcVoice', npc.voice); set('dmNpcBond', npc.bond); set('dmNpcIdeal', npc.ideal);
+  set('dmNpcFlaw', npc.flaw); set('dmNpcSecret', npc.secret); set('dmNpcRelationship', npc.relationship);
   set('dmNpcOccupation', npc.occupation); set('dmNpcPlot', npc.plot);
+  dmRenderNpcStatline();
   set('dmNpcHook', npc.hook); set('dmNpcNotes', npc.notes);
 
   const lootEl = document.getElementById('dmNpcLootResult');
@@ -3310,10 +3399,11 @@ function dmCancelEditNpc() {
 // Clear the form and reset edit state + button labels.
 function dmResetNpcForm() {
   _dmEditingNpcId = null;
-  ['dmNpcName','dmNpcNotes','dmNpcAppearance','dmNpcPersonality','dmNpcOccupation','dmNpcPlot','dmNpcHook']
+  ['dmNpcName','dmNpcNotes','dmNpcAppearance','dmNpcPersonality','dmNpcVoice','dmNpcBond','dmNpcIdeal','dmNpcFlaw','dmNpcSecret','dmNpcRelationship','dmNpcOccupation','dmNpcPlot','dmNpcHook']
     .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   ['dmNpcRace','dmNpcRole','dmNpcAlignment']
     .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const sl = document.getElementById('dmNpcStatline'); if (sl) sl.style.display = 'none';
   const wealthEl = document.getElementById('dmNpcWealth');
   if (wealthEl) wealthEl.value = 'Random';
   const lootEl = document.getElementById('dmNpcLootResult');
@@ -3333,16 +3423,32 @@ function dmGetSavedNpcs() {
 function dmRenderNpcList() {
   const list = document.getElementById('dmNpcList');
   if (!list) return;
-  const npcs = dmGetSavedNpcs();
+  let npcs = dmGetSavedNpcs();
   if (!npcs.length) { list.innerHTML = '<p class="dm-empty-state">No saved NPCs yet.</p>'; return; }
+
+  // Search filter (name + all text fields), then pinned float to the top.
+  const q = (document.getElementById('dmNpcSearch')?.value || '').toLowerCase().trim();
+  if (q) {
+    npcs = npcs.filter(n => [n.name, n.race, n.role, n.alignment, n.appearance, n.personality, n.voice, n.bond, n.ideal, n.flaw, n.secret, n.relationship, n.occupation, n.plot, n.hook, n.notes]
+      .filter(Boolean).join(' ').toLowerCase().includes(q));
+  }
+  npcs = npcs.slice().sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+  if (!npcs.length) { list.innerHTML = '<p class="dm-empty-state">No NPCs match your search.</p>'; return; }
+
   const detail = (label, val) => val ? `<span class="dm-npc-notes"><strong>${label}:</strong> ${escapeHtml(val)}</span>` : '';
   list.innerHTML = npcs.map(n => `
-    <div class="dm-npc-row">
+    <div class="dm-npc-row${n.pinned ? ' pinned' : ''}">
       <div class="dm-npc-info">
-        <span class="dm-npc-name">${escapeHtml(n.name)}</span>
+        <span class="dm-npc-name">${n.pinned ? '★ ' : ''}${escapeHtml(n.name)}</span>
         <span class="dm-npc-meta">${[n.race, n.role, n.alignment, (n.wealth && n.wealth !== 'Random') ? n.wealth : ''].filter(Boolean).join(' · ')}</span>
         ${detail('Appearance', n.appearance)}
         ${detail('Personality', n.personality)}
+        ${detail('Voice', n.voice)}
+        ${detail('Bond', n.bond)}
+        ${detail('Ideal', n.ideal)}
+        ${detail('Flaw', n.flaw)}
+        ${detail('Secret', n.secret)}
+        ${detail('Relationship', n.relationship)}
         ${detail('Occupation', n.occupation)}
         ${detail('Plot', n.plot)}
         ${detail('Hook', n.hook)}
@@ -3350,12 +3456,62 @@ function dmRenderNpcList() {
         ${n.loot ? `<span class="dm-npc-loot">Loot: ${escapeHtml(n.loot)}</span>` : ''}
       </div>
       <div class="dm-npc-actions">
+        <button class="dm-icon-btn dm-npc-pin${n.pinned ? ' pinned' : ''}" onclick="dmTogglePinNpc(${n.id})" title="${n.pinned ? 'Unpin' : 'Pin to top'}">${n.pinned ? '★' : '☆'}</button>
+        <button class="dm-icon-btn" onclick="dmCopyNpcById(${n.id})" title="Copy">Copy</button>
         <button class="dm-icon-btn" onclick="dmEditNpc(${n.id})" title="Edit">Edit</button>
         <button class="dm-icon-btn dm-remove-btn" onclick="dmDeleteNpc(${n.id})" title="Remove">✕</button>
       </div>
     </div>
   `).join('');
 }
+
+function dmTogglePinNpc(id) {
+  const saved = dmGetSavedNpcs();
+  const n = saved.find(x => x.id === id);
+  if (!n) return;
+  n.pinned = !n.pinned;
+  try { localStorage.setItem('dndDmNpcs', JSON.stringify(saved)); } catch (e) {}
+  dmRenderNpcList();
+}
+
+// Build a plain-text sheet for an NPC object.
+function dmNpcToText(n) {
+  const line = (label, val) => val ? `${label}: ${val}` : null;
+  return [
+    n.name || 'Unnamed NPC',
+    [n.race, n.role, n.alignment, (n.wealth && n.wealth !== 'Random') ? n.wealth : ''].filter(Boolean).join(' · '),
+    '',
+    line('Appearance', n.appearance),
+    line('Personality', n.personality),
+    line('Voice', n.voice),
+    line('Bond', n.bond),
+    line('Ideal', n.ideal),
+    line('Flaw', n.flaw),
+    line('Secret', n.secret),
+    line('Relationship', n.relationship),
+    line('Occupation', n.occupation),
+    line('Plot', n.plot),
+    line('Hook', n.hook),
+    line('Loot', n.loot),
+    line('Notes', n.notes),
+  ].filter(v => v !== null).join('\n');
+}
+function dmCopyText(text, label) {
+  const done = () => dmToast((label || 'Copied') + '.', 'success');
+  const fail = () => dmModal({ title: label || 'Copy', message: text, confirmText: 'Close' });
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done).catch(fail);
+  else fail();
+}
+function dmCopyNpc() { dmCopyText(dmNpcToText(dmReadNpcForm()), 'NPC copied'); }
+function dmCopyNpcById(id) {
+  const n = dmGetSavedNpcs().find(x => x.id === id);
+  if (n) dmCopyText(dmNpcToText(n), 'NPC copied');
+}
+window.dmTogglePinNpc = dmTogglePinNpc;
+window.dmCopyNpc = dmCopyNpc;
+window.dmCopyNpcById = dmCopyNpcById;
+window.dmDropNpcToEncounter = dmDropNpcToEncounter;
+window.dmRenderNpcStatline = dmRenderNpcStatline;
 
 function dmDeleteNpc(id) {
   if (_dmEditingNpcId === id) dmResetNpcForm();

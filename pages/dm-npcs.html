@@ -44,7 +44,7 @@
         </div>
         <div class="dm-field-row">
           <label>Role / Class</label>
-          <select id="dmNpcRole">
+          <select id="dmNpcRole" onchange="dmRenderNpcStatline()">
             <option value="">Any</option>
             <option value="Commoner">Commoner</option>
             <option value="Guard">Guard</option>
@@ -103,11 +103,58 @@
           </div>
         </div>
         <div class="dm-field-row">
+          <label>Voice</label>
+          <div class="dm-name-row">
+            <input type="text" id="dmNpcVoice" placeholder="How they sound..." maxlength="120">
+            <button class="dm-action-btn dm-reroll-btn" onclick="dmRerollField('voice')" title="Reroll voice">Reroll</button>
+          </div>
+        </div>
+        <div class="dm-field-row">
+          <label>Bond</label>
+          <div class="dm-name-row">
+            <input type="text" id="dmNpcBond" placeholder="What they're devoted to..." maxlength="160">
+            <button class="dm-action-btn dm-reroll-btn" onclick="dmRerollField('bond')" title="Reroll bond">Reroll</button>
+          </div>
+        </div>
+        <div class="dm-field-row">
+          <label>Ideal</label>
+          <div class="dm-name-row">
+            <input type="text" id="dmNpcIdeal" placeholder="What they believe..." maxlength="160">
+            <button class="dm-action-btn dm-reroll-btn" onclick="dmRerollField('ideal')" title="Reroll ideal">Reroll</button>
+          </div>
+        </div>
+        <div class="dm-field-row">
+          <label>Flaw</label>
+          <div class="dm-name-row">
+            <input type="text" id="dmNpcFlaw" placeholder="Their weakness..." maxlength="160">
+            <button class="dm-action-btn dm-reroll-btn" onclick="dmRerollField('flaw')" title="Reroll flaw">Reroll</button>
+          </div>
+        </div>
+        <div class="dm-field-row">
+          <label>Secret <span style="font-size:0.78em;opacity:0.5;font-weight:400;">— for you, the DM</span></label>
+          <div class="dm-name-row">
+            <input type="text" id="dmNpcSecret" placeholder="A hidden truth..." maxlength="200">
+            <button class="dm-action-btn dm-reroll-btn" onclick="dmRerollField('secret')" title="Reroll secret">Reroll</button>
+          </div>
+        </div>
+        <div class="dm-field-row">
+          <label>Relationship</label>
+          <div class="dm-name-row">
+            <input type="text" id="dmNpcRelationship" placeholder="Tie to another person / faction..." maxlength="200">
+            <button class="dm-action-btn dm-reroll-btn" onclick="dmRerollField('relationship')" title="Reroll relationship">Reroll</button>
+          </div>
+        </div>
+        <div class="dm-field-row">
           <label>Occupation</label>
           <div class="dm-name-row">
             <input type="text" id="dmNpcOccupation" placeholder="What they do..." maxlength="160">
             <button class="dm-action-btn dm-reroll-btn" onclick="dmRerollField('occupation')" title="Reroll occupation">Reroll</button>
           </div>
+        </div>
+        <!-- Combat stat line (from role) + drop into encounter -->
+        <div class="dm-npc-statline" id="dmNpcStatline" style="display:none;">
+          <span id="dmNpcStatText"></span>
+          <button class="dm-action-btn" onclick="dmDropNpcToEncounter()" title="Add this NPC to the encounter builder as a combatant">+ Encounter</button>
         </div>
         <div class="dm-field-row">
           <label>Plot / Situation</label>
@@ -137,6 +184,7 @@
 
         <div class="dm-name-row" style="margin-top:12px;">
           <button class="dm-action-btn dm-save-btn" onclick="dmSaveNpc()" id="dmNpcSaveBtn">Save NPC</button>
+          <button class="dm-action-btn" onclick="dmCopyNpc()" title="Copy this NPC as text">Copy</button>
           <button class="dm-action-btn" onclick="dmCancelEditNpc()" id="dmNpcCancelBtn" style="display:none;">Cancel Edit</button>
         </div>
       </div>
@@ -148,6 +196,7 @@
         <h3>Saved NPCs</h3>
         <button class="dm-action-btn" onclick="dmClearAllNpcs()">Clear All</button>
       </div>
+      <input type="text" id="dmNpcSearch" class="dm-npc-search" placeholder="Search saved NPCs…" oninput="dmRenderNpcList()" autocomplete="off">
       <div id="dmNpcList" class="dm-npc-list">
         <p class="dm-empty-state">No saved NPCs yet.</p>
       </div>

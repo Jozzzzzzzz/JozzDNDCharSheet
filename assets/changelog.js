@@ -19,6 +19,7 @@ const CHANGELOG = [
       'Every item in the catalogue now has a gold value (real prices where known, otherwise DMG rarity-based pricing) — shown as a price in the item picker and used to build loot',
       'Loot honours your item source picker (SRD-only or third-party books), can be saved for reuse, and copied to the clipboard',
       'NPC pockets now use the real loot generator too — an NPC\'s wealth tier produces actual items, gems and coins instead of a flat list',
+      'NPC maker overhaul: generate a Voice, Bond, Ideal, Flaw, a hidden Secret and a Relationship hook (each rerollable); a combat stat line (AC/HP/CR by role) with a one-tap "+ Encounter" to drop the NPC into the encounter builder; plus searchable, pinnable saved NPCs and a Copy button to grab the whole NPC as text',
     ],
     fixes: [],
   },

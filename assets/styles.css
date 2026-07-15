@@ -9044,6 +9044,32 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 .dm-search-bar input[type="text"] { flex: 1; min-width: 160px; }
 
 /* ── Monsters ── */
+/* NPC overhaul additions */
+.dm-npc-statline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 8px 0 2px;
+  padding: 7px 11px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  font-size: 0.85rem;
+  color: var(--accent-text);
+}
+.dm-npc-search {
+  width: 100%;
+  margin-bottom: 8px;
+  box-sizing: border-box;
+}
+.dm-npc-row.pinned {
+  background: rgba(224, 178, 60, 0.08);
+  border-color: rgba(224, 178, 60, 0.35);
+}
+.dm-npc-pin { color: rgba(255,255,255,0.4); }
+.dm-npc-pin.pinned { color: #e0b23c; }
+
 /* Loot generator */
 .dm-loot-result { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
 .dm-loot-summary {
