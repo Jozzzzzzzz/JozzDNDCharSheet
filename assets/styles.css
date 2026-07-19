@@ -6146,11 +6146,11 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   }
 
   /* Column widths — desktop (no Lvl column) */
-  .pcol-name    { width: 26%; }
-  .pcol-cast    { width: 20%; }
-  .pcol-range   { width: 16%; }
-  .pcol-damage  { width: 29%; }
-  .pcol-actions { width: 9%; }
+  .pcol-name    { width: 25%; }
+  .pcol-cast    { width: 19%; }
+  .pcol-range   { width: 15%; }
+  .pcol-damage  { width: 27%; }
+  .pcol-actions { width: 14%; }
 
   .prepared-spells-table thead tr {
     background: var(--accent-muted);
@@ -6215,6 +6215,15 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 
   .prep-actions {
     text-align: right;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    align-items: stretch;
+  }
+  .prep-actions .spell-item-btn {
+    width: 100%;
+    text-align: center;
+    white-space: nowrap;
   }
 
   .spell-search-bar {
@@ -6361,18 +6370,10 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
     .pcol-damage  { width: 33%; }
     .pcol-actions { width: 19%; }
 
-    /* Stack Cast + View so both always fit in the narrow actions cell */
-    .prep-actions {
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-      align-items: stretch;
-    }
+    /* Actions stack via the base .prep-actions rule; just tighten buttons here */
     .prep-actions .spell-item-btn {
       padding: 3px 4px;
       font-size: 0.72em;
-      width: 100%;
-      text-align: center;
     }
   }
 
