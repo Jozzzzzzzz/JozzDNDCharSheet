@@ -103,12 +103,22 @@ let spellDatabase = {};
 
 // Convert a spell name to an Open5e URL slug
 function spellNameToOpen5eSlug(name) {
-  return name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  return name.toLowerCase().replace(/['’]/g, '').replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 }
 
-// Generate an Open5e web link for a spell
+// Generate an Open5e web link for a spell.
+// Open5e URLs require a SOURCE-PREFIXED slug (e.g. srd-2024_shatter). A bare slug
+// (open5e.com/spells/shatter) now 302-redirects to a "choose your source" page
+// instead of the spell, so we always emit the current SRD (srd-2024_) prefix as
+// the sensible default. If the caller passes an already-prefixed key
+// (contains "_"), it's used verbatim. tools/fix-spell-keys.js sets the exact
+// per-source key on every catalogue spell; this helper is the runtime fallback
+// for user-added spells / spells with no stored wikiLink.
+const OPEN5E_DEFAULT_SPELL_PREFIX = 'srd-2024';
 function open5eSpellLink(slugOrName) {
-  const slug = slugOrName.includes(' ') ? spellNameToOpen5eSlug(slugOrName) : slugOrName;
+  let slug = slugOrName.includes(' ') ? spellNameToOpen5eSlug(slugOrName) : slugOrName;
+  // Already a full source-prefixed key — use as-is.
+  if (!slug.includes('_')) slug = `${OPEN5E_DEFAULT_SPELL_PREFIX}_${slug}`;
   return `https://open5e.com/spells/${slug}`;
 }
 
@@ -155,12 +165,15 @@ async function enrichSpellDatabaseFromOpen5e() {
         const link = `https://open5e.com/spells/${s.slug}`;
         if (existing) {
           // Enrich existing entry — preserve user-facing fields, upgrade description.
-          // Only upgrade the link if it's still an Open5e link (or blank). Some SRD spells
-          // are returned by the Open5e API but 404 on the website (e.g. Counterspell,
-          // Creation); those were repaired to 5esrd.com by tools/verify-spell-links.js, so
-          // we must NOT overwrite a 5esrd link back to a dead Open5e one.
+          // Do NOT clobber a good link:
+          //  - 5esrd repairs (spells Open5e 404s, fixed by tools/verify-spell-links.js).
+          //  - source-prefixed Open5e keys (e.g. srd_shatter / srd-2024_shatter, fixed by
+          //    tools/fix-spell-keys.js). The v1 API only returns BARE slugs (shatter), and
+          //    open5e.com/spells/<bare> now 302-redirects instead of landing on the spell,
+          //    so overwriting a prefixed key with the bare one re-breaks the link.
           const repairedTo5esrd = existing.wikiLink && /5esrd\.com/i.test(existing.wikiLink);
-          if (!repairedTo5esrd) existing.wikiLink = link;
+          const hasPrefixedKey = existing.wikiLink && /open5e\.com\/spells\/[^\/?#]*_/.test(existing.wikiLink);
+          if (!repairedTo5esrd && !hasPrefixedKey) existing.wikiLink = link;
           existing.open5eSlug = s.slug;
           if (s.desc && s.desc.length > (existing.description || '').length) {
             existing.description = s.desc;

@@ -3395,11 +3395,29 @@ function loadData() {
     // Load spells data
     spellsData = normalizeSpellData(page3Data.spellsData);
 
-    // Migrate any saved spells that still have wikidot links → Open5e
+    // Migrate saved spell links:
+    //  - wikidot links → Open5e (legacy).
+    //  - BARE Open5e slugs (open5e.com/spells/shatter) → source-prefixed key.
+    //    Open5e now 302-redirects bare slugs to a "choose source" page instead of
+    //    the spell, so old imports break. Prefer the exact key from the loaded
+    //    catalogue (spellDatabase) when we have it; else fall back to srd-2024_.
+    //    5esrd links are left alone (deliberate repairs for spells Open5e 404s).
     if (typeof open5eSpellLink === 'function') {
       [...(spellsData.cantrips || []), ...(spellsData.spells || [])].forEach(spell => {
-        if (spell.wikiLink && spell.wikiLink.includes('wikidot.com')) {
+        const link = spell.wikiLink || '';
+        if (link.includes('wikidot.com')) {
           spell.wikiLink = open5eSpellLink(spell.name);
+          return;
+        }
+        // Bare Open5e link (no source prefix "_" in the slug) → repair it.
+        const m = link.match(/open5e\.com\/spells\/([^\/?#]+)/i);
+        if (m && !m[1].includes('_')) {
+          const cat = (typeof spellDatabase === 'object' && spellDatabase) ? spellDatabase[spell.name] : null;
+          if (cat && cat.wikiLink && /open5e\.com\/spells\/[^\/?#]*_/.test(cat.wikiLink)) {
+            spell.wikiLink = cat.wikiLink;
+          } else {
+            spell.wikiLink = open5eSpellLink(spell.name);
+          }
         }
       });
     }

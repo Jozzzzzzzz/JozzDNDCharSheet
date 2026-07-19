@@ -16,3 +16,4 @@ Thumbs.db
 
 # Transient tool caches
 tools/.link-cache.json
+tools/.spell-key-cache.json
