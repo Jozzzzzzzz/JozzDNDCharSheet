@@ -1538,24 +1538,9 @@ function createSpellItem(spell, type, index) {
   // Prepend star to info
   spellInfo.prepend(star);
 
-  // Favourited spells get a one-tap Cast button (spends a slot / engages concentration),
-  // mirroring the prepared-spells table so you can cast straight from Favourites.
-  const spellLvl = parseInt(spell.level, 10) || 0;
-  const needsConc = spellNeedsConcentration(spell);
-  const nameArg = jsStr(spell.name);
-  let favCastBtn = '';
-  if (isFav) {
-    if (spellLvl > 0) {
-      favCastBtn = `<button class="spell-item-btn spell-cast-btn" onclick="castPreparedSpell(${spellLvl}, ${nameArg}, ${needsConc})" title="Spend a level ${spellLvl}+ spell slot${needsConc ? ' and start concentrating' : ''}">Cast</button>`;
-    } else if (needsConc) {
-      favCastBtn = `<button class="spell-item-btn spell-cast-btn" onclick="castCantripSpell(${nameArg}, true)" title="Start concentrating">Cast</button>`;
-    }
-  }
-
   const actions = document.createElement('div');
   actions.className = 'spell-item-actions';
   actions.innerHTML = `
-    ${favCastBtn}
     <button class="spell-item-btn" onclick="showSpellDetails('${actionType}', ${indexToUse})">View</button>
     <button class="spell-item-btn" onclick="showSpellForm('${actionType}', ${indexToUse})">Edit</button>
     <button class="spell-item-btn" onclick="toggleSpellPrepared('${actionType}', ${indexToUse})">
@@ -1837,45 +1822,11 @@ function jsStr(s) {
     .replace(/</g, '\\x3C') + "'";
 }
 
-// Cast a levelled spell from the sheet (prepared table or favourites). Spends the
-// lowest sufficient slot. `spellName`/`concentration` are optional — when a
-// concentration spell is cast, the concentration tracker is engaged (swapping any
-// existing concentration after a confirm).
-function castPreparedSpell(spellLevel, spellName, concentration) {
-  const lvl = parseInt(spellLevel, 10) || 0;
-  if (lvl <= 0) return; // cantrips don't use slots
-
-  // Candidate slots that (a) match or exceed the spell level and (b) have room.
-  const candidates = manualSpellSlots
-    .map(slot => ({ slot, lvl: slotLevelFromName(slot.name), free: (slot.maxValue || 0) - (manualSpellSlotsUsed[slot.id] || 0) }))
-    .filter(c => c.lvl >= lvl && c.free > 0)
-    .sort((a, b) => a.lvl - b.lvl); // lowest sufficient level first (don't waste high slots)
-
-  if (candidates.length === 0) {
-    appToast(`No level ${lvl}+ spell slots available.`, 'error');
-    return;
-  }
-
-  const chosen = candidates[0];
-  stepSpellSlot(chosen.slot.id, 1);
-  updateSpellSlots();
-  const upcast = chosen.lvl > lvl ? ` (upcast from a level ${chosen.lvl} slot)` : '';
-  appToast(`Spell cast — spent a ${chosen.slot.name} slot${upcast}.`, 'success');
-
-  // Engage concentration if this spell requires it.
-  if (concentration && spellName && typeof castWithConcentration === 'function') {
-    castWithConcentration(spellName);
-  }
-}
-
-// Cast a cantrip from the sheet. Cantrips spend no slot, but a concentration cantrip
-// (e.g. some subclass/feat cantrips) still engages the concentration tracker.
-function castCantripSpell(spellName, concentration) {
-  if (concentration && spellName && typeof castWithConcentration === 'function') {
-    castWithConcentration(spellName);
-    appToast(`Concentrating on ${spellName}.`, 'success');
-  }
-}
+// NOTE: The one-tap "Cast" buttons (prepared table + favourites) were removed
+// (v1.20) — they caused mobile layout drama and the flow needs a rethink. Slot
+// spending is done manually via the +/− steppers in the Spell Slots panel.
+// `castWithConcentration` (inventory.js) is still used by the concentration
+// tracker directly.
 
 // True when a spell object requires concentration. Handles the normalized boolean
 // as well as older string forms ("yes"/"concentration").
@@ -1956,18 +1907,6 @@ function renderPreparedSpells() {
         const effectText = getSpellEffect(spell);
         const damageDisplay = effectText && effectText !== '—' ? effectText : '<span class="prep-na">—</span>';
 
-        const spellLevel = parseInt(spell.level, 10) || 0;
-        const needsConc = spellNeedsConcentration(spell);
-        const nameArg = jsStr(spell.name);
-        // Cantrips are at-will (no slot); levelled spells get a one-tap Cast button.
-        // A concentration cantrip still gets a Cast button to engage the tracker.
-        let castBtn = '';
-        if (spellLevel > 0) {
-          castBtn = `<button class="spell-item-btn spell-cast-btn" onclick="castPreparedSpell(${spellLevel}, ${nameArg}, ${needsConc})" title="Spend a level ${spellLevel}+ spell slot${needsConc ? ' and start concentrating' : ''}">Cast</button>`;
-        } else if (needsConc) {
-          castBtn = `<button class="spell-item-btn spell-cast-btn" onclick="castCantripSpell(${nameArg}, true)" title="Start concentrating">Cast</button>`;
-        }
-
         const tr = document.createElement('tr');
         tr.className = 'prepared-spells-row';
         tr.innerHTML = `
@@ -1976,10 +1915,7 @@ function renderPreparedSpells() {
           <td class="prep-range">${spell.range || '—'}</td>
           <td class="prep-damage">${damageDisplay}</td>
           <td class="prep-actions">
-            <div class="prep-actions-inner">
-              ${castBtn}
-              <button class="spell-item-btn" onclick="showSpellDetails('${actionType}', ${index})">View</button>
-            </div>
+            <button class="spell-item-btn" onclick="showSpellDetails('${actionType}', ${index})">View</button>
           </td>
         `;
         tbody.appendChild(tr);

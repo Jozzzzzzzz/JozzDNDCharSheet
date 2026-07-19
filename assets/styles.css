@@ -6071,17 +6071,6 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
     background: #444;
   }
 
-  /* One-tap Cast button in the prepared-spells table (#34) — accent-tinted */
-  .spell-cast-btn {
-    background: var(--accent-muted);
-    color: var(--accent-contrast);
-    border-color: var(--accent-text);
-    font-weight: 700;
-  }
-  .spell-cast-btn:hover {
-    background: var(--accent);
-  }
-
   .spell-prepared {
     color: var(--condition-green) !important;
     font-weight: bold;
@@ -6155,11 +6144,11 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   }
 
   /* Column widths — desktop (no Lvl column) */
-  .pcol-name    { width: 25%; }
-  .pcol-cast    { width: 19%; }
-  .pcol-range   { width: 15%; }
-  .pcol-damage  { width: 27%; }
-  .pcol-actions { width: 14%; }
+  .pcol-name    { width: 27%; }
+  .pcol-cast    { width: 20%; }
+  .pcol-range   { width: 16%; }
+  .pcol-damage  { width: 28%; }
+  .pcol-actions { width: 9%; }
 
   .prepared-spells-table thead tr {
     background: var(--accent-muted);
@@ -6223,20 +6212,11 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   }
 
   .prep-actions {
-    text-align: right;
-  }
-  /* Inner wrapper flexes (a <td> can't reliably be a flex container on iOS) */
-  .prep-actions-inner {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    align-items: stretch;
+    text-align: center;
   }
   .prep-actions .spell-item-btn {
-    width: 100%;
-    text-align: center;
     white-space: nowrap;
-    padding: 3px 4px;
+    padding: 3px 6px;
   }
 
   .spell-search-bar {
@@ -6379,14 +6359,13 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
     .prepared-spells-table th:nth-child(3) {
       display: none;
     }
-    .pcol-name    { width: 48%; }
-    .pcol-damage  { width: 33%; }
-    .pcol-actions { width: 19%; }
+    .pcol-name    { width: 55%; }
+    .pcol-damage  { width: 30%; }
+    .pcol-actions { width: 15%; }
 
-    /* Actions stack via the base .prep-actions rule; just tighten buttons here */
     .prep-actions .spell-item-btn {
-      padding: 3px 4px;
-      font-size: 0.72em;
+      padding: 3px 5px;
+      font-size: 0.75em;
     }
   }
 
