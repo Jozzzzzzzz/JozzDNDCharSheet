@@ -6215,6 +6215,9 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 
   .prep-actions {
     text-align: right;
+  }
+  /* Inner wrapper flexes (a <td> can't reliably be a flex container on iOS) */
+  .prep-actions-inner {
     display: flex;
     flex-direction: column;
     gap: 3px;
@@ -6224,6 +6227,7 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
     width: 100%;
     text-align: center;
     white-space: nowrap;
+    padding: 3px 4px;
   }
 
   .spell-search-bar {

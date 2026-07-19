@@ -1963,8 +1963,10 @@ function renderPreparedSpells() {
           <td class="prep-range">${spell.range || '—'}</td>
           <td class="prep-damage">${damageDisplay}</td>
           <td class="prep-actions">
-            ${castBtn}
-            <button class="spell-item-btn" onclick="showSpellDetails('${actionType}', ${index})">View</button>
+            <div class="prep-actions-inner">
+              ${castBtn}
+              <button class="spell-item-btn" onclick="showSpellDetails('${actionType}', ${index})">View</button>
+            </div>
           </td>
         `;
         tbody.appendChild(tr);
