@@ -5726,7 +5726,10 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 
   .spells-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    /* min 300px so a panel only shares a row when there's real room — at 240px
+       the "180px label + input" info rows got crushed (e.g. 3-up on landscape
+       phones squished each input to a sliver). */
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 1rem;
     margin-bottom: 0;
     align-items: start;
@@ -5772,7 +5775,9 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
 
   .spell-info-row {
     display: grid;
-    grid-template-columns: 180px 1fr;
+    /* Label sizes to content (capped) so the input keeps a usable width even in
+       a narrow panel; input can't be squished below 90px. */
+    grid-template-columns: minmax(0, max-content) minmax(90px, 1fr);
     align-items: center;
     gap: 0.75rem;
   }
@@ -5780,6 +5785,7 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   .spell-info-label {
     font-weight: bold;
     color: var(--accent-text);
+    min-width: 0;
   }
 
   .spell-level-row {
