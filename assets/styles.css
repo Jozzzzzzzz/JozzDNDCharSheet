@@ -8470,9 +8470,47 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
       font-size: 0.9rem !important;
     }
 
+    /* Spell slot / custom resource rows wrap on mobile so nothing (esp. the
+       delete ✕) is clipped and long names aren't truncated. Label sits on the
+       first line full-width; stepper + actions flow onto a second line. */
+    .spell-level-row {
+      flex-wrap: wrap;
+      row-gap: 8px;
+      padding: 8px 6px !important;
+    }
+
+    .spell-level-row .spell-level-label {
+      flex: 1 1 100%;
+      white-space: normal;      /* allow the full name to show */
+      overflow: visible;
+      text-overflow: clip;
+      order: 0;
+    }
+
+    /* The drag handle stays pinned to the top-left of the wrapped row. */
+    .spell-level-row .spell-slot-drag-handle {
+      order: -1;
+    }
+
     .spell-stepper-controls {
-      width: 100%;
       justify-content: flex-start;
+      order: 1;
+    }
+
+    /* Custom-resource max input sits with the controls line, not the label. */
+    .spell-level-row > .spell-slot-input {
+      order: 1;
+    }
+
+    .spell-slot-row-actions,
+    .spell-custom-row-actions {
+      margin-left: auto;   /* push edit/delete to the right of the controls line */
+      order: 2;
+    }
+
+    .spell-level-row > .spell-slot-delete-btn {
+      order: 2;
+      margin-left: auto;
     }
 
     .spell-stepper-btn {
