@@ -6138,8 +6138,17 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
   }
 
   /* Prepared spells table */
+  /* Container must be allowed to shrink inside the flex .section, or the
+     fixed-layout table can't honor its column %s and the last column clips. */
+  .spells-list-container {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
   .prepared-spells-table {
     width: 100%;
+    max-width: 100%;
     border-collapse: collapse;
     font-size: 0.82em;
     table-layout: fixed;
