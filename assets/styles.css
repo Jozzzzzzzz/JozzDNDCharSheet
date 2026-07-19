@@ -6357,9 +6357,23 @@ input[type="range"].settings-text-slider::-moz-range-thumb {
     .prepared-spells-table th:nth-child(3) {
       display: none;
     }
-    .pcol-name    { width: 52%; }
+    .pcol-name    { width: 48%; }
     .pcol-damage  { width: 33%; }
-    .pcol-actions { width: 15%; }
+    .pcol-actions { width: 19%; }
+
+    /* Stack Cast + View so both always fit in the narrow actions cell */
+    .prep-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      align-items: stretch;
+    }
+    .prep-actions .spell-item-btn {
+      padding: 3px 4px;
+      font-size: 0.72em;
+      width: 100%;
+      text-align: center;
+    }
   }
 
   /* Extra small screens - ensure nothing gets squished */
