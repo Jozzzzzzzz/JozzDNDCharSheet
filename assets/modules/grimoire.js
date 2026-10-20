@@ -11,12 +11,18 @@
 
   const ROUTE_BY_PAGE = { home: 'home', settings: 'settings', page1: 'stats', page2: 'background', page3: 'spells', page4: 'inventory', page6: 'notes' };
 
-  // ---- the old accent/background switching is retired: the grimoire palette is fixed ----
-  function lockTheme() {
+  // ---- atmosphere: vignette, film grain and drifting embers (fixed layers behind the book) ----
+  function injectFx() {
     try {
-      const s = document.getElementById('bg-pseudo-style'); if (s) s.remove();
-      document.documentElement.classList.remove('has-bg-image');
-      document.documentElement.removeAttribute('data-theme');
+      document.documentElement.dataset.skin = 'grimoire';
+      if (document.querySelector('.gr-fx')) return;
+      const fx = document.createElement('div'); fx.className = 'gr-fx'; fx.setAttribute('aria-hidden', 'true');
+      const embers = Array.from({ length: 16 }, (_, i) => {
+        const x = (i * 6.1 + (i % 3) * 3.3) % 100; const d = 11 + (i * 1.7) % 9; const dl = -((i * 2.3) % d); const s = 2 + (i % 4);
+        return `<i style="--x:${x.toFixed(1)}%;--d:${d.toFixed(1)}s;--delay:${dl.toFixed(1)}s;--s:${s}px;--dx:${(i % 2 ? 1 : -1) * (24 + (i * 7) % 46)}px"></i>`;
+      }).join('');
+      fx.innerHTML = '<div class="gr-vignette"></div><div class="gr-grain"></div><div class="gr-embers">' + embers + '</div>';
+      document.body.insertBefore(fx, document.body.firstChild);
     } catch (e) { /* cosmetic only */ }
   }
 
@@ -26,11 +32,12 @@
     return (p && ROUTE_BY_PAGE[p.id]) || document.body.dataset.route || 'home';
   }
 
-  function animateEntrance(pageEl) {
+  function animateEntrance(pageEl, turn) {
     if (!pageEl || reduceMotion()) return;
+    if (turn) { pageEl.classList.remove('gr-turning'); void pageEl.offsetWidth; pageEl.classList.add('gr-turning'); setTimeout(() => pageEl.classList.remove('gr-turning'), 720); }
     const cards = $$('.section, .home-card, .gr-card, .gr-rise-in', pageEl).filter(el => el.offsetParent !== null).slice(0, 14);
-    cards.forEach((el, i) => { el.style.setProperty('--i', String(i)); el.classList.remove('gr-rise'); void el.offsetWidth; el.classList.add('gr-rise'); });
-    setTimeout(() => cards.forEach(el => { el.classList.remove('gr-rise'); el.style.removeProperty('--i'); }), 900);
+    cards.forEach((el, i) => { el.style.setProperty('--i', String(i + (turn ? 3 : 0))); el.classList.remove('gr-rise'); void el.offsetWidth; el.classList.add('gr-rise'); });
+    setTimeout(() => cards.forEach(el => { el.classList.remove('gr-rise'); el.style.removeProperty('--i'); }), 1200);
   }
 
   let lastRoute = null;
@@ -41,25 +48,13 @@
     if (route !== lastRoute) {
       lastRoute = route;
       const page = $('.page.active') || $$('.page').find(el => el.style.display === 'block');
-      animateEntrance(page);
+      animateEntrance(page, true);
     }
     syncVitals();
   }
 
-  // ---- sliding navigation highlight ----
-  function placeNavIndicator() {
-    const nav = $('.gr-nav'); const ind = $('.gr-nav-ind');
-    if (!nav || !ind) return;
-    const active = $('.gr-nav .tab.active');
-    if (!active) { nav.classList.remove('has-active'); return; }
-    const nr = nav.getBoundingClientRect(); const ar = active.getBoundingClientRect();
-    if (!ar.width) return;
-    ind.style.setProperty('--x', (ar.left - nr.left) + 'px');
-    ind.style.setProperty('--y', (ar.top - nr.top) + 'px');
-    ind.style.setProperty('--w', ar.width + 'px');
-    ind.style.setProperty('--h', ar.height + 'px');
-    nav.classList.add('has-active');
-  }
+  // ---- navigation: ribbon bookmarks are pure CSS (state comes from .tab.active) ----
+  function placeNavIndicator() { /* kept for API compatibility */ }
 
   // ---- live identity + vitals (read-only view of the sheet's own fields) ----
   const val = id => { const e = document.getElementById(id); return e ? String(e.value || '').trim() : ''; };
@@ -152,7 +147,7 @@
   }
 
   function init() {
-    lockTheme();
+    injectFx();
     ['switchTab', 'showHomePage', 'openSettingsPage', 'loadSelectedCharacter'].forEach(wrapRouteFn);
     document.addEventListener('input', schedule, true);
     document.addEventListener('change', schedule, true);
@@ -162,7 +157,7 @@
     window.addEventListener('online', syncStatus); window.addEventListener('offline', syncStatus);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(placeNavIndicator);
     setInterval(() => { syncVitals(); syncStatus(); placeNavIndicator(); }, 900);
-    setTimeout(onRoute, 120); setTimeout(onRoute, 700); setTimeout(lockTheme, 1500);
+    setTimeout(onRoute, 120); setTimeout(onRoute, 700);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();

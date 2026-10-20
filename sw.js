@@ -25,6 +25,8 @@ const PRECACHE_URLS = [
   'assets/fonts/Inter-normal.woff2',
   'assets/fonts/CrimsonPro-normal.woff2',
   'assets/fonts/CrimsonPro-italic.woff2',
+  'assets/fonts/UnifrakturCook.woff2',
+  'assets/fonts/PirataOne.woff2',
   'assets/data/spells.json',
   'assets/data/items.json',
   'assets/data/monsters.json',
