@@ -125,3 +125,7 @@ html { padding-top: env(safe-area-inset-top, 0px); padding-right: env(safe-area-
   .action-tracker { flex-wrap: wrap; gap: 10px 14px; }
   .action-tracker .new-round-btn { margin-left: 0; }
 }
+
+/* long action descriptions may break anywhere instead of pushing the card past the screen edge */
+.action-card, .actions-list-container { min-width: 0; max-width: 100%; }
+.action-card p, .action-card span, .action-card div { overflow-wrap: anywhere; }
