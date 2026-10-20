@@ -15,7 +15,10 @@ html[data-rail="compact"] { --rail-w: 60px; }
 @media (max-width: 760px), (max-height: 520px) { :root { --rail-w: 60px; } }
 
 /* the page makes room for the rail (the rail itself is fixed) */
-body #pages, body #rollingBanner, body #adminPreviewBanner { margin-left: var(--rail-total); transition: margin-left 280ms cubic-bezier(.22, .8, .24, 1); }
+body #pages, body #rollingBanner, body #adminPreviewBanner {
+  margin-left: var(--rail-total); width: calc(100% - var(--rail-total)); max-width: calc(100% - var(--rail-total)); box-sizing: border-box;   /* the old rules say width:100%, which would overflow by the rail's width */
+  transition: margin-left 280ms cubic-bezier(.22, .8, .24, 1), width 280ms cubic-bezier(.22, .8, .24, 1), max-width 280ms cubic-bezier(.22, .8, .24, 1);
+}
 
 /* ---------- the rail ---------- */
 #chrome-root .gr-rail {
@@ -34,7 +37,7 @@ body #pages, body #rollingBanner, body #adminPreviewBanner { margin-left: var(--
 .gr-rail .gr-rail-bottom { margin-top: auto; }
 
 .gr-rail .gr-rail-btn, .gr-rail .tabs button, .gr-rail .gr-rail-toggle {
-  position: relative; box-sizing: border-box; width: 100%; min-height: 58px; margin: 0; padding: 6px 4px;
+  position: relative; box-sizing: border-box; width: 100%; min-width: 0; max-width: none; flex: none; min-height: 58px; margin: 0; padding: 6px 4px;   /* flex:none / min-width:0 undo the old row-layout sizing */
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
   font-size: .7rem; line-height: 1.1; text-align: center; -webkit-tap-highlight-color: transparent;
 }
