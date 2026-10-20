@@ -119,3 +119,9 @@ html[data-rail="compact"] .gr-rv-bar { grid-column: 1; }
 /* ---------- installed-app mode / notched phones: keep everything clear of the status bar, notch and home bar ---------- */
 html { padding-top: env(safe-area-inset-top, 0px); padding-right: env(safe-area-inset-right, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); box-sizing: border-box; }
 #chrome-root .gr-rail { padding-top: 8px; padding-bottom: 8px; top: env(safe-area-inset-top, 0px); bottom: env(safe-area-inset-bottom, 0px); height: auto; }
+
+/* ---------- narrow screens: rows that were sized for the full width wrap instead of spilling past the edge ---------- */
+@media (max-width: 560px) {
+  .action-tracker { flex-wrap: wrap; gap: 10px 14px; }
+  .action-tracker .new-round-btn { margin-left: 0; }
+}
