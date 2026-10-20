@@ -54,10 +54,10 @@ function manualSave(btn) {
     if (typeof syncToCloud === 'function') syncToCloud();
     if (typeof showSaveToast === 'function') showSaveToast('Save complete', 'success');
     if (btn) {
-      const orig = btn.textContent;
-      btn.textContent = 'Saved!';
+      // CSS (.gr-savebtn.is-saved) shows the "Saved" state; no text swapping so the icon survives
+      btn.classList.add('is-saved');
       btn.disabled = true;
-      setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1500);
+      setTimeout(() => { btn.classList.remove('is-saved'); btn.disabled = false; }, 1500);
     }
   } catch (error) {
     console.error('Save error:', error);

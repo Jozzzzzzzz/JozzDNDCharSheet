@@ -1,0 +1,114 @@
+/* ==========================================================================
+   SIDE RAIL
+   Home, the five sheet tabs, live vitals, Save and Settings live in a rail on the
+   left edge instead of a top bar + tab row, so the page gets the full screen height.
+   This file only ARRANGES the app's existing buttons: their colours, borders,
+   radius and hover feel come from the old styles (your accent colour applies).
+   - Desktop: labelled rail, collapsible to icons (remembered).
+   - Phone / tablet portrait: slim icon rail; the chevron opens a labelled overlay.
+   - Short screens (phone landscape): tighter spacing, rail scrolls if needed.
+   Repo rules: never `transition: all`; respect prefers-reduced-motion.
+   ========================================================================== */
+
+:root { --rail-w: 96px; --rail-total: calc(var(--rail-w) + env(safe-area-inset-left, 0px)); }
+html[data-rail="compact"] { --rail-w: 60px; }
+@media (max-width: 760px) { :root { --rail-w: 60px; } }
+
+/* the page makes room for the rail (the rail itself is fixed) */
+body #pages, body #rollingBanner, body #adminPreviewBanner { margin-left: var(--rail-total); transition: margin-left 280ms cubic-bezier(.22, .8, .24, 1); }
+
+/* ---------- the rail ---------- */
+#chrome-root .gr-rail {
+  position: fixed; z-index: 70; top: 0; left: 0; bottom: 0; width: var(--rail-total); height: 100vh; height: 100dvh;
+  box-sizing: border-box; display: flex; flex-direction: column; align-items: stretch; gap: 10px;
+  padding: calc(env(safe-area-inset-top, 0px) + 8px) 8px calc(env(safe-area-inset-bottom, 0px) + 8px) calc(env(safe-area-inset-left, 0px) + 8px);
+  background: var(--panel-bg); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border-right: 1px solid var(--accent-border); box-shadow: 4px 0 18px rgba(0, 0, 0, .35);
+  overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none;
+  transition: width 280ms cubic-bezier(.22, .8, .24, 1), box-shadow 280ms ease;
+}
+#chrome-root .gr-rail::-webkit-scrollbar { display: none; }
+
+/* groups of the existing buttons, restacked vertically (the old .header-bar / .tabs layout is reset here) */
+.gr-rail .gr-rail-group, .gr-rail .gr-rail-tabs { display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; justify-content: flex-start; gap: 8px; width: auto; margin: 0; padding: 0; border: 0; background: none; box-shadow: none; }
+.gr-rail .gr-rail-bottom { margin-top: auto; }
+
+.gr-rail .gr-rail-btn, .gr-rail .tabs button, .gr-rail .gr-rail-toggle {
+  position: relative; box-sizing: border-box; width: 100%; min-height: 58px; margin: 0; padding: 6px 4px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  font-size: .7rem; line-height: 1.1; text-align: center; -webkit-tap-highlight-color: transparent;
+}
+.gr-rail .gr-i { width: 1.35rem; height: 1.35rem; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.gr-rail .gr-lbl { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* the tab you are on: a short accent bar slides in on the rail's edge (the button itself keeps its original active look) */
+.gr-rail .tabs button.active::before {
+  content: ''; position: absolute; left: calc(-8px - env(safe-area-inset-left, 0px)); top: 18%; bottom: 18%; width: 3px; border-radius: 0 3px 3px 0;
+  background: var(--accent); box-shadow: 0 0 10px var(--accent); animation: gr-bar-in 360ms cubic-bezier(.34, 1.56, .64, 1) both;
+}
+@keyframes gr-bar-in { from { transform: scaleY(.2); opacity: 0; } to { transform: scaleY(1); opacity: 1; } }
+
+/* collapse / expand control */
+.gr-rail .gr-rail-toggle { min-height: 36px; }
+.gr-rail .gr-rail-toggle .gr-i { width: 1.1rem; height: 1.1rem; transition: transform 280ms cubic-bezier(.22, .8, .24, 1); }
+html[data-rail="compact"] .gr-rail .gr-rail-toggle .gr-i, .gr-rail[data-open="true"] .gr-rail-toggle .gr-i { transform: rotate(180deg); }
+html:not([data-rail="compact"]) .gr-rail:not([data-open="true"]) .gr-rail-toggle .gr-i { transform: rotate(0deg); }
+@media (max-width: 760px) { .gr-rail:not([data-open="true"]) .gr-rail-toggle .gr-i { transform: rotate(0deg); } }
+
+/* save feedback (manualSave adds .is-saved) */
+.gr-rail .gr-savebtn .gr-done, .gr-rail .gr-savebtn .gr-lbl-done { display: none; }
+.gr-rail .gr-savebtn.is-saved { color: var(--condition-green, #6bff8c) !important; border-color: var(--condition-green, #6bff8c); }
+.gr-rail .gr-savebtn.is-saved .gr-todo, .gr-rail .gr-savebtn.is-saved .gr-lbl-todo { display: none; }
+.gr-rail .gr-savebtn.is-saved .gr-done { display: block; }
+.gr-rail .gr-savebtn.is-saved .gr-lbl-done { display: block; }
+.gr-rail .gr-savebtn:disabled { opacity: 1; }
+.gr-rail .home-new-badge { position: absolute; top: 2px; right: 2px; }
+
+/* live vitals (read-only mirror of the sheet's own fields) */
+.gr-rail-vitals { display: flex; flex-direction: column; gap: 9px; padding: 8px 6px; border: 1px solid var(--accent-border); border-radius: 8px; background: rgba(0, 0, 0, .28); }
+.gr-rail-vitals[hidden] { display: none; }
+.gr-rv { display: grid; grid-template-columns: auto 1fr; align-items: center; justify-items: start; gap: 4px 6px; color: var(--text-light); font-size: .74rem; }
+.gr-rv .gr-i { width: 1rem; height: 1rem; }
+.gr-rv-hp .gr-i { color: var(--condition-red, #ff6b6b); }
+.gr-rv-ac .gr-i { color: var(--accent-text, var(--accent)); }
+.gr-rv-num { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.gr-rv-bar { grid-column: 1 / -1; justify-self: stretch; height: 5px; border-radius: 3px; background: rgba(0, 0, 0, .55); overflow: hidden; }
+.gr-rv-bar i { display: block; height: 100%; width: var(--v, 100%); background: var(--condition-green, #6bff8c); transition: width 500ms cubic-bezier(.22, .8, .24, 1), background-color 300ms ease; }
+.gr-rv-hp[data-level="mid"] .gr-rv-bar i { background: #ffd479; }
+.gr-rv-hp[data-level="low"] .gr-rv-bar i { background: var(--condition-red, #ff6b6b); }
+.gr-rv.is-heal { animation: mo-pulse-heal 700ms cubic-bezier(.22, .8, .24, 1); }
+.gr-rv.is-harm { animation: mo-pulse-harm 720ms cubic-bezier(.22, .8, .24, 1); }
+
+/* ---------- compact (icons only): desktop choice, and the default on phones/tablets ---------- */
+html[data-rail="compact"] .gr-rail .gr-lbl { display: none; }
+html[data-rail="compact"] .gr-rail .gr-rail-btn, html[data-rail="compact"] .gr-rail .tabs button { min-height: 48px; }
+html[data-rail="compact"] .gr-rv { grid-template-columns: 1fr; justify-items: center; }
+html[data-rail="compact"] .gr-rv-bar { grid-column: 1; }
+@media (max-width: 760px) {
+  .gr-rail:not([data-open="true"]) .gr-lbl { display: none; }
+  .gr-rail:not([data-open="true"]) .gr-rail-btn, .gr-rail:not([data-open="true"]) .tabs button { min-height: 48px; }
+  .gr-rail:not([data-open="true"]) .gr-rv { grid-template-columns: 1fr; justify-items: center; }
+  .gr-rail:not([data-open="true"]) .gr-rv-bar { grid-column: 1; }
+}
+
+/* ---------- phone overlay: the chevron opens a labelled rail over the page ---------- */
+#chrome-root .gr-rail[data-open="true"] { width: calc(176px + env(safe-area-inset-left, 0px)); box-shadow: 10px 0 40px rgba(0, 0, 0, .6); }
+.gr-rail[data-open="true"] .gr-lbl { display: block; font-size: .82rem; }
+.gr-rail[data-open="true"] .gr-rail-btn, .gr-rail[data-open="true"] .tabs button, .gr-rail[data-open="true"] .gr-rail-toggle { flex-direction: row; justify-content: flex-start; gap: 12px; padding: 6px 12px; min-height: 48px; }
+.gr-rail[data-open="true"] .gr-rv { grid-template-columns: auto 1fr; justify-items: start; }
+.gr-rail-scrim { position: fixed; inset: 0; z-index: 65; background: rgba(0, 0, 0, .5); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); animation: mo-fade 220ms ease both; }
+.gr-rail-scrim[hidden] { display: none; }
+
+/* ---------- short screens (phone in landscape): tighter, never clipped ---------- */
+@media (max-height: 520px) {
+  #chrome-root .gr-rail { gap: 6px; padding-top: calc(env(safe-area-inset-top, 0px) + 6px); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 6px); }
+  .gr-rail .gr-rail-group, .gr-rail .gr-rail-tabs { gap: 6px; }
+  .gr-rail:not([data-open="true"]) .gr-rail-btn, .gr-rail:not([data-open="true"]) .tabs button, .gr-rail .gr-rail-toggle { min-height: 40px; }
+  .gr-rail-vitals { padding: 6px 4px; gap: 6px; }
+}
+@media (max-height: 400px) { .gr-rail-vitals .gr-rv-bar { display: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  #chrome-root .gr-rail, body #pages, body #rollingBanner, body #adminPreviewBanner { transition: none; }
+  .gr-rail .tabs button.active::before, .gr-rail-scrim { animation: none; }
+}

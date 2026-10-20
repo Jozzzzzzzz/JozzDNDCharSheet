@@ -19,6 +19,8 @@ const PRECACHE_URLS = [
   'assets/icon.svg',
   'assets/styles.css',
   'assets/css/motion.css',
+  'assets/css/rail.css',
+  'assets/icons.svg',
   'assets/data/spells.json',
   'assets/data/items.json',
   'assets/data/monsters.json',
@@ -63,6 +65,7 @@ const PRECACHE_URLS = [
   'assets/modules/loot.js',
   'assets/modules/dm.js',
   'assets/modules/motion.js',
+  'assets/modules/rail.js',
   'assets/changelog.js',
   'assets/app.js',
 ];
