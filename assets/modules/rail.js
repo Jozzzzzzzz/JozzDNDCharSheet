@@ -7,7 +7,7 @@
 
   const root = document.documentElement;
   const KEY = 'dndRailCompact';                       // UI preference only (not character data)
-  const isPhone = () => !!(window.matchMedia && window.matchMedia('(max-width: 760px)').matches);
+  const isPhone = () => !!(window.matchMedia && window.matchMedia('(max-width: 760px), (max-height: 520px)').matches);
   const val = id => { const e = document.getElementById(id); return e ? String(e.value || '').trim() : ''; };
   const num = s => { const n = parseInt(String(s).replace('+', ''), 10); return isNaN(n) ? null : n; };
 
