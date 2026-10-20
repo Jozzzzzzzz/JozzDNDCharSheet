@@ -62,7 +62,16 @@ function safeParseJSON(raw, fallback) {
 }
 
 function getStoredJSON(key, fallback) {
-  return safeParseJSON(localStorage.getItem(key), fallback);
+  const raw = localStorage.getItem(key);
+  if (typeof raw === 'string' && raw.trim()) {
+    try { const parsed = JSON.parse(raw); return parsed == null ? fallback : parsed; }
+    catch (error) {
+      // Damaged data: keep a recovery copy and salvage whatever is intact rather than quietly treating it as empty.
+      if (window.dndSafety) { const salvaged = window.dndSafety.recoverRaw(key, raw); if (salvaged.length && Array.isArray(fallback)) return salvaged; }
+      return fallback;
+    }
+  }
+  return fallback;
 }
 
 function setStoredJSON(key, value) {
@@ -2284,7 +2293,7 @@ function createNewCharacter() {
 
     let characters = getStoredJSON('dndCharacters', []);
     characters.push(newChar);
-    localStorage.setItem('dndCharacters', JSON.stringify(characters));
+    dndSafety.safeSet('dndCharacters', JSON.stringify(characters));
     if (window.currentUser && !window.__adminPreviewActive) {
       syncToCloud(true);
     }
@@ -2414,6 +2423,7 @@ function loadCharacterList() {
 
 // Clear all form fields to prevent old character data from persisting
 function clearAllFormFields() {
+  window.__loadedCharId = null; // boxes are about to be blank: autosave must not write them
   // Clear character info fields
   const charInfoFields = ['char_name', 'char_race', 'char_background', 'char_class', 'char_subclass', 'char_level', 'char_campaign',
                           'char_class2', 'char_subclass2', 'char_level2'];
@@ -2707,16 +2717,23 @@ function initiateDelete(charId) {
         delete btn.dataset.counting;
         deleteState = 3;
         btn.disabled = false;
-        btn.textContent = `Delete Forever`;
-        message.textContent = `Last chance — click to permanently delete "${target.name || 'Character'}".`;
+        btn.textContent = `Delete`;
+        message.textContent = `Last chance — click to delete "${target.name || 'Character'}". You can restore it from Settings for 30 days.`;
       }
     }, 1000);
 
   } else if (deleteState === 3) {
     // Step 3: final button clicked after countdown — actually delete
     const finalChars = getStoredJSON('dndCharacters', []);
+    const gone = finalChars.find(c => c.id === deleteTargetCharacterId);
     const updatedChars = finalChars.filter(c => c.id !== deleteTargetCharacterId);
-    localStorage.setItem('dndCharacters', JSON.stringify(updatedChars));
+    dndSafety.safeSet('dndCharacters', JSON.stringify(updatedChars));
+    // Deleting is no longer permanent: keep a copy for 30 days here, and flag (not erase) the cloud copy.
+    if (gone) {
+      dndSafety.trashChar(gone, 'deleted');
+      if (typeof markCharacterDeleted === 'function') markCharacterDeleted(gone.id);
+      if (typeof cloudMarkDeleted === 'function') cloudMarkDeleted(gone.id);
+    }
     setFavoriteCharacterIds(getFavoriteCharacterIds().filter(id => id !== deleteTargetCharacterId));
 
     closePopup('deleteCharacterPopup');
@@ -2777,6 +2794,13 @@ function autosave() {
 
   // Start from existing saved data so pages not currently in DOM are preserved
   const existing = characters[charIndex].data || {};
+
+  // Safety: if this sheet's boxes were never filled from its saved data (still loading, or loading failed),
+  // saving now would write blanks over a real sheet.
+  if (window.__loadedCharId !== currentCharacter && existing.characterInfo && existing.characterInfo.name) {
+    if (!window.__loadGuardWarned) { window.__loadGuardWarned = true; setTimeout(() => { window.__loadGuardWarned = false; }, 15000); console.warn('autosave skipped: sheet not loaded yet'); }
+    return;
+  }
 
   // --- characterInfo (always in chrome/header, should always exist) ---
   const charNameVal = val('char_name');
@@ -2969,7 +2993,10 @@ function autosave() {
   characters[charIndex].data = data;
   characters[charIndex].name = (characterInfo && characterInfo.name) || existing.characterInfo?.name || 'Unnamed';
   characters[charIndex].updatedAt = new Date().toISOString();
-  localStorage.setItem('dndCharacters', JSON.stringify(characters));
+  const _saved = dndSafety.safeSet('dndCharacters', JSON.stringify(characters));
+  window.__unsavedChars = window.__unsavedChars || {};
+  if (_saved) delete window.__unsavedChars[characters[charIndex].id]; else window.__unsavedChars[characters[charIndex].id] = characters[charIndex]; // keep it for the cloud upload
+  dndSafety.snapshot(characters[charIndex], 'auto');
 
   if (window.currentUser && !window.__adminPreviewActive) {
     if (typeof scheduleSyncToCloud === 'function') {
@@ -2987,6 +3014,7 @@ function loadData() {
   if (!currentCharacter) return;
   
   // Clear all old form fields first to prevent data from previous character from persisting
+  window.__loadedCharId = null; // autosave stays off until this sheet is fully loaded again
   clearAllFormFields();
   
   const characters = getStoredJSON('dndCharacters', []);
@@ -3610,6 +3638,7 @@ function loadData() {
   setupNoteBoxHandlers();
   refreshAllNoteBoxes();
 
+  window.__loadedCharId = currentCharacter; // from here on autosave may write this sheet
 }
 
 function sanitizeFilePart(value, fallback = 'unknown') {
@@ -3781,7 +3810,7 @@ function exportData() {
     // Backfill createdAt for older characters so future exports are stable.
     if (!character.createdAt) {
       character.createdAt = createdAt;
-      localStorage.setItem('dndCharacters', JSON.stringify(characters));
+      dndSafety.safeSet('dndCharacters', JSON.stringify(characters));
     }
 
     const displayName = characterData?.characterInfo?.name || character.name || 'dnd_character';
@@ -3919,7 +3948,7 @@ function importData(event) {
 
           let characters = getStoredJSON('dndCharacters', []);
           characters.push(newChar);
-          localStorage.setItem('dndCharacters', JSON.stringify(characters));
+          dndSafety.safeSet('dndCharacters', JSON.stringify(characters));
 
           loadCharacterList();
           loadSelectedCharacter(newChar.id);

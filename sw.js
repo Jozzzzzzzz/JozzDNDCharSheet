@@ -52,6 +52,7 @@ const PRECACHE_URLS = [
   // JS modules (loaded with ?v=, but we cache the bare path; see fetch handler)
   'assets/banner-messages.js',
   'assets/modules/stats.js',
+  'assets/modules/safety.js',
   'assets/modules/cloud-skills.js',
   'assets/modules/core.js',
   'assets/modules/browser-engine.js',

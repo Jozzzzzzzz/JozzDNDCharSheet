@@ -549,7 +549,7 @@ async function signOut() {
 let activeCharacterUnsubscribe = null;
 // Timestamp of the last save WE initiated — used to suppress the echo
 // from our own writes coming back through onSnapshot.
-let lastOwnSaveAt = 0;
+let lastOwnSaveAt = 0; // no longer used to decide anything; kept so nothing that reads it breaks
 
 // ---- helpers ----
 
@@ -659,29 +659,175 @@ function scheduleSyncToCloud() {
   }, 15000); // 15s debounce — reduces write frequency vs previous 2s
 }
 
+// ---- version-checked sync ----
+// Every sheet on the cloud carries a revision number. A device remembers the cloud copy it last agreed
+// with (its "base", kept in IndexedDB). To save, it checks the cloud first: if nobody else changed it the
+// write goes through; if another device changed it, the two sets of edits are merged field by field, and
+// only when both changed the same field is your version kept as a separate "conflict" copy. Nothing is
+// overwritten blindly, and nothing is deleted from the cloud (deleting only flags the sheet).
+const MAX_CLOUD_DOC = 1000000, WARN_CLOUD_DOC = 800000;
+const SAFE = () => window.dndSafety;
+const readLocalChars = () => (window.getStoredJSON ? window.getStoredJSON('dndCharacters', []) : JSON.parse(localStorage.getItem('dndCharacters') || '[]'));
+const writeLocalChars = arr => SAFE().safeSet('dndCharacters', JSON.stringify(arr));
+const tsIso = v => (v && typeof v.toMillis === 'function') ? new Date(v.toMillis()).toISOString() : (typeof v === 'string' ? v : new Date().toISOString());
+// the sheet as the device stores it (no cloud-only bookkeeping fields, readable timestamps)
+function toLocalChar(cloud) {
+  const c = { ...cloud }; delete c.rev; delete c.deleted; delete c.deletedAt;
+  c.updatedAt = tsIso(cloud.updatedAt); if (cloud.createdAt && typeof cloud.createdAt.toMillis === 'function') c.createdAt = tsIso(cloud.createdAt);
+  return c;
+}
+// run sync jobs one at a time so a push and an incoming change never interleave
+let _syncChain = Promise.resolve();
+const queueSync = fn => { const run = _syncChain.then(fn, fn); _syncChain = run.catch(() => {}); return run; };
+
+function reloadActiveSheet() {
+  if (typeof loadData === 'function') loadData();
+  if (typeof setupSkillCalculationFields === 'function') setupSkillCalculationFields();
+  if (typeof enforceAutoMathNumericInputs === 'function') enforceAutoMathNumericInputs();
+}
+
+// Decide what a sheet should look like when the device copy and the cloud copy are both known.
+function reconcile(local, cloud, base) {
+  const S = SAFE(); const cn = S.leafNs(cloud), ln = S.leafNs(local);
+  if (S.sameNs(cn, ln)) return { char: local, needPush: false, same: true };
+  if (base && S.sameNs(cn, base.n)) return { char: local, needPush: true };                         // only this device changed
+  if (base && S.sameNs(ln, base.n)) return { char: toLocalChar(cloud), needPush: false, took: 'cloud' }; // only the cloud changed
+  if (base) {                                                                                       // both changed: merge per field
+    const r = S.merge3(base.n, local, cloud);
+    r.merged.updatedAt = new Date().toISOString();
+    return { char: r.merged, conflicts: r.conflicts, needPush: !S.sameNs(S.leafNs(r.merged), cn), merged: true };
+  }
+  // never synced from this device: the newer copy wins, the other is kept as a restore point
+  if (S.tsMs(cloud) >= S.tsMs(local)) return { char: toLocalChar(cloud), needPush: false, took: 'cloud', snapLocal: true };
+  return { char: local, needPush: true, snapCloud: true };
+}
+
+async function saveConflictCopy(localChar, conflicts) {
+  try {
+    const copy = JSON.parse(JSON.stringify(localChar)); const now = new Date();
+    copy.id = 'c' + now.getTime() + '_' + Math.random().toString(36).slice(2, 6);
+    copy.name = `${localChar.name || 'Sheet'} (conflict ${now.toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })})`;
+    if (copy.data && copy.data.characterInfo) copy.data.characterInfo.name = copy.name;
+    copy.createdAt = copy.updatedAt = now.toISOString();
+    const all = readLocalChars(); all.push(copy); writeLocalChars(all);
+    if (typeof loadCharacterList === 'function') loadCharacterList();
+    SAFE().warn(`Two devices changed the same thing on "${localChar.name}". The other device's version was kept, and yours was saved as a separate sheet called "${copy.name}". Nothing was lost.`);
+    cloudPush(copy);
+  } catch (e) { console.error('[sync] conflict copy failed', e); }
+}
+
+// store a reconciled sheet on this device (and refresh the form if it is the open one)
+async function storeReconciled(id, mineAtStart, r, cloud) {
+  const all = readLocalChars(); const i = all.findIndex(c => c.id === id);
+  if (r.char !== mineAtStart) {
+    if (i >= 0) { await SAFE().snapshot(all[i], r.merged ? 'before merging with another device' : 'before an update from the cloud', true); all[i] = r.char; } else all.push(r.char);
+    writeLocalChars(all);
+  }
+  await SAFE().setBase(id, cloud.rev || 0, cloud);
+  if (r.conflicts && r.conflicts.length) saveConflictCopy(mineAtStart, r.conflicts);
+}
+
+// A sheet deleted on another device is followed (and kept in Recently deleted) unless it was edited here
+// after the delete happened. Opening a sheet can rewrite it slightly, so "unchanged" is judged by time.
+function editedAfterDelete(local, cloud, base) {
+  const delMs = cloud && cloud.deletedAt && typeof cloud.deletedAt.toMillis === 'function' ? cloud.deletedAt.toMillis() : 0;
+  if (delMs) return SAFE().tsMs(local) > delMs;
+  return !(base && SAFE().sameNs(SAFE().leafNs(local), base.n));
+}
+
+const cloudPush = (char, opts) => queueSync(() => pushBody(char, opts));
+async function pushBody(char, opts = {}) {
+  if (!currentUser || !char || !char.id) return { status: 'skipped' };
+  {
+    const size = JSON.stringify(char).length;
+    if (size > MAX_CLOUD_DOC) { SAFE().warn(`"${char.name}" is too big to sync to the cloud (${Math.round(size / 1024)} KB, limit about 1000 KB). It is still saved on this device. Shrinking the portrait usually fixes it.`); return { status: 'toolarge' }; }
+    if (size > WARN_CLOUD_DOC) showCloudToast(`Sheet is ${Math.round(size / 1024)} KB, close to the cloud limit`);
+    const S = SAFE(); const FV = firebase.firestore.FieldValue; const ref = charCollection().doc(char.id);
+    const base = await S.getBase(char.id); let out = null;
+    try {
+      await db.runTransaction(async txn => {
+        out = null;
+        const snap = await txn.get(ref); const cloud = snap.exists ? { ...snap.data(), id: char.id } : null; const cloudRev = cloud ? (cloud.rev || 0) : 0;
+        let toWrite = char, conflicts = [], merged = false;
+        if (cloud && cloud.deleted && !opts.undelete) {
+          out = editedAfterDelete(char, cloud, base) ? { status: 'deleted-edited' } : { status: 'deleted-elsewhere' }; return;
+        }
+        if (cloud && !cloud.deleted) {
+          const r = reconcile(char, cloud, base);
+          if (r.same) { out = { status: 'same', rev: cloudRev, cloud }; return; }
+          if (!r.needPush) { out = { status: 'cloud-newer', rev: cloudRev, cloud, r }; return; }
+          toWrite = r.char; conflicts = r.conflicts || []; merged = !!r.merged;
+        }
+        const payload = { ...toWrite, id: char.id, rev: cloudRev + 1, updatedAt: FV.serverTimestamp() };
+        if (opts.undelete) { payload.deleted = false; payload.deletedAt = null; }
+        txn.set(ref, payload);
+        out = { status: 'written', rev: cloudRev + 1, toWrite, conflicts, merged, cloudBefore: cloud };
+      });
+    } catch (err) { console.error('[sync] Upload failed:', err); return { status: 'error', err }; }
+
+    if (out.status === 'deleted-elsewhere') {            // deleted on another device and untouched here: follow the delete, keep a copy
+      const all = readLocalChars(); await S.trashChar(char, 'deleted on another device');
+      writeLocalChars(all.filter(c => c.id !== char.id)); await S.dropBase(char.id);
+      if (typeof loadCharacterList === 'function') loadCharacterList();
+      showCloudToast(`"${char.name}" was deleted on another device (restore it in Settings)`);
+      return out;
+    }
+    if (out.status === 'deleted-edited') return pushBody(char, { undelete: true });   // you edited a sheet deleted elsewhere: keep it
+    if (out.status === 'same' || out.status === 'cloud-newer') {
+      const cloud = out.cloud; const mine = readLocalChars().find(c => c.id === char.id) || char;
+      const r = out.r || reconcile(mine, cloud, base);
+      await storeReconciled(char.id, mine, r, cloud);
+      if (r.char !== mine && window.currentCharacter === char.id) reloadActiveSheet();
+      return out;
+    }
+    // written: the base is now what we wrote; if a merge changed the sheet, bring this device up to date
+    const written = { ...out.toWrite, id: char.id };
+    await S.setBase(char.id, out.rev, written);
+    if (window.__unsavedChars) delete window.__unsavedChars[char.id];
+    if (out.merged) {
+      const all = readLocalChars(); const i = all.findIndex(c => c.id === char.id);
+      if (i >= 0) {
+        const cur = all[i]; await S.snapshot(cur, 'before merging with another device', true);
+        // keep anything typed while the save was in flight
+        all[i] = S.sameNs(S.leafNs(cur), S.leafNs(char)) ? written : S.merge3(S.leafNs(char), cur, written).merged;
+        writeLocalChars(all);
+        if (window.currentCharacter === char.id) reloadActiveSheet();
+      }
+      showCloudToast('Merged changes from another device');
+      if (out.conflicts.length) saveConflictCopy(char, out.conflicts);
+    }
+    return out;
+  }
+}
+
+async function cloudMarkDeleted(id) {
+  if (!currentUser || !id) return;
+  try {
+    await charCollection().doc(id).update({ deleted: true, deletedAt: firebase.firestore.FieldValue.serverTimestamp(), rev: firebase.firestore.FieldValue.increment(1) });
+    await SAFE().dropBase(id);
+  } catch (e) { console.warn('[sync] could not flag delete yet (will retry on next sync):', e && e.code); }
+}
+async function cloudUndelete(char) { await SAFE().dropBase(char.id); return cloudPush(char, { undelete: true }); }
+async function listCloudDeleted() {
+  if (!currentUser) return [];
+  const snap = await charCollection().where('deleted', '==', true).get();
+  return snap.docs.map(d => ({ id: d.id, name: d.data().name || 'Sheet' }));
+}
+async function cloudFetchDeleted(id) {
+  const d = await charCollection().doc(id).get(); if (!d.exists) return null;
+  const c = toLocalChar({ ...d.data(), id }); return c;
+}
+
+// ---- write: save active character to cloud ----
+
 async function syncActiveCharacterToCloud() {
   if (!currentUser || !window.currentCharacter) return;
-  try {
-    const characters = window.getStoredJSON
-      ? window.getStoredJSON('dndCharacters', [])
-      : JSON.parse(localStorage.getItem('dndCharacters') || '[]');
-    const char = characters.find(c => c.id === window.currentCharacter);
-    if (!char) return;
-
-    const FieldValue = firebase.firestore.FieldValue;
-    // Record the moment we fire this write — the snapshot echo will arrive
-    // within a few seconds and must be ignored.
-    lastOwnSaveAt = Date.now();
-    await charCollection().doc(char.id).set({
-      ...char,
-      updatedAt: FieldValue.serverTimestamp()
-    });
-
-    // Keep account appearance prefs (theme/accent/font/text-scale/background) in sync
-    await userMetaRef().set({ ...gatherUserPrefs(), lastModified: FieldValue.serverTimestamp() }, { merge: true });
-  } catch (err) {
-    console.error('[sync] Upload failed:', err);
-  }
+  const id = window.currentCharacter;
+  const char = (window.__unsavedChars && window.__unsavedChars[id]) || readLocalChars().find(c => c.id === id);
+  if (!char) return;
+  await cloudPush(char);
+  try { await userMetaRef().set({ ...gatherUserPrefs(), lastModified: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true }); }
+  catch (err) { console.error('[sync] Prefs upload failed:', err); }
 }
 
 // 3-step confirm state for the manual sync-up button
@@ -694,7 +840,7 @@ function handleSyncUpConfirm(btn) {
     const localChars = window.getStoredJSON
       ? window.getStoredJSON('dndCharacters', [])
       : JSON.parse(localStorage.getItem('dndCharacters') || '[]');
-    btn.textContent = `Overwrite cloud with ${localChars.length} local character${localChars.length !== 1 ? 's' : ''}?`;
+    btn.textContent = `Send ${localChars.length} sheet${localChars.length !== 1 ? 's' : ''} to the cloud?`;
     btn.style.background = '#c0392b';
     if (state.timer) clearTimeout(state.timer);
     state.timer = setTimeout(() => resetSyncUpBtn(btn), 6000);
@@ -703,7 +849,7 @@ function handleSyncUpConfirm(btn) {
   if (state.step === 1) {
     // Step 2: second click
     state.step = 2;
-    btn.textContent = 'Yes, overwrite — are you sure?';
+    btn.textContent = 'Yes, send changes (nothing is deleted)';
     if (state.timer) clearTimeout(state.timer);
     state.timer = setTimeout(() => resetSyncUpBtn(btn), 6000);
     return;
@@ -723,7 +869,8 @@ function resetSyncUpBtn(btn) {
   btn.style.background = '';
 }
 
-// Manual sync-up: full overwrite — push ALL local chars, delete any extras from Firestore
+// Manual sync-up: sends every sheet on this device that is new or changed. It never deletes anything
+// in the cloud, and a sheet that changed elsewhere is merged, not overwritten.
 async function syncToCloud(silent = false) {
   if (!currentUser) {
     if (!silent) setSyncStatus('Please sign in first');
@@ -731,33 +878,13 @@ async function syncToCloud(silent = false) {
   }
   try {
     if (!silent) setSyncStatus('Uploading to cloud...');
-
-    const localChars = window.getStoredJSON
-      ? window.getStoredJSON('dndCharacters', [])
-      : JSON.parse(localStorage.getItem('dndCharacters') || '[]');
-
-    const FieldValue = firebase.firestore.FieldValue;
-    lastOwnSaveAt = Date.now();
-
-    // Upload all local characters
-    await Promise.all(localChars.map(char =>
-      charCollection().doc(char.id).set({ ...char, updatedAt: FieldValue.serverTimestamp() })
-    ));
-
-    // Delete any Firestore docs not in the local list
-    const snapshot = await charCollection().get();
-    const localIds = new Set(localChars.map(c => c.id));
-    const toDelete = snapshot.docs.filter(d => !localIds.has(d.id));
-    if (toDelete.length > 0) {
-      await Promise.all(toDelete.map(d => d.ref.delete()));
-    }
-
-    // Keep account appearance prefs in sync
-    await userMetaRef().set({ ...gatherUserPrefs(), lastModified: FieldValue.serverTimestamp() }, { merge: true });
-
-    if (!silent) {
-      setSyncStatus(`Uploaded to cloud (${localChars.length} character${localChars.length !== 1 ? 's' : ''})`);
-    }
+    const tomb = window.getStoredJSON('dndDeletedCharacters', {});
+    const local = readLocalChars().filter(c => !tomb[c.id]);
+    let wrote = 0, failed = 0;
+    for (const ch of local) { const r = await cloudPush((window.__unsavedChars && window.__unsavedChars[ch.id]) || ch); if (r && r.status === 'written') wrote++; else if (r && (r.status === 'error' || r.status === 'toolarge')) failed++; }
+    for (const id of Object.keys(tomb)) await cloudMarkDeleted(id);
+    try { await userMetaRef().set({ ...gatherUserPrefs(), lastModified: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true }); } catch (e) { /* prefs are best effort */ }
+    if (!silent) setSyncStatus(failed ? `${failed} sheet${failed > 1 ? 's' : ''} could not be uploaded` : (wrote ? `Uploaded ${wrote} changed sheet${wrote > 1 ? 's' : ''}` : 'Everything is already up to date'));
   } catch (err) {
     console.error('[sync] syncToCloud error:', err);
     if (!silent) setSyncStatus('Upload failed: ' + err.message);
@@ -766,103 +893,74 @@ async function syncToCloud(silent = false) {
 
 // ---- read: pull characters from cloud ----
 
-// Auto-sync (boot/sign-in): smart merge — tombstone-aware, never resurrects deleted chars.
-// Manual sync-down (button): full replace — cloud is the authority, wipes local entirely.
+// Boot / sign-in / manual "Sync Down": brings this device up to date without ever wiping it.
+// For each sheet: only the cloud changed -> take the cloud copy; only this device changed -> keep it and
+// send it up; both changed -> merge field by field. Sheets only on this device are kept and uploaded.
+// Sheets deleted elsewhere are moved to "Recently deleted" here, never erased.
 async function syncFromCloud(silent = false) {
   if (!currentUser) {
     if (!silent) setSyncStatus('Please sign in first');
     return;
   }
-  try {
-    if (!silent) setSyncStatus('Downloading from cloud...');
-
-    await migrateOldFormatIfNeeded();
-
-    const snapshot = await charCollection().get();
-    if (snapshot.empty) {
-      if (!silent) setSyncStatus('No cloud data found');
-      return;
-    }
-
-    const cloudChars = snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
-
-    // Pull appearance prefs (theme/accent/font/text-scale/background) from meta doc and
-    // apply them live — so the account looks the same however/wherever you open the app.
-    const metaSnap = await userMetaRef().get();
-    const meta = metaSnap.exists ? (metaSnap.data() || {}) : {};
-    applyUserPrefs(meta);
-
-    let finalChars;
-
-    if (!silent) {
-      // Manual Sync Down: full replace — cloud wins entirely
-      finalChars = cloudChars;
-      // Clear tombstones since cloud is now the authority
-      localStorage.setItem('dndDeletedCharacters', '{}');
-    } else {
-      // Auto sync: tombstone-aware smart merge
-      // Rule: cloud can UPDATE a char we already have (newer wins),
-      //       cloud can ADD a genuinely new char (not in local, not tombstoned),
-      //       cloud CANNOT resurrect a tombstoned char,
-      //       if local is empty, trust cloud fully (new device).
-      const localChars = window.getStoredJSON
-        ? window.getStoredJSON('dndCharacters', [])
-        : JSON.parse(localStorage.getItem('dndCharacters') || '[]');
-
-      const deletedMap = window.getStoredJSON
-        ? window.getStoredJSON('dndDeletedCharacters', {})
-        : JSON.parse(localStorage.getItem('dndDeletedCharacters') || '{}');
-
-      if (localChars.length === 0) {
-        // New device — trust cloud fully
-        finalChars = cloudChars;
-      } else {
-        const localIds = new Set(localChars.map(c => c.id));
-        finalChars = mergeByUpdatedAt(
-          localChars,
-          // Only pass cloud chars that either already exist locally (update),
-          // or are genuinely new and not tombstoned (add from another device).
-          cloudChars.filter(c => localIds.has(c.id) || !deletedMap[c.id])
-        );
-      }
-    }
-
-    // Safety guard — never write an empty or non-array result to localStorage
-    if (!Array.isArray(finalChars) || finalChars.length === 0) {
-      if (!silent) setSyncStatus('Sync skipped — cloud returned no characters');
-      return;
-    }
+  return queueSync(async () => {
     try {
-      localStorage.setItem('dndCharacters', JSON.stringify(finalChars));
-    } catch (storageErr) {
-      console.error('[sync] localStorage write failed:', storageErr);
-      if (!silent) setSyncStatus('Sync failed — storage error. Your local data is safe.');
-      return;
+      if (!silent) setSyncStatus('Downloading from cloud...');
+      await migrateOldFormatIfNeeded();
+      const S = SAFE();
+      const snapshot = await charCollection().get();
+      const cloudDocs = snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
+
+      // appearance prefs (theme/accent/font/text-scale/background) apply live
+      const metaSnap = await userMetaRef().get();
+      applyUserPrefs(metaSnap.exists ? (metaSnap.data() || {}) : {});
+
+      let local = readLocalChars(); const tomb = window.getStoredJSON('dndDeletedCharacters', {});
+      const cloudIds = new Set(cloudDocs.map(c => c.id)); const toPush = []; const conflictCopies = [];
+      let added = 0, updated = 0, trashed = 0; let activeChanged = false;
+
+      for (const cloud of cloudDocs) {
+        const id = cloud.id; const mine = local.find(c => c.id === id); const base = await S.getBase(id);
+        if (cloud.deleted) {
+          if (!mine) continue;
+          if (!editedAfterDelete(mine, cloud, base)) { await S.trashChar(mine, 'deleted on another device'); local = local.filter(c => c.id !== id); await S.dropBase(id); trashed++; if (window.currentCharacter === id) activeChanged = true; }
+          else toPush.push(mine);                                   // edited here since: keep it (the push un-deletes it)
+          continue;
+        }
+        if (tomb[id]) { cloudMarkDeleted(id); continue; }           // deleted on this device earlier; make sure the cloud knows
+        if (!mine) { local.push(toLocalChar(cloud)); await S.setBase(id, cloud.rev || 0, cloud); added++; continue; }
+        const r = reconcile(mine, cloud, base);
+        if (r.snapLocal) await S.snapshot(mine, 'before the cloud copy replaced it', true);
+        if (r.snapCloud) await S.snapshot(toLocalChar(cloud), 'cloud copy before your newer copy replaced it', true);
+        if (r.char !== mine) { await S.snapshot(mine, r.merged ? 'before merging with another device' : 'before an update from the cloud', true); local[local.indexOf(mine)] = r.char; updated++; if (window.currentCharacter === id) activeChanged = true; }
+        await S.setBase(id, cloud.rev || 0, cloud);
+        if (r.conflicts && r.conflicts.length) conflictCopies.push([mine, r.conflicts]);
+        if (r.needPush) toPush.push(r.char);
+      }
+      for (const mine of local) if (!cloudIds.has(mine.id) && !tomb[mine.id]) toPush.push(mine);   // new on this device
+
+      if (added || updated || trashed) writeLocalChars(local);
+      if (typeof loadCharacterList === 'function') loadCharacterList();
+      for (const [m, c] of conflictCopies) await saveConflictCopy(m, c);
+
+      // open the last-used sheet, or the first one
+      const finalChars = readLocalChars();
+      const lastId = localStorage.getItem('dndLastSelectedCharacter');
+      const target = (lastId && finalChars.find(c => c.id === lastId)) ? lastId : (finalChars[0] && finalChars[0].id) || null;
+      if (target) {
+        const switching = window.currentCharacter !== target;
+        window.currentCharacter = target; rememberSelectedCharacter(target);
+        if (switching || activeChanged || window.__loadedCharId !== target) reloadActiveSheet();
+        startActiveCharacterListener(target);
+      }
+      for (const ch of toPush) { if (ch && !(tomb[ch.id])) await pushBody(ch); }
+
+      if (!silent) setSyncStatus(`Up to date: ${finalChars.length} sheet${finalChars.length !== 1 ? 's' : ''}${added ? `, ${added} new` : ''}${updated ? `, ${updated} updated` : ''}${toPush.length ? `, ${toPush.length} sent up` : ''}`);
+      else if (added || updated) showCloudToast('Synced from cloud');
+    } catch (err) {
+      console.error('[sync] Download failed:', err);
+      if (!silent) setSyncStatus('Download failed: ' + err.message);
     }
-
-    if (!silent) {
-      setSyncStatus(`Downloaded ${finalChars.length} character${finalChars.length !== 1 ? 's' : ''} from cloud`);
-    }
-
-    loadCharacterList();
-
-    // Load the last-used character, or first in list
-    const lastId = localStorage.getItem('dndLastSelectedCharacter');
-    const target = (lastId && finalChars.find(c => c.id === lastId)) ? lastId : (finalChars[0]?.id || null);
-    if (target) {
-      window.currentCharacter = target;
-      rememberSelectedCharacter(target);
-      loadData();
-      if (typeof setupSkillCalculationFields === 'function') setupSkillCalculationFields();
-      if (typeof enforceAutoMathNumericInputs === 'function') enforceAutoMathNumericInputs();
-      startActiveCharacterListener(target);
-    }
-
-    if (silent) showCloudToast('Synced from cloud');
-  } catch (err) {
-    console.error('[sync] Download failed:', err);
-    if (!silent) setSyncStatus('Download failed: ' + err.message);
-  }
+  });
 }
 
 // 3-step confirm state for the manual sync-down button
@@ -871,7 +969,7 @@ function handleSyncDownConfirm(btn) {
   const state = syncDownConfirmState;
   if (!state.step) {
     state.step = 1;
-    btn.textContent = 'Replace local with cloud data?';
+    btn.textContent = 'Bring this device up to date?';
     btn.style.background = '#c0392b';
     if (state.timer) clearTimeout(state.timer);
     state.timer = setTimeout(() => resetSyncDownBtn(btn), 6000);
@@ -879,7 +977,7 @@ function handleSyncDownConfirm(btn) {
   }
   if (state.step === 1) {
     state.step = 2;
-    btn.textContent = 'Yes, overwrite — are you sure?';
+    btn.textContent = 'Yes, update (nothing is wiped)';
     if (state.timer) clearTimeout(state.timer);
     state.timer = setTimeout(() => resetSyncDownBtn(btn), 6000);
     return;
@@ -898,30 +996,22 @@ function resetSyncDownBtn(btn) {
   btn.style.background = '';
 }
 
-// Merge two character arrays: for each id, keep the one with the newer updatedAt.
-function mergeByUpdatedAt(local, cloud) {
-  const map = new Map();
-  const ts = c => {
-    if (!c) return 0;
-    if (c.updatedAt && typeof c.updatedAt.toMillis === 'function') return c.updatedAt.toMillis();
-    if (c.updatedAt) return Date.parse(c.updatedAt) || 0;
-    if (c.createdAt) return Date.parse(c.createdAt) || 0;
-    return 0;
-  };
-  // Local entries are processed first so that on a timestamp tie, local wins
-  [...(local || [])].forEach(c => {
-    if (!c || !c.id) return;
-    map.set(c.id, c);
-  });
-  [...(cloud || [])].forEach(c => {
-    if (!c || !c.id) return;
-    const existing = map.get(c.id);
-    if (!existing || ts(c) > ts(existing)) map.set(c.id, c);
-  });
-  return Array.from(map.values());
-}
-
 // ---- live listener: watch the active character only ----
+
+// A change arrived from another device. Fold it into this device's copy without losing local edits.
+async function handleRemoteChange(cloud, charId) {
+  const S = SAFE();
+  const base = await S.getBase(charId);
+  if (base && S.sameNs(S.leafNs(cloud), base.n)) return;              // nothing new (this is the echo of our own save)
+  if (cloud.deleted) return;                                           // deletes are applied on the next full sync
+  if (typeof autosave === 'function') autosave();                      // capture whatever is typed right now
+  const mine = readLocalChars().find(c => c.id === charId); if (!mine) return;
+  const r = reconcile(mine, cloud, base);
+  if (r.snapLocal) await S.snapshot(mine, 'before the cloud copy replaced it', true);
+  await storeReconciled(charId, mine, r, cloud);
+  if (r.char !== mine && window.currentCharacter === charId) { reloadActiveSheet(); showCloudToast(r.merged ? 'Merged changes from another device' : 'Sheet updated from another device'); }
+  if (r.needPush) setTimeout(() => { const cur = readLocalChars().find(c => c.id === charId); if (cur) cloudPush(cur); }, 800);
+}
 
 function startActiveCharacterListener(charId) {
   stopActiveCharacterListener();
@@ -930,25 +1020,8 @@ function startActiveCharacterListener(charId) {
   activeCharacterUnsubscribe = charCollection().doc(charId).onSnapshot(snap => {
     if (!snap.exists) return;
     if (window.currentCharacter !== charId) return;
-
-    // Suppress echoes from our own saves — any snapshot arriving within
-    // 30 seconds of our last write is almost certainly our own echo.
-    // 30s covers slow networks and Firestore propagation delays.
-    if (Date.now() - lastOwnSaveAt < 30000) return;
-
-    const cloudChar = { ...snap.data(), id: snap.id };
-    const chars = window.getStoredJSON
-      ? window.getStoredJSON('dndCharacters', [])
-      : JSON.parse(localStorage.getItem('dndCharacters') || '[]');
-
-    // Another device is ahead — apply silently
-    const updated = chars.map(c => c.id === charId ? cloudChar : c);
-    localStorage.setItem('dndCharacters', JSON.stringify(updated));
-
-    loadData();
-    if (typeof setupSkillCalculationFields === 'function') setupSkillCalculationFields();
-    if (typeof enforceAutoMathNumericInputs === 'function') enforceAutoMathNumericInputs();
-    showCloudToast('Sheet updated from another device');
+    if (snap.metadata.hasPendingWrites) return;                         // our own write in flight
+    queueSync(() => handleRemoteChange({ ...snap.data(), id: snap.id }, charId)).catch(err => console.warn('[sync] remote change failed:', err));
   }, err => {
     console.warn('[sync] Live listener error:', err);
   });
@@ -976,7 +1049,11 @@ Object.assign(window, {
   syncFromCloud,
   scheduleSyncToCloud,
   onActiveCharacterChanged,
-  stopActiveCharacterListener
+  stopActiveCharacterListener,
+  cloudMarkDeleted,
+  cloudUndelete,
+  listCloudDeleted,
+  cloudFetchDeleted
 });
 
 function registerServiceWorker() {

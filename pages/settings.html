@@ -104,8 +104,8 @@
         <p><strong>Account and Cloud Sync</strong> — sign in with Google to keep your characters backed up and synced across devices.</p>
         <p><strong>Sign In with Google</strong> — links your characters to your Google account. No password needed — uses Google's secure sign-in.</p>
         <p>Once signed in, every change auto-syncs to the cloud within a few seconds. You can open the sheet on any device and your characters will be there.</p>
-        <p><strong>Sync Up Now</strong> — manually push your current local data to the cloud. Use this if you've made changes offline and want to force an immediate upload.</p>
-        <p><strong>Sync Down Now</strong> — pull the latest cloud data down to this device. Use this if another device made changes and you want them here now without waiting.</p>
+        <p><strong>Sync Up Now</strong> — sends any sheets that are new or changed on this device to the cloud. It never deletes anything, and if another device changed the same sheet the two sets of changes are merged.</p>
+        <p><strong>Sync Down Now</strong> — brings this device up to date with the cloud. It never wipes this device: sheets only here are kept, and changes you made here are merged with changes from elsewhere.</p>
         <p><strong>Sign Out</strong> — disconnects this device from your account. Your local character data stays on the device — it is not deleted. You can sign back in at any time.</p>
         <p>Sync happens automatically in the background — you don't need to press any button during normal play.</p>
       </div>
@@ -152,6 +152,19 @@
       </div>
     </div>
 
+
+    <div class="home-card settings-card">
+      <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
+      <div class="section-help-panel" onclick="closeHelp(this)">
+        <p><strong>Sheet safety</strong> — restore points are made automatically while you edit and before anything from another device is merged in. Restore one to go back. Deleted sheets are kept here for 30 days.</p>
+        <p>If this device ever runs out of space or stored data is damaged, a recovery copy is kept and listed here to download.</p>
+      </div>
+      <div class="card-header">
+        <h3>Sheet safety</h3>
+        <p>Restore points, recently deleted sheets and backups</p>
+      </div>
+      <div id="safetyPanel" class="safety-panel"></div>
+    </div>
 
     <div class="home-card settings-card admin-portal-card" id="adminPortalCard" style="display: none;">
       <div class="card-header">
