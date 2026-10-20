@@ -18,6 +18,7 @@ const PRECACHE_URLS = [
   'manifest.webmanifest',
   'assets/icon.svg',
   'assets/styles.css',
+  'assets/css/motion.css',
   'assets/data/spells.json',
   'assets/data/items.json',
   'assets/data/monsters.json',
@@ -61,6 +62,7 @@ const PRECACHE_URLS = [
   'assets/modules/admin.js',
   'assets/modules/loot.js',
   'assets/modules/dm.js',
+  'assets/modules/motion.js',
   'assets/changelog.js',
   'assets/app.js',
 ];

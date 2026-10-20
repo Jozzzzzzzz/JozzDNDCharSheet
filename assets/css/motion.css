@@ -1,0 +1,108 @@
+/* ==========================================================================
+   MOTION LAYER — effects only.
+   Adds animation and smoothness on top of the existing look. It sets no
+   colours, fonts, sizes or layout of its own: every rule here is a keyframe,
+   a transition on feedback, or a temporary class added by motion.js.
+   Repo rules: never `transition: all`; respect prefers-reduced-motion.
+   Colours reuse the app's own variables (--accent-rgb, --condition-red/green).
+   ========================================================================== */
+
+:root {
+  --mo-ease: cubic-bezier(.22, .8, .24, 1);
+  --mo-spring: cubic-bezier(.34, 1.56, .64, 1);
+}
+
+html { scroll-behavior: smooth; }
+
+/* ---------- Page arrival: the cards on a page rise in, one after another ---------- */
+/* (the page element itself can't be animated: the app forces its opacity/transform with !important) */
+@keyframes mo-enter {
+  from { opacity: 0; transform: translate3d(0, 16px, 0) scale(.985); }
+  to   { opacity: 1; transform: none; }
+}
+.mo-enter { animation: mo-enter 520ms var(--mo-ease) both; animation-delay: calc(var(--mo-i, 0) * 48ms); }
+
+/* ---------- Scroll reveal: cards further down the page glide in as they come into view ---------- */
+.mo-pending { opacity: 0; transform: translate3d(0, 20px, 0); }
+.mo-revealing { transition: opacity 560ms var(--mo-ease), transform 560ms var(--mo-ease); opacity: 1; transform: none; }
+
+/* ---------- A number that changed pulses once (accent coloured, like the rest of the app) ---------- */
+@keyframes mo-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(var(--accent-rgb, 176, 184, 193), .65); transform: scale(1); }
+  35%  { transform: scale(1.07); }
+  100% { box-shadow: 0 0 0 13px rgba(var(--accent-rgb, 176, 184, 193), 0); transform: scale(1); }
+}
+@keyframes mo-pulse-heal {
+  0%   { box-shadow: 0 0 0 0 rgba(107, 255, 140, .7); transform: scale(1); }
+  35%  { transform: scale(1.08); }
+  100% { box-shadow: 0 0 0 14px rgba(107, 255, 140, 0); transform: scale(1); }
+}
+@keyframes mo-pulse-harm {
+  0%   { box-shadow: 0 0 0 0 rgba(255, 107, 107, .75); transform: scale(1); }
+  30%  { transform: scale(1.08) translateX(-2px); }
+  55%  { transform: scale(1.04) translateX(2px); }
+  100% { box-shadow: 0 0 0 14px rgba(255, 107, 107, 0); transform: scale(1); }
+}
+.mo-pulse      { animation: mo-pulse 640ms var(--mo-ease); }
+.mo-pulse-heal { animation: mo-pulse-heal 700ms var(--mo-ease); }
+.mo-pulse-harm { animation: mo-pulse-harm 720ms var(--mo-ease); }
+
+/* ---------- Floating hit-point change (−5 / +3) ---------- */
+.mo-float {
+  position: fixed; z-index: 99999; pointer-events: none; font-weight: 800; font-size: 1.35rem; line-height: 1; letter-spacing: .02em;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, .85), 0 0 14px currentColor; animation: mo-float 1050ms cubic-bezier(.2, .7, .3, 1) forwards; white-space: nowrap;
+}
+.mo-float--harm { color: var(--condition-red, #ff6b6b); }
+.mo-float--heal { color: var(--condition-green, #6bff8c); }
+@keyframes mo-float {
+  0%   { opacity: 0; transform: translate(-50%, 4px) scale(.6); }
+  16%  { opacity: 1; transform: translate(-50%, -8px) scale(1.2); }
+  100% { opacity: 0; transform: translate(-50%, -62px) scale(1); }
+}
+
+/* ---------- New things pop into a list (items, spells, weapons, actions, characters) ---------- */
+@keyframes mo-pop-in {
+  from { opacity: 0; transform: translateY(10px) scale(.94); }
+  to   { opacity: 1; transform: none; }
+}
+.mo-item-in { animation: mo-pop-in 360ms var(--mo-spring) both; }
+
+/* ---------- Taps and clicks: a soft ripple and a press ---------- */
+.mo-ripple-host { position: fixed; z-index: 99998; pointer-events: none; overflow: hidden; }
+.mo-ripple-host > i {
+  position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; transform: scale(0);
+  background: radial-gradient(circle, rgba(255, 255, 255, .34), rgba(var(--accent-rgb, 176, 184, 193), .26) 58%, transparent 70%);
+  animation: mo-ripple 600ms ease-out forwards;
+}
+@keyframes mo-ripple { to { transform: scale(var(--r, 24)); opacity: 0; } }
+
+body button:active:not(:disabled), .tab:active, .character-list-item:active, .home-card .feature-badge:active { transform: scale(.972); }
+
+/* toggles that flip state get a quick pop (class added for ~420ms by motion.js) */
+@keyframes mo-pop { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+.mo-pop { animation: mo-pop 420ms var(--mo-spring); }
+
+/* ---------- Dice log: rows slide in, a natural 20 glows, a natural 1 shakes ---------- */
+.roll-log-row { animation: mo-pop-in 380ms var(--mo-spring) both; animation-delay: calc(var(--mo-i, 0) * 40ms); }
+.roll-log-row:nth-child(1) { --mo-i: 0; } .roll-log-row:nth-child(2) { --mo-i: 1; } .roll-log-row:nth-child(3) { --mo-i: 2; }
+.roll-log-row:nth-child(4) { --mo-i: 3; } .roll-log-row:nth-child(5) { --mo-i: 4; } .roll-log-row:nth-child(6) { --mo-i: 5; }
+.roll-log-row:nth-child(7) { --mo-i: 6; } .roll-log-row:nth-child(8) { --mo-i: 7; }
+@keyframes mo-nat20 { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 212, 121, 0); } 40% { box-shadow: 0 0 26px 5px rgba(255, 212, 121, .55); } }
+@keyframes mo-nat1  { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
+.roll-log-row.roll-nat20:nth-child(1) { animation: mo-pop-in 380ms var(--mo-spring) both, mo-nat20 1500ms var(--mo-ease) 300ms 2; }
+.roll-log-row.roll-nat1:nth-child(1)  { animation: mo-pop-in 380ms var(--mo-spring) both, mo-nat1 520ms var(--mo-ease) 380ms 1; }
+
+/* ---------- "?" help panels fade and scale in ---------- */
+@keyframes mo-help-in { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
+.section-help-panel.open { animation: mo-help-in 220ms var(--mo-ease); }
+
+/* ---------- Popups: the dimmed backdrop eases in ---------- */
+@keyframes mo-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* ---------- Respect reduced motion: no motion at all ---------- */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .mo-enter, .mo-pulse, .mo-pulse-heal, .mo-pulse-harm, .mo-item-in, .mo-pop, .roll-log-row, .section-help-panel.open { animation: none !important; }
+  .mo-pending { opacity: 1; transform: none; }
+  .mo-float, .mo-ripple-host { display: none; }
+}
