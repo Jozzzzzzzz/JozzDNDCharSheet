@@ -1,5 +1,4 @@
-﻿
-<!-- Warning Banner -->
+﻿<!-- Warning Banner -->
 <div id="rollingBanner" class="rolling-banner" aria-live="polite">
   <span id="rollingBannerText" class="rolling-banner-text">This sheet autosaves character data to your browser. Use Export to back up your character.</span>
 </div>
@@ -10,24 +9,55 @@
   <button type="button" class="admin-preview-exit" onclick="exitAdminPreview()">Exit Preview</button>
 </div>
 
-<!-- Data Controls -->
-<div class="header-bar">
-  <!-- Home Button -->
-  <button onclick="showHomePage()" class="accent-contrast-bg header-btn home-header-btn" title="Home">
-    Home<span id="homeNewBadge" class="home-new-badge" style="display:none;">NEW</span>
+<!-- Top bar: home, who you are playing, live vitals, sync, save, settings.
+     (.header-bar is kept: other code treats it as always-active chrome.) -->
+<header class="header-bar gr-topbar">
+  <button type="button" onclick="showHomePage()" class="gr-iconbtn home-header-btn" title="Home" aria-label="Home">
+    <svg class="gr-i" aria-hidden="true"><use href="assets/icons.svg#i-home"/></svg><span class="gr-iconbtn-label">Home</span>
+    <span id="homeNewBadge" class="home-new-badge" style="display:none;">NEW</span>
   </button>
-  <button onclick="openSettingsPage()" class="accent-contrast-bg header-btn" title="Settings">Settings</button>
-  <button onclick="manualSave(this)" class="accent-contrast-bg header-btn" title="Save &amp; sync now">Save</button>
 
-</div>
+  <div class="gr-identity" aria-live="polite">
+    <span class="gr-identity-name" id="grIdentName">Grimoire</span>
+    <span class="gr-identity-sub" id="grIdentSub">Character sheet</span>
+  </div>
 
-<!-- Tabs -->
-<div class="tabs">
-  <button class="tab active" data-tab="page1" onclick="switchTab(this)">Stats</button>
-  <button class="tab" data-tab="page2" onclick="switchTab(this)">Background</button>
-  <button class="tab" data-tab="page3" onclick="switchTab(this)">Spells</button>
-  <button class="tab" data-tab="page4" onclick="switchTab(this)">Inventory</button>
-  <button class="tab" data-tab="page6" onclick="switchTab(this)">Notes</button>
-</div>
+  <div class="gr-vitals" id="grVitals" hidden>
+    <span class="gr-vital gr-vital--hp" id="grVitalHp" title="Hit points" data-level="ok">
+      <svg class="gr-i" aria-hidden="true"><use href="assets/icons.svg#i-heart"/></svg>
+      <span id="grHpText">–</span><span class="gr-vital-temp" id="grHpTemp" hidden></span>
+    </span>
+    <span class="gr-vital gr-vital--ac" id="grVitalAc" title="Armor class">
+      <svg class="gr-i" aria-hidden="true"><use href="assets/icons.svg#i-shield"/></svg>
+      <span id="grAcText">–</span>
+    </span>
+    <span class="gr-vital gr-vital--init" id="grVitalInit" title="Initiative">
+      <svg class="gr-i" aria-hidden="true"><use href="assets/icons.svg#i-bolt"/></svg>
+      <span id="grInitText">–</span>
+    </span>
+  </div>
 
+  <span class="gr-sync" id="grSync" data-state="local" title="Saved on this device">
+    <svg class="gr-i" aria-hidden="true"><use href="assets/icons.svg#i-cloud"/></svg>
+  </span>
 
+  <button type="button" onclick="manualSave(this)" class="gr-iconbtn gr-savebtn" title="Save &amp; sync now" aria-label="Save">
+    <svg class="gr-i gr-todo" aria-hidden="true"><use href="assets/icons.svg#i-save"/></svg>
+    <svg class="gr-i gr-done" aria-hidden="true"><use href="assets/icons.svg#i-check"/></svg>
+    <span class="gr-iconbtn-label gr-label-todo">Save</span><span class="gr-iconbtn-label gr-label-done">Saved</span>
+  </button>
+  <button type="button" onclick="openSettingsPage()" class="gr-iconbtn" title="Settings" aria-label="Settings">
+    <svg class="gr-i" aria-hidden="true"><use href="assets/icons.svg#i-gear"/></svg>
+  </button>
+</header>
+
+<!-- Navigation: bottom tab bar on phones/tablets, side rail on desktop -->
+<nav class="tabs gr-nav" aria-label="Sheet sections">
+  <span class="gr-nav-ind" aria-hidden="true"></span>
+  <span class="gr-nav-brand" aria-hidden="true"><svg class="gr-i"><use href="assets/icons.svg#i-d20"/></svg></span>
+  <button type="button" class="tab active" data-tab="page1" onclick="switchTab(this)"><svg class="gr-i" aria-hidden="true"><use href="assets/icons.svg#i-stats"/></svg><span class="gr-tab-label">Stats</span></button>
+  <button type="button" class="tab" data-tab="page2" onclick="switchTab(this)"><svg class="gr-i" aria-hidden="true"><use href="assets/icons.svg#i-book"/></svg><span class="gr-tab-label">Background</span></button>
+  <button type="button" class="tab" data-tab="page3" onclick="switchTab(this)"><svg class="gr-i" aria-hidden="true"><use href="assets/icons.svg#i-sparkles"/></svg><span class="gr-tab-label">Spells</span></button>
+  <button type="button" class="tab" data-tab="page4" onclick="switchTab(this)"><svg class="gr-i" aria-hidden="true"><use href="assets/icons.svg#i-bag"/></svg><span class="gr-tab-label">Inventory</span></button>
+  <button type="button" class="tab" data-tab="page6" onclick="switchTab(this)"><svg class="gr-i" aria-hidden="true"><use href="assets/icons.svg#i-quill"/></svg><span class="gr-tab-label">Notes</span></button>
+</nav>
