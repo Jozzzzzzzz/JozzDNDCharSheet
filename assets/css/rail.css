@@ -126,6 +126,7 @@ html { padding-top: env(safe-area-inset-top, 0px); padding-right: env(safe-area-
   .action-tracker .new-round-btn { margin-left: 0; }
 }
 
-/* long action descriptions may break anywhere instead of pushing the card past the screen edge */
-.action-card, .actions-list-container { min-width: 0; max-width: 100%; }
+/* the actions grid had a 300px minimum column; let it shrink to the space that is actually there */
+.actions-list-container { grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); min-width: 0; max-width: 100%; }
+.action-card { min-width: 0; max-width: 100%; }
 .action-card p, .action-card span, .action-card div { overflow-wrap: anywhere; }
