@@ -112,3 +112,7 @@ html[data-rail="compact"] .gr-rv-bar { grid-column: 1; }
   #chrome-root .gr-rail, body #pages, body #rollingBanner, body #adminPreviewBanner { transition: none; }
   .gr-rail .tabs button.active::before, .gr-rail-scrim { animation: none; }
 }
+
+/* ---------- installed-app mode / notched phones: keep everything clear of the status bar, notch and home bar ---------- */
+html { padding-top: env(safe-area-inset-top, 0px); padding-right: env(safe-area-inset-right, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); box-sizing: border-box; }
+#chrome-root .gr-rail { padding-top: 8px; padding-bottom: 8px; top: env(safe-area-inset-top, 0px); bottom: env(safe-area-inset-bottom, 0px); height: auto; }
