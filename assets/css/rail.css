@@ -127,6 +127,9 @@ html { padding-top: env(safe-area-inset-top, 0px); padding-right: env(safe-area-
 }
 
 /* the actions grid had a 300px minimum column; let it shrink to the space that is actually there */
-.actions-list-container { grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); min-width: 0; max-width: 100%; }
+.actions-list-container, .equipment-list-container, .inventory-list-container, .storage-list-container, .tips-grid, .spells-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); min-width: 0; max-width: 100%;
+}
+.tips-grid, .spells-grid { grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); }
 .action-card { min-width: 0; max-width: 100%; }
 .action-card p, .action-card span, .action-card div { overflow-wrap: anywhere; }
