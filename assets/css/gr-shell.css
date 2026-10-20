@@ -50,6 +50,7 @@ body .header-bar {
   -webkit-backdrop-filter: blur(16px) saturate(1.25); backdrop-filter: blur(16px) saturate(1.25);
   border: 0; border-bottom: 1px solid var(--gr-line); box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
 }
+body .header-bar > * { order: 0; }
 body .header-bar::after { /* gold hairline */
   content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; pointer-events: none;
   background: linear-gradient(90deg, transparent, rgba(var(--gr-gold-rgb), .55), transparent); opacity: .5;
@@ -106,8 +107,6 @@ body .gr-savebtn:disabled { opacity: 1; }
 .gr-vital.is-heal { animation: gr-flash-heal 700ms var(--gr-ease); }
 .gr-vital.is-harm { animation: gr-flash-harm 700ms var(--gr-ease); }
 .gr-vital-temp { color: var(--gr-frost); font-size: .72rem; }
-@media (max-width: 520px) { .gr-vital--init { display: none; } .gr-vital { padding: 0 .6rem; } }
-@media (max-width: 400px) { .gr-vital--ac { display: none; } }
 
 /* sync status */
 .gr-sync { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; color: var(--gr-text-3); flex: none; }
@@ -168,4 +167,24 @@ body .gr-nav .tab:active { transform: scale(.94); }
   body .gr-nav .gr-nav-brand .gr-i { width: 2rem; height: 2rem; stroke-width: 1.4; filter: drop-shadow(0 0 12px rgba(var(--gr-gold-rgb), .45)); animation: gr-pop 6s var(--gr-ease) infinite; }
   body .gr-nav .tab { flex: none; min-height: 68px; }
   body .offline-indicator, body .install-app-btn { bottom: 18px; }
+}
+
+/* ---------- Top bar on phones: two rows (identity + actions / full-width vitals) ---------- */
+@media (max-width: 719px) {
+  body .header-bar {
+    display: grid; gap: .45rem .5rem; align-items: center;
+    grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+    grid-template-areas: "home ident sync save gear" "vitals vitals vitals vitals vitals";
+    padding-bottom: .55rem;
+  }
+  body .header-bar .home-header-btn { grid-area: home; }
+  body .header-bar .gr-identity { grid-area: ident; padding: 0 .15rem; }
+  body .header-bar .gr-sync { grid-area: sync; }
+  body .header-bar .gr-savebtn { grid-area: save; }
+  body .header-bar .gr-gearbtn { grid-area: gear; }
+  body .header-bar .gr-vitals { grid-area: vitals; width: 100%; gap: .45rem; }
+  body .header-bar .gr-vital { height: 38px; }
+  body .header-bar .gr-vital--hp { flex: 1 1 auto; min-width: 0; justify-content: center; font-size: 1rem; }
+  body .header-bar .gr-vital--ac, body .header-bar .gr-vital--init { display: inline-flex; flex: none; }
+  .gr-vital--init { display: inline-flex; }
 }
