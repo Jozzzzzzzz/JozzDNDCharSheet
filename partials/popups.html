@@ -47,6 +47,12 @@
   </div>
 </div>
 
+<!-- Short Rest Popup (built by shortRest() in health.js) -->
+<div class="popup" id="shortRestPopup">
+  <h3>Short Rest</h3>
+  <div id="shortRestBody"></div>
+</div>
+
 <!-- Condition Popup -->
 <div class="popup" id="conditionPopup">
   <h3>Add Condition</h3>
@@ -169,7 +175,7 @@
   <div class="resource-template-row" id="resourceTemplateRow"></div>
 
   <label>Resource Name:</label>
-  <input type="text" id="custom_resource_name" placeholder="e.g. Warlock Spell Slots, Ki Points, Bardic Inspiration"/>
+  <input type="text" id="custom_resource_name" oninput="suggestRestType('custom_resource_name','custom_resource_reset_type')" placeholder="e.g. Warlock Spell Slots, Ki Points, Bardic Inspiration"/>
   
   <label>Maximum Value:</label>
   <input type="number" id="custom_resource_max" min="1" max="15" value="1" placeholder="Maximum uses"/>
@@ -180,7 +186,10 @@
     <option value="short">Short Rest</option>
     <option value="manual">Manual Only</option>
   </select>
-  
+  <p class="resource-hint">Suggested from the name using D&amp;D recharge rules. You can change it.</p>
+
+  <label class="resource-pin-row"><input type="checkbox" id="custom_resource_pin"/> Also show in the Actions area</label>
+
   <div style="margin-top: 15px; display: flex; justify-content: space-between;">
     <button onclick="addCustomResource()">Add Resource</button>
     <button onclick="closePopup('addCustomResourcePopup')">Cancel</button>
@@ -191,7 +200,7 @@
 <div class="popup" id="addSpellSlotPopup">
   <h3>Add Spell Slot Type</h3>
   <label>Slot Name:</label>
-  <input type="text" id="spell_slot_name" placeholder="e.g. 1st Level, 2nd Level, Cantrips, Pact Magic"/>
+  <input type="text" id="spell_slot_name" oninput="suggestRestType('spell_slot_name','spell_slot_reset_type')" placeholder="e.g. 1st Level, 2nd Level, Cantrips, Pact Magic"/>
   
   <label>Maximum Slots:</label>
   <input type="number" id="spell_slot_max" min="1" max="15" value="1" placeholder="Maximum slots"/>

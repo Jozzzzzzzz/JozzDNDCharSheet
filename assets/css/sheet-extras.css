@@ -1,0 +1,116 @@
+/* ==========================================================================
+   SHEET ADDITIONS: pinned resources, companions & summons, proficiency chips,
+   star buttons. Uses the app's own variables (accent colour, panel colours).
+   Repo rules: never `transition: all`; respect prefers-reduced-motion.
+   ========================================================================== */
+
+/* ---------- pinned resources (Actions area) ---------- */
+.action-resources { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin: 10px 0; padding: 10px 12px; border: 1px solid var(--accent-border); border-radius: 10px; background: var(--card-bg, var(--panel-bg)); }
+.action-resources[hidden] { display: none; }
+.ar-item { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ar-name { font-weight: 700; font-size: .85rem; overflow-wrap: anywhere; }
+.ar-pips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ar-pip { width: 22px; height: 22px; min-width: 0; margin: 0; padding: 0; border-radius: 50%; border: 2px solid var(--accent-border); background: var(--accent-muted, transparent); cursor: pointer; box-shadow: none;
+  transition: background-color 180ms ease, transform 180ms cubic-bezier(.34, 1.56, .64, 1), opacity 180ms ease; }
+.ar-pip.is-full { background: var(--accent); border-color: var(--accent); }
+.ar-pip.is-spent { background: transparent; opacity: .55; }
+.ar-pip:active { transform: scale(.85); }
+.ar-count { font-size: .78rem; opacity: .8; font-variant-numeric: tabular-nums; }
+
+/* star on the Spells page rows */
+.pin-btn { min-width: 0; padding-left: 8px; padding-right: 8px; }
+.pin-btn.is-on { color: #ffd479; }
+.resource-pin-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.resource-pin-row input { width: auto; margin: 0; }
+.resource-hint { margin: 4px 0 0; font-size: .75rem; opacity: .75; }
+
+/* ---------- companions & summons ---------- */
+.companions-empty { margin: 4px 0 10px; font-size: .85rem; opacity: .7; font-style: italic; }
+.companions-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 12px; margin-bottom: 12px; min-width: 0; }
+.companions-list:empty { display: none; }
+.companions-list:has(.companions-empty) { display: block; }
+.comp-card { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 10px; border: 1px solid var(--accent-border); border-radius: 10px; background: var(--card-bg, var(--panel-bg)); transition: border-color 220ms ease, opacity 220ms ease; }
+.comp-card.is-down { border-color: var(--condition-red, #ff6b6b); opacity: .8; }
+.comp-head { display: flex; gap: 6px; align-items: center; min-width: 0; }
+.comp-head input { min-width: 0; margin: 0; }
+.comp-name { flex: 1 1 40%; font-weight: 700; }
+.comp-kind { flex: 1 1 40%; font-size: .85rem; }
+.comp-remove { flex: none; min-width: 0; margin: 0; padding: 4px 8px; }
+.comp-vitals { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.comp-hp { display: flex; align-items: center; gap: 6px; }
+.comp-hp button { min-width: 36px; min-height: 36px; margin: 0; padding: 0; font-weight: 800; }
+.comp-hp label, .comp-small { display: flex; align-items: center; gap: 4px; font-size: .8rem; font-weight: 700; margin: 0; }
+.comp-hp input, .comp-small input { width: 3.4em; min-width: 0; margin: 0; padding: 4px; text-align: center; }
+.comp-small input[type="text"] { width: 5.5em; }
+.comp-bar { height: 6px; border-radius: 3px; background: rgba(0, 0, 0, .5); overflow: hidden; }
+.comp-bar i { display: block; height: 100%; background: var(--condition-green, #6bff8c); transition: width 400ms cubic-bezier(.22, .8, .24, 1); }
+.comp-abils { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; }
+.comp-abil { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: .68rem; margin: 0; }
+.comp-abil input { width: 100%; min-width: 0; margin: 0; padding: 3px 0; text-align: center; font-size: .8rem; }
+.comp-abil b { font-size: .8rem; }
+.comp-notes { min-height: 52px; resize: vertical; font-family: inherit; }
+@media (max-width: 420px) { .comp-abils { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+/* ---------- proficiencies & training: one simple list ---------- */
+.prof-chips { min-width: 0; }
+.prof-rows { display: flex; flex-direction: column; min-width: 0; }
+.prof-row { display: grid; grid-template-columns: 8.5em minmax(0, 1fr); gap: 4px 12px; align-items: start; padding: 8px 2px; border-top: 1px solid var(--accent-border); }
+.prof-row:first-child { border-top: 0; }
+.prof-label { display: flex; align-items: center; gap: 4px; padding-top: 4px; font-weight: 700; font-size: .9rem; overflow-wrap: anywhere; }
+.prof-row-sheet .prof-label { opacity: .85; }
+.prof-items { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 0; min-height: 30px; }
+.prof-chip { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; padding: 3px 4px 3px 10px; border-radius: 999px; border: 1px solid var(--accent-border); background: var(--accent-soft); font-size: .84rem; overflow-wrap: anywhere; animation: mo-pop-in 280ms cubic-bezier(.34, 1.56, .64, 1) both; }
+.prof-chip-ro { padding-right: 10px; background: transparent; }
+.prof-chip button { min-width: 0; width: 20px; height: 20px; margin: 0; padding: 0; border-radius: 50%; font-size: .7rem; line-height: 1; background: transparent; border: 0; box-shadow: none; opacity: .7; }
+.prof-chip button:hover { opacity: 1; }
+.prof-empty { font-size: .8rem; opacity: .6; font-style: italic; }
+.prof-plus { min-width: 0; width: 28px; height: 28px; margin: 0; padding: 0; border-radius: 50%; font-size: 1.05rem; line-height: 1; }
+.prof-inline { margin: 0; flex: 1 1 11em; min-width: 0; }
+.prof-inline input, .prof-newrow input { width: 100%; min-width: 0; margin: 0; }
+.prof-del { min-width: 0; width: 20px; height: 20px; margin: 0; padding: 0; border-radius: 50%; font-size: .65rem; line-height: 1; background: transparent; border: 0; box-shadow: none; opacity: .5; }
+.prof-del:hover { opacity: 1; }
+.prof-addrow { margin: 8px 0 0; min-width: 0; padding: 5px 12px; font-size: .85rem; }
+.prof-newrow { display: flex; gap: 6px; margin: 8px 0 0; }
+.prof-newrow input { flex: 1 1 auto; }
+.prof-newrow button { flex: none; min-width: 0; margin: 0; }
+.prof-sortbox textarea { field-sizing: content; width: 100%; min-height: 64px; max-height: 400px; resize: vertical; margin: 0; font-family: inherit; }
+.prof-note { margin: 4px 0 0; font-size: .75rem; opacity: .75; }
+.prof-linkbtn { min-width: 0; margin: 0 0 0 4px; padding: 0 4px; border: 0; background: transparent; box-shadow: none; text-decoration: underline; font-size: inherit; color: var(--accent-text, var(--accent)); cursor: pointer; }
+.prof-text { margin-top: 10px; }
+.prof-text summary { cursor: pointer; font-size: .78rem; opacity: .75; }
+.prof-text textarea { margin-top: 6px; }
+@media (max-width: 520px) { .prof-row { grid-template-columns: minmax(0, 1fr); } .prof-label { padding-top: 0; } }
+
+/* ---------- hit dice (compact) + short rest popup ---------- */
+.hit-dice-section.hd-compact { padding: 10px 12px; margin-top: 12px; }
+.hd-compact h4 { margin: 0 0 8px; font-size: 1em; }
+.hd-compact .hd-pool { gap: 8px; }
+.hd-compact .hd-pool-primary { flex-wrap: wrap; gap: 8px; }
+.hd-pool-die-pick select { margin: 0; padding: 2px 6px; width: auto; min-width: 0; }
+.hd-pool-die b { font-weight: 800; }
+/* health potions: same compact look as hit dice */
+.health-potion-section.health-potion-section { padding: 10px 12px; margin-top: 12px; }
+.health-potion-section.health-potion-section h4 { margin: 0 0 8px; font-size: 1em; }
+.health-potion-section .potion-controls { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 10px; }
+.health-potion-section .potion-group { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 6px; width: 100%; }
+.health-potion-section .potion-group select { width: auto; max-width: 100%; margin: 0; }
+.health-potion-section .potion-info { margin: 0; }
+.health-potion-section .potion-btn { margin: 0; }
+#shortRestPopup { box-sizing: border-box; max-width: min(440px, 95vw); }
+.sr-hp { margin: 0 0 10px; text-align: center; }
+.sr-pool { padding: 10px; margin-bottom: 8px; border: 1px solid var(--accent-border); border-radius: 10px; background: var(--card-bg, var(--panel-bg)); text-align: center; }
+.sr-pool-head { display: flex; justify-content: center; gap: 10px; align-items: baseline; font-size: .9rem; }
+.sr-step { display: flex; justify-content: center; align-items: center; gap: 14px; margin: 8px 0 4px; }
+.sr-step button { min-width: 44px; min-height: 44px; margin: 0; padding: 0; font-size: 1.4rem; font-weight: 800; }
+.sr-step output { min-width: 2ch; font-size: 1.8rem; font-weight: 800; text-align: center; font-variant-numeric: tabular-nums; }
+.sr-preview { font-size: .8rem; opacity: .8; min-height: 1.2em; }
+.sr-actions { display: flex; gap: 8px; justify-content: center; margin-top: 12px; }
+.sr-actions button { margin: 0; }
+.sr-go { background: var(--accent); color: var(--accent-contrast); }
+.sr-rolls { margin: 6px 0; text-align: center; font-size: .85rem; font-variant-numeric: tabular-nums; }
+.sr-reset, .sr-note { margin: 6px 0; font-size: .78rem; opacity: .8; text-align: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ar-pip, .comp-card, .comp-bar i { transition: none; }
+  .prof-chip { animation: none; }
+}

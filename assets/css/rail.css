@@ -10,13 +10,13 @@
    Repo rules: never `transition: all`; respect prefers-reduced-motion.
    ========================================================================== */
 
-:root { --rail-w: 96px; --rail-total: calc(var(--rail-w) + env(safe-area-inset-left, 0px)); }
+:root { --rail-w: 96px; --rail-total: calc(var(--rail-w) + env(safe-area-inset-left, 0px)); --rail-gap: var(--rail-total); }
 html[data-rail="compact"] { --rail-w: 60px; }
 @media (max-width: 760px), (max-height: 520px) { :root { --rail-w: 60px; } }
 
 /* the page makes room for the rail (the rail itself is fixed) */
 body #pages, body #rollingBanner, body #adminPreviewBanner {
-  margin-left: var(--rail-total); width: calc(100% - var(--rail-total)); max-width: calc(100% - var(--rail-total)); box-sizing: border-box;   /* the old rules say width:100%, which would overflow by the rail's width */
+  margin-left: var(--rail-gap); width: calc(100% - var(--rail-gap)); max-width: calc(100% - var(--rail-gap)); box-sizing: border-box;   /* the old rules say width:100%, which would overflow by the rail's width */
   transition: margin-left 280ms cubic-bezier(.22, .8, .24, 1), width 280ms cubic-bezier(.22, .8, .24, 1), max-width 280ms cubic-bezier(.22, .8, .24, 1);
 }
 
@@ -136,3 +136,27 @@ html { padding-top: env(safe-area-inset-top, 0px); padding-right: env(safe-area-
 
 /* cards that insisted on 300px: 300px or the space available, whichever is smaller */
 .horizontal-sections > .section { min-width: min(300px, 100%); }
+
+
+/* ==========================================================================
+   RAIL EXTRAS: rest menu, auto-hide on phones, smaller banner
+   ========================================================================== */
+
+/* ---------- auto-hide (phones): the rail slides away while you scroll down, back on scroll up ---------- */
+html[data-rail-hidden] { --rail-gap: 0px; }
+#chrome-root .gr-rail { transition: width 280ms cubic-bezier(.22, .8, .24, 1), box-shadow 280ms ease, transform 280ms cubic-bezier(.22, .8, .24, 1); }
+html[data-rail-hidden] #chrome-root .gr-rail { transform: translateX(-105%); box-shadow: none; }
+
+/* ---------- the rolling banner can shrink to a thin strip (button on its right edge) ---------- */
+.gr-banner-toggle { position: absolute; top: 50%; right: 4px; width: 26px; height: 26px; min-width: 0; margin: 0; padding: 0; transform: translateY(-50%); display: flex; align-items: center; justify-content: center; border-radius: 50%; background: transparent; border: 0; box-shadow: none; color: inherit; opacity: .75; }
+.gr-banner-toggle .gr-i { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transform: rotate(90deg); transition: transform 240ms cubic-bezier(.22, .8, .24, 1); }
+html[data-banner="min"] .gr-banner-toggle .gr-i { transform: rotate(-90deg); }
+#rollingBanner { padding-right: 36px; transition: min-height 240ms cubic-bezier(.22, .8, .24, 1), padding 240ms cubic-bezier(.22, .8, .24, 1); }
+html[data-banner="min"] #rollingBanner { min-height: 24px; padding-top: 2px; padding-bottom: 2px; }
+html[data-banner="min"] #rollingBanner .rolling-banner-text { font-size: .72rem; line-height: 1.2; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html[data-banner="min"] .gr-banner-toggle { width: 22px; height: 22px; }
+
+@media (prefers-reduced-motion: reduce) {
+  #chrome-root .gr-rail, #rollingBanner { transition: none; }
+  .gr-banner-toggle .gr-i { transition: none; }
+}

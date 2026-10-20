@@ -20,6 +20,7 @@ const PRECACHE_URLS = [
   'assets/styles.css',
   'assets/css/motion.css',
   'assets/css/rail.css',
+  'assets/css/sheet-extras.css',
   'assets/icons.svg',
   'assets/data/spells.json',
   'assets/data/items.json',

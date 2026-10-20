@@ -945,6 +945,7 @@ let _ssDragGhost = null, _ssDragSrc = null, _ssDragPlaceholder = null;
 let _ssDragOffX = 0, _ssDragOffY = 0, _ssDragLastX = 0, _ssDragTilt = 0;
 
 function updateSpellSlots() {
+  if (typeof renderActionResources === 'function') renderActionResources();   // pinned copies in the Actions area
   const container = document.getElementById('spell_slots_container');
   if (!container) return;
   container.innerHTML = '';
@@ -971,6 +972,7 @@ function updateSpellSlots() {
         <button class="spell-stepper-btn" onclick="stepSpellSlot('${slot.id}', 1)" title="Spend slot">+</button>
       </div>
       <div class="spell-slot-row-actions">
+        <button class="spell-slot-edit-btn pin-btn${slot.showInActions ? ' is-on' : ''}" onclick="togglePinResource('slot','${slot.id}')" title="Show in the Actions area" aria-pressed="${!!slot.showInActions}">${slot.showInActions ? '★' : '☆'}</button>
         <button class="spell-slot-edit-btn" onclick="showEditSpellSlotPopup('${slot.id}')" title="Edit">Edit</button>
         <button class="spell-slot-delete-btn" onclick="removeSpellSlot('${slot.id}')" title="Remove">✕</button>
       </div>
@@ -1105,6 +1107,7 @@ function stepSpellSlot(slotId, delta) {
   manualSpellSlotsUsed[slotId] = Math.max(0, Math.min(slot.maxValue, current + delta));
   const el = document.getElementById(`spell_used_${slotId}`);
   if (el) el.textContent = `${manualSpellSlotsUsed[slotId]} / ${slot.maxValue}`;
+  if (typeof renderActionResources === 'function') renderActionResources();
   autosave();
 }
 
@@ -1163,6 +1166,32 @@ function saveSpellSlotEdit() {
   currentEditingSpellSlotId = null;
 }
 
+// ========== REST-TYPE HELPERS (D&D defaults + "show in Actions") ==========
+
+// 5e recharge rules: Warlock Pact Magic and most short-rest class features come back on a
+// short rest. Anything else defaults to a long rest. Only a suggestion: the dropdown can be changed.
+const SHORT_REST_NAMES = /\bki\b|channel divinity|bardic inspiration|font of inspiration|wild ?shape|superiority|second wind|action surge|pact|warlock|arcane recovery|natural recovery|combat superiority|rune/i;
+function guessRestType(name) { return SHORT_REST_NAMES.test(name || '') ? 'short' : 'long'; }
+
+// Suggest a rest type while typing a name, but never override a choice the player made.
+function suggestRestType(nameId, selectId) {
+  const sel = document.getElementById(selectId), nm = document.getElementById(nameId);
+  if (!sel || !nm || sel.dataset.touched === '1' || !nm.value.trim()) return;
+  sel.value = guessRestType(nm.value);
+}
+document.addEventListener('change', e => { if (e.target && (e.target.id === 'custom_resource_reset_type' || e.target.id === 'spell_slot_reset_type')) e.target.dataset.touched = '1'; });
+
+// Pin / unpin a slot type or resource so it also shows (as tappable pips) in the Actions area.
+// The pips read and write the SAME numbers, so the two places can never disagree.
+function togglePinResource(kind, id) {
+  const list = kind === 'slot' ? manualSpellSlots : customResources;
+  const item = list.find(x => x.id === id);
+  if (!item) return;
+  item.showInActions = !item.showInActions;
+  if (kind === 'slot') updateSpellSlots(); else updateCustomResources();
+  autosave();
+}
+
 // ========== CUSTOM RESOURCES SYSTEM ==========
 
 // Common class resource presets (#10). max is a sensible starting value the user
@@ -1202,6 +1231,8 @@ function showAddCustomResourcePopup() {
   document.getElementById('custom_resource_name').value = '';
   document.getElementById('custom_resource_max').value = '1';
   document.getElementById('custom_resource_reset_type').value = 'long';
+  document.getElementById('custom_resource_reset_type').dataset.touched = '';
+  const pin = document.getElementById('custom_resource_pin'); if (pin) pin.checked = false;
   renderResourceTemplates();
   showPopup('addCustomResourcePopup');
 }
@@ -1215,7 +1246,8 @@ function addCustomResource() {
     appToast('A resource with this name already exists', 'error'); return;
   }
   const resourceId = 'custom_' + Date.now();
-  customResources.push({ id: resourceId, name, maxValue, resetType });
+  const pin = document.getElementById('custom_resource_pin');
+  customResources.push({ id: resourceId, name, maxValue, resetType, showInActions: !!(pin && pin.checked) });
   customResourcesUsed[resourceId] = 0;
   updateCustomResources();
   closePopup('addCustomResourcePopup');
@@ -1233,6 +1265,7 @@ function removeCustomResource(resourceId) {
 }
 
 function updateCustomResources() {
+  if (typeof renderActionResources === 'function') renderActionResources();   // pinned copies in the Actions area
   const container = document.getElementById('custom_resources_container');
   if (!container) return;
   container.innerHTML = '';
@@ -1255,6 +1288,7 @@ function updateCustomResources() {
         <span class="spell-available-count" id="custom_used_${resource.id}">${usedValue} / ${resource.maxValue}</span>
         <button class="spell-stepper-btn" onclick="stepCustomResource('${resource.id}', 1)" title="Spend">+</button>
       </div>
+      <button class="spell-slot-edit-btn pin-btn${resource.showInActions ? ' is-on' : ''}" onclick="togglePinResource('resource','${resource.id}')" title="Show in the Actions area" aria-pressed="${!!resource.showInActions}">${resource.showInActions ? '★' : '☆'}</button>
       <button class="spell-slot-delete-btn" onclick="removeCustomResource('${resource.id}')" title="Remove Resource">✕</button>
     `;
     container.appendChild(resourceDiv);
@@ -1285,6 +1319,7 @@ function stepCustomResource(resourceId, delta) {
   customResourcesUsed[resourceId] = Math.max(0, Math.min(resource.maxValue, current + delta));
   const el = document.getElementById(`custom_used_${resourceId}`);
   if (el) el.textContent = `${customResourcesUsed[resourceId]} / ${resource.maxValue}`;
+  if (typeof renderActionResources === 'function') renderActionResources();
   autosave();
 }
 
@@ -1323,6 +1358,7 @@ function showAddSpellSlotPopup() {
   document.getElementById('spell_slot_name').value = '';
   document.getElementById('spell_slot_max').value = '1';
   document.getElementById('spell_slot_reset_type').value = 'long';
+  document.getElementById('spell_slot_reset_type').dataset.touched = '';
   showPopup('addSpellSlotPopup');
 }
 

@@ -1,6 +1,9 @@
 <!-- Warning Banner -->
 <div id="rollingBanner" class="rolling-banner" aria-live="polite">
   <span id="rollingBannerText" class="rolling-banner-text">This sheet autosaves character data to your browser. Use Export to back up your character.</span>
+  <button type="button" class="gr-banner-toggle" id="grBannerToggle" aria-label="Shrink banner" aria-expanded="true" title="Shrink / expand banner">
+    <svg class="gr-i" aria-hidden="true"><use href="assets/icons.svg#i-chevron-right"/></svg>
+  </button>
 </div>
 
 <!-- Admin Preview Banner -->
@@ -18,18 +21,18 @@
   </button>
 
   <div class="header-bar gr-rail-group">
-    <button type="button" onclick="showHomePage()" class="header-btn home-header-btn gr-rail-btn" title="Home" aria-label="Home">
+    <button type="button" onclick="showHomePage()" class="header-btn home-header-btn gr-rail-btn" title="Home (H)" aria-label="Home">
       <svg class="gr-i" aria-hidden="true"><use href="assets/icons.svg#i-home"/></svg><span class="gr-lbl">Home</span>
       <span id="homeNewBadge" class="home-new-badge" style="display:none;">NEW</span>
     </button>
   </div>
 
   <nav class="tabs gr-rail-tabs" aria-label="Sheet sections">
-    <button type="button" class="tab active" data-tab="page1" onclick="switchTab(this)" title="Stats" aria-label="Stats"><svg class="gr-i" aria-hidden="true"><use href="assets/icons.svg#i-stats"/></svg><span class="gr-lbl">Stats</span></button>
-    <button type="button" class="tab" data-tab="page2" onclick="switchTab(this)" title="Background" aria-label="Background"><svg class="gr-i" aria-hidden="true"><use href="assets/icons.svg#i-book"/></svg><span class="gr-lbl">Background</span></button>
-    <button type="button" class="tab" data-tab="page3" onclick="switchTab(this)" title="Spells" aria-label="Spells"><svg class="gr-i" aria-hidden="true"><use href="assets/icons.svg#i-sparkles"/></svg><span class="gr-lbl">Spells</span></button>
-    <button type="button" class="tab" data-tab="page4" onclick="switchTab(this)" title="Inventory" aria-label="Inventory"><svg class="gr-i" aria-hidden="true"><use href="assets/icons.svg#i-bag"/></svg><span class="gr-lbl">Inventory</span></button>
-    <button type="button" class="tab" data-tab="page6" onclick="switchTab(this)" title="Notes" aria-label="Notes"><svg class="gr-i" aria-hidden="true"><use href="assets/icons.svg#i-quill"/></svg><span class="gr-lbl">Notes</span></button>
+    <button type="button" class="tab active" data-tab="page1" onclick="switchTab(this)" title="Stats (1)" aria-label="Stats"><svg class="gr-i" aria-hidden="true"><use href="assets/icons.svg#i-user"/></svg><span class="gr-lbl">Stats</span></button>
+    <button type="button" class="tab" data-tab="page2" onclick="switchTab(this)" title="Background (2)" aria-label="Background"><svg class="gr-i" aria-hidden="true"><use href="assets/icons.svg#i-book"/></svg><span class="gr-lbl">Background</span></button>
+    <button type="button" class="tab" data-tab="page3" onclick="switchTab(this)" title="Spells (3)" aria-label="Spells"><svg class="gr-i" aria-hidden="true"><use href="assets/icons.svg#i-sparkles"/></svg><span class="gr-lbl">Spells</span></button>
+    <button type="button" class="tab" data-tab="page4" onclick="switchTab(this)" title="Inventory (4)" aria-label="Inventory"><svg class="gr-i" aria-hidden="true"><use href="assets/icons.svg#i-bag"/></svg><span class="gr-lbl">Inventory</span></button>
+    <button type="button" class="tab" data-tab="page6" onclick="switchTab(this)" title="Notes (5)" aria-label="Notes"><svg class="gr-i" aria-hidden="true"><use href="assets/icons.svg#i-quill"/></svg><span class="gr-lbl">Notes</span></button>
   </nav>
 
   <div class="gr-rail-vitals" id="grRailVitals" hidden>

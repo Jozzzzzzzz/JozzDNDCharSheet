@@ -573,6 +573,8 @@ function syncConModifier() {
   if (!conMod) return;
   const conBonus = document.getElementById('con_bonus');
   conMod.value = parseSignedNumber(conBonus ? conBonus.value : '0');
+  const chip = document.getElementById('hd_con_mod');
+  if (chip) chip.textContent = (conMod.value >= 0 ? '+' : '\u2212') + Math.abs(conMod.value);
 }
 
 // ── Spell Save DC and Spell Attack Bonus (auto, overridable) ─────────────

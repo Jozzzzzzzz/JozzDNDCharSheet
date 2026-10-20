@@ -360,13 +360,13 @@
       <div class="section health-section">
         <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
         <div class="section-help-panel" onclick="closeHelp(this)">
-          <p><strong>Health</strong> — track your HP, death saves, rests, hit dice, and potions.</p>
+          <p><strong>Health</strong> — track your HP, death saves, rests, potions and hit dice.</p>
           <p><strong>Max HP / Current HP</strong> — enter max from your class and CON modifier. Current HP updates live. Use +1/−1 buttons or Custom for damage and healing.</p>
           <p><strong>Temp HP</strong> — managed separately via the Custom button. Damage hits temp HP first; it doesn't stack with other temp HP sources.</p>
           <p><strong>Death Saves</strong> — click the circles to track successes (3 = stabilise) and failures (3 = dead). Reset automatically on Long Rest.</p>
           <p><strong>Short Rest</strong> — spend hit dice to recover HP. Enter how many to spend and click Short Rest. Resets short-rest spell slots and resources.</p>
           <p><strong>Long Rest</strong> — fully restores HP and death saves. Resets all spell slots and resources that recover on long rest.</p>
-          <p><strong>Hit Dice Recovery</strong> — choose your hit die size (from your class) and how many to spend. CON modifier is auto-synced from your CON score above.</p>
+          <p><strong>Hit Dice</strong> — the pool of dice you can spend on a Short Rest (tap Short Rest to choose how many). Pick your class die size here; the CON modifier comes from Ability Scores.</p>
           <p><strong>Health Potions</strong> — select a potion type, click Use Potion three times to confirm. Rolls the dice and applies healing automatically.</p>
         </div>
         <h2>Health</h2>
@@ -434,65 +434,6 @@
           <button onclick="longRest()" class="rest-button long-rest-btn">Long Rest</button>
         </div>
         
-        <!-- Hit Dice Pool -->
-        <div class="hit-dice-section">
-          <h4>Hit Dice Pool</h4>
-          <div class="hd-pool" id="hd_pool">
-            <div class="hd-pool-primary">
-              <span class="hd-pool-remaining"><strong id="hd_pool_remaining">0</strong> / <span id="hd_pool_max_display">0</span> remaining</span>
-              <span class="hd-pool-die" id="hd_pool_die_label">d8</span>
-            </div>
-            <div class="hd-pool-controls">
-              <button type="button" onclick="spendHitDie(1)" title="Spend one hit die">− Spend</button>
-              <button type="button" onclick="spendHitDie(-1)" title="Restore one hit die">+ Restore</button>
-              <label class="hd-pool-max-label">Max:
-                <input type="number" id="hd_pool_max" min="0" max="40" oninput="onHitDicePoolMaxInput()" title="Total hit dice (auto = total level; editable)"/>
-              </label>
-            </div>
-          </div>
-          <!-- Optional 2nd pool: only shown when multiclass classes use different die sizes -->
-          <div class="hd-pool hd-pool-secondary" id="hd_pool2" style="display:none;">
-            <div class="hd-pool-primary">
-              <span class="hd-pool-remaining"><strong id="hd_pool2_remaining">0</strong> / <span id="hd_pool2_max_display">0</span> remaining</span>
-              <span class="hd-pool-die" id="hd_pool2_die_label">d6</span>
-            </div>
-            <div class="hd-pool-controls">
-              <button type="button" onclick="spendHitDie(1, 2)" title="Spend one hit die">− Spend</button>
-              <button type="button" onclick="spendHitDie(-1, 2)" title="Restore one hit die">+ Restore</button>
-              <label class="hd-pool-max-label">Max:
-                <input type="number" id="hd_pool2_max" min="0" max="40" oninput="onHitDicePoolMaxInput()" title="Second-class hit dice"/>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <!-- Hit Dice Section -->
-        <div class="hit-dice-section">
-          <h4>Hit Dice Recovery</h4>
-          <div class="hit-dice-inputs">
-            <div class="hit-dice-group">
-              <label>Hit Dice to Spend:</label>
-              <input type="number" id="hit_dice_spend" min="0" max="20" value="1" oninput="calculateHitDiceRecovery(); autosave()"/>
-            </div>
-            <div class="hit-dice-group">
-              <label>Constitution Modifier:</label>
-              <input type="number" id="con_modifier" readonly class="con-modifier-field" title="Auto-synced from CON modifier"/>
-            </div>
-            <div class="hit-dice-group">
-              <label>Hit Die Size:</label>
-              <select id="hit_die_size" onchange="calculateHitDiceRecovery(); if(typeof renderHitDicePool==='function')renderHitDicePool(); autosave()">
-                <option value="6">d6</option>
-                <option value="8" selected>d8</option>
-                <option value="10">d10</option>
-                <option value="12">d12</option>
-              </select>
-            </div>
-          </div>
-          <div class="hit-dice-recovery">
-            <span id="hit_dice_recovery_text">Potential Recovery: 1d8 + 0 = 1-8 HP</span>
-          </div>
-        </div>
-        
         <!-- Health Potion Section -->
         <div class="health-potion-section">
           <h4>Health Potions</h4>
@@ -512,20 +453,69 @@
             <button onclick="useHealthPotion()" class="rest-button potion-btn" id="use_potion_btn">Use Potion</button>
           </div>
         </div>
+
+        <!-- Hit Dice: one pool. Spending them happens in the Short Rest popup. -->
+        <div class="hit-dice-section hd-compact">
+          <h4>Hit Dice</h4>
+          <div class="hd-pool" id="hd_pool">
+            <div class="hd-pool-primary">
+              <span class="hd-pool-remaining"><strong id="hd_pool_remaining">0</strong> / <span id="hd_pool_max_display">0</span> left</span>
+              <label class="hd-pool-die-pick" title="Your class hit die"><select id="hit_die_size" onchange="calculateHitDiceRecovery(); if(typeof renderHitDicePool==='function')renderHitDicePool(); autosave()">
+                <option value="6">d6</option>
+                <option value="8" selected>d8</option>
+                <option value="10">d10</option>
+                <option value="12">d12</option>
+              </select></label>
+              <span class="hd-pool-die" id="hd_con_chip" title="Constitution modifier, taken from Ability Scores">CON <b id="hd_con_mod">+0</b></span>
+            </div>
+            <div class="hd-pool-controls">
+              <button type="button" onclick="spendHitDie(1)" title="Spend one hit die">− Spend</button>
+              <button type="button" onclick="spendHitDie(-1)" title="Restore one hit die">+ Restore</button>
+              <label class="hd-pool-max-label">Max:
+                <input type="number" id="hd_pool_max" min="0" max="40" oninput="onHitDicePoolMaxInput()" title="Total hit dice (auto = total level; editable)"/>
+              </label>
+            </div>
+          </div>
+          <!-- Optional 2nd pool: only shown when multiclass classes use different die sizes -->
+          <div class="hd-pool hd-pool-secondary" id="hd_pool2" style="display:none;">
+            <div class="hd-pool-primary">
+              <span class="hd-pool-remaining"><strong id="hd_pool2_remaining">0</strong> / <span id="hd_pool2_max_display">0</span> left</span>
+              <span class="hd-pool-die" id="hd_pool2_die_label">d6</span>
+            </div>
+            <div class="hd-pool-controls">
+              <button type="button" onclick="spendHitDie(1, 2)" title="Spend one hit die">− Spend</button>
+              <button type="button" onclick="spendHitDie(-1, 2)" title="Restore one hit die">+ Restore</button>
+              <label class="hd-pool-max-label">Max:
+                <input type="number" id="hd_pool2_max" min="0" max="40" oninput="onHitDicePoolMaxInput()" title="Second-class hit dice"/>
+              </label>
+            </div>
+          </div>
+          <!-- kept (hidden) so older saves and the save/load code still find them -->
+          <div hidden>
+            <input type="number" id="hit_dice_spend" min="0" max="20" value="1"/>
+            <input type="number" id="con_modifier" readonly/>
+            <span id="hit_dice_recovery_text"></span>
+          </div>
+        </div>
       </div>
       
       <!-- Proficiencies & Training (swapped with Conditions) -->
       <div class="section">
         <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
         <div class="section-help-panel" onclick="closeHelp(this)">
-          <p><strong>Proficiencies & Training</strong> — a free-text notepad for everything your character is trained in.</p>
-          <p>Use it to list: weapon and armour proficiencies, tool proficiencies (e.g. Thieves' Tools, Herbalism Kit), languages, and any special training from your background or class.</p>
-          <p>This is a reference field only — it doesn't affect any calculations. Keep it as brief or detailed as you like.</p>
+          <p><strong>Proficiencies & Training</strong> — one line each for Armor, Weapons, Tools and Languages. Tap the + at the end of a line, type, and press Enter (the box stays open so you can add several). Tap ✕ on a chip to remove it.</p>
+          <p>Skills and Saving Throws fill in by themselves from the ticks on this page.</p>
+          <p>Need another line (Vehicles, Feats, Senses...)? Use "+ Add a row" and give it any title.</p>
+          <p>This is a reference field only — it doesn't affect any calculations. "Edit as text" shows it as plain text.</p>
         </div>
         <h2>Proficiencies & Training</h2>
-        <textarea id="proficiencies_training" class="basic-textarea notes-textarea"
-                  oninput="autosave()" placeholder="List your proficiencies, tools, languages, and special training..."
-                  style="min-height: 100px;"></textarea>
+        <div class="prof-chips" id="prof_chips"></div>
+        <details class="prof-text">
+          <summary>Edit as text</summary>
+          <textarea id="proficiencies_training" class="basic-textarea notes-textarea"
+                    oninput="autosave()" placeholder="List your proficiencies, tools, languages, and special training..."
+                    style="min-height: 100px;"></textarea>
+        </details>
       </div>
     </div>
     
@@ -666,6 +656,21 @@
         </div>
 
         <button class="new-round-btn" onclick="resetRoundActions()">New Round</button>
+      </div>
+
+      <!-- Pinned resources: slots / resources marked with a star on the Spells page appear here -->
+      <div class="action-resources" id="action_resources" hidden></div>
+
+      <!-- Companions & Summons -->
+      <div class="section companions-section">
+        <button class="section-help-btn" onclick="toggleHelp(this)" title="How this section works">?</button>
+        <div class="section-help-panel" onclick="closeHelp(this)">
+          <p><strong>Companions & Summons</strong> — track a familiar, animal companion, mount, hireling or summoned creature.</p>
+          <p>Each one has its own HP (use − / + or type), AC, speed, ability scores and a notes box for attacks and abilities. It saves with your character.</p>
+        </div>
+        <h2>Companions &amp; Summons</h2>
+        <div class="companions-list" id="companions_list"></div>
+        <button type="button" class="kit-picker-btn" onclick="addCompanion()">+ Add companion or summon</button>
       </div>
 
 

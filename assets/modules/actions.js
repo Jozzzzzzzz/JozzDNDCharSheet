@@ -173,6 +173,7 @@ function _renderSection(timing, containerId) {
 }
 
 function displayActions(type) {
+  if (typeof renderCompanions === 'function') renderCompanions();
   // Only bail if none of the containers exist (stats page not loaded yet).
   if (!document.getElementById('actions_list') &&
       !document.getElementById('bonus_actions_list') &&
@@ -758,3 +759,326 @@ function loadActions() {
   actionsData = window.getStoredJSON ? window.getStoredJSON('dndActions', actionsData) : (JSON.parse(localStorage.getItem('dndActions') || 'null') || actionsData);
 }
 
+
+// ========== PINNED RESOURCES (mirror of the Spells page rows marked with a star) ==========
+// Slots / resources tagged "show in Actions" appear here as tappable pips. They read and write the
+// SAME used-counts as the Spells page, so the two places can never disagree; rests reset them as usual.
+function renderActionResources() {
+  const box = document.getElementById('action_resources');
+  if (!box) return;
+  const items = [];
+  if (typeof manualSpellSlots !== 'undefined') manualSpellSlots.filter(x => x.showInActions).forEach(x => items.push({ kind: 'slot', id: x.id, name: x.name, max: x.maxValue, used: (manualSpellSlotsUsed || {})[x.id] || 0 }));
+  if (typeof customResources !== 'undefined') customResources.filter(x => x.showInActions).forEach(x => items.push({ kind: 'resource', id: x.id, name: x.name, max: x.maxValue, used: (customResourcesUsed || {})[x.id] || 0 }));
+  if (!items.length) { box.hidden = true; box.innerHTML = ''; return; }
+  box.hidden = false;
+  box.innerHTML = items.map(it => {
+    const max = Math.max(0, Math.min(it.max || 0, 30)), avail = Math.max(0, max - Math.min(it.used, max));
+    const pips = Array.from({ length: max }, (_, i) =>
+      `<button type="button" class="ar-pip ${i < avail ? 'is-full' : 'is-spent'}" onclick="actionResPip('${it.kind}','${it.id}',${i})" aria-label="${escapeHtml(it.name)} ${i < avail ? 'available' : 'spent'}"></button>`).join('');
+    return `<div class="ar-item"><span class="ar-name">${escapeHtml(it.name)}</span><span class="ar-pips">${pips}</span><span class="ar-count">${avail}/${max}</span></div>`;
+  }).join('');
+}
+
+// Tap an available pip to spend one; tap a spent pip to get one back.
+function actionResPip(kind, id, index) {
+  const isSlot = kind === 'slot';
+  const item = (isSlot ? manualSpellSlots : customResources).find(x => x.id === id);
+  if (!item) return;
+  const used = isSlot ? manualSpellSlotsUsed : customResourcesUsed;
+  const cur = Math.min(used[id] || 0, item.maxValue), avail = item.maxValue - cur;
+  used[id] = index < avail ? Math.min(item.maxValue, cur + 1) : Math.max(0, cur - 1);
+  if (isSlot) updateSpellSlots(); else updateCustomResources();
+  autosave();
+}
+
+
+// ========== COMPANIONS & SUMMONS (saved inside actionsData.companions) ==========
+const COMP_ABILS = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+const _compMod = score => { const m = Math.floor(((parseInt(score, 10) || 10) - 10) / 2); return (m >= 0 ? '+' : '\u2212') + Math.abs(m); };
+const _compFind = id => (actionsData.companions || []).find(c => c.id === id);
+
+function renderCompanions() {
+  const list = document.getElementById('companions_list');
+  if (!list) return;
+  const comps = actionsData.companions || [];
+  if (!comps.length) { list.innerHTML = '<p class="companions-empty">No companions or summons yet.</p>'; return; }
+  list.innerHTML = comps.map(c => {
+    const a = c.abilities || {};
+    const pct = c.maxHp > 0 ? Math.max(0, Math.min(100, Math.round(c.hp / c.maxHp * 100))) : 100;
+    const abil = COMP_ABILS.map(k => `<label class="comp-abil"><span>${k.toUpperCase()}</span><input type="number" value="${parseInt(a[k], 10) || 10}" data-id="${c.id}" data-ab="${k}" oninput="companionAbility(this)" aria-label="${k.toUpperCase()}"><b id="cm_${c.id}_${k}">${_compMod(a[k])}</b></label>`).join('');
+    return `<div class="comp-card${c.hp <= 0 && c.maxHp > 0 ? ' is-down' : ''}" id="comp_${c.id}">
+      <div class="comp-head">
+        <input class="comp-name" type="text" value="${escapeHtml(c.name || '')}" placeholder="Name" oninput="companionSet('${c.id}','name',this.value)" aria-label="Companion name">
+        <input class="comp-kind" type="text" value="${escapeHtml(c.kind || '')}" placeholder="Type (familiar, mount, summon...)" oninput="companionSet('${c.id}','kind',this.value)" aria-label="Companion type">
+        <button type="button" class="comp-remove" onclick="removeCompanion('${c.id}')" title="Remove" aria-label="Remove companion">\u2715</button>
+      </div>
+      <div class="comp-vitals">
+        <div class="comp-hp">
+          <button type="button" onclick="companionHp('${c.id}',-1)" aria-label="Lose 1 HP">\u2212</button>
+          <label>HP <input type="number" min="0" value="${c.hp || 0}" id="ch_${c.id}" oninput="companionSet('${c.id}','hp',this.value)"> / <input type="number" min="0" value="${c.maxHp || 0}" oninput="companionSet('${c.id}','maxHp',this.value)" aria-label="Max HP"></label>
+          <button type="button" onclick="companionHp('${c.id}',1)" aria-label="Gain 1 HP">+</button>
+        </div>
+        <label class="comp-small">AC <input type="number" value="${c.ac ?? 10}" oninput="companionSet('${c.id}','ac',this.value)"></label>
+        <label class="comp-small">Speed <input type="text" value="${escapeHtml(c.speed || '')}" oninput="companionSet('${c.id}','speed',this.value)"></label>
+      </div>
+      <div class="comp-bar"><i id="cb_${c.id}" style="width:${pct}%"></i></div>
+      <div class="comp-abils">${abil}</div>
+      <textarea class="comp-notes" rows="2" placeholder="Attacks, abilities, notes..." oninput="companionSet('${c.id}','notes',this.value)">${escapeHtml(c.notes || '')}</textarea>
+    </div>`;
+  }).join('');
+}
+
+function addCompanion() {
+  if (!Array.isArray(actionsData.companions)) actionsData.companions = [];
+  const id = 'c' + Date.now();
+  actionsData.companions.push({ id, name: '', kind: '', hp: 0, maxHp: 0, ac: 10, speed: '30 ft', abilities: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 }, notes: '' });
+  renderCompanions(); autosave();
+  const n = document.querySelector('#comp_' + id + ' .comp-name'); if (n) n.focus();
+}
+
+function companionSet(id, field, value) {
+  const c = _compFind(id); if (!c) return;
+  if (field === 'hp' || field === 'maxHp' || field === 'ac') c[field] = Math.max(0, parseInt(value, 10) || 0); else c[field] = value;
+  if (field === 'hp' || field === 'maxHp') _compPaintHp(c);
+  autosave();
+}
+
+function companionAbility(el) {
+  const c = _compFind(el.dataset.id); if (!c) return;
+  if (!c.abilities) c.abilities = {};
+  c.abilities[el.dataset.ab] = parseInt(el.value, 10) || 10;
+  const m = document.getElementById('cm_' + c.id + '_' + el.dataset.ab); if (m) m.textContent = _compMod(c.abilities[el.dataset.ab]);
+  autosave();
+}
+
+function companionHp(id, delta) {
+  const c = _compFind(id); if (!c) return;
+  c.hp = Math.max(0, Math.min(c.maxHp > 0 ? c.maxHp : Infinity, (c.hp || 0) + delta));
+  const inp = document.getElementById('ch_' + id); if (inp) inp.value = c.hp;
+  _compPaintHp(c); autosave();
+}
+
+function _compPaintHp(c) {
+  const bar = document.getElementById('cb_' + c.id); if (bar) bar.style.width = (c.maxHp > 0 ? Math.max(0, Math.min(100, Math.round(c.hp / c.maxHp * 100))) : 100) + '%';
+  const card = document.getElementById('comp_' + c.id); if (card) card.classList.toggle('is-down', c.maxHp > 0 && c.hp <= 0);
+}
+
+function removeCompanion(id) {
+  const c = _compFind(id); if (!c) return;
+  appConfirm('Remove ' + (c.name || 'this companion') + '?', { confirmText: 'Remove' }).then(ok => {
+    if (!ok) return;
+    actionsData.companions = actionsData.companions.filter(x => x.id !== id);
+    renderCompanions(); autosave();
+  });
+}
+
+
+// ========== PROFICIENCIES & TRAINING: one simple list, a row per thing ==========
+// The saved value is still the one text box (#proficiencies_training), so saving and old sheets are
+// unchanged. A line "Armor: Light armor, Shields" becomes the Armor row; any other line shows under
+// "Other". Rows you add yourself are remembered in actionsData.profRows (just their titles). Skills and
+// Saving Throws are read from the proficiency ticks higher up the sheet, which stay the one source of truth.
+const PROF_DEFAULT = ['Armor', 'Weapons', 'Tools', 'Languages'];
+const PROF_SUGGEST = ['Vehicles', 'Instruments', 'Senses', 'Resistances', 'Feats', 'Expertise'];
+const _profAlias = { armour: 'Armor', armors: 'Armor', armours: 'Armor', weapon: 'Weapons', tool: 'Tools', language: 'Languages' };
+let _profLast = null, _profSig = '', _profOpen = null, _profAdding = false;
+
+const _profRows = () => (actionsData.profRows = Array.isArray(actionsData.profRows) ? actionsData.profRows : []);
+const _profKnown = () => [...PROF_DEFAULT, ..._profRows()];
+function _profName(w) {
+  w = w.trim().toLowerCase();
+  return _profKnown().find(k => k.toLowerCase() === w) || (_profAlias[w] && _profKnown().includes(_profAlias[w]) ? _profAlias[w] : null);
+}
+function _profSplit(ln) {
+  const m = ln.match(/^\s*([^:–]{1,30}?)\s*[:–]\s*(.*)$/) || ln.match(/^\s*([A-Za-z]+)\s+-\s+(.*)$/);
+  const cat = m ? _profName(m[1]) : null;
+  return cat ? { cat, label: m[1], body: m[2] } : { cat: null, label: '', body: ln };
+}
+
+function _profParse() {
+  const ta = document.getElementById('proficiencies_training');
+  const lines = (ta ? ta.value : '').split('\n');
+  const chips = [];
+  lines.forEach((ln, li) => {
+    const sp = _profSplit(ln); if (!sp.cat) return;
+    sp.body.split(',').map(x => x.trim()).filter(Boolean).forEach((t, ci) => chips.push({ cat: sp.cat, line: li, idx: ci, text: t }));
+  });
+  return { lines, chips };
+}
+
+function _profWrite(lines) {
+  const ta = document.getElementById('proficiencies_training'); if (!ta) return;
+  ta.value = lines.join('\n').replace(/^\n+|\n+$/g, '');
+  ta.dispatchEvent(new Event('input', { bubbles: true }));
+  renderProfChips();
+}
+
+function profAdd(cat, text) {
+  text = (text || '').trim().replace(/[,]/g, ' '); if (!text) return;
+  const { lines } = _profParse();
+  const at = lines.findIndex(ln => _profSplit(ln).cat === cat);
+  if (at >= 0) lines[at] = lines[at].replace(/[\s,]*$/, '') + (/[:–]\s*$/.test(lines[at]) ? ' ' : ', ') + text; else lines.push(cat + ': ' + text);
+  _profWrite(lines);
+}
+
+function profRemove(line, idx) {
+  const { lines } = _profParse();
+  const ln = lines[line]; if (ln === undefined) return;
+  const sp = _profSplit(ln); const parts = sp.body.split(',').map(x => x.trim()).filter(Boolean);
+  parts.splice(idx, 1);
+  if (!parts.length) lines.splice(line, 1); else lines[line] = (sp.cat ? sp.label + ': ' : '') + parts.join(', ');
+  _profWrite(lines);
+}
+
+function profOpen(cat) { _profOpen = cat; _profAdding = false; renderProfChips(); }
+function profClose() { _profOpen = null; _profAdding = false; renderProfChips(); }
+
+function profNewRow(title) {
+  title = (title || '').trim().replace(/[:,]/g, ' ').replace(/\s+/g, ' ').slice(0, 30);
+  if (!title) return profClose();
+  const exist = _profKnown().find(k => k.toLowerCase() === title.toLowerCase());
+  if (!exist) _profRows().push(title);
+  if (document.activeElement && document.activeElement.tagName === 'INPUT') document.activeElement.value = ''; // don't carry the title into the new row's box
+  _profAdding = false; _profOpen = exist || title; renderProfChips(); autosave();
+}
+
+function profDeleteRow(title) {
+  const { lines, chips } = _profParse(); const n = chips.filter(c => c.cat === title).length;
+  const go = ok => {
+    if (!ok) return;
+    _profWrite(lines.filter(ln => _profSplit(ln).cat !== title));
+    actionsData.profRows = _profRows().filter(r => r !== title); renderProfChips(); autosave();
+  };
+  if (!n) return go(true);
+  appConfirm('Remove the "' + title + '" row and its ' + n + ' item' + (n > 1 ? 's' : '') + '?', { confirmText: 'Remove' }).then(go);
+}
+
+
+// ---- automatic sorting of older free text ----
+// Walks the old text once: headings ("Armor" / "Tools:"), "Row: a, b" lines, bullets under a heading and
+// plain items it recognises by keyword go into rows. Everything else is kept word for word as loose
+// lines, which show in the "To sort" box. The original text is kept so it can be undone.
+const _PG_LANG = /^(common|dwarvish|elvish|giant|gnomish|goblin|halfling|orc|abyssal|celestial|draconic|deep speech|infernal|primordial|sylvan|undercommon|thieves'? cant|druidic|sign language)\b|language|tongue/i;
+const _PG_WEAPON = /\bweapons?\b|\b(longswords?|shortswords?|rapiers?|daggers?|crossbows?|longbows?|shortbows?|handaxes?|greataxes?|battleaxes?|maces?|quarterstaff|quarterstaves|spears?|clubs?|slings?|darts?|scimitars?|warhammers?|whips?|tridents?|flails?|halberds?|glaives?|pikes?|lances?|mauls?|morningstars?|blowguns?|nets?|greatswords?|javelins?)\b/i;
+function _profGuess(t) {
+  const x = t.replace(/^all\s+/i, '');
+  const own = _profRows().find(r => new RegExp('\\b' + r.toLowerCase().replace(/s$/, '') + 's?\\b', 'i').test(t));
+  if (own) return own;
+  if (/\b(armou?r|shields?)\b/i.test(x)) return 'Armor';
+  if (_PG_WEAPON.test(x)) return 'Weapons';
+  if (_PG_LANG.test(x)) return 'Languages';
+  if (/\btools?\b|\bkits?\b|supplies|instruments?|vehicles?|gaming set|playing cards|\blute\b|\bflute\b/i.test(x)) return 'Tools';
+  return null;
+}
+
+function profAutoSort(text) {
+  const bucket = {}; const loose = []; let cur = null;
+  const put = (cat, items) => { items.map(i => i.replace(/^[\s*\u2022\-]+|[\s.;]+$/g, '').trim()).filter(Boolean).forEach(i => { (bucket[cat] = bucket[cat] || []); if (!bucket[cat].some(e => e.toLowerCase() === i.toLowerCase())) bucket[cat].push(i); }); };
+  (text || '').split('\n').forEach(raw => {
+    const ln = raw.replace(/\s+$/, '');
+    if (!ln.trim()) { if (loose.length && loose[loose.length - 1] !== '') loose.push(''); return; }
+    const head = ln.match(/^\s*[#*\u2022\-]*\s*([A-Za-z' ]{3,20}?)\s*:?\s*$/);
+    if (head && _profName(head[1])) { cur = _profName(head[1]); return; }
+    const lab = ln.match(/^\s*([^:]{1,30}?)\s*:\s*(.*)$/);
+    if (lab && _profName(lab[1])) { cur = _profName(lab[1]); put(cur, lab[2].split(/[,;]/)); return; }
+    const bullet = ln.match(/^\s*[*\u2022\-\u2013]\s+(.*)$/);
+    if (bullet) {
+      const b = bullet[1].trim();
+      if (cur && b.length <= 40) { put(cur, [b]); return; }
+      const g = b.length <= 40 ? _profGuess(b) : null;
+      if (g) { put(g, [b]); return; }
+      loose.push(ln); return;
+    }
+    // sentence style: "All Armor, Shields. Languages: Common."
+    const segs = ln.split(/\.\s+(?=[A-Z])/);
+    let allPlaced = true; const placed = [];
+    segs.forEach(seg => {
+      const m = seg.match(/^\s*([^:]{1,30}?)\s*:\s*(.*)$/); const c = m && _profName(m[1]);
+      if (c) { placed.push([c, m[2].split(/[,;]/)]); return; }
+      const items = seg.split(/[,;]/).map(x => x.trim()).filter(Boolean);
+      if (items.length && items.every(i => i.length <= 40 && (_profGuess(i) || (cur && _profGuess(i) === cur)))) items.forEach(i => placed.push([_profGuess(i), [i]]));
+      else allPlaced = false;
+    });
+    if (allPlaced && placed.length) { placed.forEach(([c, it]) => put(c, it)); cur = null; return; }
+    cur = null; loose.push(ln);
+  });
+  while (loose.length && loose[loose.length - 1] === '') loose.pop();
+  while (loose.length && loose[0] === '') loose.shift();
+  const order = [...PROF_DEFAULT, ..._profRows()];
+  const out = order.filter(c => bucket[c] && bucket[c].length).map(c => c + ': ' + bucket[c].join(', '));
+  return out.concat(loose.length && out.length ? [''] : [], loose).join('\n');
+}
+
+function profSortNow(first) {
+  const ta = document.getElementById('proficiencies_training'); if (!ta) return;
+  const before = ta.value; const after = profAutoSort(before);
+  actionsData.profSorted = true;
+  if (after === before.trim()) return autosave();
+  if (first) actionsData.profOriginal = before;
+  ta.value = after; ta.dispatchEvent(new Event('input', { bubbles: true })); autosave();
+}
+
+function profUndoSort() {
+  const ta = document.getElementById('proficiencies_training'); if (!ta || actionsData.profOriginal == null) return;
+  ta.value = actionsData.profOriginal; delete actionsData.profOriginal; actionsData.profSorted = true;
+  ta.dispatchEvent(new Event('input', { bubbles: true })); renderProfChips(); autosave();
+}
+
+function profLooseSet(value, el) {
+  const ta = document.getElementById('proficiencies_training'); if (!ta) return;
+  const keep = ta.value.split('\n').filter(ln => _profSplit(ln).cat);
+  ta.value = keep.concat(keep.length && value.trim() ? [''] : [], value.split('\n')).join('\n').replace(/\s+$/, '');
+  _profLast = ta.value; _profSig = _profSignature();
+  ta.dispatchEvent(new Event('input', { bubbles: true }));
+  if (el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight + 2, 400) + 'px'; }
+}
+
+function _profSheetLists() {
+  const skills = [...document.querySelectorAll('input[type="checkbox"][id^="prof_"]')].filter(cb => cb.checked).map(cb => {
+    const lb = document.querySelector('label[for="' + cb.id + '"]'); return lb ? lb.textContent.replace(/\s*\(.*\)\s*$/, '').trim() : cb.id.slice(5).replace(/_/g, ' ');
+  });
+  const saves = ['str', 'dex', 'con', 'int', 'wis', 'cha'].filter(a => { const cb = document.getElementById(a + '_save_prof'); return cb && cb.checked; }).map(a => a.toUpperCase());
+  return { skills, saves };
+}
+
+function _profSignature() {
+  const ta = document.getElementById('proficiencies_training'); const { skills, saves } = _profSheetLists();
+  return JSON.stringify([ta ? ta.value : '', skills, saves, _profRows()]);
+}
+
+function renderProfChips() {
+  const box = document.getElementById('prof_chips'); const ta = document.getElementById('proficiencies_training');
+  if (!box || !ta) return;
+  if (!actionsData.profSorted && ta.value.trim()) profSortNow(true);
+  _profLast = ta.value; _profSig = _profSignature();
+  const { chips, lines } = _profParse(); const { skills, saves } = _profSheetLists();
+  const looseText = lines.filter(ln => !_profSplit(ln).cat).join('\n').replace(/^\n+|\n+$/g, '');
+  const typed = document.activeElement && document.activeElement.closest && document.activeElement.closest('#prof_chips') && document.activeElement.tagName === 'INPUT' ? document.activeElement.value : '';
+  const chip = c => `<span class="prof-chip">${escapeHtml(c.text)}<button type="button" onclick="profRemove(${c.line},${c.idx})" aria-label="Remove ${escapeHtml(c.text)}">✕</button></span>`;
+  const row = (cat, custom) => {
+    const mine = chips.filter(c => c.cat === cat); const safe = escapeHtml(cat).replace(/'/g, '&#39;');
+    const adder = _profOpen === cat
+      ? `<form class="prof-inline" onsubmit="event.preventDefault(); const v = this.elements.t.value; this.elements.t.value = ''; profAdd('${safe}', v);"><input name="t" id="prof_input" type="text" maxlength="60" autocomplete="off" placeholder="Type, then Enter" onkeydown="if(event.key==='Escape') profClose()" onblur="setTimeout(()=>{ if(_profOpen && !document.activeElement.closest('.prof-inline')) profClose(); }, 150)"></form>`
+      : `<button type="button" class="prof-plus" onclick="profOpen('${safe}')" aria-label="Add to ${escapeHtml(cat)}">+</button>`;
+    return `<div class="prof-row"><div class="prof-label">${escapeHtml(cat)}${custom ? `<button type="button" class="prof-del" onclick="profDeleteRow('${safe}')" aria-label="Remove ${escapeHtml(cat)} row" title="Remove this row">✕</button>` : ''}</div><div class="prof-items">${mine.map(chip).join('')}${adder}</div></div>`;
+  };
+  const ro = (title, list, none) => `<div class="prof-row prof-row-sheet"><div class="prof-label">${title}</div><div class="prof-items">${list.length ? list.map(t => `<span class="prof-chip prof-chip-ro">${escapeHtml(t)}</span>`).join('') : `<span class="prof-empty">${none}</span>`}</div></div>`;
+  const toSort = looseText ? `<div class="prof-row prof-row-sort"><div class="prof-label">To sort</div><div class="prof-items prof-sortbox"><textarea id="prof_loose" rows="3" oninput="profLooseSet(this.value, this)" aria-label="Text not placed in a row yet">${escapeHtml(looseText)}</textarea><p class="prof-note">Anything that did not fit a row yet. Edit it freely, or use the + on a row above to add it there and delete it here. <button type="button" class="prof-linkbtn" onclick="profSortNow(false)">Try sorting again</button></p></div></div>` : '';
+  const undo = actionsData.profOriginal != null ? `<p class="prof-note prof-undo">Your old text was sorted into rows automatically. <button type="button" class="prof-linkbtn" onclick="profUndoSort()">Undo auto-sort</button></p>` : '';
+  box.innerHTML = `<div class="prof-rows">${PROF_DEFAULT.map(c => row(c, false)).join('')}${ro('Skills', skills, 'Tick skills above and they show here')}${ro('Saving Throws', saves, 'Tick saves above and they show here')}${_profRows().map(c => row(c, true)).join('')}${toSort}</div>${undo}
+    ${_profAdding
+      ? `<form class="prof-newrow" onsubmit="event.preventDefault(); profNewRow(this.elements.t.value);"><input name="t" id="prof_input" list="prof_suggest" type="text" maxlength="30" autocomplete="off" placeholder="Row name, e.g. Vehicles"><datalist id="prof_suggest">${PROF_SUGGEST.filter(x => !_profKnown().includes(x)).map(x => `<option value="${x}">`).join('')}</datalist><button type="submit">Add row</button><button type="button" onclick="profClose()">Cancel</button></form>`
+      : `<button type="button" class="prof-addrow" onclick="_profAdding = true; _profOpen = null; renderProfChips();">+ Add a row</button>`}`;
+  const lz = document.getElementById('prof_loose'); if (lz) lz.style.height = Math.min(Math.max(lz.scrollHeight + 2, 64), 400) + 'px';
+  const inp = document.getElementById('prof_input');
+  if (inp) { inp.value = typed; inp.focus(); inp.setSelectionRange(typed.length, typed.length); }
+}
+
+// the text box or the skill/save ticks change by loading a character, ticking a box, or editing a chip: keep the rows in step
+setInterval(() => {
+  const ta = document.getElementById('proficiencies_training');
+  if (!ta || document.activeElement === ta) return;
+  const a = document.activeElement;
+  if (a && a.closest && a.closest('#prof_chips') && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) return; // never rebuild under the cursor
+  if (_profLast === null || _profSignature() !== _profSig) renderProfChips();
+}, 500);

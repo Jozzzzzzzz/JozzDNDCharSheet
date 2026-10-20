@@ -110,63 +110,74 @@ function closeCustomHPPopup() {
   document.getElementById('custom_hp_amount').value = 1;
 }
 
+// Short Rest: opens a popup where you choose how many hit dice to spend from the pool.
+// Die size comes from the class die selector, the CON modifier from Ability Scores.
+let _srState = null;
+
+function _conMod() {
+  if (typeof syncConModifier === 'function') syncConModifier();
+  return parseInt(document.getElementById('con_modifier')?.value, 10) || 0;
+}
+const _signed = n => (n >= 0 ? '+' : '−') + Math.abs(n);
+
 function shortRest() {
-  // Get hit dice inputs
-  const hitDiceSpend = parseInt(document.getElementById('hit_dice_spend').value) || 0;
-  const conMod = parseInt(document.getElementById('con_bonus')?.value || document.getElementById('con_modifier')?.value || 0);
-  const hitDieSize = parseInt(document.getElementById('hit_die_size').value) || 6;
-  
-  if (hitDiceSpend <= 0) {
-    appToast('Please enter how many Hit Dice you want to spend (minimum 1)', 'error');
-    return;
-  }
-  
-  // Roll hit dice
-  let totalRecovery = 0;
-  const rollDetails = [];
-  
-  for (let i = 0; i < hitDiceSpend; i++) {
-    const roll = Math.floor(Math.random() * hitDieSize) + 1;
-    const withConMod = Math.max(1, roll + conMod);
-    totalRecovery += withConMod;
-    const conPart = conMod === 0 ? '' : conMod > 0 ? ` + ${conMod}` : ` ${conMod}`;
-    rollDetails.push(`d${hitDieSize}: ${roll}${conPart} = ${withConMod}`);
-  }
-  
-  // Apply recovery to current HP
-  const currHP = document.getElementById('curr_hp');
-  const maxHP = document.getElementById('max_hp');
-  const currentTotalHP = parseInt(currHP.value) || 0;
-  const maxHPValue = parseInt(maxHP.value) || 0;
-  
-  const newTotalHP = currentTotalHP + totalRecovery;
-  
-  currHP.value = newTotalHP;
-  updateHPDisplay();
+  const max1 = _hdPool.max == null ? 0 : _hdPool.max;
+  const pools = [{ n: 1, size: hitDiePrimarySize(), left: Math.max(0, max1 - _hdPool.used), max: max1, spend: 0 }];
+  if (hitDicePool2Active()) pools.push({ n: 2, size: parseInt(document.getElementById('hit_die_size2')?.value, 10) || 6, left: Math.max(0, _hdPool.max2 - _hdPool.used2), max: _hdPool.max2, spend: 0 });
+  _srState = { pools, con: _conMod() };
+  renderShortRest();
+  showPopup('shortRestPopup');
+}
 
-  // Deduct the spent dice from the pool (clamped to what's available).
-  if (_hdPool.max != null) {
-    const avail = Math.max(0, _hdPool.max - _hdPool.used);
-    _hdPool.used += Math.min(hitDiceSpend, avail);
-    renderHitDicePool();
-  }
+function renderShortRest() {
+  const body = document.getElementById('shortRestBody'); if (!body || !_srState) return;
+  const { pools, con } = _srState;
+  const hp = getCurrentHP(), mx = parseInt(document.getElementById('max_hp')?.value, 10) || 0;
+  const rows = pools.map((p, i) => {
+    const lo = Math.max(1, 1 + con) * p.spend, hi = Math.max(lo, (p.size + con) * p.spend);
+    return `<div class="sr-pool"><div class="sr-pool-head"><b>d${p.size}</b> <span>${p.left} of ${p.max} left</span></div>
+      <div class="sr-step"><button type="button" onclick="srStep(${i}, -1)" ${p.spend <= 0 ? 'disabled' : ''} aria-label="Spend fewer">−</button><output>${p.spend}</output><button type="button" onclick="srStep(${i}, 1)" ${p.spend >= p.left ? 'disabled' : ''} aria-label="Spend more">+</button></div>
+      <div class="sr-preview">${p.spend ? `${p.spend}d${p.size} ${_signed(con)} each = ${lo}–${hi} HP` : (p.left ? 'Tap + to spend hit dice' : 'No hit dice left')}</div></div>`;
+  }).join('');
+  body.innerHTML = `<p class="sr-hp">HP now <b>${hp}${mx ? ' / ' + mx : ''}</b> · CON ${_signed(con)} (from Ability Scores)</p>${rows}
+    <div class="sr-actions"><button type="button" onclick="srFinish()" class="sr-go">${pools.some(p => p.spend) ? 'Roll &amp; rest' : 'Rest without hit dice'}</button><button type="button" onclick="closePopup('shortRestPopup')">Cancel</button></div>`;
+}
 
-  // Reset spell slots and custom resources marked for short rest
+function srStep(i, d) {
+  const p = _srState && _srState.pools[i]; if (!p) return;
+  p.spend = Math.max(0, Math.min(p.left, p.spend + d)); renderShortRest();
+}
+
+function srFinish() {
+  if (!_srState) return;
+  const { pools, con } = _srState; const rolls = []; let total = 0;
+  pools.forEach(p => {
+    for (let k = 0; k < p.spend; k++) {
+      const r = (typeof rollDie === 'function' ? rollDie(p.size) : Math.floor(Math.random() * p.size) + 1);
+      const v = Math.max(1, r + con); total += v; rolls.push(`d${p.size}: ${r}${con ? ' ' + _signed(con) : ''} = ${v}`);
+    }
+    if (p.n === 1) _hdPool.used += p.spend; else _hdPool.used2 += p.spend;
+  });
+  const currHP = document.getElementById('curr_hp'); const mx = parseInt(document.getElementById('max_hp')?.value, 10) || 0;
+  const before = parseInt(currHP.value, 10) || 0;
+  currHP.value = mx > 0 ? Math.min(mx, before + total) : before + total;
+  updateHPDisplay(); renderHitDicePool();
+
+  const reset = [];
+  if (typeof manualSpellSlots !== 'undefined') manualSpellSlots.forEach(sl => { if (sl.resetType === 'short') reset.push(sl.name); });
+  if (typeof customResources !== 'undefined') customResources.forEach(r => { if (r.resetType === 'short') reset.push(r.name); });
   if (typeof resetSpellSlots === 'function') resetSpellSlots('short');
   if (typeof resetCustomResources === 'function') resetCustomResources('short');
-
   autosave();
 
-  // Show results
-  const rollSummary = rollDetails.join(', ');
-  const newCurrentHP = getCurrentHP();
-  const newTempHP = getTempHP();
-  const hpDisplay = newTempHP > 0 ? `${newCurrentHP} + ${newTempHP} temp` : `${newCurrentHP}`;
-  appAlert(`Hit Dice Rolls: ${rollSummary}\nTotal Recovery: ${totalRecovery} HP\nNew HP: ${hpDisplay}/${maxHPValue}`, 'Short Rest Completed!');
-  
-  // Reset inputs
-  document.getElementById('hit_dice_spend').value = 1;
-  calculateHitDiceRecovery();
+  const now = getCurrentHP(), temp = getTempHP();
+  const body = document.getElementById('shortRestBody');
+  body.innerHTML = `<p class="sr-hp">${rolls.length ? `Healed <b>${total} HP</b>` : 'You rested.'} · HP now <b>${now}${temp ? ' + ' + temp + ' temp' : ''}${mx ? ' / ' + mx : ''}</b></p>
+    ${rolls.length ? `<p class="sr-rolls">${rolls.join('<br>')}</p>` : ''}
+    ${reset.length ? `<p class="sr-reset">Recharged (tagged Short Rest): ${reset.map(escapeHtml).join(', ')}</p>` : ''}
+    <p class="sr-note">Top up anything else that recharges on a short rest (class features, spell slots you track by hand).</p>
+    <div class="sr-actions"><button type="button" class="sr-go" onclick="closePopup('shortRestPopup')">Done</button></div>`;
+  _srState = null;
 }
 
 function calculateHitDiceRecovery() {
@@ -175,6 +186,7 @@ function calculateHitDiceRecovery() {
   const hitDieSize = parseInt(document.getElementById('hit_die_size').value) || 8;
   
   const recoveryText = document.getElementById('hit_dice_recovery_text');
+  if (!recoveryText) return;
   
   if (hitDiceSpend <= 0) {
     recoveryText.textContent = 'Enter number of Hit Dice to spend';
@@ -276,6 +288,7 @@ function renderHitDicePool() {
   if (maxDisp) maxDisp.textContent = max;
   if (maxInput && document.activeElement !== maxInput) maxInput.value = max;
   if (dieLabel) dieLabel.textContent = 'd' + hitDiePrimarySize();
+  if (typeof syncConModifier === 'function') syncConModifier();
 
   const pool2 = document.getElementById('hd_pool2');
   if (pool2) {
@@ -330,15 +343,13 @@ function recoverHitDiceOnLongRest() {
   let regained = 0;
   const max1 = _hdPool.max == null ? 0 : _hdPool.max;
   if (max1 > 0 && _hdPool.used > 0) {
-    const regain = Math.max(1, Math.floor(max1 / 2));
     const before = _hdPool.used;
-    _hdPool.used = Math.max(0, _hdPool.used - regain);
+    _hdPool.used = 0;                       // a long rest is a full refresh: every hit die comes back
     regained += before - _hdPool.used;
   }
   if (_hdPool.max2 > 0 && _hdPool.used2 > 0) {
-    const regain2 = Math.max(1, Math.floor(_hdPool.max2 / 2));
     const before2 = _hdPool.used2;
-    _hdPool.used2 = Math.max(0, _hdPool.used2 - regain2);
+    _hdPool.used2 = 0;
     regained += before2 - _hdPool.used2;
   }
   renderHitDicePool();

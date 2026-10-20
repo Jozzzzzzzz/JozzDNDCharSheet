@@ -1,7 +1,8 @@
 // ========== SIDE RAIL ==========
 // Behaviour of the left navigation rail: collapse/expand (desktop, remembered), the labelled
 // overlay on phones, live vitals (a read-only mirror of the sheet's own fields) and
-// aria-current on the active tab. It never writes character data and never calls autosave.
+// aria-current on the active tab, plus phone auto-hide, tab swipe, keyboard shortcuts (1-5, H)
+// and the smaller banner. It never writes character data and never calls autosave.
 (function () {
   'use strict';
 
@@ -33,6 +34,10 @@
     toggle.setAttribute('aria-expanded', String(compact));       // was compact -> now expanded
     setTimeout(() => window.dispatchEvent(new Event('resize')), 300);
   }
+
+  const reduced = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const buzz = () => { if (navigator.vibrate && !reduced()) { try { navigator.vibrate(8); } catch (e) { /* unsupported */ } } };
+  const $ = id => document.getElementById(id);
 
   // ---- vitals mirror ----
   let lastHp = null;
@@ -72,6 +77,86 @@
     });
   }
 
+  // ---- phones: the rail slides away while you scroll down and returns on scroll up ----
+  function initAutoHide() {
+    let lastY = window.scrollY, ticking = false;
+    const show = () => { if (root.hasAttribute('data-rail-hidden')) root.removeAttribute('data-rail-hidden'); };
+    const hide = () => { if (!root.hasAttribute('data-rail-hidden')) root.setAttribute('data-rail-hidden', ''); };
+    const typing = () => { const a = document.activeElement; return !!a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName); };
+    function step() {
+      ticking = false;
+      const y = window.scrollY, dy = y - lastY;
+      if (!isPhone() || (rail && rail.dataset.open === 'true') || typing() || y < 80) { show(); lastY = y; return; }
+      if (dy > 10) { hide(); lastY = y; } else if (dy < -10) { show(); lastY = y; }
+    }
+    window.addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(step); } }, { passive: true });
+    window.addEventListener('resize', () => { if (!isPhone()) show(); });
+    document.addEventListener('focusin', () => { if (typing()) show(); });
+  }
+
+  // ---- tab order shared by swipe and the number keys ----
+  const TABS = ['page1', 'page2', 'page3', 'page4', 'page6'];
+  const sheetReady = () => !!window.currentCharacter && !!document.getElementById('chrome-root') && document.getElementById('chrome-root').offsetParent !== null;
+  const overlayOpen = () => !!document.querySelector('.popup.show, .dm-modal-backdrop, .dm-modal, .section-help-panel.open');
+  function goTab(id) { const b = document.querySelector('.gr-rail .tabs button[data-tab="' + id + '"]'); if (b && !b.classList.contains('active')) b.click(); }
+  function currentTabIndex() { const p = document.querySelector('.page.active'); return p ? TABS.indexOf(p.id) : -1; }
+
+  // ---- swipe left/right between tabs (touch screens) ----
+  function initSwipe() {
+    if (!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches)) return;
+    let x0 = 0, y0 = 0, t0 = 0, ok = false;
+    const scrollableX = el => {
+      for (let n = el; n && n !== document.body; n = n.parentElement) {
+        if (n.scrollWidth > n.clientWidth + 4) { const ox = getComputedStyle(n).overflowX; if (ox === 'auto' || ox === 'scroll') return true; }
+      }
+      return false;
+    };
+    document.addEventListener('touchstart', e => {
+      ok = false;
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0], tgt = e.target;
+      if (t.clientX < 28 || t.clientX > window.innerWidth - 28) return;                  // leave the screen edges to the browser's back gesture
+      if (!tgt.closest || tgt.closest('#grRail, input, textarea, select, [contenteditable], [draggable="true"], .switch, input[type=range], .lb-viewport, table')) return;
+      if (scrollableX(tgt) || overlayOpen() || currentTabIndex() < 0 || !sheetReady()) return;
+      x0 = t.clientX; y0 = t.clientY; t0 = Date.now(); ok = true;
+    }, { passive: true });
+    document.addEventListener('touchend', e => {
+      if (!ok) return; ok = false;
+      const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0;
+      if (Date.now() - t0 > 600 || Math.abs(dx) < 80 || Math.abs(dx) < Math.abs(dy) * 2) return;
+      const sel = window.getSelection && window.getSelection(); if (sel && String(sel).length) return;
+      const i = currentTabIndex(), j = i + (dx < 0 ? 1 : -1);
+      if (j >= 0 && j < TABS.length) { buzz(); goTab(TABS[j]); }
+    }, { passive: true });
+  }
+
+  // ---- desktop keyboard shortcuts: 1-5 = tabs, H = Home ----
+  function initKeys() {
+    document.addEventListener('keydown', e => {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || e.repeat) return;
+      const a = document.activeElement;
+      if (a && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable)) return;
+      if (overlayOpen() || !document.getElementById('chrome-root') || document.getElementById('chrome-root').offsetParent === null) return;
+      if (e.key === 'h' || e.key === 'H') { if (typeof showHomePage === 'function') { e.preventDefault(); showHomePage(); } return; }
+      if (e.key >= '1' && e.key <= '5' && window.currentCharacter) { e.preventDefault(); goTab(TABS[parseInt(e.key, 10) - 1]); }
+    });
+  }
+
+  // ---- rolling banner: shrink to a thin strip (remembered; shrunk by default on phones) ----
+  const BKEY = 'dndBannerMin';
+  function bannerPref() { try { return localStorage.getItem(BKEY); } catch (e) { return null; } }
+  function applyBanner() {
+    const pref = bannerPref(); const min = pref === null ? isPhone() : pref === '1';
+    if (min) root.dataset.banner = 'min'; else delete root.dataset.banner;
+    const b = $('grBannerToggle'); if (b) { b.setAttribute('aria-expanded', String(!min)); b.setAttribute('aria-label', min ? 'Expand banner' : 'Shrink banner'); }
+  }
+  function initBanner() {
+    const b = $('grBannerToggle'); if (!b) return;
+    applyBanner();
+    b.addEventListener('click', () => { const min = root.dataset.banner === 'min'; try { localStorage.setItem(BKEY, min ? '0' : '1'); } catch (e) { /* private mode: fine */ } applyBanner(); });
+    window.addEventListener('resize', applyBanner);
+  }
+
   function init() {
     rail = document.getElementById('grRail'); toggle = document.getElementById('grRailToggle'); scrim = document.getElementById('grRailScrim');
     if (!rail) return;
@@ -87,6 +172,7 @@
     const nav = rail.querySelector('.gr-rail-tabs');
     if (nav && 'MutationObserver' in window) new MutationObserver(syncAria).observe(nav, { attributes: true, subtree: true, attributeFilter: ['class'] });
     syncAria(); syncVitals();
+    initAutoHide(); initSwipe(); initKeys(); initBanner();
     ['input', 'change', 'click'].forEach(t => document.addEventListener(t, () => requestAnimationFrame(() => { syncVitals(); syncAria(); }), true));
     setInterval(() => { syncVitals(); syncAria(); }, 700);
   }
