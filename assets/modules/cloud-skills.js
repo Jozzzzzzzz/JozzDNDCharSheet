@@ -10,6 +10,19 @@ const firebaseConfig = {
   appId: "1:80899162338:web:b7f9c9fbf96b9553c29ebb"
 };
 
+// ---- Staging safety switch --------------------------------------------------
+// On the private staging host (LAN address / localhost) the app talks ONLY to the
+// local Firebase emulators with a fake config, so it can never read or change the
+// real cloud data. On every real address (github.io, web.app, ...) this does nothing.
+const DND_STAGING = /^(192\.168\.|10\.|127\.|localhost$|dndsite)/.test(location.hostname);
+window.DND_STAGING = DND_STAGING;
+if (DND_STAGING) {
+  Object.assign(firebaseConfig, {
+    apiKey: 'staging-fake-key', authDomain: location.hostname, projectId: 'demo-dnd',
+    storageBucket: '', messagingSenderId: '0', appId: '1:0:web:staging'
+  });
+}
+
 // Initialize Firebase
 let firebaseApp, auth, db;
 let currentUser = null;
@@ -95,6 +108,12 @@ function initializeFirebase() {
     
     db = firebase.firestore();
     window.db = db;
+    if (DND_STAGING) {
+      // Staging: use the local emulators (auth :9099, firestore :8081) - never the real project
+      auth.useEmulator('http://' + location.hostname + ':9099', { disableWarnings: true });
+      db.useEmulator(location.hostname, 8081);
+      console.warn('[staging] Firebase emulators in use - no real data is touched');
+    }
 
     // Listen for auth state changes
     auth.onAuthStateChanged((user) => {
@@ -188,6 +207,7 @@ function setSyncStatus(message) {
 }
 
 async function sendOwnerNotification(subject, message, extra = {}, fromEmailOverride = '') {
+  if (window.DND_STAGING) return { success: true, skipped: 'staging' }; // never email from staging
   const fromEmail = fromEmailOverride || currentUser?.email || 'anonymous@example.com';
   try {
     const formData = new FormData();
