@@ -133,3 +133,6 @@ html { padding-top: env(safe-area-inset-top, 0px); padding-right: env(safe-area-
 .tips-grid, .spells-grid { grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); }
 .action-card { min-width: 0; max-width: 100%; }
 .action-card p, .action-card span, .action-card div { overflow-wrap: anywhere; }
+
+/* cards that insisted on 300px: 300px or the space available, whichever is smaller */
+.horizontal-sections > .section { min-width: min(300px, 100%); }
