@@ -463,6 +463,13 @@ async function signInWithGoogle() {
 
     setSyncStatus('Opening sign-in popup...');
 
+    if (DND_STAGING) {
+      // Staging only: one-tap login as the seeded test copy of Jozz (exists only in the emulator)
+      await window.auth.signInWithEmailAndPassword('jozz@staging.test', 'staging-only');
+      setSyncStatus('Signed in as staging test user');
+      return;
+    }
+
     const provider = new firebase.auth.GoogleAuthProvider();
     
     // Add scopes if needed
