@@ -169,7 +169,7 @@
     <div class="home-card settings-card admin-portal-card" id="adminPortalCard" style="display: none;">
       <div class="card-header">
         <h3>Admin Portal</h3>
-        <p>Owner-only tools — campaigns, users, and character management</p>
+        <p>Owner-only tools — users, their sheets, campaigns, and logs</p>
       </div>
 
       <!-- Locked state -->
@@ -194,25 +194,13 @@
 
         <!-- Campaigns tab -->
         <div id="adminTabCampaigns" class="admin-tab-panel">
-          <div class="admin-create-form">
-            <h4 class="admin-form-title">New Campaign</h4>
-            <div class="admin-campaign-form">
-              <input type="text" id="adminCampaignName" placeholder="Campaign name" maxlength="80" style="width:100%;box-sizing:border-box;">
-              <input type="text" id="adminCampaignSetting" placeholder="Setting (e.g. Homebrew)" maxlength="60" style="width:100%;box-sizing:border-box;">
-              <input type="text" id="adminCampaignDmEmail" placeholder="DM email (optional)" maxlength="120" style="width:100%;box-sizing:border-box;">
-              <input type="password" id="adminCampaignDmPassword" placeholder="DM control password (DM uses to take control)" maxlength="60" style="width:100%;box-sizing:border-box;">
-              <input type="password" id="adminCampaignPassword" placeholder="Player join password (players enter to join)" maxlength="60" style="width:100%;box-sizing:border-box;">
-              <button type="button" class="settings-action-btn accent-contrast-bg" onclick="adminCreateCampaign()" style="width:100%;">Create Campaign</button>
-            </div>
-            <div id="adminCampaignStatus" class="status-message"></div>
-          </div>
-
-          <div class="admin-section-divider"></div>
-
+          <p class="settings-note">Campaigns your users made on their own DM screens. Each user only sees their own; you see all of them here.</p>
           <div class="admin-list-header">
-            <span class="admin-section-header" style="border:none;padding:0;margin:0;">Your Campaigns</span>
+            <span class="admin-section-header" style="border:none;padding:0;margin:0;">All Campaigns</span>
             <button type="button" class="settings-action-btn accent-contrast-bg" onclick="adminLoadCampaigns()">Refresh</button>
           </div>
+          <p id="adminCampaignMeta" class="settings-note"></p>
+          <div id="adminCampaignStatus" class="status-message"></div>
           <div id="adminCampaignList" class="admin-campaign-list"></div>
         </div>
 
@@ -227,11 +215,11 @@
           <div id="adminUserCharacters"></div>
         </div>
 
-        <!-- Logs tab: Campaigns → Characters → roll logs -->
+        <!-- Logs tab: Users → Characters → roll logs -->
         <div id="adminTabLogs" class="admin-tab-panel" style="display:none;">
-          <p class="settings-note">Browse roll logs by campaign and character. More log types will appear here over time.</p>
+          <p class="settings-note">Browse roll logs by user and character. More log types will appear here over time.</p>
           <div class="admin-users-toolbar">
-            <select id="adminLogsCampaign" onchange="adminLogsSelectCampaign(this.value)" style="flex:1;"></select>
+            <select id="adminLogsUser" onchange="adminLogsSelectUser(this.value)" style="flex:1;"></select>
             <button type="button" class="settings-action-btn accent-contrast-bg" onclick="adminInitLogs(true)">Refresh</button>
           </div>
           <div id="adminLogsCharacters" class="admin-user-grid"></div>

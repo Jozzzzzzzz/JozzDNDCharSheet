@@ -51,6 +51,7 @@ All JS lives in `assets/`. Files are loaded **in this exact order** via dynamic 
 | `assets/modules/inventory.js` | Inventory CRUD, equipment, storage containers, coin tracking, portrait upload/remove (`removePortrait`), settings dropdown | ~1180 |
 | `assets/modules/spells.js` | Spell list, spell slots (with drag-reorder), custom resources, favorites, prepared spells table, spell search, sync panels. Loads spell reference data async from `assets/data/spells.json` via `loadSpellDatabase()` at boot, then enriches from Open5e API in background | ~1440 |
 | `assets/modules/dm.js` | DM Portal — password-gated entry, 24h session, portal enter/exit, tab switching, monster browser (Open5e API), encounter builder (themes/shapes/difficulty math, players, drag-reorder, click-to-open creature cards), NPC generator, loot tables, players/pending approval, in-app dialogs (`dmModal`/`dmToast`), `friendlyFirebaseError`. DM data in localStorage `dndDmEncounters`/`dndDmNpcs` | ~2750 |
+| `assets/modules/dm-campaigns.js` | DM campaigns + typed player list, local-first with an account mirror (`dmc*` functions). Loads right after dm.js. | ~230 |
 | `assets/modules/admin.js` | Owner-only admin portal: user list, character import/preview via Firestore. Depends on `escapeHtml`, `getStoredJSON`, `loadCharacterList`, `loadData` from `core.js` | ~230 |
 | `assets/app.js` | Boot entry point: `window.initializeApp`, `showWeaponsPopup`, `addWeapon`, `manualSave`. Also seeds default bg fields and calls `initNotesPage()` on first boot. | ~150 |
 
@@ -366,17 +367,15 @@ A fully separate portal layer that overlays the player UI. Activated from the ho
 ### Friendly error messages
 `friendlyFirebaseError(e)` (in `dm.js`, on `window`) turns raw Firestore/network errors into plain-English strings (index-building, permission-denied, offline, unauthenticated, plus a generic fallback). Used across DM + Admin data-loading paths so portals never show raw error codes. `admin.js` has a thin `adminFriendlyError(e)` wrapper that delegates to it if loaded (dm.js loads before admin.js). When adding new Firestore reads/writes in the portals, surface failures through these, not `e.message`.
 
-### Session (localStorage)
-Key: `dndDmSession`. Shape: `{ uid, email, campaignId, campaignName, campaignSetting, enteredAt }`. TTL: 24 hours. Functions: `dmSessionLoad()`, `dmSessionSave(data)`, `dmSessionClear()`, `dmSessionValid()`. **Note:** `campaignId` was added because join-request paths key off the campaign **id** while the roster query keys off campaign **name** — `dmCurrentCampaignId()` reads it. Old sessions without `campaignId` need a re-enter to populate it.
+### DM access model (current — no password, no link)
+DM mode is just another set of pages for every signed-in or signed-out user. There is no DM password, no campaign join, and no link to anyone's character sheet.
+1. A **DM** button at the bottom of the left rail (next to Settings) calls `enterDmPortal()`, which hides the player UI and shows the DM screen. Exit returns to the sheet.
+2. Campaigns are the DM's own notes: `{ id, name, setting, notes, players:[{ id, name, player, cls, level, ac, hp, pp, dc, notes }], createdAt, updatedAt }`. All logic is in `assets/modules/dm-campaigns.js` (functions prefixed `dmc`). Players are typed in by the DM; **nothing is read from a player's sheet**.
+3. Storage is local first (`dndDmCampaigns`, `dndDmActiveCampaign`, `dndDmCampaignsDeleted`) and mirrored best-effort to `campaigns/{id}` on the account (`ownerUid` == the user) so a new device gets them back. `dmcSyncFromCloud()` runs on entering DM mode: newest `updatedAt` wins per campaign, pulls never delete, offline deletes are finished later.
+4. "Use in encounter builder" (`dmcSendToParty`) is a one-way, on-request fill of `dmParty` from the typed levels.
+5. The owner-admin sees every user's campaigns (name, owner, players, notes) in Settings → Admin Portal → Campaigns (`adminLoadCampaigns`), can delete them, and can strip old password fields from pre-change campaign docs (`adminCleanCampaign`). An owner-only **Admin** rail button (`#grAdminBtn`, `openAdminPortal()`) jumps to the portal. Users cannot read each other's campaigns.
 
-### DM access model (current — password gated)
-Access is gated by the **campaign DM control password** (`campaigns/{id}.dmPasswordHash`), NOT an email-approval/request flow.
-1. Home card (`#dmPortalCard`, `renderDmCard()`): signed-out → sign-in prompt; signed-in → campaign dropdown + DM password field (`dmEnterWithPassword()`); valid 24h session → "Enter DM Screen" button.
-2. `dmEnterWithPassword()` verifies the entered password's SHA-256 against `dmPasswordHash`, saves the session, calls `enterDmPortal()`.
-3. `enterDmPortal()` just needs a valid session (no approval check) → shows DM UI, populates banner/dashboard, loads live player count.
-4. `renderDmCard()` is called from `showHomePage()` and `updateAuthUI()` in `cloud-skills.js`.
-
-**Removed (2026-06-25 revamp):** the old `dm_requests` flow — `submitDmRequest`, `dmRequestFormHtml`, `getDmRequestStatus`, `isDmApproved`, `DM_APPROVED_EMAILS`, the notification cooldown helpers, and `#dmPendingBanner`. The `dm_requests` Firestore collection + its rule are now unused (left in `firestore.rules` harmlessly; can be removed later).
+**Removed (2026 campaign rework):** campaign join/leave on the Stats page, the join and DM passwords, `dmEnterWithPassword`, the 24h DM session, join requests, `members`, `dm_requests`, the live Players tab and Player Spells tab (and `pages/dm-spells.html`). The hidden `#char_campaign` input stays only so a campaign name already saved on an old sheet is not erased; it is no longer shown or used.
 
 ### DM theming + in-app dialogs (2026-06-25 revamp)
 - **The DM portal is now fully accent-themed** — it uses the same `--accent*` / `--panel-bg` / `--card-bg` variables as the character sheet, the same `.tabs` pill style, `.section`-style cards, button language, transitions, and breakpoints. Do NOT reintroduce hardcoded colours in DM CSS. The ONLY deliberate exception is the sticky DM SCREEN banner + Exit button, which keep a warm danger tint via `--dm-danger` (200,70,70) as a "you're in DM mode" cue.
@@ -384,14 +383,13 @@ Access is gated by the **campaign DM control password** (`campaigns/{id}.dmPassw
 - **In-app dialogs:** `dmModal(opts)` (promise-based; `{title, message, input, inputType, placeholder, value, confirmText, cancelText, danger}` → resolves the input string / `true` / `null` on cancel) and `dmToast(msg, type)` replace ALL native `prompt/alert/confirm` in the DM side. Themed to the player popup language (`.dm-modal*`, `.dm-toast*`). Use these, not native dialogs, for any new DM interaction.
 
 ### DM Pages
-Tab order (in `partials/dm-chrome.html`): Home · Lore · Notes · Players · Player Spells & Actions · Monsters · Items · Encounters · NPCs · **Loot** · Settings. (Loot added v1.20 — `pages/dm-loot.html`, wired in index.html's 3 places + precached in sw.js; opens via `switchDmTab` which renders saved loot + warms the item catalogue.)
+Tab order (in `partials/dm-chrome.html`): Home · Lore · Notes · Players · Monsters · Items · Encounters · NPCs · **Loot** · Settings. (Loot added v1.20 — `pages/dm-loot.html`, wired in index.html's 3 places + precached in sw.js; opens via `switchDmTab` which renders saved loot + warms the item catalogue.)
 
 | Page | File | Status | Key IDs |
 |---|---|---|---|
 | Home | `pages/dm-home.html` | Working | `#dmHomeGreeting`, `#dmHomeCampaignName`, `#dmHomeCampaignSetting` |
 | Lore | `pages/dm-lore.html` | **Placeholder** (Coming Soon shell) | — |
-| Players | `pages/dm-players.html` | Working | `#dmPlayersList`, `#dmPlayerSheetPanel`, `#dmPlayerSheetBody` (roster reads `campaigns/{id}/members` keyed by charId) |
-| Player Spells & Actions | `pages/dm-spells.html` | **Placeholder** (Coming Soon shell) | — |
+| Players | `pages/dm-players.html` | Working | `#dmcPlayersBody` (the DM's typed list for the active campaign) |
 | Monsters | `pages/dm-monsters.html` | Working | `#dmMonsterSearch`, `#dmMonsterCrFilter`, `#dmMonstersList`, `#dmMonsterDetail` |
 | Items | `pages/dm-items.html` | Working | `#dmItemSearch`, `#dmItemRarityFilter`, `#dmItemsList`, `#dmItemDetail` |
 | Encounters | `pages/dm-encounters.html` | Working | `#dmCombatantList`, `#dmEncounterName`, `#dmSavedEncounterList`, `#dmGenTheme`/`#dmGenShape`/`#dmGenDifficulty`/`#dmGenCount`, `#dmDifficultyMeter`, `#dmPlayerName`/`#dmPlayerInit` |
@@ -407,7 +405,7 @@ Tab order (in `partials/dm-chrome.html`): Home · Lore · Notes · Players · Pl
 `switchDmTab()` is generic — it shows/hides any `.dm-page` by the button's `data-dm-tab` id, so no JS change is needed for a new page unless it has on-open load logic (like Players' `dmLoadPlayers()`). Placeholder pages use the `.dm-coming-soon-list` style.
 
 ### DM Data (localStorage)
-- `dndDmSession` — active DM session object
+- `dndDmCampaigns` / `dndDmActiveCampaign` / `dndDmCampaignsDeleted` — the DM's campaigns (see "DM access model")
 - `dndDmEncounters` — saved encounter array `[{ id, name, combatants: [...] }]`
 - `dndDmNpcs` — saved NPC array `[{ id, name, race, role, alignment, notes, loot }]`
 - DM notification cooldown per email: `dndDmNotifySent_{email_slug}`
@@ -447,76 +445,18 @@ Rating is on **RAW summed monster XP** vs the party's DMG thresholds — **there
 Name pools in `DM_NPC_NAMES` (male/female/surname). Traits in `DM_NPC_TRAITS`. Secrets in `DM_NPC_SECRETS`. Loot in `dmRollLoot()` — three tiers: scraps (35%), low-level gear (35%), gold+gem (30%).
 
 ### Players Tab
-`dmLoadPlayers()` queries Firestore `collectionGroup('characters')` filtered by `data.characterInfo.campaignId == session.campaignName`. Requires the collectionGroup Firestore rule (owner read). `dmViewPlayerCharacter(uid, charId)` fetches the full doc and renders a read-only stat block panel.
+The DM's own typed list for the active campaign (`dmcRenderPlayers`, `dmcAddPlayer`, `dmcEditPlayer`, `dmcRemovePlayer`). Never reads sheets from Firestore.
 
 ---
 
 ## Campaign System
 
-Campaigns are created and managed by the owner (vanreejoz33@gmail.com) via the Admin Portal. Players link their character to a campaign via the Campaign field in Stats → Character Info. DMs gain portal access by being assigned to a campaign.
+Campaigns are owned by the user who makes them on their DM screen (see "DM access model"). Firestore: `campaigns/{id}` holds `id, name, setting, notes, players[], ownerUid, ownerName, ownerEmail, createdAt, updatedAt` and nothing else (rules refuse other fields, including any password hash). Read/update/delete: the owner only; the owner-admin reads and writes all. There is no `members` or `joinRequests` data any more.
 
-### Firestore Structure
-```
-campaigns/{campaignId}
-  id: string               — e.g. 'camp_neuertham'
-  name: string             — display name, must match player's campaignId field exactly
-  setting: string          — e.g. 'Homebrew', 'Forgotten Realms'
-  dmEmails: string[]       — emails of assigned DMs (case-insensitive match)
-  passwordHash: string     — SHA-256 of DM portal password (set at creation)
-  active: boolean          — inactive campaigns hidden from player dropdown
-  createdAt: timestamp
-```
+---
 
-### Player Side
-- `characterInfo.campaignId` — free-text field (will become dropdown in future). Saved via `autosave()`, included in Firestore sync automatically.
-- Field ID: `#char_campaign` in `pages/stats.html`, bottom row of Character Info grid spanning full width.
-- Cleared in `clearAllFormFields()`, loaded in `loadData()`.
-- **Case-sensitive** — must match campaign `name` exactly for the DM's Players tab to find the character.
-
-### Admin Portal — Campaign Manager
-In `assets/modules/admin.js`. Loads automatically when admin portal unlocks alongside user list.
-- `adminCreateCampaign()` — creates `campaigns/{camp_timestamp}` doc with hashed password
-- `adminLoadCampaigns()` — fetches all campaigns ordered by `createdAt desc`, renders list
-- `adminEditCampaignDm(campaignId)` — `prompt()` to update `dmEmails` array
-- `adminToggleCampaign(campaignId, active)` — flip active flag
-- Password is SHA-256 hashed via `sha256Hex()` (same function used for admin PIN)
-
-### DM Portal Auth (resolved 2026-06-25)
-DM entry is gated by the per-campaign **DM control password** (`campaigns/{id}.dmPasswordHash`), verified in `dmEnterWithPassword()`. The old `DM_APPROVED_EMAILS` / `isDmApproved()` / `dm_requests` approval flow has been removed. `dmEmails` on a campaign is still used by the Firestore rules' `isCampaignDm()` to let an assigned DM read/update join requests.
-
-### Firestore Rules Required
-The full ruleset now lives in `firestore.rules` at the repo root (deployed via `firebase deploy --only firestore:rules`, or pasted into Firebase Console → Firestore → Rules). `firebase.json` points at it. Key rules: collectionGroup `characters` read for owner+signed-in (DM Players tab), `campaigns` read for signed-in / write for owner, and the `joinRequests` subcollection rules below.
-
-### Campaign Join Approval (v1.04+)
-
-Joining a campaign is a **two-gate** flow: password first, then DM approval. The hard constraint driving the design: **only a player can write their own character doc** — a DM cannot flip another player's `campaignId`. So approval is brokered through a request subcollection that each side writes to within its own permissions.
-
-```
-campaigns/{id}/joinRequests/{uid}
-  uid, charId, charName, campaignId, campaignName
-  status: 'pending' | 'approved' | 'denied'
-  requestedAt
-```
-
-Flow:
-1. **Player** enters join password (`verifyCampaignPassword` in `core.js`) → on success **creates** `joinRequests/{their uid}` with `status:'pending'`, locks the campaign picker (`setCampaignFieldLocked`), and starts `startJoinRequestListener()` (onSnapshot on their own request doc). Their `characterInfo.campaignId` stays blank.
-2. **DM** (`dmLoadPendingPlayers` in `dm.js`) or **owner** (`adminViewCampaignPlayers` in `admin.js`) sees pending requests → Approve sets `status:'approved'`, Deny sets `status:'denied'`.
-3. **Player's listener** fires: `approved` → `applyApprovedCampaign(name)` sets `campaignId` + autosaves (this is what makes them appear on the roster, since the roster query filters on `data.characterInfo.campaignId == campaignName`); `denied` or **doc deleted** → clears `campaignId` back to blank.
-4. **Remove** (DM `dmRemovePlayer` / admin `adminRemovePlayer`) = **delete** the request doc. The player's listener sees `!snap.exists` → clears their campaign. Offline players are reconciled on next load: `restoreCampaignField` re-attaches the listener for an already-joined character, so a deleted request clears them immediately on reconnect.
-
-Key globals: `_joinRequestUnsub` (listener handle), `_campaignCache` (holds `{id, name, passwordHash, dmPasswordHash}`), DM session now carries `campaignId` (needed because join-request paths key off campaign **id**, while the roster query keys off campaign **name**). `dmCurrentCampaignId()` reads it.
-
-joinRequests rules (in `firestore.rules`):
-```
-match /joinRequests/{uid} {
-  allow create, delete: if isSignedIn() && request.auth.uid == uid;   // player owns their request
-  allow read: if (request.auth.uid == uid) || isOwnerAdmin() || isCampaignDm(campaignId);
-  allow update: if isOwnerAdmin() || isCampaignDm(campaignId);        // approve / deny
-}
-```
-`isCampaignDm()` checks the signed-in email against the campaign's `dmEmails` array.
-
-**Gotcha:** approving an *offline* player only flips the request to `approved`; their `campaignId` (and thus roster appearance) updates when they next reconnect and their listener runs. This is inherent to the "player owns their doc" model — do not try to write the player's character doc from the DM/admin side, it will be denied by rules.
+### Firestore rules
+The ruleset lives in `firestore.rules` (deploy with `firebase deploy --only firestore:rules`; ask first). Summary: a user reads/writes only their own `userData/{uid}` and sheets; nobody else can read or list them (no DM link). `userProfiles`: single `get` for signed-in users, `list` owner-admin only. `campaigns`: owner-only plus owner-admin (see "Campaign System"). `admin_config`: owner-admin only. Collection-group `characters` read: owner-admin only. Doc writes are capped at 60 fields. `members`, `joinRequests` and `dm_requests` no longer exist in the rules. Tested with `/root/work/tests/rules_test.py` against the staging emulator.
 
 ---
 
@@ -525,7 +465,7 @@ match /joinRequests/{uid} {
 Located in `pages/settings.html` (`#adminPortalCard`, hidden unless owner email). Unlocked via SHA-256 PIN stored in Firestore `admin_config/main.portalPinHash`. All logic in `assets/modules/admin.js`.
 
 ### Sections (in order, after unlock)
-1. **Campaigns** — create/manage campaigns, assign DMs, activate/deactivate
+1. **Campaigns** — read-only overview of every user's campaigns (view players/notes, delete, strip old password fields)
 2. **Users** — select any user, view their characters, Preview (read-only load) or Import (clone) any character
 
 ### Key functions

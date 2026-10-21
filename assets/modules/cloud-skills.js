@@ -183,13 +183,6 @@ function updateAuthUI() {
   if (typeof window.updateAdminPortalVisibility === 'function') {
     window.updateAdminPortalVisibility();
   }
-  if (typeof window.renderDmCard === 'function') {
-    window.renderDmCard();
-  }
-  // Load campaign dropdown now that db is confirmed ready
-  if (typeof window.loadCampaignDropdown === 'function') {
-    window.loadCampaignDropdown();
-  }
 }
 
 function setSyncStatus(message) {

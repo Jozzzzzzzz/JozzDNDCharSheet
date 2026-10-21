@@ -1,26 +1,18 @@
 <div class="dm-page" id="dm-players" style="display:none;">
   <div class="dm-page-header">
     <h2>Players</h2>
-    <p class="dm-page-subtitle" id="dmPlayersSubtitle">Characters linked to your campaign</p>
+    <p class="dm-page-subtitle" id="dmPlayersSubtitle">Your campaign's players</p>
   </div>
 
   <div class="dm-card">
     <div class="dm-card-header">
-      <h3>Campaign Characters</h3>
-      <button class="dm-action-btn" onclick="dmLoadPlayers()">Refresh</button>
+      <h3>Party</h3>
+      <div class="dmc-row">
+        <button class="dm-action-btn" onclick="dmcSendToParty()" title="Set the encounter builder's party from these levels">Use in encounter builder</button>
+        <button class="dm-action-btn" onclick="dmcAddPlayer()">+ Add player</button>
+      </div>
     </div>
-    <p class="dm-note">Players join from <strong>Settings → Campaign Access</strong> using your campaign password. Joining grants you read-only view access to their sheet.</p>
-    <div id="dmPlayersList" class="dm-players-list">
-      <p class="dm-empty-state">Hit Refresh to load players.</p>
-    </div>
-  </div>
-
-  <!-- Character sheet read-only panel -->
-  <div id="dmPlayerSheetPanel" class="dm-card dm-player-sheet-panel" style="display:none;">
-    <div class="dm-card-header">
-      <h3>Character Sheet (Read Only)</h3>
-      <button class="dm-action-btn" onclick="document.getElementById('dmPlayerSheetPanel').style.display='none'">Close</button>
-    </div>
-    <div id="dmPlayerSheetBody"></div>
+    <p class="dm-note">This is your own list. Type in what you want to track and update it when your players level up. Nothing is pulled from their character sheets.</p>
+    <div id="dmcPlayersBody"></div>
   </div>
 </div>

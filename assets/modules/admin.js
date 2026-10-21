@@ -25,12 +25,21 @@ window.switchAdminTab = switchAdminTab;
 window.updateAdminPortalVisibility = function updateAdminPortalVisibility() {
   const card = document.getElementById('adminPortalCard');
   if (!card) return;
+  const railBtn = document.getElementById('grAdminBtn');
+  if (railBtn) railBtn.hidden = !isOwnerAdminUser();
   if (!isOwnerAdminUser()) {
     card.style.display = 'none';
     window.__adminPortalUnlocked = false;
     return;
   }
   card.style.display = 'block';
+};
+
+// Owner-only rail button: jumps to the admin portal (users, their sheets, campaigns, logs).
+window.openAdminPortal = function openAdminPortal() {
+  if (!isOwnerAdminUser()) return;
+  if (typeof openSettingsPage === 'function') openSettingsPage();
+  setTimeout(() => { const c = document.getElementById('adminPortalCard'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 250);
 };
 
 async function getAdminConfigDoc() {
@@ -518,7 +527,9 @@ function exitAdminPreview() {
 
 window.exitAdminPreview = exitAdminPreview;
 
-// ─── Campaign Manager ──────────────────────────────────────────────────────
+// ─── Campaigns (everything users keep on their DM pages) ────────────────────
+// Users create campaigns themselves on the DM screen (name, setting, notes, a typed player list).
+// This tab is the owner's overview: see, read and delete them. Users cannot see each other's.
 
 function setAdminCampaignStatus(msg, type) {
   const el = document.getElementById('adminCampaignStatus');
@@ -529,324 +540,139 @@ function setAdminCampaignStatus(msg, type) {
   if (type !== 'error') setTimeout(() => { el.style.display = 'none'; }, 5000);
 }
 
-async function adminCreateCampaign() {
-  const db = window.db;
-  if (!db) { setAdminCampaignStatus('Not connected.', 'error'); return; }
-
-  const name = (document.getElementById('adminCampaignName')?.value || '').trim();
-  const setting = (document.getElementById('adminCampaignSetting')?.value || '').trim();
-  const dmEmail = (document.getElementById('adminCampaignDmEmail')?.value || '').trim().toLowerCase();
-  const dmPassword = (document.getElementById('adminCampaignDmPassword')?.value || '').trim();
-  const password = (document.getElementById('adminCampaignPassword')?.value || '').trim();
-
-  if (!name) { setAdminCampaignStatus('Campaign name is required.', 'error'); return; }
-
-  const passwordHash = password ? await sha256Hex(password) : '';
-  const dmPasswordHash = dmPassword ? await sha256Hex(dmPassword) : '';
-  const id = 'camp_' + Date.now();
-
-  try {
-    await db.collection('campaigns').doc(id).set({
-      id,
-      name,
-      setting: setting || '',
-      dmEmails: dmEmail ? [dmEmail] : [],
-      passwordHash,
-      dmPasswordHash,
-      active: true,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    setAdminCampaignStatus(`Campaign "${name}" created.`, 'success');
-    document.getElementById('adminCampaignName').value = '';
-    document.getElementById('adminCampaignSetting').value = '';
-    document.getElementById('adminCampaignDmEmail').value = '';
-    document.getElementById('adminCampaignDmPassword').value = '';
-    document.getElementById('adminCampaignPassword').value = '';
-    await adminLoadCampaigns();
-  } catch (e) {
-    console.error('adminCreateCampaign failed:', e);
-    setAdminCampaignStatus('Error: ' + (e.message || 'unknown'), 'error');
-  }
-}
-
-async function adminLoadCampaigns() {
-  const db = window.db;
-  const list = document.getElementById('adminCampaignList');
-  if (!db || !list) return;
-
-  list.innerHTML = '<p class="settings-note">Loading campaigns...</p>';
-
-  try {
-    const snap = await db.collection('campaigns').orderBy('createdAt', 'desc').get();
-    if (snap.empty) { list.innerHTML = '<p class="settings-note">No campaigns yet. Create one above.</p>'; return; }
-
-    // For each campaign, count linked characters via collectionGroup
-    const campaigns = [];
-    snap.forEach(doc => campaigns.push({ id: doc.id, ...doc.data() }));
-
-    // Player counts from the members subcollection (reflects removals), in parallel
-    const playerCounts = await Promise.all(campaigns.map(async c => {
-      try {
-        const memSnap = await db.collection('campaigns').doc(c.id).collection('members').get();
-        return memSnap.size;
-      } catch (_) { return '?'; }
-    }));
-
-    list.innerHTML = '';
-    campaigns.forEach((c, i) => {
-      const playerCount = playerCounts[i];
-      const dmList = (c.dmEmails || []).length
-        ? (c.dmEmails || []).map(email =>
-            `<span class="admin-dm-tag">${escapeHtml(email)}</span>`).join('')
-        : '<span class="settings-note">No DM assigned</span>';
-
-      const div = document.createElement('div');
-      div.className = 'admin-campaign-card';
-      div.innerHTML = `
-        <div class="admin-campaign-card-header">
-          <div>
-            <span class="admin-campaign-name">${escapeHtml(c.name)}</span>
-            <span class="admin-campaign-badge ${c.active ? 'badge-active' : 'badge-inactive'}">${c.active ? 'Active' : 'Inactive'}</span>
-          </div>
-          <div class="admin-campaign-actions">
-            <button class="settings-action-btn accent-contrast-bg" onclick="dmEnterAsOwner('${c.id}', 'view')">Enter as DM (View)</button>
-            <button class="settings-action-btn accent-contrast-bg" onclick="dmEnterAsOwner('${c.id}', 'edit')">Enter as DM (Edit)</button>
-            <button class="settings-action-btn accent-contrast-bg" onclick="adminViewCampaignPlayers('${c.id}', '${escapeHtml(c.name)}')">View Players</button>
-            <button class="settings-action-btn accent-contrast-bg" onclick="adminEditCampaignDm('${c.id}')">Edit DM</button>
-            <button class="settings-action-btn accent-contrast-bg" onclick="adminChangeCampaignPassword('${c.id}', 'dm')">DM Password</button>
-            <button class="settings-action-btn accent-contrast-bg" onclick="adminChangeCampaignPassword('${c.id}', 'player')">Player Password</button>
-            <button class="settings-action-btn accent-contrast-bg" onclick="adminToggleCampaign('${c.id}', ${!c.active})">${c.active ? 'Deactivate' : 'Activate'}</button>
-            <button class="settings-action-btn admin-delete-btn" id="adminDelBtn_${c.id}" onclick="adminDeleteCampaignStep('${c.id}', '${escapeHtml(c.name)}', this)">Delete</button>
-          </div>
-        </div>
-        <div class="admin-campaign-card-body">
-          <div class="admin-campaign-detail-row"><span class="admin-detail-label">Setting</span><span>${escapeHtml(c.setting || '—')}</span></div>
-          <div class="admin-campaign-detail-row"><span class="admin-detail-label">DMs</span><div class="admin-dm-list">${dmList}</div></div>
-          <div class="admin-campaign-detail-row"><span class="admin-detail-label">Linked Players</span><span>${playerCount} character${playerCount === 1 ? '' : 's'}</span></div>
-          <div class="admin-campaign-detail-row"><span class="admin-detail-label">DM Password</span><span>${c.dmPasswordHash ? '••••••••• (set)' : 'Not set'}</span></div>
-          <div class="admin-campaign-detail-row"><span class="admin-detail-label">Player Password</span><span>${c.passwordHash ? '••••••••• (set)' : 'Not set'}</span></div>
-        </div>
-        <div id="adminCampaignPlayers_${c.id}" class="admin-campaign-players" style="display:none;"></div>
-      `;
-      list.appendChild(div);
-    });
-  } catch (e) {
-    console.error('adminLoadCampaigns failed:', e);
-    list.innerHTML = `<p class="settings-note">Error: ${escapeHtml(e.message)}</p>`;
-  }
-}
-
-async function adminViewCampaignPlayers(campaignId, campaignName) {
-  const db = window.db;
-  const panel = document.getElementById(`adminCampaignPlayers_${campaignId}`);
-  if (!panel) return;
-
-  if (panel.style.display === 'block') { panel.style.display = 'none'; return; }
-
-  panel.style.display = 'block';
-  panel.innerHTML = '<p class="settings-note">Loading...</p>';
-
-  try {
-    // Roster source of truth: campaigns/{id}/members (matches the DM portal).
-    const snap = await db.collection('campaigns').doc(campaignId).collection('members').get();
-    const rows = [];
-    snap.forEach(doc => {
-      const m = doc.data() || {};
-      const charId = m.charId || doc.id;
-      rows.push(`
-        <div class="admin-campaign-player-row">
-          <span class="admin-campaign-player-name">${escapeHtml(m.charName || 'Unnamed')}</span>
-          <span class="settings-note">${escapeHtml([m.race, m.class, m.level ? 'Lv ' + m.level : ''].filter(Boolean).join(' · '))}</span>
-          <button class="settings-action-btn admin-delete-btn" onclick="adminRemovePlayer('${campaignId}','${charId}','${escapeHtml(campaignName)}')">Remove</button>
-        </div>
-      `);
-    });
-
-    const rosterHtml = rows.length
-      ? `<h5 class="settings-note" style="margin:10px 0 6px;">Players (${rows.length})</h5>${rows.join('')}`
-      : '<p class="settings-note">No players have joined yet.</p>';
-
-    panel.innerHTML = `<div class="admin-campaign-players-list">${rosterHtml}</div>`;
-  } catch (e) {
-    panel.innerHTML = `<p class="settings-note">${escapeHtml(adminFriendlyError(e))}</p>`;
-  }
-}
-
-// Plain-English error helper (reuses the DM portal's if loaded)
 function adminFriendlyError(e) {
   if (typeof window.friendlyFirebaseError === 'function') return window.friendlyFirebaseError(e);
   return (e && e.message) ? e.message : 'Something went wrong. Try again.';
 }
 
-async function adminRemovePlayer(campaignId, charId, campaignName) {
-  const ok = (typeof appConfirm === 'function')
-    ? await appConfirm('Remove this character from the campaign? Their campaign indicator clears and they can re-join with the password.', { confirmText: 'Remove' })
-    : confirm('Remove this character from the campaign? Their campaign indicator clears and they can re-join with the password.');
+let _adminCampaigns = {};
+
+async function adminLoadCampaigns() {
+  const db = window.db;
+  const list = document.getElementById('adminCampaignList');
+  if (!db || !list) return;
+  list.innerHTML = '<p class="settings-note">Loading campaigns...</p>';
+  try {
+    const snap = await db.collection('campaigns').get();
+    _adminCampaigns = {};
+    const rows = [];
+    snap.forEach(doc => { const c = { id: doc.id, ...doc.data() }; _adminCampaigns[doc.id] = c; rows.push(c); });
+    if (!rows.length) { list.innerHTML = '<p class="settings-note">No campaigns yet. They appear here when a user makes one on their DM screen.</p>'; return; }
+    rows.sort((x, y) => String(y.updatedAt || '').localeCompare(String(x.updatedAt || '')));
+    const meta = document.getElementById('adminCampaignMeta');
+    if (meta) meta.textContent = `${rows.length} campaign${rows.length === 1 ? '' : 's'}`;
+    list.innerHTML = '';
+    rows.forEach(c => {
+      const legacy = !c.ownerUid;
+      const hasOld = !!(c.passwordHash || c.dmPasswordHash || (c.dmEmails && c.dmEmails.length));
+      const owner = legacy ? 'Old campaign (made before this change)' : (c.ownerName || c.ownerEmail || c.ownerUid);
+      const when = c.updatedAt ? new Date(c.updatedAt).toLocaleString() : '';
+      const players = Array.isArray(c.players) ? c.players.length : 0;
+      const div = document.createElement('div');
+      div.className = 'admin-campaign-card';
+      div.innerHTML = `
+        <div class="admin-campaign-card-header">
+          <div>
+            <span class="admin-campaign-name">${escapeHtml(c.name || 'Untitled')}</span>
+            ${legacy ? '<span class="admin-campaign-badge badge-inactive">Old</span>' : ''}
+          </div>
+          <div class="admin-campaign-actions">
+            ${legacy ? '' : `<button class="settings-action-btn accent-contrast-bg" onclick="adminToggleCampaignView('${escapeHtml(c.id)}')">View</button>`}
+            ${hasOld ? `<button class="settings-action-btn accent-contrast-bg" onclick="adminCleanCampaign('${escapeHtml(c.id)}')">Remove old passwords</button>` : ''}
+            <button class="settings-action-btn admin-delete-btn" onclick="adminDeleteCampaign('${escapeHtml(c.id)}')">Delete</button>
+          </div>
+        </div>
+        <div class="admin-campaign-card-body">
+          <div class="admin-campaign-detail-row"><span class="admin-detail-label">Owner</span><span>${escapeHtml(owner)}${!legacy && c.ownerEmail && c.ownerName ? ' · ' + escapeHtml(c.ownerEmail) : ''}</span></div>
+          <div class="admin-campaign-detail-row"><span class="admin-detail-label">Setting</span><span>${escapeHtml(c.setting || '—')}</span></div>
+          ${legacy ? '' : `<div class="admin-campaign-detail-row"><span class="admin-detail-label">Players</span><span>${players} listed</span></div>`}
+          ${when ? `<div class="admin-campaign-detail-row"><span class="admin-detail-label">Updated</span><span>${escapeHtml(when)}</span></div>` : ''}
+          ${hasOld ? '<div class="admin-campaign-detail-row"><span class="admin-detail-label">Old fields</span><span>Still holds a password hash or DM email from the old link system.</span></div>' : ''}
+        </div>
+        <div id="adminCampaignPlayers_${escapeHtml(c.id)}" class="admin-campaign-players" style="display:none;"></div>`;
+      list.appendChild(div);
+    });
+  } catch (e) {
+    console.error('adminLoadCampaigns failed:', e);
+    list.innerHTML = `<p class="settings-note">${escapeHtml(adminFriendlyError(e))}</p>`;
+  }
+}
+
+function adminToggleCampaignView(id) {
+  const panel = document.getElementById('adminCampaignPlayers_' + id);
+  const c = _adminCampaigns[id];
+  if (!panel || !c) return;
+  if (panel.style.display !== 'none') { panel.style.display = 'none'; return; }
+  const players = Array.isArray(c.players) ? c.players : [];
+  const line = p => [p.name || 'Unnamed', p.player ? '(' + p.player + ')' : '', p.cls, p.level ? 'Lv ' + p.level : '', p.ac ? 'AC ' + p.ac : '', p.hp ? 'HP ' + p.hp : ''].filter(Boolean).join(' · ');
+  panel.innerHTML =
+    (c.notes ? `<p class="settings-note"><strong>Notes:</strong> ${escapeHtml(c.notes).replace(/\n/g, '<br>')}</p>` : '') +
+    (players.length
+      ? '<div class="admin-campaign-players-list">' + players.map(p => `<div class="admin-campaign-player-row"><span class="admin-campaign-player-name">${escapeHtml(line(p))}</span>${p.notes ? `<span class="settings-note">${escapeHtml(p.notes)}</span>` : ''}</div>`).join('') + '</div>'
+      : '<p class="settings-note">No players listed.</p>');
+  panel.style.display = 'block';
+}
+
+async function adminCleanCampaign(id) {
+  const db = window.db; if (!db) return;
+  const FV = firebase.firestore.FieldValue;
+  try {
+    await db.collection('campaigns').doc(id).update({ passwordHash: FV.delete(), dmPasswordHash: FV.delete(), dmEmails: FV.delete(), active: FV.delete() });
+    setAdminCampaignStatus('Old password fields removed.', 'success');
+    adminLoadCampaigns();
+  } catch (e) { setAdminCampaignStatus(adminFriendlyError(e), 'error'); }
+}
+
+async function adminDeleteCampaign(id) {
+  const db = window.db; const c = _adminCampaigns[id]; if (!db || !c) return;
+  const ok = await appConfirm(`Delete "${c.name || 'this campaign'}"${c.ownerName ? ' (' + c.ownerName + ')' : ''}? Their copy on their own device can put it back the next time they open the DM screen, so this is mostly for old or abandoned ones.`, { title: 'Delete campaign', confirmText: 'Delete' });
   if (!ok) return;
-  const db = window.db;
-  if (!db || !charId) return;
-  try {
-    // Delete the member doc (keyed by charId) — the roster reads members, so the
-    // character is removed instantly even while offline.
-    await db.collection('campaigns').doc(campaignId)
-      .collection('members').doc(charId).delete();
-    setAdminCampaignStatus('Player removed.', 'success');
-    setTimeout(() => adminViewCampaignPlayers(campaignId, campaignName), 100);
-  } catch (e) {
-    setAdminCampaignStatus(adminFriendlyError(e), 'error');
-  }
+  try { await db.collection('campaigns').doc(id).delete(); setAdminCampaignStatus('Campaign deleted.', 'success'); adminLoadCampaigns(); }
+  catch (e) { setAdminCampaignStatus(adminFriendlyError(e), 'error'); }
 }
 
-window.adminRemovePlayer = adminRemovePlayer;
-
-async function adminChangeCampaignPassword(campaignId, which) {
-  const isDm = which === 'dm';
-  const label = isDm ? 'DM control password (DM uses to take control)' : 'player join password (players enter to join)';
-  const field = isDm ? 'dmPasswordHash' : 'passwordHash';
-  const password = await appPrompt(`Enter new ${label} for this campaign (leave blank to remove it):`, {
-    title: 'Campaign Password', inputType: 'password', confirmText: 'Save'
-  });
-  if (password === null) return; // cancelled
-  const db = window.db;
-  if (!db) return;
-  try {
-    const hash = password.trim() ? await sha256Hex(password.trim()) : '';
-    await db.collection('campaigns').doc(campaignId).update({ [field]: hash });
-    await adminLoadCampaigns();
-    setAdminCampaignStatus(`${isDm ? 'DM' : 'Player'} password ${hash ? 'updated' : 'removed'}.`, 'success');
-  } catch (e) {
-    setAdminCampaignStatus('Error: ' + e.message, 'error');
-  }
-}
-
-async function adminEditCampaignDm(campaignId) {
-  const db = window.db;
-  if (!db) return;
-  const email = await appPrompt('Enter DM email (leave blank to clear):', {
-    title: 'Assign DM', inputType: 'email', placeholder: 'dm@example.com', confirmText: 'Save'
-  });
-  if (email === null) return; // cancelled
-  const clean = email.trim().toLowerCase();
-  try {
-    await db.collection('campaigns').doc(campaignId).update({
-      dmEmails: clean ? [clean] : []
-    });
-    setAdminCampaignStatus('DM updated.', 'success');
-    await adminLoadCampaigns();
-  } catch (e) {
-    setAdminCampaignStatus('Error: ' + e.message, 'error');
-  }
-}
-
-async function adminToggleCampaign(campaignId, active) {
-  const db = window.db;
-  if (!db) return;
-  try {
-    await db.collection('campaigns').doc(campaignId).update({ active });
-    await adminLoadCampaigns();
-  } catch (e) {
-    setAdminCampaignStatus('Error: ' + e.message, 'error');
-  }
-}
-
-const _adminDeleteState = {};
-
-function adminDeleteCampaignStep(campaignId, campaignName, btn) {
-  const state = _adminDeleteState[campaignId] || { step: 0 };
-
-  if (state.step === 0) {
-    state.step = 1;
-    btn.textContent = 'Sure?';
-    btn.style.background = 'rgba(200,100,40,0.3)';
-    btn.style.borderColor = 'rgba(200,100,40,0.6)';
-    state.timer = setTimeout(() => {
-      _adminDeleteState[campaignId] = { step: 0 };
-      btn.textContent = 'Delete';
-      btn.style.background = '';
-      btn.style.borderColor = '';
-    }, 4000);
-
-  } else if (state.step === 1) {
-    clearTimeout(state.timer);
-    state.step = 2;
-    btn.textContent = 'Deleting...';
-    btn.disabled = true;
-    _adminDeleteState[campaignId] = state;
-
-    window.db.collection('campaigns').doc(campaignId).delete().then(() => {
-      setAdminCampaignStatus(`"${campaignName}" deleted.`, 'success');
-      adminLoadCampaigns();
-    }).catch(e => {
-      setAdminCampaignStatus('Delete failed: ' + e.message, 'error');
-      btn.textContent = 'Delete';
-      btn.disabled = false;
-      _adminDeleteState[campaignId] = { step: 0 };
-    });
-  }
-
-  _adminDeleteState[campaignId] = state;
-}
-
-window.adminDeleteCampaignStep = adminDeleteCampaignStep;
-window.adminCreateCampaign = adminCreateCampaign;
 window.adminLoadCampaigns = adminLoadCampaigns;
-window.adminEditCampaignDm = adminEditCampaignDm;
-window.adminToggleCampaign = adminToggleCampaign;
-window.adminViewCampaignPlayers = adminViewCampaignPlayers;
-window.adminChangeCampaignPassword = adminChangeCampaignPassword;
+window.adminToggleCampaignView = adminToggleCampaignView;
+window.adminCleanCampaign = adminCleanCampaign;
+window.adminDeleteCampaign = adminDeleteCampaign;
 
-// ========== ADMIN → LOGS (Campaigns → Characters → roll logs) ==========
-// Owner-only. Reads live from Firestore: campaign members give {uid, charId},
-// then userData/{uid}/characters/{charId}.data.rollLog holds the day-grouped
-// rolls. Foundation for more log types later.
+// ========== ADMIN → LOGS (Users → Characters → roll logs) ==========
+// Owner-only. Reads live from Firestore: userData/{uid}/characters/{charId}.data.rollLog holds the
+// day-grouped rolls. Foundation for more log types later.
 
-let _adminLogsCampaigns = [];   // cached campaign list for the dropdown
 let _adminLogsCurrentChar = null; // { uid, charId, name, rollLog } last opened
 
 async function adminInitLogs(force) {
-  const sel = document.getElementById('adminLogsCampaign');
+  const sel = document.getElementById('adminLogsUser');
   const chars = document.getElementById('adminLogsCharacters');
   const detail = document.getElementById('adminLogsDetail');
   if (!sel) return;
   if (chars) chars.innerHTML = '';
   if (detail) detail.innerHTML = '';
-  if (_adminLogsCampaigns.length && !force) return; // already loaded
-
-  const db = window.db;
-  if (!db) return;
-  sel.innerHTML = '<option value="">Loading campaigns…</option>';
-  try {
-    const snap = await db.collection('campaigns').orderBy('createdAt', 'desc').get();
-    _adminLogsCampaigns = [];
-    snap.forEach(doc => _adminLogsCampaigns.push({ id: doc.id, ...doc.data() }));
-    sel.innerHTML = '<option value="">— pick a campaign —</option>' +
-      _adminLogsCampaigns.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('');
-  } catch (e) {
-    sel.innerHTML = '<option value="">Error loading</option>';
-    if (chars) chars.innerHTML = `<p class="settings-note">${escapeHtml(adminFriendlyError(e))}</p>`;
-  }
+  if (!(window.__adminUsers || []).length || force) { try { await adminRefreshUsers(); } catch (_) {} }
+  const users = window.__adminUsers || [];
+  sel.innerHTML = '<option value="">— pick a user —</option>' +
+    users.map(u => `<option value="${escapeHtml(u.uid)}">${escapeHtml(u.nickname || u.email)}${u.nickname && u.email ? ' · ' + escapeHtml(u.email) : ''}</option>`).join('');
 }
 
-async function adminLogsSelectCampaign(campaignId) {
+async function adminLogsSelectUser(uid) {
   const chars = document.getElementById('adminLogsCharacters');
   const detail = document.getElementById('adminLogsDetail');
   if (detail) detail.innerHTML = '';
   if (!chars) return;
-  if (!campaignId) { chars.innerHTML = ''; return; }
-  const db = window.db;
-  if (!db) return;
+  if (!uid) { chars.innerHTML = ''; return; }
   chars.innerHTML = '<p class="settings-note">Loading characters…</p>';
   try {
-    const snap = await db.collection('campaigns').doc(campaignId).collection('members').get();
-    const members = [];
-    snap.forEach(doc => { const m = doc.data() || {}; members.push({ uid: m.uid || doc.id, charId: m.charId || '', name: m.charName || 'Unnamed', meta: [m.race, m.class, m.level ? 'Lv ' + m.level : ''].filter(Boolean).join(' · ') }); });
-    if (!members.length) { chars.innerHTML = '<p class="settings-note">No characters in this campaign yet.</p>'; return; }
-    chars.innerHTML = members.map(m => `
-      <button type="button" class="admin-user-card" onclick="adminViewCharLogs('${escapeHtml(m.uid)}','${escapeHtml(m.charId)}','${escapeHtml(m.name)}')">
-        <span class="settings-preview-tag">${escapeHtml(m.name)}</span>
-        <span class="settings-note">${escapeHtml(m.meta)}</span>
-      </button>`).join('');
+    const list = (await adminLoadUserChars(uid)).filter(c => !c.deleted);
+    if (!list.length) { chars.innerHTML = '<p class="settings-note">This user has no characters.</p>'; return; }
+    chars.innerHTML = list.map(c => {
+      const info = (c.data && c.data.characterInfo) || {};
+      const meta = [info.race, info.class, info.level ? 'Lv ' + info.level : ''].filter(Boolean).join(' · ');
+      return `<button type="button" class="admin-user-card" onclick="adminViewCharLogs('${escapeHtml(uid)}','${escapeHtml(c.id)}','${escapeHtml(c.name || 'Unnamed')}')">
+        <span class="settings-preview-tag">${escapeHtml(c.name || 'Unnamed')}</span>
+        <span class="settings-note">${escapeHtml(meta)}</span>
+      </button>`;
+    }).join('');
   } catch (e) {
     chars.innerHTML = `<p class="settings-note">${escapeHtml(adminFriendlyError(e))}</p>`;
   }
@@ -922,6 +748,6 @@ async function adminExportCharLog() {
 }
 
 window.adminInitLogs = adminInitLogs;
-window.adminLogsSelectCampaign = adminLogsSelectCampaign;
+window.adminLogsSelectUser = adminLogsSelectUser;
 window.adminViewCharLogs = adminViewCharLogs;
 window.adminExportCharLog = adminExportCharLog;

@@ -7,17 +7,13 @@ rules_version = '2';
 // or paste this whole file into Firebase Console → Firestore → Rules.
 //
 // Model:
-//  - A user owns userData/{their uid} and everything under it.
-//  - The owner-admin (vanreejoz33) can read everything for the admin
-//    portal and the DM Players tab (collectionGroup reads).
-//  - Other signed-in users can read ONE character by exact path (that is how
-//    the DM view loads linked characters) but cannot list or search sheets.
-//  - Campaigns are readable by any signed-in user (for the join dropdown)
-//    and writable only by the owner-admin.
-//  - Join requests live under campaigns/{id}/joinRequests/{uid}:
-//      * a player may create / read / delete THEIR OWN request
-//      * the owner-admin (and assigned DMs) may read all requests and
-//        update their status (approve / deny)
+//  - A user owns userData/{their uid} and everything under it. Nobody else
+//    can read or list their sheets. (There is no DM link to player sheets.)
+//  - The owner-admin (vanreejoz33) can read everything for the admin portal
+//    (collectionGroup reads).
+//  - Campaigns are a DM's own notes (name, setting, notes, typed player list).
+//    Each one is owned by the user who made it (ownerUid) and is readable only
+//    by that user and the owner-admin.
 // =====================================================================
 
 service cloud.firestore {
@@ -29,14 +25,6 @@ service cloud.firestore {
 
     function isOwnerAdmin() {
       return isSignedIn() && request.auth.token.email == 'vanreejoz33@gmail.com';
-    }
-
-    // True if the signed-in user's email is in this campaign's dmEmails list
-    function isCampaignDm(campaignId) {
-      return isSignedIn()
-        && exists(/databases/$(database)/documents/campaigns/$(campaignId))
-        && request.auth.token.email in
-           get(/databases/$(database)/documents/campaigns/$(campaignId)).data.dmEmails;
     }
 
     // A sheet or prefs doc is a small map of fields. 1 MB is Firestore's own
@@ -57,8 +45,6 @@ service cloud.firestore {
         allow create, update: if isSignedIn() && request.auth.uid == uid && sane();
         allow delete: if isSignedIn() && request.auth.uid == uid;
         allow read: if isOwnerAdmin();
-        // DM view: load one linked character by its exact path. No list/query.
-        allow get: if isSignedIn();
       }
     }
 
@@ -82,51 +68,25 @@ service cloud.firestore {
       allow read: if isOwnerAdmin();
     }
 
-    // ---- Campaigns ----
+    // ---- Campaigns (a DM's own notes; owner-only + admin) ----
+    function validCampaign() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['id','name','setting','notes','players','ownerUid','ownerName','ownerEmail','createdAt','updatedAt'])
+        && d.ownerUid == request.auth.uid
+        && d.name is string && d.name.size() <= 80
+        && (!('players' in d) || (d.players is list && d.players.size() <= 60));
+    }
     match /campaigns/{campaignId} {
-      allow read: if isSignedIn();
-      allow write: if isOwnerAdmin();
-
-      // Join requests: campaigns/{id}/joinRequests/{uid}  (LEGACY — kept during transition)
-      match /joinRequests/{uid} {
-        // A player manages their own request; owner & assigned DMs can read all
-        allow create, delete: if isSignedIn() && request.auth.uid == uid;
-        allow read: if (isSignedIn() && request.auth.uid == uid)
-                       || isOwnerAdmin() || isCampaignDm(campaignId);
-        // Approve / deny: owner or assigned DM updates status
-        allow update: if isOwnerAdmin() || isCampaignDm(campaignId);
-      }
-
-      // Membership: campaigns/{id}/members/{charId}
-      // PER-CHARACTER. A member doc is a single character's grant of read-access
-      // to the DM/owner, keyed by the character id (NOT the user id) so a player
-      // with several characters can join independently with each one. The doc
-      // stores `uid` so rules can tell who owns it.
-      // This is the SOURCE OF TRUTH for the campaign roster, so a DM/owner can
-      // remove a character instantly even while that player is offline.
-      match /members/{charId} {
-        // The owning player creates / deletes their own character's membership.
-        // On create, the doc must carry their own uid.
-        allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
-        allow delete: if (isSignedIn() && resource.data.uid == request.auth.uid)
-                         || isOwnerAdmin() || isCampaignDm(campaignId);
-        // Read: the owning player, the owner-admin, or an assigned DM.
-        allow read: if (isSignedIn() && resource.data.uid == request.auth.uid)
-                       || isOwnerAdmin() || isCampaignDm(campaignId);
-        // Owner can add/overwrite anyone's membership.
-        allow write: if isOwnerAdmin();
-      }
+      allow read, delete: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+      allow create: if isSignedIn() && validCampaign();
+      allow update: if isSignedIn() && resource.data.ownerUid == request.auth.uid && validCampaign();
+      // The owner-admin sees and can clean up every campaign (including old ones with password fields).
+      allow read, write: if isOwnerAdmin();
     }
 
     // ---- Admin config (portal PIN hash) ----
     // Only the owner-admin portal uses this; nobody else needs the PIN hash.
     match /admin_config/{docId} {
-      allow read, write: if isOwnerAdmin();
-    }
-
-    // ---- DM access requests (legacy) ----
-    match /dm_requests/{uid} {
-      allow create, read: if isSignedIn() && request.auth.uid == uid;
       allow read, write: if isOwnerAdmin();
     }
   }
