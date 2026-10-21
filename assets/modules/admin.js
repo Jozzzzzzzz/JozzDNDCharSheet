@@ -50,6 +50,7 @@ function switchAdminTab(btn) {
   document.querySelectorAll('.admin-tab-panel').forEach(p => { p.style.display = 'none'; });
   const panel = document.getElementById(btn.dataset.adminTab);
   if (panel) panel.style.display = 'block';
+  if (typeof adminTabShown === 'function') adminTabShown(btn.dataset.adminTab);
 }
 window.switchAdminTab = switchAdminTab;
 
@@ -132,14 +133,8 @@ async function unlockAdminPortal() {
     const unlocked = document.getElementById('adminUnlockedView');
     if (locked) locked.style.display = 'none';
     if (unlocked) unlocked.style.display = 'block';
-    // One tab failing to load must not lock you out: each reports its own problem in its own panel.
-    const [usersRes, campsRes] = await Promise.allSettled([adminRefreshUsers(), adminLoadCampaigns()]);
-    if (usersRes.status === 'rejected') {
-      console.error('[admin] users failed to load:', usersRes.reason);
-      const meta = document.getElementById('adminUserMeta');
-      if (meta) meta.textContent = 'Could not load users: ' + adminFriendlyError(usersRes.reason) + ' (' + ((usersRes.reason && (usersRes.reason.code || usersRes.reason.message)) || 'unknown') + ')';
-    }
-    if (campsRes.status === 'rejected') console.error('[admin] campaigns failed to load:', campsRes.reason);
+    // Each section reports its own load problem; one failing never blocks the rest.
+    await adminOnUnlock();
   } catch (e) {
     console.error('[admin] unlock failed:', e);
     setAdminPortalStatus('Admin portal error: ' + adminFriendlyError(e) + ' [' + ((e && (e.code || e.message)) || 'unknown') + ']', 'error');
@@ -206,7 +201,7 @@ async function adminRefreshUsers() {
   const byUid = {};
   profilesSnap.forEach(doc => {
     const data = doc.data() || {};
-    byUid[doc.id] = { uid: doc.id, email: data.email || '', nickname: data.nickname || '' };
+    byUid[doc.id] = { uid: doc.id, email: data.email || '', nickname: data.nickname || '', createdAt: data.createdAt || null };
   });
   signinsSnap.forEach(doc => {
     const data = doc.data() || {};
@@ -361,6 +356,10 @@ async function adminSelectUser(uid) {
           <span class="admin-chip">Last sign-in: ${escapeHtml(formatTs(user.lastSignInAt) || '—')}</span>
           <span class="admin-chip">${chars.length} character${chars.length === 1 ? '' : 's'}</span>
         </div>
+        <div class="adm-row">
+          <button type="button" class="settings-action-btn accent-contrast-bg" onclick="adminDownloadBackup('${escapeHtml(uid)}')">Download all of this user's sheets</button>
+          <button type="button" class="settings-action-btn" onclick="navigator.clipboard && navigator.clipboard.writeText('${escapeHtml(user.email || uid)}')">Copy email</button>
+        </div>
       </div>`;
 
     if (!chars.length) {
@@ -381,7 +380,7 @@ async function adminSelectUser(uid) {
 
       const line = document.createElement('div');
       line.className = 'settings-text-preview-row';
-      line.innerHTML = `<span class="settings-preview-tag">${escapeHtml(name)}</span>
+      line.innerHTML = `<span class="settings-preview-tag">${escapeHtml(name)}${c.deleted ? ' (deleted)' : ''}</span>
         <span class="settings-note">${escapeHtml([race, klass, subclass, level ? ('Lv ' + level) : ''].filter(Boolean).join(' | '))}</span>`;
 
       const previewBtn = document.createElement('button');
@@ -462,22 +461,8 @@ async function adminImportCharacter(uid, charId) {
   if (!db) return;
   const doc = await db.collection('userData').doc(uid).collection('characters').doc(charId).get();
   if (!doc.exists) return;
-  const src = { id: doc.id, ...doc.data() };
-  if (!src) return;
-
   const users = window.__adminUsersByUid || {};
-  const sourceEmail = users[uid]?.email || uid;
-  const clone = JSON.parse(JSON.stringify(src));
-  const originalId = clone.id || 'unknown';
-  clone.id = `adminimp_${uid}_${originalId}_${Date.now()}`;
-  clone.name = `[Imported: ${sourceEmail}] ${clone.name || clone?.data?.characterInfo?.name || 'Unnamed'}`.slice(0, 90);
-  clone.adminImportedFrom = { uid, email: sourceEmail, at: new Date().toISOString() };
-
-  const local = getStoredJSON('dndCharacters', []);
-  local.push(clone);
-  setStoredJSON('dndCharacters', local);
-  loadCharacterList();
-  setSyncStatus?.('Imported character copy');
+  adminImportCharObject({ id: doc.id, ...doc.data() }, uid, users[uid]?.email || uid);
 }
 
 window.adminImportCharacter = adminImportCharacter;
@@ -591,7 +576,7 @@ function adminFriendlyError(e) {
   return (e && e.message) ? e.message : 'Something went wrong. Try again.';
 }
 
-let _adminCampaigns = {};
+window._adminCampaigns = {};
 
 async function adminLoadCampaigns() {
   const db = window.db;

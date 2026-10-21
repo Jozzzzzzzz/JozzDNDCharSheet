@@ -143,3 +143,41 @@
 .dmc-wide textarea { resize: vertical; }
 .dmc-player { border: 1px solid var(--accent-border); border-radius: 10px; padding: 10px 12px; margin: 10px 0; background: rgba(255,255,255,0.03); }
 .gr-rail-btn[hidden] { display: none !important; }
+
+/* ---- Admin page (admin-data.js) ---- */
+.admin-tabs { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+.admin-tab { flex: 0 0 auto; white-space: nowrap; }
+.adm-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 6px 0 14px; }
+.adm-tile { display: flex; flex-direction: column; gap: 2px; align-items: flex-start; text-align: left; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--accent-border); background: rgba(255,255,255,0.04); color: inherit; cursor: pointer; font: inherit; }
+.adm-tile:hover { background: var(--accent-soft); }
+.adm-num { font-size: 1.7rem; font-weight: 700; line-height: 1.1; color: var(--accent-text); }
+.adm-lbl { font-size: 0.9rem; font-weight: 600; }
+.adm-sub { font-size: 0.78rem; opacity: 0.7; }
+.adm-h { margin: 18px 0 8px; font-size: 1rem; color: var(--accent-text); }
+.adm-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; }
+.adm-row select, .adm-row input { min-width: 0; flex: 1 1 200px; }
+.adm-row .settings-action-btn, .adm-pin .settings-action-btn, .adm-actions .settings-action-btn { width: auto; max-width: none; flex: 0 0 auto; }
+.adm-warn { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.adm-warn li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--accent-border); border-left-width: 4px; background: rgba(255,255,255,0.03); }
+.adm-warn li.adm-lv-bad { border-left-color: #e05555; } .adm-warn li.adm-lv-warn { border-left-color: #e0a030; } .adm-warn li.adm-lv-info { border-left-color: #5a9be0; }
+.adm-table-wrap { overflow-x: auto; margin: 8px 0; border: 1px solid var(--accent-border); border-radius: 8px; }
+.adm-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.adm-table th, .adm-table td { padding: 8px 10px; text-align: left; vertical-align: middle; border-bottom: 1px solid rgba(255,255,255,0.07); }
+.adm-table thead th { position: sticky; top: 0; background: rgba(0,0,0,0.35); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.85; }
+.adm-table tbody tr:last-child td, .adm-table tbody tr:last-child th { border-bottom: 0; }
+.adm-actions { white-space: nowrap; text-align: right; } .adm-actions .settings-action-btn { margin-left: 6px; padding: 6px 10px; }
+.adm-flag { display: inline-block; font-size: 0.7rem; padding: 1px 7px; border-radius: 999px; margin-left: 4px; border: 1px solid var(--accent-border); vertical-align: middle; }
+.adm-flag-bad { border-color: #e05555; color: #ff9a9a; } .adm-flag-warn { border-color: #e0a030; color: #f0c060; }
+.adm-filters { flex-wrap: wrap; gap: 8px; } .adm-filters input { flex: 2 1 220px; } .adm-filters select { flex: 1 1 150px; }
+.adm-filebtn { display: inline-block; width: auto; cursor: pointer; }
+.adm-pin { display: flex; flex-wrap: wrap; gap: 8px; } .adm-pin input { flex: 1 1 180px; min-width: 0; }
+@media (max-width: 600px) { .adm-table th, .adm-table td { padding: 6px 8px; } .adm-actions { white-space: normal; } }
+.adm-warn li .settings-action-btn { width: auto; flex: 0 0 auto; }
+/* admin page: a wide table must scroll inside its own box, never widen the page */
+#admin .home-grid { grid-template-columns: minmax(0, 1fr); }
+#admin .home-grid > *, #admin .admin-tab-panel, #admin .admin-unlocked-view { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.adm-table-wrap { max-width: 100%; }
+.adm-table { min-width: 560px; }
+.adm-table.adm-kv { min-width: 0; }
+.adm-table td strong { word-break: normal; overflow-wrap: anywhere; }
+@media (max-width: 600px) { .adm-table th, .adm-table td { font-size: 0.85rem; } .adm-table td:first-child { min-width: 9em; } }

@@ -9,8 +9,10 @@ rules_version = '2';
 // Model:
 //  - A user owns userData/{their uid} and everything under it. Nobody else
 //    can read or list their sheets. (There is no DM link to player sheets.)
-//  - The owner-admin (vanreejoz33) can read everything for the admin portal
-//    (collectionGroup reads).
+//  - The owner-admin (vanreejoz33) can READ every document (admin page: overview,
+//    backup, users, sheets). Beyond reading, the admin can only: restore a
+//    deleted sheet (update), manage campaigns and admin_config, and delete old
+//    link-system leftovers (members / joinRequests / dm_requests).
 //  - Campaigns are a DM's own notes (name, setting, notes, typed player list).
 //    Each one is owned by the user who made it (ownerUid) and is readable only
 //    by that user and the owner-admin.
@@ -45,6 +47,9 @@ service cloud.firestore {
         allow create, update: if isSignedIn() && request.auth.uid == uid && sane();
         allow delete: if isSignedIn() && request.auth.uid == uid;
         allow read: if isOwnerAdmin();
+        // Admin "restore deleted sheet": may only flip the deleted flag back (and bump rev / updatedAt)
+        allow update: if isOwnerAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deleted', 'deletedAt', 'rev', 'updatedAt']);
       }
     }
 
@@ -84,10 +89,20 @@ service cloud.firestore {
       allow read, write: if isOwnerAdmin();
     }
 
+    // ---- Old link-system leftovers: only the owner-admin can see or delete them ----
+    match /campaigns/{campaignId}/members/{m} { allow read, delete: if isOwnerAdmin(); }
+    match /campaigns/{campaignId}/joinRequests/{j} { allow read, delete: if isOwnerAdmin(); }
+    match /dm_requests/{d} { allow read, delete: if isOwnerAdmin(); }
+
     // ---- Admin config (portal PIN hash) ----
     // Only the owner-admin portal uses this; nobody else needs the PIN hash.
     match /admin_config/{docId} {
       allow read, write: if isOwnerAdmin();
+    }
+
+    // ---- Owner-admin can read anything (admin page: overview, backup, usage) ----
+    match /{document=**} {
+      allow read: if isOwnerAdmin();
     }
   }
 }

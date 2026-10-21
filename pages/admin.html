@@ -28,13 +28,22 @@
 
         <!-- Admin tab bar -->
         <div class="admin-tabs">
-          <button class="admin-tab active" data-admin-tab="adminTabCampaigns" onclick="switchAdminTab(this)">Campaigns</button>
+          <button class="admin-tab active" data-admin-tab="adminTabOverview" onclick="switchAdminTab(this)">Overview</button>
           <button class="admin-tab" data-admin-tab="adminTabUsers" onclick="switchAdminTab(this)">Users</button>
-          <button class="admin-tab" data-admin-tab="adminTabLogs" onclick="switchAdminTab(this); adminInitLogs()">Logs</button>
+          <button class="admin-tab" data-admin-tab="adminTabSheets" onclick="switchAdminTab(this)">Sheets</button>
+          <button class="admin-tab" data-admin-tab="adminTabCampaigns" onclick="switchAdminTab(this)">Campaigns</button>
+          <button class="admin-tab" data-admin-tab="adminTabBackup" onclick="switchAdminTab(this)">Backup</button>
+          <button class="admin-tab" data-admin-tab="adminTabLogs" onclick="switchAdminTab(this)">Logs</button>
+          <button class="admin-tab" data-admin-tab="adminTabTools" onclick="switchAdminTab(this)">Tools</button>
+        </div>
+
+        <!-- Overview tab -->
+        <div id="adminTabOverview" class="admin-tab-panel">
+          <div id="admOverview"><p class="settings-note">Loading…</p></div>
         </div>
 
         <!-- Campaigns tab -->
-        <div id="adminTabCampaigns" class="admin-tab-panel">
+        <div id="adminTabCampaigns" class="admin-tab-panel" style="display:none;">
           <p class="settings-note">Campaigns your users made on their own DM screens. Each user only sees their own; you see all of them here.</p>
           <div class="admin-list-header">
             <span class="admin-section-header" style="border:none;padding:0;margin:0;">All Campaigns</span>
@@ -54,6 +63,62 @@
           <p id="adminUserMeta" class="settings-note"></p>
           <div id="adminUserGrid" class="admin-user-grid"></div>
           <div id="adminUserCharacters"></div>
+        </div>
+
+        <!-- Sheets tab -->
+        <div id="adminTabSheets" class="admin-tab-panel" style="display:none;">
+          <p class="settings-note">Every sheet on every account. Preview opens it read-only on this device, Export downloads one sheet, Restore brings a deleted sheet back for its owner.</p>
+          <div class="admin-users-toolbar adm-filters">
+            <input id="admSheetSearch" type="text" placeholder="Search sheet, owner, class…" autocomplete="off"/>
+            <select id="admSheetFilter" aria-label="Filter">
+              <option value="all">All</option><option value="live">Live only</option><option value="deleted">Deleted</option><option value="conflict">Conflict copies</option><option value="big">Large (500 KB+)</option>
+            </select>
+            <select id="admSheetSort" aria-label="Sort">
+              <option value="updated">Newest first</option><option value="name">Name</option><option value="owner">Owner</option><option value="size">Biggest first</option>
+            </select>
+          </div>
+          <p id="admSheetsMeta" class="settings-note"></p>
+          <div id="admSheetsBody"></div>
+        </div>
+
+        <!-- Backup tab -->
+        <div id="adminTabBackup" class="admin-tab-panel" style="display:none;">
+          <div id="admBackupInfo"></div>
+          <div class="adm-row">
+            <button type="button" class="settings-action-btn accent-contrast-bg" onclick="adminDownloadBackup()">Download full backup</button>
+          </div>
+          <h4 class="adm-h">One user only</h4>
+          <div class="adm-row">
+            <select id="admBackupUser" aria-label="User"><option value="">Pick a user…</option></select>
+            <button type="button" class="settings-action-btn" onclick="adminBackupUserDownload()">Download this user</button>
+          </div>
+          <h4 class="adm-h">Look inside a backup file</h4>
+          <p class="settings-note">Open a backup you saved earlier to see what is in it. You can import a single sheet from it as a copy on this device. Nothing is written to any account.</p>
+          <label class="settings-action-btn adm-filebtn">Choose backup file…<input type="file" accept="application/json,.json" onchange="adminBackupChosen(this)" hidden></label>
+          <div id="admBackupView"></div>
+        </div>
+
+        <!-- Tools tab -->
+        <div id="adminTabTools" class="admin-tab-panel" style="display:none;">
+          <h4 class="adm-h">System</h4>
+          <div id="admSystem"></div>
+          <div class="adm-row">
+            <button type="button" class="settings-action-btn" onclick="adminCopyDiagnostics()">Copy diagnostics</button>
+            <button type="button" class="settings-action-btn" onclick="adminRefreshAll()">Refresh all data</button>
+            <button type="button" class="settings-action-btn" onclick="adminLockPortal()">Lock portal now</button>
+          </div>
+          <h4 class="adm-h">Old campaign link data</h4>
+          <p class="settings-note">The old join system left member records, join requests and password hashes behind. Nothing uses them now. Scan to see what is left, then delete it.</p>
+          <div id="admLegacy"></div>
+          <div class="adm-row"><button type="button" class="settings-action-btn" onclick="adminScanLegacy()">Scan for old data</button></div>
+          <h4 class="adm-h">Change admin PIN</h4>
+          <div class="adm-pin">
+            <input id="admPinOld" type="password" placeholder="Current PIN" autocomplete="current-password">
+            <input id="admPinNew" type="password" placeholder="New PIN (4+ characters)" autocomplete="new-password">
+            <input id="admPinNew2" type="password" placeholder="New PIN again" autocomplete="new-password">
+            <button type="button" class="settings-action-btn accent-contrast-bg" onclick="adminChangePin()">Change PIN</button>
+          </div>
+          <div id="admPinStatus" class="status-message"></div>
         </div>
 
         <!-- Logs tab: Users → Characters → roll logs -->

@@ -52,6 +52,7 @@ All JS lives in `assets/`. Files are loaded **in this exact order** via dynamic 
 | `assets/modules/spells.js` | Spell list, spell slots (with drag-reorder), custom resources, favorites, prepared spells table, spell search, sync panels. Loads spell reference data async from `assets/data/spells.json` via `loadSpellDatabase()` at boot, then enriches from Open5e API in background | ~1440 |
 | `assets/modules/dm.js` | DM Portal — password-gated entry, 24h session, portal enter/exit, tab switching, monster browser (Open5e API), encounter builder (themes/shapes/difficulty math, players, drag-reorder, click-to-open creature cards), NPC generator, loot tables, players/pending approval, in-app dialogs (`dmModal`/`dmToast`), `friendlyFirebaseError`. DM data in localStorage `dndDmEncounters`/`dndDmNpcs` | ~2750 |
 | `assets/modules/dm-campaigns.js` | DM campaigns + typed player list, local-first with an account mirror (`dmc*` functions). Loads right after dm.js. | ~230 |
+| `assets/modules/admin-data.js` | Admin page: overview, all sheets, backup/restore, tools (loads after admin.js) | ~330 |
 | `assets/modules/admin.js` | Owner-only admin portal: user list, character import/preview via Firestore. Depends on `escapeHtml`, `getStoredJSON`, `loadCharacterList`, `loadData` from `core.js` | ~230 |
 | `assets/app.js` | Boot entry point: `window.initializeApp`, `showWeaponsPopup`, `addWeapon`, `manualSave`. Also seeds default bg fields and calls `initNotesPage()` on first boot. | ~150 |
 
@@ -462,22 +463,15 @@ The ruleset lives in `firestore.rules` (deploy with `firebase deploy --only fire
 
 ## Admin Portal
 
-Located in `pages/settings.html` (`#adminPortalCard`, hidden unless owner email). Unlocked via SHA-256 PIN stored in Firestore `admin_config/main.portalPinHash`. All logic in `assets/modules/admin.js`.
-
-### Sections (in order, after unlock)
-1. **Campaigns** — read-only overview of every user's campaigns (view players/notes, delete, strip old password fields)
-2. **Users** — select any user, view their characters, Preview (read-only load) or Import (clone) any character
-
-### Key functions
-- `unlockAdminPortal()` — verifies PIN, shows `#adminUnlockedView`, loads campaigns + users
-- `adminRefreshUsers()` — reads `userProfiles` + `auth_signins` collections, populates `#adminUserSelect`
-- `adminSelectUser(uid)` — shows user meta + character list with Preview/Import buttons
-- `adminPreviewCharacter(uid, charId)` — clones character into local state, disables all inputs, shows `#adminPreviewBanner`
-- `exitAdminPreview()` — restores snapshot, re-enables inputs
-- `adminCreateCampaign()` — creates campaign doc
-- `adminLoadCampaigns()` — renders campaign list with Edit DM / Activate buttons
-- `adminEditCampaignDm(campaignId)` — updates `dmEmails` via prompt
-- `adminToggleCampaign(campaignId, active)` — flips active flag
+Its own page (`pages/admin.html`, route `#admin`, opened by the owner-only **Admin** rail button via `openAdminPage()`). Owner email only; PIN-locked (`admin_config/main.portalPinHash`, set on first unlock; `sha256Hex` falls back to pure JS on plain-http pages where `crypto.subtle` is missing). Code: `assets/modules/admin.js` (unlock, users, campaigns, preview/import/export, roll logs) and `assets/modules/admin-data.js` (data cache, overview, sheets, backup, restore, tools). Tabs:
+1. **Overview** — tiles (users, sheets, deleted, campaigns, last backup), "Needs attention" list (stale/no backup, sheets near the 1 MB limit, conflict copies, restorable deletes, old password data), recent activity.
+2. **Users** — search, per-user detail, preview/import/export each sheet, "Download all of this user's sheets".
+3. **Sheets** — every sheet on every account (`collectionGroup('characters')`) with size, owner, flags; search/filter/sort; Preview, Export, and **Restore** for deleted sheets (the only write admin makes to a user's sheet: flips `deleted`/`deletedAt`/`rev`/`updatedAt`).
+4. **Campaigns** — every user's campaigns (view players/notes, delete, strip old password fields).
+5. **Backup** — "Download full backup" (`dnd-admin-backup` JSON: users, sheets, campaigns; never the PIN; remembers last backup time in `dndAdminLastBackup`), one-user backup, and a viewer for a saved backup file with "Import copy" (local device only).
+6. **Logs** — roll logs by user then character.
+7. **Tools** — system info + copy diagnostics, refresh, lock now, scan/delete old link data (`members`, `joinRequests`, `dm_requests`, old campaign password fields), change PIN.
+Reads cost one Firestore read per sheet each time the data loads; it is cached until Refresh. Tested by `/root/work/tests/t_admin.js` (staging owner account) and `rules_test.py`.
 
 ---
 

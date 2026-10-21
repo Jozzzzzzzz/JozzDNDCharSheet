@@ -64,6 +64,7 @@ const PRECACHE_URLS = [
   'assets/modules/inventory.js',
   'assets/modules/spells.js',
   'assets/modules/admin.js',
+  'assets/modules/admin-data.js',
   'assets/modules/loot.js',
   'assets/modules/dm.js',
   'assets/modules/dm-campaigns.js',
