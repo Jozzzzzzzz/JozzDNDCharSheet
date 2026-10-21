@@ -10,6 +10,8 @@ rules_version = '2';
 //  - A user owns userData/{their uid} and everything under it.
 //  - The owner-admin (vanreejoz33) can read everything for the admin
 //    portal and the DM Players tab (collectionGroup reads).
+//  - Other signed-in users can read ONE character by exact path (that is how
+//    the DM view loads linked characters) but cannot list or search sheets.
 //  - Campaigns are readable by any signed-in user (for the join dropdown)
 //    and writable only by the owner-admin.
 //  - Join requests live under campaigns/{id}/joinRequests/{uid}:
@@ -37,28 +39,41 @@ service cloud.firestore {
            get(/databases/$(database)/documents/campaigns/$(campaignId)).data.dmEmails;
     }
 
+    // A sheet or prefs doc is a small map of fields. 1 MB is Firestore's own
+    // hard limit; this stops junk docs with hundreds of keys.
+    function sane() {
+      return request.resource.data.keys().size() <= 60;
+    }
+
     // ---- User data (prefs + characters subcollection) ----
     match /userData/{uid} {
-      allow read, write: if isSignedIn() && request.auth.uid == uid;
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow write: if isSignedIn() && request.auth.uid == uid && sane();
+      allow delete: if isSignedIn() && request.auth.uid == uid;
       allow read: if isOwnerAdmin();
 
       match /characters/{charId} {
-        allow read, write: if isSignedIn() && request.auth.uid == uid;
+        allow read: if isSignedIn() && request.auth.uid == uid;
+        allow create, update: if isSignedIn() && request.auth.uid == uid && sane();
+        allow delete: if isSignedIn() && request.auth.uid == uid;
         allow read: if isOwnerAdmin();
+        // DM view: load one linked character by its exact path. No list/query.
+        allow get: if isSignedIn();
       }
     }
 
-    // ---- collectionGroup read of all characters (DM Players tab + admin) ----
-    // A DM needs to read characters linked to their campaign; owner reads all.
+    // ---- collectionGroup read of all characters (admin portal only) ----
     match /{path=**}/characters/{charId} {
-      allow read: if isOwnerAdmin() || isSignedIn();
+      allow read: if isOwnerAdmin();
     }
 
     // ---- User profiles (display names) ----
+    // Single profile lookups stay open to signed-in users; listing every
+    // profile (names + emails) is admin only.
     match /userProfiles/{uid} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn() && request.auth.uid == uid;
-      allow read: if isOwnerAdmin();
+      allow get: if isSignedIn();
+      allow list: if isOwnerAdmin();
+      allow write: if isSignedIn() && request.auth.uid == uid && sane();
     }
 
     // ---- Sign-in history / presence ----
@@ -104,9 +119,9 @@ service cloud.firestore {
     }
 
     // ---- Admin config (portal PIN hash) ----
+    // Only the owner-admin portal uses this; nobody else needs the PIN hash.
     match /admin_config/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isOwnerAdmin();
+      allow read, write: if isOwnerAdmin();
     }
 
     // ---- DM access requests (legacy) ----
