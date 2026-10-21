@@ -23,24 +23,32 @@ function switchAdminTab(btn) {
 window.switchAdminTab = switchAdminTab;
 
 window.updateAdminPortalVisibility = function updateAdminPortalVisibility() {
-  const card = document.getElementById('adminPortalCard');
-  if (!card) return;
   const railBtn = document.getElementById('grAdminBtn');
   if (railBtn) railBtn.hidden = !isOwnerAdminUser();
-  if (!isOwnerAdminUser()) {
-    card.style.display = 'none';
-    window.__adminPortalUnlocked = false;
-    return;
-  }
-  card.style.display = 'block';
+  if (!isOwnerAdminUser()) window.__adminPortalUnlocked = false;
 };
 
-// Owner-only rail button: jumps to the admin portal (users, their sheets, campaigns, logs).
-window.openAdminPortal = function openAdminPortal() {
-  if (!isOwnerAdminUser()) return;
-  if (typeof openSettingsPage === 'function') openSettingsPage();
-  setTimeout(() => { const c = document.getElementById('adminPortalCard'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 250);
+// Owner-only Admin page (its own page, like Settings). The rail button calls this.
+window.openAdminPage = function openAdminPage() {
+  if (!isOwnerAdminUser()) { if (typeof appToast === 'function') appToast('Admin is for the owner account only.'); return; }
+  const page = document.getElementById('admin');
+  if (!page) return;
+  document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(pg => {
+    pg.classList.remove('active');
+    pg.style.display = 'none';
+    pg.style.opacity = '0';
+    pg.style.transform = 'translateY(10px)';
+  });
+  page.style.display = 'block';
+  requestAnimationFrame(() => {
+    page.classList.add('active');
+    page.style.opacity = '1';
+    page.style.transform = 'translateY(0)';
+    window.scrollTo({ top: 0 });
+  });
 };
+window.openAdminPortal = window.openAdminPage;
 
 async function getAdminConfigDoc() {
   const db = window.db;

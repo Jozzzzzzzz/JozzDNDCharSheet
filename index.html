@@ -146,6 +146,7 @@ function resolveRouteToPage() {
   const map = {
     home: 'home',
     settings: 'settings',
+    admin: 'admin',
     stats: 'page1',
     background: 'page2',
     spells: 'page3',
@@ -168,6 +169,11 @@ function activateRoute() {
     if (typeof window.showHomePage === 'function') {
       window.showHomePage();
     }
+    return;
+  }
+
+  if (target === 'admin') {
+    if (typeof window.openAdminPage === 'function') window.openAdminPage();
     return;
   }
 
@@ -302,11 +308,12 @@ async function bootstrapModularApp() {
   const scriptVersion = '20260719g-v1.20';
   // Expose so modules can cache-bust their own data fetches (e.g. spells.json).
   window.__SCRIPT_VERSION__ = scriptVersion;
-  const [chrome, home, settings, stats, background, spells, inventory, notes, popups,
+  const [chrome, home, settings, admin, stats, background, spells, inventory, notes, popups,
          dmChrome, dmHome, dmLore, dmPlayers, dmMonsters, dmItems, dmEncounters, dmNpcs, dmLoot, dmNotes, dmSettings] = await Promise.all([
     loadText('partials/chrome.html'),
     loadText('pages/home.html'),
     loadText('pages/settings.html'),
+    loadText('pages/admin.html'),
     loadText('pages/stats.html'),
     loadText('pages/background.html'),
     loadText('pages/spells.html'),
@@ -328,7 +335,7 @@ async function bootstrapModularApp() {
 
   document.getElementById('chrome-root').innerHTML = chrome;
   const pagesRoot = document.getElementById('pages');
-  pagesRoot.innerHTML = [home, settings, stats, background, spells, inventory, notes].join('\n');
+  pagesRoot.innerHTML = [home, settings, admin, stats, background, spells, inventory, notes].join('\n');
   document.getElementById('popups-root').innerHTML = popups;
 
   // DM portal roots (hidden until DM enters portal)

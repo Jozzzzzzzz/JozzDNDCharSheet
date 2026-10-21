@@ -45,7 +45,7 @@
   function syncVitals() {
     const box = document.getElementById('grRailVitals'); if (!box) return;
     const route = currentRoute();
-    const sheetPage = route !== 'home' && route !== 'settings';
+    const sheetPage = route !== 'home' && route !== 'settings' && route !== 'admin';
     const show = sheetPage && !!window.currentCharacter && !!val('char_name');
     box.hidden = !show;
     if (!show) return;

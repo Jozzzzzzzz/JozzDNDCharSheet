@@ -161,7 +161,7 @@
 
   // ---------------------------------------------------------------- wiring
   function init() {
-    ['switchTab', 'showHomePage', 'openSettingsPage'].forEach(n => wrapFn(n, () => { setTimeout(() => onRoute(false), 60); setTimeout(() => onRoute(false), 360); }));
+    ['switchTab', 'showHomePage', 'openSettingsPage', 'openAdminPage'].forEach(n => wrapFn(n, () => { setTimeout(() => onRoute(false), 60); setTimeout(() => onRoute(false), 360); }));
     ['loadData', 'loadSelectedCharacter', 'clearAllFormFields'].forEach(n => wrapFn(n, () => quietFor(1300)));
     window.addEventListener('hashchange', () => setTimeout(() => onRoute(false), 80));
     window.addEventListener('pointerdown', ripple, true);

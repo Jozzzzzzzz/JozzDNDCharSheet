@@ -32,6 +32,7 @@ const PRECACHE_URLS = [
   // Player pages
   'pages/home.html',
   'pages/settings.html',
+  'pages/admin.html',
   'pages/stats.html',
   'pages/background.html',
   'pages/spells.html',
