@@ -43,6 +43,20 @@ function bindAuthButtons() {
       event.preventDefault();
       signInWithGoogle();
     }, { passive: false });
+    // Staging only: a second one-tap login as the OWNER test account, to try the admin side. Emulator-only account.
+    if (DND_STAGING && !document.getElementById('signInOwnerStagingBtn')) {
+      const ob = document.createElement('button');
+      ob.id = 'signInOwnerStagingBtn'; ob.type = 'button'; ob.className = signInBtn.className;
+      ob.textContent = 'Staging: sign in as owner (admin)';
+      ob.addEventListener('click', async () => {
+        try {
+          try { await window.auth.signInWithEmailAndPassword(OWNER_EMAIL, 'staging-only'); }
+          catch (e) { await window.auth.createUserWithEmailAndPassword(OWNER_EMAIL, 'staging-only'); }
+          setSyncStatus('Signed in as the staging OWNER test account');
+        } catch (e) { setSyncStatus('Owner sign-in failed: ' + (e.message || e)); }
+      });
+      signInBtn.insertAdjacentElement('afterend', ob);
+    }
   }
 
   // Sync buttons: an inline onclick in settings.html is the primary path (works
