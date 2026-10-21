@@ -101,10 +101,17 @@ async function unlockAdminPortal() {
     const unlocked = document.getElementById('adminUnlockedView');
     if (locked) locked.style.display = 'none';
     if (unlocked) unlocked.style.display = 'block';
-    await Promise.all([adminRefreshUsers(), adminLoadCampaigns()]);
+    // One tab failing to load must not lock you out: each reports its own problem in its own panel.
+    const [usersRes, campsRes] = await Promise.allSettled([adminRefreshUsers(), adminLoadCampaigns()]);
+    if (usersRes.status === 'rejected') {
+      console.error('[admin] users failed to load:', usersRes.reason);
+      const meta = document.getElementById('adminUserMeta');
+      if (meta) meta.textContent = 'Could not load users: ' + adminFriendlyError(usersRes.reason) + ' (' + ((usersRes.reason && (usersRes.reason.code || usersRes.reason.message)) || 'unknown') + ')';
+    }
+    if (campsRes.status === 'rejected') console.error('[admin] campaigns failed to load:', campsRes.reason);
   } catch (e) {
-    console.error(e);
-    setAdminPortalStatus('Admin portal error. Check console.', 'error');
+    console.error('[admin] unlock failed:', e);
+    setAdminPortalStatus('Admin portal error: ' + adminFriendlyError(e) + ' [' + ((e && (e.code || e.message)) || 'unknown') + ']', 'error');
   }
 }
 
