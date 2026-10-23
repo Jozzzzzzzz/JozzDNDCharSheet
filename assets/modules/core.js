@@ -2843,7 +2843,8 @@ function autosave() {
       profBonusOverride: autoMathOverrideState?.profBonus || false,
       passive_perception: val('passive_perception'),
       passivePerceptionOverride: autoMathOverrideState?.passivePerception || false,
-      abilityBonusOverrides: autoMathOverrideState ? { ...autoMathOverrideState.abilityBonus } : {}
+      abilityBonusOverrides: autoMathOverrideState ? { ...autoMathOverrideState.abilityBonus } : {},
+      saveBonusOverrides: autoMathOverrideState ? { ...autoMathOverrideState.saveBonus } : {}
     },
     health: {
       max_hp: val('max_hp'),
@@ -3112,6 +3113,13 @@ function loadData() {
         autoMathOverrideState.initiative = !!data.page1.combatStats.initiativeOverride;
         autoMathOverrideState.passivePerception = !!data.page1.combatStats.passivePerceptionOverride;
         autoMathOverrideState.profBonus = !!data.page1.combatStats.profBonusOverride;
+        ABILITY_LIST.forEach(ability => {
+          const on = !!(data.page1.combatStats.saveBonusOverrides && data.page1.combatStats.saveBonusOverrides[ability]);
+          autoMathOverrideState.saveBonus[ability] = on;
+          const saved = data.page1.abilities && data.page1.abilities[`${ability}_save`];
+          const el = document.getElementById(`${ability}_save`);
+          if (on && el && saved) el.value = saved;
+        });
         if (data.page1.combatStats.abilityBonusOverrides) {
           Object.keys(autoMathOverrideState.abilityBonus).forEach(ability => {
             autoMathOverrideState.abilityBonus[ability] = !!data.page1.combatStats.abilityBonusOverrides[ability];

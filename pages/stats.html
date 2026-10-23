@@ -156,7 +156,7 @@
           </div>
           <div class="combat-stat-row">
             <label class="combat-stat-label" for="initiative">Initiative</label>
-            <input id="initiative" oninput="handleInitiativeInput(); autosave()" title="Auto: DEX modifier. Type to override."/>
+            <input id="initiative" oninput="handleInitiativeInput(); autosave()" onchange="resetAutoMathIfBlank('initiative')" title="Auto: DEX modifier. Type to override."/>
           </div>
           <div class="combat-stat-row">
             <label class="combat-stat-label" for="prof_bonus">Proficiency Bonus</label>
@@ -167,7 +167,7 @@
               Passive Perception
               <button class="combat-stat-reset-btn" id="passive_perception_reset" onclick="resetPassivePerception()" title="Reset to auto" style="display:none">Reset</button>
             </label>
-            <input id="passive_perception" oninput="handlePassivePerceptionInput(); autosave()" title="Auto: 10 + Perception bonus. Type to override."/>
+            <input id="passive_perception" oninput="handlePassivePerceptionInput(); autosave()" onchange="resetAutoMathIfBlank('passivePerception')" title="Auto: 10 + Perception bonus. Type to override."/>
           </div>
           <div class="combat-stat-row">
             <label class="combat-stat-label" for="speed">Speed</label>
@@ -180,7 +180,7 @@
           <div class="saving-throw-item">
             <label>STR Save</label>
             <div class="save-input-group">
-              <input id="str_save" oninput="formatSaveInput('str_save'); autosave()" maxlength="4" value="+0"/>
+              <input id="str_save" oninput="handleSaveInput('str'); autosave()" onchange="handleSaveChange('str'); autosave()" maxlength="4" value="+0"/>
               <label class="proficiency-checkbox">
                 <input type="checkbox" id="str_save_prof" onchange="calculateSavingThrow('str'); autosave()"/>
                 <span>Proficient?</span>
@@ -190,7 +190,7 @@
           <div class="saving-throw-item">
             <label>DEX Save</label>
             <div class="save-input-group">
-              <input id="dex_save" oninput="formatSaveInput('dex_save'); autosave()" maxlength="4" value="+0"/>
+              <input id="dex_save" oninput="handleSaveInput('dex'); autosave()" onchange="handleSaveChange('dex'); autosave()" maxlength="4" value="+0"/>
               <label class="proficiency-checkbox">
                 <input type="checkbox" id="dex_save_prof" onchange="calculateSavingThrow('dex'); autosave()"/>
                 <span>Proficient?</span>
@@ -200,7 +200,7 @@
           <div class="saving-throw-item">
             <label>CON Save</label>
             <div class="save-input-group">
-              <input id="con_save" oninput="formatSaveInput('con_save'); autosave()" maxlength="4" value="+0"/>
+              <input id="con_save" oninput="handleSaveInput('con'); autosave()" onchange="handleSaveChange('con'); autosave()" maxlength="4" value="+0"/>
               <label class="proficiency-checkbox">
                 <input type="checkbox" id="con_save_prof" onchange="calculateSavingThrow('con'); autosave()"/>
                 <span>Proficient?</span>
@@ -210,7 +210,7 @@
           <div class="saving-throw-item">
             <label>INT Save</label>
             <div class="save-input-group">
-              <input id="int_save" oninput="formatSaveInput('int_save'); autosave()" maxlength="4" value="+0"/>
+              <input id="int_save" oninput="handleSaveInput('int'); autosave()" onchange="handleSaveChange('int'); autosave()" maxlength="4" value="+0"/>
               <label class="proficiency-checkbox">
                 <input type="checkbox" id="int_save_prof" onchange="calculateSavingThrow('int'); autosave()"/>
                 <span>Proficient?</span>
@@ -220,7 +220,7 @@
           <div class="saving-throw-item">
             <label>WIS Save</label>
             <div class="save-input-group">
-              <input id="wis_save" oninput="formatSaveInput('wis_save'); autosave()" maxlength="4" value="+0"/>
+              <input id="wis_save" oninput="handleSaveInput('wis'); autosave()" onchange="handleSaveChange('wis'); autosave()" maxlength="4" value="+0"/>
               <label class="proficiency-checkbox">
                 <input type="checkbox" id="wis_save_prof" onchange="calculateSavingThrow('wis'); autosave()"/>
                 <span>Proficient?</span>
@@ -230,7 +230,7 @@
           <div class="saving-throw-item">
             <label>CHA Save</label>
             <div class="save-input-group">
-              <input id="cha_save" oninput="formatSaveInput('cha_save'); autosave()" maxlength="4" value="+0"/>
+              <input id="cha_save" oninput="handleSaveInput('cha'); autosave()" onchange="handleSaveChange('cha'); autosave()" maxlength="4" value="+0"/>
               <label class="proficiency-checkbox">
                 <input type="checkbox" id="cha_save_prof" onchange="calculateSavingThrow('cha'); autosave()"/>
                 <span>Proficient?</span>

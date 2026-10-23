@@ -1,11 +1,21 @@
 // ========== HEALTH SYSTEM ==========
 function adjustHP(amount) {
   const currHP = document.getElementById('curr_hp');
-  let newTotalHP = parseInt(currHP.value) + amount;
+  const before = parseInt(currHP.value);
+  let newTotalHP = before + amount;
   if (isNaN(newTotalHP)) newTotalHP = 0;
+  if (amount > 0) newTotalHP = healCap(before || 0, newTotalHP);
   currHP.value = Math.max(0, newTotalHP);
   updateHPDisplay();
   autosave();
+}
+
+// Healing fills up to max HP and stops there; it never turns into temp HP. Temp HP already on the
+// sheet (current above max) is left alone. Temp HP is set by typing it into the current HP box.
+function healCap(before, after) {
+  const mx = parseInt((document.getElementById('max_hp') || {}).value, 10) || 0;
+  if (mx <= 0) return after;
+  return before >= mx ? before : Math.min(after, mx);
 }
 
 function updateHPDisplay() {
@@ -430,7 +440,7 @@ function useHealthPotion() {
     const currentTotalHP = parseInt(currHP.value) || 0;
     const maxHPValue = parseInt(maxHP.value) || 0;
     
-    const newTotalHP = currentTotalHP + totalHealing;
+    const newTotalHP = healCap(currentTotalHP, currentTotalHP + totalHealing);
     
     currHP.value = newTotalHP;
     updateHPDisplay();

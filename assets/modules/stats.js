@@ -29,6 +29,7 @@ const autoMathOverrideState = {
   passivePerception: false,
   spellSaveDC: false,
   spellAttack: false,
+  saveBonus: ABILITY_LIST.reduce((acc, ability) => { acc[ability] = false; return acc; }, {}),
   abilityBonus: ABILITY_LIST.reduce((acc, ability) => {
     acc[ability] = false;
     return acc;
@@ -208,11 +209,13 @@ function enforceAutoMathNumericInputs() {
     });
   });
 
-  ['str_save','dex_save','con_save','int_save','wis_save','cha_save']
-    .forEach(id => {
-      const field = document.getElementById(id);
-      if (field) field.readOnly = true;
-    });
+  // Saving throws are automatic but can be typed over; clearing a box returns it to automatic.
+  ABILITY_LIST.forEach(ability => {
+    const field = document.getElementById(ability + '_save');
+    if (!field) return;
+    field.readOnly = false; field.removeAttribute('readonly'); field.inputMode = 'numeric';
+    field.title = 'Auto: ability modifier + proficiency. Type to override; clear to go back to automatic.';
+  });
 
   bindAutoMathOverrideInputs();
 }
@@ -405,6 +408,23 @@ function formatBonusInput(inputId) {
   calculateAbilityBonus(ability);
 }
 
+// Typing in a save box overrides the automatic value; a blank box (on leaving it) goes back to automatic.
+function handleSaveInput(ability) {
+  const input = document.getElementById(ability + '_save'); if (!input) return;
+  const cleaned = String(input.value || '').replace(/[^0-9-]/g, '');
+  input.value = cleaned.startsWith('-') ? '-' + cleaned.slice(1).replace(/-/g, '') : cleaned.replace(/-/g, '');
+  if (input.value !== '') autoMathOverrideState.saveBonus[ability] = true;
+}
+function handleSaveChange(ability) {
+  const input = document.getElementById(ability + '_save'); if (!input) return;
+  const trimmed = input.value.trim();
+  if (trimmed === '' || trimmed === '-') { autoMathOverrideState.saveBonus[ability] = false; calculateSavingThrow(ability); return; }
+  input.value = sanitizeSignedValue(trimmed);
+  const prof = document.getElementById(ability + '_save_prof'), ab = document.getElementById(ability + '_bonus'), pb = document.getElementById('prof_bonus');
+  const auto = (parseInt(String(ab ? ab.value : '0').replace('+', '')) || 0) + (prof && prof.checked ? (parseInt(String(pb ? pb.value : '0').replace('+', '')) || 0) : 0);
+  autoMathOverrideState.saveBonus[ability] = input.value !== formatSignedNumber(auto);
+}
+
 function formatSaveInput(inputId) {
   const input = document.getElementById(inputId);
   if (!input) return;
@@ -423,6 +443,7 @@ function calculateSavingThrow(ability) {
   const profBonus = document.getElementById('prof_bonus');
 
   if (!saveInput || !profCheckbox || !abilityBonus || !profBonus) return;
+  if (autoMathOverrideState.saveBonus[ability]) return; // hand-typed save stays until cleared
 
   const abilityMod = parseInt(abilityBonus.value.replace('+', '')) || 0;
   const profMod = parseInt(profBonus.value.replace('+', '')) || 0;
@@ -616,6 +637,18 @@ function handleSpellAttackInput() {
   autoMathOverrideState.spellAttack = atkInput.value.trim() !== '' && parseInt(atkInput.value) !== auto;
 }
 
+// Clearing an overridable box (then leaving it) hands the value back to the automatic maths.
+function resetAutoMathIfBlank(key) {
+  const ids = { initiative: 'initiative', passivePerception: 'passive_perception', spellSaveDC: 'spell_save_dc', spellAttack: 'spell_attack_bonus' };
+  const el = document.getElementById(ids[key]);
+  if (!el || el.value.trim() !== '') return;
+  autoMathOverrideState[key] = false;
+  if (key === 'initiative') updateInitiative();
+  else if (key === 'passivePerception') { updatePassivePerception(); const b = document.getElementById('passive_perception_reset'); if (b) b.style.display = 'none'; }
+  else updateSpellcastingStats();
+  if (typeof autosave === 'function') autosave();
+}
+
 // ── Run all derived stats ─────────────────────────────────────────────────
 function updateAllDerivedStats() {
   updateInitiative();
@@ -636,6 +669,9 @@ Object.assign(window, {
   calculateAbilityBonus,
   formatBonusInput,
   formatSaveInput,
+  handleSaveInput,
+  handleSaveChange,
+  resetAutoMathIfBlank,
   calculateSavingThrow,
   calculateProficiencyBonus,
   updateProficiencyBonus,

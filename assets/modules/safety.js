@@ -8,7 +8,7 @@
 // localStorage's ~5 MB. Every function degrades to "do nothing" if IndexedDB is unavailable.
 (function () {
   const DB_NAME = 'dndSafety', DB_VER = 1;
-  const HISTORY_KEEP = 10, HISTORY_GAP_MS = 10 * 60 * 1000, TRASH_KEEP_MS = 30 * 24 * 3600 * 1000;
+  const HISTORY_KEEP = 10, HISTORY_GAP_MS = 10 * 60 * 1000, TRASH_KEEP_MS = 30 * 24 * 3600 * 1000, RECOVERY_KEEP_MS = 60 * 24 * 3600 * 1000;
   let _dbPromise = null;
   const _mem = { base: new Map(), history: [], trash: [], recovery: [] }; // used only if IndexedDB is unavailable
 
@@ -214,7 +214,10 @@
     let used = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); used += k.length + localStorage.getItem(k).length; } } catch (e) { /* ignore */ }
     const usedKB = Math.round(used * 2 / 1024), pct = Math.min(100, Math.round(usedKB / 5120 * 100));
     const cur = window.currentCharacter;
-    const hist = cur ? await listHistory(cur) : []; const trash = await listTrash(); const rec = await getAll('recovery');
+    const hist = cur ? await listHistory(cur) : []; const trash = await listTrash();
+    const now = Date.now(); let rec = await getAll('recovery');
+    for (const r of rec) if (now - r.ts > RECOVERY_KEEP_MS) await del('recovery', r.id); // old recovery copies are culled after 60 days
+    rec = rec.filter(r => now - r.ts <= RECOVERY_KEEP_MS);
     const cloudDel = (typeof window.listCloudDeleted === 'function') ? await window.listCloudDeleted().catch(() => []) : [];
     const localIds = new Set(trash.map(t => t.id)); const cloudOnly = cloudDel.filter(c => !localIds.has(c.id));
     const row = (label, sub, btn) => `<div class="safety-row"><div class="safety-row-main"><b>${esc(label)}</b><span>${esc(sub)}</span></div>${btn}</div>`;

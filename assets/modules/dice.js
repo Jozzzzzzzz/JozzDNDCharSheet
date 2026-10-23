@@ -67,7 +67,12 @@ function rollExpr(expr, doubleDice) {
 
 // ---- ability / proficiency helpers (read live from the sheet, never write) ----
 function abilityModFromSheet(ability) {
-  const el = document.getElementById((ability || 'str').toLowerCase());
+  const key = (ability || 'str').toLowerCase();
+  // The modifier box is the source of truth: it is the auto value unless the player overrode it.
+  const box = document.getElementById(key + '_bonus');
+  const shown = box ? parseInt(String(box.value).replace('+', '').replace('\u2212', '-'), 10) : NaN;
+  if (!isNaN(shown)) return shown;
+  const el = document.getElementById(key);
   const score = el ? parseInt(el.value, 10) : NaN;
   if (isNaN(score)) return 0;
   return Math.floor((score - 10) / 2);
