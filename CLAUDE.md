@@ -341,6 +341,8 @@ The adj input is inserted by JS, not present in the HTML. It is saved as `page1.
 
 Ability bonus fields (`str_bonus` etc.) and `prof_bonus` are **read-only** — auto-calculated from scores and level. The `bindAutoMathOverrideInputs()` function still exists but its overrides are intentionally not used (ability score overrides were removed as a design decision — use skill adj inputs instead).
 
+**Saving throws can be typed over** (`handleSaveInput`/`handleSaveChange`, flag `autoMathOverrideState.saveBonus[ability]`, saved as `combatStats.saveBonusOverrides`); clearing the box and leaving it returns it to automatic. The same goes for initiative, passive Perception, spell save DC and spell attack (`resetAutoMathIfBlank`). Weapons read the modifier box (`abilityModFromSheet` in `dice.js`), so an overridden modifier carries into to-hit and damage. Healing (`adjustHP`, potions, via `healCap` in `health.js`) stops at max HP; temp HP is typed into the current HP box.
+
 Persisted override flags in `page1.combatStats`: `initiativeOverride`, `passivePerceptionOverride`, `profBonusOverride`, `abilityBonusOverrides` — these survive refresh. The `profBonusOverride` and `abilityBonusOverrides` fields are new (added 2026-06-16); old saves that don't have them default to `false` (all auto), which is correct.
 
 ## Rest → Resource Reset
