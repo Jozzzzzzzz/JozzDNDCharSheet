@@ -47,6 +47,7 @@ All JS lives in `assets/`. Files are loaded **in this exact order** via dynamic 
 | `assets/modules/health.js` | HP display, death saves, potion use, short/long rest | ~292 |
 | `assets/modules/dice.js` | Fair crypto dice roller (`rollDie`, `rollExpr`), weapon to-hit/damage rolls (`rollWeaponToHit`, `rollWeaponDamage`), crit mode picker, roll log (`pushRollLog`, `clearRollLog`) | ~327 |
 | `assets/modules/actions.js` | Combat actions/reactions tracking | ~270 |
+| `assets/modules/feats.js` | Feats + Racial Features rows (Stats → Proficiencies & Training): catalogue lookup, chip popup, custom entries, skill effects, sorting help. Loads right after actions.js. | ~290 |
 | `assets/modules/inventory.js` | Inventory CRUD, equipment, storage containers, coin tracking, portrait upload/remove (`removePortrait`), settings dropdown | ~1180 |
 | `assets/modules/spells.js` | Spell list, spell slots (with drag-reorder), custom resources, favorites, prepared spells table, spell search, sync panels. Loads spell reference data async from `assets/data/spells.json` via `loadSpellDatabase()` at boot, then enriches from Open5e API in background | ~1440 |
 | `assets/modules/dialogs.js` | App-wide dialogs and errors: `dmModal` / `dmToast` (wrapped by `appToast`/`appAlert`/`appConfirm`/`appPrompt` in core.js) and `friendlyFirebaseError`. Moved here from the removed DM portal; the `dm*` names are kept. Loads right after core.js. | ~110 |
@@ -288,6 +289,21 @@ Opt-in second class. A "+ Add multiclass" button under the Level field (`pages/s
 ## App-wide dialogs
 
 `appToast` / `appAlert` / `appConfirm` / `appPrompt` (all in `core.js`, on `window`) are thin wrappers over `dmToast`/`dmModal` (now in `dialogs.js`) that render into a floating root and work everywhere (mobile Safari / installed PWA), each with a native fallback if dialogs.js hasn't loaded. **Use these, never native `alert`/`confirm`/`prompt`** — natives break in PWA mode. `appPrompt(message, {title, placeholder, value, inputType, confirmText, cancelText})` resolves the entered string or `null` on cancel (matches native `prompt` cancel semantics, so blank-to-clear flows still work). The only remaining native calls in the codebase are the intentional fallback branches inside these four wrappers.
+
+## Feats + Racial Features
+
+Two built-in rows in Proficiencies & Training (`PROF_DEFAULT` in `actions.js`: Armor, Weapons, Tools, Languages, **Feats**, **Racial Features**). Like the other rows, a chip is just a name in the one text box (`proficiencies_training`, e.g. `Feats: Alert, Archery`), so saving, sync and "To sort" work unchanged. All the logic is in `assets/modules/feats.js`; `actions.js` only calls its hooks (`featOnAdded`, `featOnRemoved`, `featTip`, `featShow`, `featDatalistHtml`, `featGuess`) behind `typeof` guards.
+- **Catalogue:** `assets/data/feats.json` (89 feats + 201 racial traits, ~110 KB, precached so it works offline). Built by `node tools/build-feats.js` from the Open5e v2 API for the same open documents the spells use: SRD 5.1, SRD 5.2 (CC-BY-4.0), A5e Adventurer's Guide, Tome of Heroes (OGL/CC-BY). Only open-licensed text: PHB-only feats (Sharpshooter, War Caster...) are NOT bundled; players add them as custom entries. Reference data only (never written into a sheet). When a name exists in two documents the newest SRD wins.
+- **Custom entries:** `{id, kind:'feat'|'trait', name, desc, effects, u}` in localStorage `dndCustomFeats`, reused on every character and synced with the account prefs (`customFeats` in `gatherUserPrefs`, merged by id with the newest `u` winning in `featMergeCustom`).
+- **Chip click / hover:** hover shows a short text (title), click opens a popup with the description, source, credit and the effects list. Racial traits prefer the wording for the sheet's race (`#char_race`).
+- **Effects:** skill expertise/proficiency are applied to the Skills rows (`setSkillProfLevel`) when the feat is added and handed back when it is removed (`actionsData.featApplied` remembers each skill's previous level). Ability bonuses and notes are only displayed, never changed on the sheet. Per-character state lives in `actionsData.featEffects` / `featApplied` (saved with the sheet).
+- **Sorting:** `featGuess(text)` is the last step of `_profGuess`, so "Try sorting again" places known feat and racial trait names into the new rows.
+
+## Deleting sheets and old data
+
+- Character delete (`initiateDelete`, core.js): Delete → "Are you sure?" → wait 3 seconds → Delete. The sheet goes to the 30-day bin (`dndSafety.trashChar` + cloud `deleted` flag). `resetDeleteUI()` runs however the dialog closes (`closePopup`, `closeAllPopups`), a fresh press from the list always starts at step one, and the countdown timer (`deleteTick`) is stopped on reset, so a cancelled delete can never leave the next press stuck.
+- Settings → Sheet safety (`safety.js`): every restore point, bin entry and recovered copy has a Delete button using the same steps (`notesHandleDelete`: Delete → Sure? → wait 3s → Confirm), plus "delete all" buttons. Deleting a bin entry for good also removes its cloud copy (`cloudPurge`, which only ever removes a sheet already flagged deleted).
+- Sidebar HP/AC card (`syncVitals`, rail.js): hidden on Home, Settings and Admin only; on sheet pages it keeps the last HP/AC while a page or sheet loads.
 
 ## Known Gotchas
 

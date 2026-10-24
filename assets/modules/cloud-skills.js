@@ -579,6 +579,7 @@ function gatherUserPrefs() {
     textScalePercent: localStorage.getItem('dndTextScalePercent') || '',
     bgImage: localStorage.getItem('dndBgImage') || '',
     bgCustoms: localStorage.getItem('dndBgCustoms') || '',
+    customFeats: localStorage.getItem('dndCustomFeats') || '',
   };
 }
 
@@ -588,6 +589,7 @@ function gatherUserPrefs() {
 function applyUserPrefs(meta) {
   if (!meta || typeof meta !== 'object') return;
   let visualChanged = false;
+  if (typeof meta.customFeats === 'string' && meta.customFeats && typeof featMergeCustom === 'function') featMergeCustom(meta.customFeats);
 
   if (meta.theme) localStorage.setItem('dndTheme', meta.theme);
 
@@ -821,6 +823,15 @@ async function listCloudDeleted() {
   // sheets deleted more than 30 days ago drop off the restore list (the cloud copy is kept; the owner can still restore it from Admin)
   const cutoff = Date.now() - 30 * 24 * 3600 * 1000;
   return snap.docs.filter(d => { const t = d.data().deletedAt; const ms = t && t.toMillis ? t.toMillis() : 0; return !ms || ms > cutoff; }).map(d => ({ id: d.id, name: d.data().name || 'Sheet' }));
+}
+// Delete a sheet that is ALREADY flagged deleted for good (the user chose "delete for good" in Sheet safety).
+// Refuses to touch a live sheet, so a stray call can never remove one that is in use.
+async function cloudPurge(id) {
+  if (!currentUser || !id) return false;
+  const ref = charCollection().doc(id); const d = await ref.get();
+  if (!d.exists) return true;
+  if (!d.data().deleted) return false;
+  await ref.delete(); await SAFE().dropBase(id); return true;
 }
 async function cloudFetchDeleted(id) {
   const d = await charCollection().doc(id).get(); if (!d.exists) return null;
@@ -1062,6 +1073,7 @@ Object.assign(window, {
   cloudMarkDeleted,
   cloudUndelete,
   listCloudDeleted,
+  cloudPurge,
   cloudFetchDeleted
 });
 

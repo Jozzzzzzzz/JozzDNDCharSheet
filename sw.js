@@ -24,6 +24,7 @@ const PRECACHE_URLS = [
   'assets/icons.svg',
   'assets/data/spells.json',
   'assets/data/items.json',
+  'assets/data/feats.json',
   // Partials
   'partials/chrome.html',
   'partials/popups.html',
@@ -49,6 +50,7 @@ const PRECACHE_URLS = [
   'assets/modules/health.js',
   'assets/modules/dice.js',
   'assets/modules/actions.js',
+  'assets/modules/feats.js',
   'assets/modules/inventory.js',
   'assets/modules/spells.js',
   'assets/modules/admin.js',

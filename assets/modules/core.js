@@ -436,6 +436,7 @@ let equipmentData = [];
 let currentCharacter = null;
 let deleteState = 0;
 let deleteTargetCharacterId = null;
+let deleteTick = null; // the 3-second countdown, so closing the dialog can stop it
 // Data-shape version for exports/imports. Bump ONLY when a change to the saved
 // character blob would break older importers. 1 = the current shape (page1–page6,
 // conditions with id/link/exhaustionLevel, skills with proflvl_, etc.). All fields
@@ -2673,6 +2674,7 @@ function initiateDelete(charId) {
   const target = targetId ? characters.find(char => char.id === targetId) : null;
 
   if (!btn || !message) return;
+  if (charId) resetDeleteUI(); // pressing Delete in the list always starts a fresh Delete -> Are you sure -> wait 3s -> Delete
   if (!targetId || !target) {
     appToast('No character selected to delete', 'error');
     resetDeleteUI();
@@ -2686,12 +2688,12 @@ function initiateDelete(charId) {
     resetDeleteUI();
   }
   deleteTargetCharacterId = targetId;
-  showPopup('deleteCharacterPopup');
+  if (deleteState !== 3) showPopup('deleteCharacterPopup'); // the last click must not re-open what it is about to close
 
   if (deleteState === 0) {
     // Step 1: first click — show confirm button
     deleteState = 1;
-    message.textContent = `Delete "${target.name || 'Character'}"? This cannot be undone.`;
+    message.textContent = `Delete "${target.name || 'Character'}"? It is kept for 30 days in Settings → Sheet safety, so you can bring it back.`;
     btn.textContent = 'Confirm Delete';
     btn.classList.add('danger');
     btn.classList.remove('warning');
@@ -2706,12 +2708,13 @@ function initiateDelete(charId) {
     btn.textContent = `Wait ${secs}s...`;
     message.textContent = `Are you really sure? You can still cancel.`;
 
-    const tick = setInterval(() => {
+    clearInterval(deleteTick);
+    deleteTick = setInterval(() => {
       secs--;
       if (secs > 0) {
         btn.textContent = `Wait ${secs}s...`;
       } else {
-        clearInterval(tick);
+        clearInterval(deleteTick); deleteTick = null;
         delete btn.dataset.counting;
         deleteState = 3;
         btn.disabled = false;
@@ -2755,6 +2758,7 @@ function initiateDelete(charId) {
 }
 
 function resetDeleteUI() {
+  clearInterval(deleteTick); deleteTick = null;
   const btn = document.getElementById('deleteCharacterActionBtn');
   const message = document.getElementById('deleteCharacterMessage');
 
@@ -4785,6 +4789,7 @@ function closePopup(id) {
   const popup = document.getElementById(id);
   const backdrop = document.getElementById('popupBackdrop');
 
+  if (id === 'deleteCharacterPopup' && typeof resetDeleteUI === 'function') resetDeleteUI(); // any way of closing it starts the next Delete from the top
   // Remove show classes to trigger close animation
   popup.classList.remove('show');
   backdrop.classList.remove('show');
@@ -4810,6 +4815,7 @@ function closePopup(id) {
 function closeAllPopups() {
   const backdrop = document.getElementById('popupBackdrop');
   
+  if (typeof resetDeleteUI === 'function') resetDeleteUI(); // tapping outside the Delete dialog cancels it properly
   // Remove show classes from all popups
   document.querySelectorAll('.popup').forEach(popup => {
     popup.classList.remove('show');

@@ -40,15 +40,26 @@
   const $ = id => document.getElementById(id);
 
   // ---- vitals mirror ----
-  let lastHp = null;
-  function currentRoute() { const p = document.querySelector('.page.active'); return p ? p.id : 'home'; }
+  let lastHp = null, lastRoute = 'home', hadSheet = false;
+  // while one page is swapped for the next there is a moment with no active page: keep the last route then
+  // Home, Settings and Admin are plain pages (no .active class); sheet pages carry .active. When neither is found a sheet page
+  // is in the middle of being swapped, so keep the last route instead of guessing 'home'.
+  function currentRoute() {
+    for (const id of ['home', 'settings', 'admin']) { const e = document.getElementById(id); if (e && e.offsetParent !== null) { lastRoute = id; return id; } }
+    const p = document.querySelector('.page.active'); if (p) lastRoute = p.id;
+    return lastRoute;
+  }
   function syncVitals() {
     const box = document.getElementById('grRailVitals'); if (!box) return;
     const route = currentRoute();
     const sheetPage = route !== 'home' && route !== 'settings' && route !== 'admin';
-    const show = sheetPage && !!window.currentCharacter && !!val('char_name');
+    // a sheet is 'loaded' once its name box is filled; while the next one loads the box is blank for a moment,
+    // so the card keeps showing the last known HP / AC instead of disappearing
+    const loaded = !!window.currentCharacter && !!val('char_name');
+    if (loaded) hadSheet = true;
+    const show = sheetPage && (loaded || (hadSheet && !!window.currentCharacter));
     box.hidden = !show;
-    if (!show) return;
+    if (!show || !loaded) return;
 
     const cur = num(val('curr_hp')); const max = num(val('max_hp'));
     const hp = document.getElementById('grRvHp'); const txt = document.getElementById('grRvHpText');

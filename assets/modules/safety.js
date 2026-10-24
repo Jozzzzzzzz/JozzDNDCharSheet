@@ -220,17 +220,35 @@
     rec = rec.filter(r => now - r.ts <= RECOVERY_KEEP_MS);
     const cloudDel = (typeof window.listCloudDeleted === 'function') ? await window.listCloudDeleted().catch(() => []) : [];
     const localIds = new Set(trash.map(t => t.id)); const cloudOnly = cloudDel.filter(c => !localIds.has(c.id));
+    const delBtn = (call, label) => `<button type="button" class="notes-delete-btn safety-del" onclick="${call}">${label || 'Delete'}</button>`;
     const row = (label, sub, btn) => `<div class="safety-row"><div class="safety-row-main"><b>${esc(label)}</b><span>${esc(sub)}</span></div>${btn}</div>`;
     box.innerHTML = `
       <div class="safety-meter" title="Browser storage used on this device"><i style="width:${pct}%"></i></div>
       <p class="safety-note">This device is using about ${usedKB >= 1024 ? (usedKB / 1024).toFixed(1) + ' MB' : usedKB + ' KB'} of roughly 5 MB of browser storage${pct > 80 ? ' — getting full' : ''}.</p>
       <div class="safety-actions"><button type="button" onclick="dndSafety.downloadBackup()">Download backup of all sheets</button></div>
       <h4>Restore points for this sheet</h4>
-      ${hist.length ? hist.map(h => row(h.name || 'Sheet', when(h.ts) + ' · ' + h.reason, `<button type="button" onclick="dndSafety.restoreSnapshot(${h.id})">Restore</button>`)).join('') : '<p class="safety-note">None yet. They are made automatically while you edit, and before anything from another device is merged in.</p>'}
+      ${hist.length ? hist.map(h => row(h.name || 'Sheet', when(h.ts) + ' · ' + h.reason, `<span class="safety-btns"><button type="button" onclick="dndSafety.restoreSnapshot(${h.id})">Restore</button>${delBtn(`dndSafety.delSnap(${h.id}, this)`)}</span>`)).join('') + `<div class="safety-actions">${delBtn('dndSafety.delAllSnaps(this)', 'Delete all restore points for this sheet')}</div>` : '<p class="safety-note">None yet. They are made automatically while you edit, and before anything from another device is merged in.</p>'}
       <h4>Recently deleted (kept 30 days)</h4>
-      ${(trash.length + cloudOnly.length) ? trash.map(t => row(t.name || 'Sheet', 'deleted ' + when(t.ts), `<button type="button" onclick="dndSafety.restoreTrash('${esc(t.id)}')">Restore</button>`)).join('') + cloudOnly.map(c => row(c.name || 'Sheet', 'deleted on another device', `<button type="button" onclick="dndSafety.restoreCloudDeleted('${esc(c.id)}')">Restore</button>`)).join('') : '<p class="safety-note">Nothing deleted recently.</p>'}
-      ${rec.filter(r => !/^emergency_/.test(r.key)).length || rec.length ? `<h4>Recovered copies</h4>${rec.map(r => row((/^emergency_/.test(r.key) ? 'Emergency copy (storage was full)' : 'Damaged data') + ' · ' + r.key.replace('emergency_', ''), when(r.ts) + (r.salvaged ? ' · ' + r.salvaged + ' sheet(s) salvaged' : ''), `<button type="button" onclick="dndSafety.downloadRecovery(${r.id})">Download</button>`)).join('')}` : ''}`;
+      ${(trash.length + cloudOnly.length) ? trash.map(t => row(t.name || 'Sheet', 'deleted ' + when(t.ts), `<span class="safety-btns"><button type="button" onclick="dndSafety.restoreTrash('${esc(t.id)}')">Restore</button>${delBtn(`dndSafety.delTrash('${esc(t.id)}', this)`)}</span>`)).join('') + cloudOnly.map(c => row(c.name || 'Sheet', 'deleted on another device', `<span class="safety-btns"><button type="button" onclick="dndSafety.restoreCloudDeleted('${esc(c.id)}')">Restore</button>${delBtn(`dndSafety.delCloud('${esc(c.id)}', this)`)}</span>`)).join('') : '<p class="safety-note">Nothing deleted recently.</p>'}
+      ${(trash.length + cloudOnly.length) ? `<div class="safety-actions">${delBtn('dndSafety.delAllTrash(this)', 'Delete everything in this list for good')}</div>` : ''}
+      ${rec.filter(r => !/^emergency_/.test(r.key)).length || rec.length ? `<h4>Recovered copies</h4>${rec.map(r => row((/^emergency_/.test(r.key) ? 'Emergency copy (storage was full)' : 'Damaged data') + ' · ' + r.key.replace('emergency_', ''), when(r.ts) + (r.salvaged ? ' · ' + r.salvaged + ' sheet(s) salvaged' : ''), `<span class="safety-btns"><button type="button" onclick="dndSafety.downloadRecovery(${r.id})">Download</button>${delBtn(`dndSafety.delRec(${r.id}, this)`)}</span>`)).join('')}<div class="safety-actions">${delBtn('dndSafety.delAllRec(this)', 'Delete all recovered copies')}</div>` : ''}`;
   }
+  // ---------- deleting old data: the same steps as deleting a character (Delete -> Sure? -> wait 3s -> Confirm) ----------
+  function stepDelete(key, btn, work) {
+    if (typeof window.notesHandleDelete !== 'function') return;
+    window.notesHandleDelete('safety_' + key, btn, async () => { try { await work(); } catch (e) { warn('Could not delete that: ' + (e && e.message || e)); } renderPanel(); });
+  }
+  const delSnap = (id, btn) => stepDelete('h' + id, btn, async () => { _mem.history = _mem.history.filter(h => h.id !== id); await del('history', id); });
+  const delAllSnaps = btn => stepDelete('allh', btn, async () => { const cur = window.currentCharacter; for (const h of await listHistory(cur)) { if (h.id != null) await del('history', h.id); } _mem.history = _mem.history.filter(h => h.charId !== cur); });
+  const delTrash = (id, btn) => stepDelete('t' + id, btn, async () => { await dropTrash(id); if (typeof window.cloudPurge === 'function') await window.cloudPurge(id).catch(() => false); });
+  const delCloud = (id, btn) => stepDelete('c' + id, btn, async () => { if (typeof window.cloudPurge === 'function') await window.cloudPurge(id); });
+  const delAllTrash = btn => stepDelete('allt', btn, async () => {
+    for (const t of await listTrash()) { await dropTrash(t.id); if (typeof window.cloudPurge === 'function') await window.cloudPurge(t.id).catch(() => false); }
+    if (typeof window.listCloudDeleted === 'function' && typeof window.cloudPurge === 'function') for (const c of await window.listCloudDeleted().catch(() => [])) await window.cloudPurge(c.id).catch(() => false);
+  });
+  const delRec = (id, btn) => stepDelete('r' + id, btn, () => del('recovery', id));
+  const delAllRec = btn => stepDelete('allr', btn, async () => { for (const r of await getAll('recovery')) await del('recovery', r.id); _mem.recovery = []; });
+
   async function restoreSnapshot(id) {
     const rec = await get('history', id) || _mem.history.find(h => h.id === id); if (!rec) return;
     const ok = await (window.appConfirm ? window.appConfirm(`Go back to "${rec.name}" as it was on ${when(rec.ts)}? Your current version is saved as a restore point first.`, { confirmText: 'Restore' }) : Promise.resolve(true));
@@ -276,6 +294,6 @@
   document.addEventListener('click', e => { if (e.target.closest && e.target.closest('[onclick*="openSettingsPage"]')) { setTimeout(renderPanel, 150); setTimeout(renderPanel, 800); } });
   setInterval(() => { const p = document.getElementById('safetyPanel'); if (p && p.offsetParent && !p.matches(':hover') && !p._busy) renderPanel(); }, 4000);
 
-  window.dndSafety = { idb, warn, leaves, leafNs, sameNs, merge3, tsMs, getBase, setBase, dropBase, snapshot, listHistory, trashChar, listTrash, dropTrash,
+  window.dndSafety = { idb, warn, leaves, leafNs, sameNs, merge3, tsMs, getBase, setBase, dropBase, snapshot, listHistory, trashChar, listTrash, dropTrash, delSnap, delAllSnaps, delTrash, delCloud, delAllTrash, delRec, delAllRec,
     recoverRaw, salvageArray, safeSet, downloadBackup, renderPanel, restoreSnapshot, restoreTrash, restoreCloudDeleted, downloadRecovery, fnv };
 })();

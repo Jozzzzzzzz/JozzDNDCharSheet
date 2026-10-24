@@ -878,13 +878,14 @@ function removeCompanion(id) {
 // unchanged. A line "Armor: Light armor, Shields" becomes the Armor row; any other line shows under
 // "Other". Rows you add yourself are remembered in actionsData.profRows (just their titles). Skills and
 // Saving Throws are read from the proficiency ticks higher up the sheet, which stay the one source of truth.
-const PROF_DEFAULT = ['Armor', 'Weapons', 'Tools', 'Languages'];
-const PROF_SUGGEST = ['Vehicles', 'Instruments', 'Senses', 'Resistances', 'Feats', 'Expertise'];
-const _profAlias = { armour: 'Armor', armors: 'Armor', armours: 'Armor', weapon: 'Weapons', tool: 'Tools', language: 'Languages' };
+const PROF_DEFAULT = ['Armor', 'Weapons', 'Tools', 'Languages', 'Feats', 'Racial Features'];
+const PROF_SUGGEST = ['Vehicles', 'Instruments', 'Senses', 'Resistances', 'Expertise'];
+const _profAlias = { armour: 'Armor', armors: 'Armor', armours: 'Armor', weapon: 'Weapons', tool: 'Tools', language: 'Languages', feat: 'Feats', 'racial feature': 'Racial Features', 'racial traits': 'Racial Features', 'racial trait': 'Racial Features', racial: 'Racial Features', 'race features': 'Racial Features', 'species traits': 'Racial Features' };
 let _profLast = null, _profSig = '', _profOpen = null, _profAdding = false;
 
 const _profRows = () => (actionsData.profRows = Array.isArray(actionsData.profRows) ? actionsData.profRows : []);
-const _profKnown = () => [...PROF_DEFAULT, ..._profRows()];
+const _profKnown = () => [...new Set([...PROF_DEFAULT, ..._profRows()])];
+const _profCustomRows = () => _profRows().filter(r => !PROF_DEFAULT.includes(r));
 function _profName(w) {
   w = w.trim().toLowerCase();
   return _profKnown().find(k => k.toLowerCase() === w) || (_profAlias[w] && _profKnown().includes(_profAlias[w]) ? _profAlias[w] : null);
@@ -919,15 +920,19 @@ function profAdd(cat, text) {
   const at = lines.findIndex(ln => _profSplit(ln).cat === cat);
   if (at >= 0) lines[at] = lines[at].replace(/[\s,]*$/, '') + (/[:–]\s*$/.test(lines[at]) ? ' ' : ', ') + text; else lines.push(cat + ': ' + text);
   _profWrite(lines);
+  if (typeof featOnAdded === 'function') featOnAdded(cat, text);
+  autosave();
 }
 
 function profRemove(line, idx) {
   const { lines } = _profParse();
   const ln = lines[line]; if (ln === undefined) return;
   const sp = _profSplit(ln); const parts = sp.body.split(',').map(x => x.trim()).filter(Boolean);
+  if (typeof featOnRemoved === 'function' && parts[idx] !== undefined) featOnRemoved(sp.cat, parts[idx]);
   parts.splice(idx, 1);
   if (!parts.length) lines.splice(line, 1); else lines[line] = (sp.cat ? sp.label + ': ' : '') + parts.join(', ');
   _profWrite(lines);
+  autosave();
 }
 
 function profOpen(cat) { _profOpen = cat; _profAdding = false; renderProfChips(); }
@@ -968,6 +973,7 @@ function _profGuess(t) {
   if (_PG_WEAPON.test(x)) return 'Weapons';
   if (_PG_LANG.test(x)) return 'Languages';
   if (/\btools?\b|\bkits?\b|supplies|instruments?|vehicles?|gaming set|playing cards|\blute\b|\bflute\b/i.test(x)) return 'Tools';
+  if (typeof featGuess === 'function') return featGuess(t);
   return null;
 }
 
@@ -1004,7 +1010,7 @@ function profAutoSort(text) {
   });
   while (loose.length && loose[loose.length - 1] === '') loose.pop();
   while (loose.length && loose[0] === '') loose.shift();
-  const order = [...PROF_DEFAULT, ..._profRows()];
+  const order = _profKnown();
   const out = order.filter(c => bucket[c] && bucket[c].length).map(c => c + ': ' + bucket[c].join(', '));
   return out.concat(loose.length && out.length ? [''] : [], loose).join('\n');
 }
@@ -1054,18 +1060,25 @@ function renderProfChips() {
   const { chips, lines } = _profParse(); const { skills, saves } = _profSheetLists();
   const looseText = lines.filter(ln => !_profSplit(ln).cat).join('\n').replace(/^\n+|\n+$/g, '');
   const typed = document.activeElement && document.activeElement.closest && document.activeElement.closest('#prof_chips') && document.activeElement.tagName === 'INPUT' ? document.activeElement.value : '';
-  const chip = c => `<span class="prof-chip">${escapeHtml(c.text)}<button type="button" onclick="profRemove(${c.line},${c.idx})" aria-label="Remove ${escapeHtml(c.text)}">✕</button></span>`;
+  const chip = c => {
+    if (c.cat === 'Feats' || c.cat === 'Racial Features') {
+      const jc = JSON.stringify(c.cat).replace(/"/g, '&quot;'), jt = JSON.stringify(c.text).replace(/"/g, '&quot;');
+      const tip = typeof featTip === 'function' ? featTip(c.cat, c.text) : c.text;
+      return `<span class="prof-chip prof-chip-info" tabindex="0" role="button" title="${escapeHtml(tip)}" onclick="featShow(${jc},${jt})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();featShow(${jc},${jt})}">${escapeHtml(c.text)}<button type="button" onclick="event.stopPropagation(); profRemove(${c.line},${c.idx})" aria-label="Remove ${escapeHtml(c.text)}">✕</button></span>`;
+    }
+    return `<span class="prof-chip">${escapeHtml(c.text)}<button type="button" onclick="profRemove(${c.line},${c.idx})" aria-label="Remove ${escapeHtml(c.text)}">✕</button></span>`;
+  };
   const row = (cat, custom) => {
-    const mine = chips.filter(c => c.cat === cat); const safe = escapeHtml(cat).replace(/'/g, '&#39;');
+    const mine = chips.filter(c => c.cat === cat); const safe = escapeHtml(cat).replace(/'/g, '&#39;'); const isFeat = cat === 'Feats' || cat === 'Racial Features';
     const adder = _profOpen === cat
-      ? `<form class="prof-inline" onsubmit="event.preventDefault(); const v = this.elements.t.value; this.elements.t.value = ''; profAdd('${safe}', v);"><input name="t" id="prof_input" type="text" maxlength="60" autocomplete="off" placeholder="Type, then Enter" onkeydown="if(event.key==='Escape') profClose()" onblur="setTimeout(()=>{ if(_profOpen && !document.activeElement.closest('.prof-inline')) profClose(); }, 150)"></form>`
+      ? `<form class="prof-inline" onsubmit="event.preventDefault(); const v = this.elements.t.value; this.elements.t.value = ''; profAdd('${safe}', v);"><input name="t" id="prof_input" type="text" maxlength="60" autocomplete="off" placeholder="Type, then Enter"${isFeat ? ' list="prof_feat_list"' : ''} onkeydown="if(event.key==='Escape') profClose()" onblur="setTimeout(()=>{ if(_profOpen && !document.activeElement.closest('.prof-inline')) profClose(); }, 150)">${isFeat && typeof featDatalistHtml === 'function' ? featDatalistHtml(cat) : ''}${isFeat ? `<button type="button" class="prof-linkbtn" onmousedown="event.preventDefault()" onclick="featNewCustom('${safe}')">+ Custom</button>` : ''}</form>`
       : `<button type="button" class="prof-plus" onclick="profOpen('${safe}')" aria-label="Add to ${escapeHtml(cat)}">+</button>`;
     return `<div class="prof-row"><div class="prof-label">${escapeHtml(cat)}${custom ? `<button type="button" class="prof-del" onclick="profDeleteRow('${safe}')" aria-label="Remove ${escapeHtml(cat)} row" title="Remove this row">✕</button>` : ''}</div><div class="prof-items">${mine.map(chip).join('')}${adder}</div></div>`;
   };
   const ro = (title, list, none) => `<div class="prof-row prof-row-sheet"><div class="prof-label">${title}</div><div class="prof-items">${list.length ? list.map(t => `<span class="prof-chip prof-chip-ro">${escapeHtml(t)}</span>`).join('') : `<span class="prof-empty">${none}</span>`}</div></div>`;
   const toSort = looseText ? `<div class="prof-row prof-row-sort"><div class="prof-label">To sort</div><div class="prof-items prof-sortbox"><textarea id="prof_loose" rows="3" oninput="profLooseSet(this.value, this)" aria-label="Text not placed in a row yet">${escapeHtml(looseText)}</textarea><p class="prof-note">Anything that did not fit a row yet. Edit it freely, or use the + on a row above to add it there and delete it here. <button type="button" class="prof-linkbtn" onclick="profSortNow(false)">Try sorting again</button></p></div></div>` : '';
   const undo = actionsData.profOriginal != null ? `<p class="prof-note prof-undo">Your old text was sorted into rows automatically. <button type="button" class="prof-linkbtn" onclick="profUndoSort()">Undo auto-sort</button></p>` : '';
-  box.innerHTML = `<div class="prof-rows">${PROF_DEFAULT.map(c => row(c, false)).join('')}${ro('Skills', skills, 'Tick skills above and they show here')}${ro('Saving Throws', saves, 'Tick saves above and they show here')}${_profRows().map(c => row(c, true)).join('')}${toSort}</div>${undo}
+  box.innerHTML = `<div class="prof-rows">${PROF_DEFAULT.map(c => row(c, false)).join('')}${ro('Skills', skills, 'Tick skills above and they show here')}${ro('Saving Throws', saves, 'Tick saves above and they show here')}${_profCustomRows().map(c => row(c, true)).join('')}${toSort}</div>${undo}
     ${_profAdding
       ? `<form class="prof-newrow" onsubmit="event.preventDefault(); profNewRow(this.elements.t.value);"><input name="t" id="prof_input" list="prof_suggest" type="text" maxlength="30" autocomplete="off" placeholder="Row name, e.g. Vehicles"><datalist id="prof_suggest">${PROF_SUGGEST.filter(x => !_profKnown().includes(x)).map(x => `<option value="${x}">`).join('')}</datalist><button type="submit">Add row</button><button type="button" onclick="profClose()">Cancel</button></form>`
       : `<button type="button" class="prof-addrow" onclick="_profAdding = true; _profOpen = null; renderProfChips();">+ Add a row</button>`}`;
