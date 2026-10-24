@@ -6,9 +6,26 @@
 // the Home button until they visit the home page.
 // ============================================================
 
-const CHANGELOG_LATEST_VERSION = '1.21';
+const CHANGELOG_LATEST_VERSION = '1.22';
 
 const CHANGELOG = [
+  {
+    version: '1.22',
+    date: '2026-10-24',
+    title: 'v1.22 — Feats, Racial Features & Tidy-ups',
+    updates: [
+      'New Feats and Racial Features rows under Proficiencies & Training (Stats page). Tap + and pick from 89 built-in feats and 201 racial traits (SRD 5.1 and 5.2, A5e Adventurer\'s Guide, Tome of Heroes) — they work offline',
+      'Hover or tap a feat or racial feature to read what it does and where it comes from. You can add effects too: skill expertise or proficiency marks the skill in your Skills list, and gives it back if you remove the feat',
+      'Feats from books that are not open-licensed (Sharpshooter, War Caster and so on) are not built in — tap + Custom to write your own. Custom entries are saved to your account and can be used on every character',
+      '"Try sorting again" now moves feat and racial feature names from the To sort box into the new rows',
+      'Settings → Sheet safety: you can now delete old restore points, recently deleted sheets and recovered copies yourself, using the same Delete → Are you sure → wait 3 seconds → Delete steps as deleting a character. Deleting a sheet from the recently deleted list removes it for good',
+    ],
+    fixes: [
+      'Delete in the Load Character list could do nothing after you cancelled a delete part way (for example by tapping outside the box). It now always starts fresh',
+      'The HP / AC card in the sidebar no longer disappears for a moment while pages and sheets load — it keeps the last values until the new ones arrive',
+      'Added a little room before the character names in the Load Character list so the first letter is never cut off',
+    ],
+  },
   {
     version: '1.21',
     date: '2026-10-24',
