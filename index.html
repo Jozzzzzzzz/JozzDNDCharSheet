@@ -303,7 +303,7 @@ function activateRoute() {
 })();
 
 async function bootstrapModularApp() {
-  const scriptVersion = '20260719g-v1.20';
+  const scriptVersion = '20261024a-v1.21';
   // Expose so modules can cache-bust their own data fetches (e.g. spells.json).
   window.__SCRIPT_VERSION__ = scriptVersion;
   const [chrome, home, settings, admin, stats, background, spells, inventory, notes, popups] = await Promise.all([

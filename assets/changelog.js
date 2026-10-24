@@ -6,9 +6,32 @@
 // the Home button until they visit the home page.
 // ============================================================
 
-const CHANGELOG_LATEST_VERSION = '1.20';
+const CHANGELOG_LATEST_VERSION = '1.21';
 
 const CHANGELOG = [
+  {
+    version: '1.21',
+    date: '2026-10-24',
+    title: 'v1.21 — Safer Saving, Smarter Sheets & a Slimmer App',
+    updates: [
+      'Your sheets are much safer. Edits made offline, or on two devices at once, are now merged instead of one overwriting the other — and if the same thing was changed in both places you get a conflict copy to sort out, never a lost sheet',
+      'Settings → Sheet safety: restore points are saved automatically as you edit, deleted sheets are kept for 30 days so you can bring them back, and if anything stored on a device is ever damaged a recovery copy is kept to download',
+      'A sheet that is too big to sync now tells you plainly instead of failing quietly',
+      'Saving throws can now be typed over (for items and features that change them) — clear the box and it goes back to automatic. Initiative, passive Perception, spell save DC and spell attack do the same when you clear them',
+      'Weapons now use the ability modifier shown on your sheet, so if you override a modifier your to-hit and damage follow it',
+      'Skill proficiency cycles through none, half, proficient and expertise',
+      'Companions: track a pet, familiar or hired help with their own HP and stats',
+      'Pin spell slots and class resources (Ki, Rage, Pact Magic…) so they show in the Actions area and can be spent with a tap',
+      'Short Rest now opens a popup where you spend hit dice and see what recharged; hit dice are tracked across rests',
+      'Spell reference links were checked and repaired: old links that no longer opened now go to a working page, and spells that are not in the free SRD open a search instead of a dead page',
+      'The Admin tools for the site owner were rebuilt (overview, backups, restoring deleted sheets)',
+    ],
+    fixes: [
+      'Healing now stops at your maximum HP instead of turning into temporary HP (type temp HP into the current HP box)',
+      'Fixed cases where a sheet could be blanked or overwritten when the app opened with no signal or half loaded',
+      'Removed the DM screen (campaign builder, monster, item, encounter, NPC and loot tools) and joining a campaign from the Stats page — they were barely used and are being kept for a separate project. Nothing on your character sheets is affected',
+    ],
+  },
   {
     version: '1.20',
     date: '2026-07-15',

@@ -1,7 +1,7 @@
 {
   "name": "Joz's Homebrew D&D Sheet",
   "short_name": "DnD Sheet",
-  "description": "A D&D 5e character sheet — stats, spells, inventory, notes and a DM portal.",
+  "description": "A D&D 5e character sheet — stats, spells, inventory and notes.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
