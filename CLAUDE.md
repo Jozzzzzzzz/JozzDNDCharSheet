@@ -41,8 +41,7 @@ All JS lives in `assets/`. Files are loaded **in this exact order** via dynamic 
 | `assets/modules/stats.js` | Ability scores, saving throws, skills, proficiency bonus, numeric input helpers (`calculateAbilityBonus`, `calculateSavingThrow`, `calculateSkillBonus`, `enforceAutoMathNumericInputs`, etc.) | ~290 |
 | `assets/modules/cloud-skills.js` | Firebase Auth + Firestore sync (`syncToCloud`, `syncFromCloud`, `scheduleSyncToCloud`, `signInWithGoogle`, `signOut`, `onActiveCharacterChanged`) | ~700 |
 | `assets/modules/core.js` | localStorage helpers, note box system, theme/accent/font, character CRUD (`loadData`, `autosave`, `createNewCharacter`, etc.), popup/tab system, `escapeHtml`, `initializeWebApp`, weapons/equipment system, **notes folder+card system** | ~3580 |
-| `assets/modules/browser-engine.js` | Shared list-browser engine: `fuzzyScore`/`levenshtein` (typo-tolerant search) + `createListBrowser(config)` (filter/sort/virtualized-scroll/live-count). Used by the item catalogue picker and DM monster browser. Loads after core.js. | ~180 |
-| `assets/modules/loot.js` | Loot generator engine: DMG gems/art tables, compositions + themes, ±15% item-fill algorithm (`lootGenerate`, `lootGeneratePile`, `lootCoinString`). Reads `itemCatalogue`/`valueGp` from inventory.js. Loads after inventory.js, before dm.js. | ~230 |
+| `assets/modules/browser-engine.js` | Shared list-browser engine: `fuzzyScore`/`levenshtein` (typo-tolerant search) + `createListBrowser(config)` (filter/sort/virtualized-scroll/live-count). Used by the item catalogue picker. Loads after core.js. | ~180 |
 | `assets/modules/layout.js` | Flex-wrap sizing, section resize handles (`makeContainersResizable`, `applyFlexWrapSizing`), `setupAutoResize` | ~241 |
 | `assets/modules/characters.js` | Currency system (CP/SP/GP + custom — saved under `page4.currency`), banner wealth messages, suggestion form, autosave scheduling (`scheduleAutosave`, `bindGlobalAutosaveListeners`), deleted-character tracking | ~379 |
 | `assets/modules/health.js` | HP display, death saves, potion use, short/long rest | ~292 |
@@ -50,8 +49,7 @@ All JS lives in `assets/`. Files are loaded **in this exact order** via dynamic 
 | `assets/modules/actions.js` | Combat actions/reactions tracking | ~270 |
 | `assets/modules/inventory.js` | Inventory CRUD, equipment, storage containers, coin tracking, portrait upload/remove (`removePortrait`), settings dropdown | ~1180 |
 | `assets/modules/spells.js` | Spell list, spell slots (with drag-reorder), custom resources, favorites, prepared spells table, spell search, sync panels. Loads spell reference data async from `assets/data/spells.json` via `loadSpellDatabase()` at boot, then enriches from Open5e API in background | ~1440 |
-| `assets/modules/dm.js` | DM Portal — password-gated entry, 24h session, portal enter/exit, tab switching, monster browser (Open5e API), encounter builder (themes/shapes/difficulty math, players, drag-reorder, click-to-open creature cards), NPC generator, loot tables, players/pending approval, in-app dialogs (`dmModal`/`dmToast`), `friendlyFirebaseError`. DM data in localStorage `dndDmEncounters`/`dndDmNpcs` | ~2750 |
-| `assets/modules/dm-campaigns.js` | DM campaigns + typed player list, local-first with an account mirror (`dmc*` functions). Loads right after dm.js. | ~230 |
+| `assets/modules/dialogs.js` | App-wide dialogs and errors: `dmModal` / `dmToast` (wrapped by `appToast`/`appAlert`/`appConfirm`/`appPrompt` in core.js) and `friendlyFirebaseError`. Moved here from the removed DM portal; the `dm*` names are kept. Loads right after core.js. | ~110 |
 | `assets/modules/admin-data.js` | Admin page: overview, all sheets, backup/restore, tools (loads after admin.js) | ~330 |
 | `assets/modules/admin.js` | Owner-only admin portal: user list, character import/preview via Firestore. Depends on `escapeHtml`, `getStoredJSON`, `loadCharacterList`, `loadData` from `core.js` | ~230 |
 | `assets/app.js` | Boot entry point: `window.initializeApp`, `showWeaponsPopup`, `addWeapon`, `manualSave`. Also seeds default bg fields and calls `initNotesPage()` on first boot. | ~150 |
@@ -234,8 +232,9 @@ Every spell object is normalised through `normalizeSpellRecord()` on load — al
 #### Spell reference links (Open5e source-prefixed keys → 5esrd fallback)
 **Open5e URLs require a SOURCE-PREFIXED slug** — `open5e.com/spells/srd-2024_shatter` or `open5e.com/spells/srd_shatter`, NOT the bare `open5e.com/spells/shatter` (a bare slug now **302-redirects to a "choose your source" disambiguation page**, never landing on the spell). The prefix comes from the Open5e **v2 API `key`** field (`{document.key}_{slug}`, e.g. `srd-2024_`, `srd_`, `deepm_`, `deepmx_`, `toh_`, `wz_`, `kp_`, `a5e-ag_`). `wikiLink` in `spells.json` stores the full prefixed URL; `open5eKey` stores the bare key.
 - **`tools/fix-spell-keys.js`** resolves every spell to its correct prefixed key: fetches all v2 keys (`api.open5e.com/v2/spells`), maps `open5eSlug` → best key by the spell's `sourceBook` (SRD prefers `srd-2024`, falls back to `srd`; see `SOURCE_PREF`), verifies each rewritten URL returns 200, writes `wikiLink`+`open5eKey`. **5esrd links are left untouched.** Re-run with `node tools/fix-spell-keys.js` (`--dry-run` to preview; cached in `tools/.spell-key-cache.json`, gitignored). Last run: 1051 rewritten to prefixed Open5e keys, 71 kept on 5esrd, 0 unresolved.
-- **`open5eSpellLink(slugOrName)`** (spells.js, runtime fallback for user-added spells / spells with no stored link) emits the `OPEN5E_DEFAULT_SPELL_PREFIX` (`srd-2024`) prefix when given a bare name/slug; an already-prefixed key (contains `_`) is used verbatim.
-- **`loadData()` migration (core.js)** repairs old **bare** Open5e links already saved in a user's localStorage on next load — prefers the exact key from the loaded catalogue (`spellDatabase[name].wikiLink`), else the `srd-2024_` fallback. Leaves 5esrd + already-prefixed links alone.
+- **`open5eSpellLink(slugOrName)`** (spells.js) builds a link for a spell with no stored link. Order: an already-prefixed key (lower-cased) → the catalogue's stored `wikiLink` → a key in `OPEN5E_VERIFIED_SPELL_KEYS` (`srd-2024_<slug>`, checked against the Open5e API) → otherwise a **5esrd search link** (`spellSearchLink`). It never guesses an `srd-2024_` key, because Open5e only holds SRD spells and a guessed key for a PHB-only spell (Witch Bolt, Bigby's Hand, Armor of Agathys...) is a dead page.
+- **`repairSpellLink(spell)`** (spells.js) is what `loadData()` (core.js) runs over every saved cantrip/spell: it fixes wikidot links, bare Open5e slugs, upper-case keys (`srd-2024_Hex`) and keys in `OPEN5E_DEAD_SPELL_KEYS` (verified 404 on 2026-10-24). Working links and 5esrd links are left alone. Checked on the real live data (340 saved spells, 2026-10-24): 296 end on a verified Open5e page, 44 on 5esrd, none dead.
+- **Do not trust HTTP status for link checks.** open5e.com and 5esrd.com are client-rendered and answer `200` for pages that do not exist. Check Open5e keys with the API (`https://api.open5e.com/v2/spells/<key>/` → 404 if missing) and 5esrd pages by rendering them (a real page has an `h1` with the spell name; a missing one says "not found").
 
 Some Open5e pages still 404 (all A5e `-a5e` slugs, plus a handful of SRD spells like Counterspell/Creation the API returns yet the website 404s). `tools/verify-spell-links.js` repairs those to a verified `5esrd.com/database/spell/{slug}/` page (200), else `5esrd.com/?s={name}` search, tagging `linkSource` (`open5e` | `5esrd` | `5esrd-search`).
 
@@ -255,24 +254,14 @@ The Import Cantrips / Import Spells popup has a per-source toggle list (`SPELL_S
 - **Source picker:** `ITEM_SOURCES` in `inventory.js`, saved as the global UI pref `dndItemSources` (localStorage, NOT character data). Default = official only (`wotc-srd`). `getEnabledItemSources()` is defensive (bad/empty → official). Same pattern as `dndSpellSources`.
 
 ### Shared list-browser engine (v1.18+)
-`assets/modules/browser-engine.js` powers BOTH the item catalogue picker and the DM monster browser — build new large-list browsers through it, don't hand-roll filtering.
+`assets/modules/browser-engine.js` powers the item catalogue picker — build new large-list browsers through it, don't hand-roll filtering.
 - **`fuzzyScore(query, text)`** — typo-tolerant relevance score (prefix > substring > acronym > subsequence > bounded-Levenshtein word match), −1 = no match. `"firebal"→Fireball`, `"gobln"→Goblin` still hit.
 - **`createListBrowser(config)`** — wires a search box + filter dropdowns/toggles + sort `<select>` + live count to a **virtualized** scroll list (only visible rows are in the DOM → smooth at ~2,800 rows). config: `{ data(), root, searchInput, countEl, sortEl, searchFields(item), filters:[{el, match(item,value)}], sorts:{key:cmp}, rowHeight, rowClass, renderRow(item), onRowClick(item), emptyText }`. Returns `{ refresh, getFiltered }` — call `refresh()` after the data loads or a non-`<select>` filter (like the item source toggles) changes.
 - **Virtualization contract:** `root` must be a `.lb-list` inside a scrolling `.lb-viewport` (fixed max-height, `overflow-y:auto`). The engine sizes a spacer to `count × rowHeight` and absolutely-positions visible rows by index. `.lb-list` CSS force-overrides any per-list `max-height`/`overflow` so there's no double scrollbar. When adding a browser, set an accurate `rowHeight`.
-- Item picker: `initItemBrowser()`/`_itemBrowser` (inventory.js). Monster browser: `dmInitMonsterBrowser()`/`_dmMonsterBrowser` (dm.js).
+- Item picker: `initItemBrowser()`/`_itemBrowser` (inventory.js).
 
-### Monster browser — local bundle (v1.19+)
-`assets/data/monsters.json` (322 SRD monsters, ~670 KB) is a **bundled local file** so the monster browser is instant + offline — built by `node tools/build-monsters.js` which flattens the Open5e fixture (`assets/data/open5e/monsters.json`, Django `_json`-string shape) into **API-shaped** objects (slug=`pk`, `speed` object, `environments`/`actions`/`legendary_actions` parsed arrays, ability scores/saves) so the existing `dmRenderStatBlockHtml` + filters work unchanged. SRD-only by default (the full fixture is ~2,800 / 7.5 MB — too heavy to ship; `--all` includes everything). Precached in the SW.
-`dmLoadMonsters(force)` load order: in-memory → **local file** (default, authoritative, no network) → `localStorage['dndDmMonsterCache']` (legacy cache fallback) → **Open5e API only on `force`** (Refresh button, with the progress bar). Auto-loads on `dm-monsters` tab open. `dmAllMonsters` is the shared array the encounter builder reads.
-- **Saved creatures** (v1.19): `localStorage['dndDmSavedMonsters']` (array of slugs, cached in `_dmSavedMonsterSlugs`). `dmToggleSavedMonster(slug, ev)` (ev.stopPropagation so the row's open-detail click doesn't fire) / `dmIsMonsterSaved`. A ★ button on each row + in the detail panel. Saved creatures **float to the top** of every sort (`savedFirst` wrapper) and their row is highlighted (`.dm-save-star.saved` + `:has()` row tint). Does NOT apply while a fuzzy search is active (best-match order wins then).
-
-### DM Items archive (v1.19+)
-`dmLoadItems(force)` is **cache-first** (`localStorage['dndDmItemCache']`, 30-day TTL) → Open5e API (magicitems + weapons + armor) on miss/`force`, with a progress bar (`dmSetItemProgress`). Uses the shared **browser engine** via `dmInitItemBrowser()`/`_dmItemBrowser`: fuzzy search, virtualized scroll, grouped filters (category/rarity/attunement), sort (name/rarity), live count. Auto-loads on `dm-items` tab open. (Kept on the API — not the bundled `items.json` the player picker uses — since it pulls all sources incl. non-SRD.)
-
-### Item gold values + Loot Generator (v1.20+)
-**Every item in `items.json` has a numeric `valueGp`** — assigned by `node tools/build-item-values.js`: real prices parsed first (`"400 gp"`→400), else rolled within DMG rarity bands (common 50–100 … legendary 50k–200k, artifact=priceless nominal 250k), consumables halved, name-seeded RNG so rebuilds are stable. Shown as a price badge in the player item picker (`formatGp` in inventory.js) and fills the Add Item value on pick. (The DM *items archive* uses live API data without values — separate from the player `items.json`.)
-
-**Loot generator** (`assets/modules/loot.js`, DM Screen → Loot tab): `lootGenerate(totalGp, pileCount, compKey, themeKey)` splits the total across N piles (±20% variance, normalised to sum), fills each with catalogue items whose `valueGp` is within **±15%** of the running target (`lootPickItemNear`), then converts the remainder to coins (`lootCoinsFromGp`) + DMG gems/art (`lootGemsArtFromGp`). `LOOT_COMPOSITIONS` (balanced/treasure/pureItems/weapons/supplies/magic/coins) set the coin/gem/item split + item filter; `LOOT_THEMES` (bandit/wizard/dragon/merchant/temple/wild) bias by `itemLikelySource` + category. **Honours the item source toggle** (`getEnabledItemSources`). UI in dm.js: `dmGenerateLoot`/`dmRenderLootResult`/`dmSaveLoot` (saved to `localStorage['dndDmLoot']`)/`dmCopyLoot`. **Reference/UI only — never writes to a saved character.** NPC pockets (`dmRollLoot`) now call `lootGenerate` scaled by wealth tier (`DM_WEALTH_GP`), with the legacy flat table as fallback.
+### Item gold values (v1.20+)
+**Every item in `items.json` has a numeric `valueGp`** — assigned by `node tools/build-item-values.js`: real prices parsed first (`"400 gp"`→400), else rolled within DMG rarity bands (common 50–100 … legendary 50k–200k, artifact=priceless nominal 250k), consumables halved, name-seeded RNG so rebuilds are stable. Shown as a price badge in the item picker (`formatGp` in inventory.js) and fills the Add Item value on pick.
 
 ### Inventory drag-reorder (v1.17+)
 Item cards (`createItemCard`) are `draggable`; whole-card HTML5 drag reorders items **within their own list** — main inventory or one storage container (`itemListFor(container)` resolves which array). Handlers `itemDragStart/Over/Drop/End`; a guard in `itemDragStart` skips drags starting on a button/select so those stay usable; cross-container drops are rejected (reorder only, not move — moving still uses the Move-to dropdown). Reorders the array in place → `saveInventory()` + `autosave()`. Relies on `item.id` (every saved item already has one), so old inventories work untouched.
@@ -298,7 +287,7 @@ Opt-in second class. A "+ Add multiclass" button under the Level field (`pages/s
 
 ## App-wide dialogs
 
-`appToast` / `appAlert` / `appConfirm` / `appPrompt` (all in `core.js`, on `window`) are thin wrappers over dm.js's `dmToast`/`dmModal` that render into a floating root and work everywhere (mobile Safari / installed PWA), each with a native fallback if dm.js hasn't loaded. **Use these, never native `alert`/`confirm`/`prompt`** — natives break in PWA mode. `appPrompt(message, {title, placeholder, value, inputType, confirmText, cancelText})` resolves the entered string or `null` on cancel (matches native `prompt` cancel semantics, so blank-to-clear flows still work). The only remaining native calls in the codebase are the intentional fallback branches inside these four wrappers.
+`appToast` / `appAlert` / `appConfirm` / `appPrompt` (all in `core.js`, on `window`) are thin wrappers over `dmToast`/`dmModal` (now in `dialogs.js`) that render into a floating root and work everywhere (mobile Safari / installed PWA), each with a native fallback if dialogs.js hasn't loaded. **Use these, never native `alert`/`confirm`/`prompt`** — natives break in PWA mode. `appPrompt(message, {title, placeholder, value, inputType, confirmText, cancelText})` resolves the entered string or `null` on cancel (matches native `prompt` cancel semantics, so blank-to-clear flows still work). The only remaining native calls in the codebase are the intentional fallback branches inside these four wrappers.
 
 ## Known Gotchas
 
@@ -358,121 +347,26 @@ Container item list elements are created with `id="${storage.id}_items"` (in `lo
 - `saveActions()` / `loadActions()` in `actions.js` — write to `dndActions` localStorage key. This is a legacy path; the real save/load goes through `core.js` `page1.actionsData`. The `dndActions` key is harmless but redundant. Do not remove `saveActions()` calls from `actions.js` without also removing the `loadActions()` call in `initializeActions()` — they must stay in sync or actions appear to load from stale data.
 - `dndInventory` localStorage key — similarly legacy. Real inventory data is in `page1.inventoryData` inside the character blob.
 
-## DM Portal
+## DM tool — removed
 
-A fully separate portal layer that overlays the player UI. Activated from the home page DM card. All DM logic lives in `assets/modules/dm.js`. DM HTML pages are in `pages/dm-*.html`. The DM chrome (banner + tabs) is in `partials/dm-chrome.html`.
-
-### Architecture
-- **Two DOM roots:** `#dm-chrome-root` and `#dm-pages-root` sit alongside the player roots in `index.html`. Both are `display:none` until `enterDmPortal()` shows them and hides `#chrome-root`, `#pages`, and `#popups-root`.
-- **Exit:** `exitDmPortal()` reverses this — restores `display:''` on player roots, hides DM roots. Session persists so re-entry within 24h is instant.
-- **Tab switching:** `switchDmTab(btn)` / `switchDmTabById(id)` — sets `.dm-tab.active` and shows the matching `.dm-page`. Switching to `dm-players` auto-calls `dmLoadPlayers()`.
-
-### Friendly error messages
-`friendlyFirebaseError(e)` (in `dm.js`, on `window`) turns raw Firestore/network errors into plain-English strings (index-building, permission-denied, offline, unauthenticated, plus a generic fallback). Used across DM + Admin data-loading paths so portals never show raw error codes. `admin.js` has a thin `adminFriendlyError(e)` wrapper that delegates to it if loaded (dm.js loads before admin.js). When adding new Firestore reads/writes in the portals, surface failures through these, not `e.message`.
-
-### DM access model (current — no password, no link)
-DM mode is just another set of pages for every signed-in or signed-out user. There is no DM password, no campaign join, and no link to anyone's character sheet.
-1. A **DM** button at the bottom of the left rail (next to Settings) calls `enterDmPortal()`, which hides the player UI and shows the DM screen. Exit returns to the sheet.
-2. Campaigns are the DM's own notes: `{ id, name, setting, notes, players:[{ id, name, player, cls, level, ac, hp, pp, dc, notes }], createdAt, updatedAt }`. All logic is in `assets/modules/dm-campaigns.js` (functions prefixed `dmc`). Players are typed in by the DM; **nothing is read from a player's sheet**.
-3. Storage is local first (`dndDmCampaigns`, `dndDmActiveCampaign`, `dndDmCampaignsDeleted`) and mirrored best-effort to `campaigns/{id}` on the account (`ownerUid` == the user) so a new device gets them back. `dmcSyncFromCloud()` runs on entering DM mode: newest `updatedAt` wins per campaign, pulls never delete, offline deletes are finished later.
-4. "Use in encounter builder" (`dmcSendToParty`) is a one-way, on-request fill of `dmParty` from the typed levels.
-5. The owner-admin sees every user's campaigns (name, owner, players, notes) in Settings → Admin Portal → Campaigns (`adminLoadCampaigns`), can delete them, and can strip old password fields from pre-change campaign docs (`adminCleanCampaign`). An owner-only **Admin** rail button (`#grAdminBtn`, `openAdminPortal()`) jumps to the portal. Users cannot read each other's campaigns.
-
-**Removed (2026 campaign rework):** campaign join/leave on the Stats page, the join and DM passwords, `dmEnterWithPassword`, the 24h DM session, join requests, `members`, `dm_requests`, the live Players tab and Player Spells tab (and `pages/dm-spells.html`). The hidden `#char_campaign` input stays only so a campaign name already saved on an old sheet is not erased; it is no longer shown or used.
-
-### DM theming + in-app dialogs (2026-06-25 revamp)
-- **The DM portal is now fully accent-themed** — it uses the same `--accent*` / `--panel-bg` / `--card-bg` variables as the character sheet, the same `.tabs` pill style, `.section`-style cards, button language, transitions, and breakpoints. Do NOT reintroduce hardcoded colours in DM CSS. The ONLY deliberate exception is the sticky DM SCREEN banner + Exit button, which keep a warm danger tint via `--dm-danger` (200,70,70) as a "you're in DM mode" cue.
-- **`--accent-rgb`** (R,G,B triplet, no `rgba()`) is now set by `setAccentDerivedColors()` (core.js) and the early-boot script (index.html), with a `:root` default. Use `rgba(var(--accent-rgb), <alpha>)` for accent-tinted fills. (Previously referenced in CSS but never set — was silently falling back.)
-- **In-app dialogs:** `dmModal(opts)` (promise-based; `{title, message, input, inputType, placeholder, value, confirmText, cancelText, danger}` → resolves the input string / `true` / `null` on cancel) and `dmToast(msg, type)` replace ALL native `prompt/alert/confirm` in the DM side. Themed to the player popup language (`.dm-modal*`, `.dm-toast*`). Use these, not native dialogs, for any new DM interaction.
-
-### DM Pages
-Tab order (in `partials/dm-chrome.html`): Home · Lore · Notes · Players · Monsters · Items · Encounters · NPCs · **Loot** · Settings. (Loot added v1.20 — `pages/dm-loot.html`, wired in index.html's 3 places + precached in sw.js; opens via `switchDmTab` which renders saved loot + warms the item catalogue.)
-
-| Page | File | Status | Key IDs |
-|---|---|---|---|
-| Home | `pages/dm-home.html` | Working | `#dmHomeGreeting`, `#dmHomeCampaignName`, `#dmHomeCampaignSetting` |
-| Lore | `pages/dm-lore.html` | **Placeholder** (Coming Soon shell) | — |
-| Players | `pages/dm-players.html` | Working | `#dmcPlayersBody` (the DM's typed list for the active campaign) |
-| Monsters | `pages/dm-monsters.html` | Working | `#dmMonsterSearch`, `#dmMonsterCrFilter`, `#dmMonstersList`, `#dmMonsterDetail` |
-| Items | `pages/dm-items.html` | Working | `#dmItemSearch`, `#dmItemRarityFilter`, `#dmItemsList`, `#dmItemDetail` |
-| Encounters | `pages/dm-encounters.html` | Working | `#dmCombatantList`, `#dmEncounterName`, `#dmSavedEncounterList`, `#dmGenTheme`/`#dmGenShape`/`#dmGenDifficulty`/`#dmGenCount`, `#dmDifficultyMeter`, `#dmPlayerName`/`#dmPlayerInit` |
-| NPCs | `pages/dm-npcs.html` | Working | `#dmNpcName`, `#dmNpcLootResult`, `#dmNpcList` |
-| Notes | `pages/dm-notes.html` | **Placeholder** (Coming Soon shell) | — |
-| Settings | `pages/dm-settings.html` | Working | `#dmSettingsEmail`, `#dmSettingsCampaign`, `#dmSettingsSessionExpiry` |
-
-**Adding a DM page is a 3-place sync** (all must match or the tab won't load/switch):
-1. Create `pages/dm-<name>.html` with `<div class="dm-page" id="dm-<name>" style="display:none;">…</div>`.
-2. `index.html` — add it to the `loadText()` array, the destructured variable list, **and** the `dm-pages-root` inject array (order must line up across all three).
-3. `partials/dm-chrome.html` — add a `<button class="dm-tab" data-dm-tab="dm-<name>" onclick="switchDmTab(this)">Label</button>`.
-
-`switchDmTab()` is generic — it shows/hides any `.dm-page` by the button's `data-dm-tab` id, so no JS change is needed for a new page unless it has on-open load logic (like Players' `dmLoadPlayers()`). Placeholder pages use the `.dm-coming-soon-list` style.
-
-### DM Data (localStorage)
-- `dndDmCampaigns` / `dndDmActiveCampaign` / `dndDmCampaignsDeleted` — the DM's campaigns (see "DM access model")
-- `dndDmEncounters` — saved encounter array `[{ id, name, combatants: [...] }]`
-- `dndDmNpcs` — saved NPC array `[{ id, name, race, role, alignment, notes, loot }]`
-- DM notification cooldown per email: `dndDmNotifySent_{email_slug}`
-
-### Monsters (Open5e API)
-`dmLoadMonsters()` paginates `https://api.open5e.com/v1/monsters/?limit=100&document__slug=wotc-srd`. Results cached in `dmAllMonsters`. `dmFilterMonsters()` filters client-side by name/type and CR. `dmShowMonster(slug)` renders a full stat block with Add to Encounter button.
-
-- **`dmRenderStatBlockHtml(m)`** — the single shared stat-block renderer (meta, AC/HP/speed, six abilities, senses/languages, CR, **Traits / Actions / Reactions / Legendary Actions**). Used by the Monsters tab detail panel AND the click-to-open creature card everywhere else. Pure HTML, no side effects. The title is a hyperlink to `open5e.com/monsters/{slug}` via `dmMonsterLink(m)` (falls back to an Open5e search by name if no slug). **Never hardcode a stat block elsewhere — call this.**
-- **`dmOpenCreature(source)`** — reusable scrollable modal showing one creature's full stat block. `source` is either a full stat-block object or a `{ name, slug }` stub (it fetches the block by slug, cache-first). `dmOpenCombatantCreature(id)` opens a live combatant's creature (skips players); `dmOpenSavedCreature(slug, name)` opens one from a saved encounter (re-fetches by slug since saved encounters strip the block). Works from the builder, the initiative order, and saved encounters.
-
-### Encounters
-`dmCombatants` — in-memory array. Each combatant now carries: `{ id, name, maxHp, hp, ac, initiative, isMonster, xp }` plus, for generated/added monsters: `slug`, `dex` (real Dex score → initiative), `statBlock` (full Open5e record, for click-to-open), and shape tags `wave` / `role` ('front'|'back'). Player rows carry `isPlayer:true` (unrated, optional HP/AC). Saved to localStorage `dndDmEncounters` via `dmSaveEncounter()`; **`statBlock` is stripped on save** (bulky) and **re-hydrated from `dmAllMonsters` by slug on `dmLoadEncounter(id)`**. All new fields are optional — old saved encounters load fine (missing fields degrade gracefully; a monster with no slug just isn't click-to-open).
-
-- **Adding creatures:** `dmAddMonsterToEncounter(slug)` resolves the full monster (cache→API), stores dex + statBlock, rolls initiative (d20 + real Dex mod). `dmAddCombatant()` = manual unrated combatant. `dmAddPlayer()` = player row (name + total initiative, optional HP/AC).
-- **Per-creature overrides:** every row has always-editable Init / AC / HP(cur/max) inputs (`dmSetInit/dmSetAc/dmSetHp/dmSetMaxHp`); ± buttons still damage/heal. Click a monster's name to inline-expand its stat card.
-- **Order + drag:** `dmOrderMode` ('init' sorts the list highest-first as turn order and numbers rows; 'manual' keeps array order). `dmSetOrderMode()` toggles. Whole row is draggable (`dmCombatantDrag*`); a guard in `dmCombatantDragStart` skips drags starting on inputs/buttons/links so fields stay editable. Dragging switches to manual mode.
-- **Damage/heal:** via `dmModal` (not native `prompt`).
-
-#### Encounter difficulty math (READ BEFORE TOUCHING)
-Rating is on **RAW summed monster XP** vs the party's DMG thresholds — **there is no encounter count-multiplier in the rating** (`dmRateEncounter` returns `mult:1`). The count-multiplier used to inflate adjusted XP and make the live meter disagree with the picker (adding weak monsters tipped Medium→Deadly). Do not reintroduce it into rating.
-- `dmPartyThresholds()` sums each PC's `[easy,medium,hard,deadly]` XP (DMG p.82, `DM_XP_THRESHOLDS`) across `dmParty`.
-- `dmTierTargetXp(tier, th)` = the FLOOR of a tier's band. Base 5e (brutal = deadly×1.5, mythic = deadly×2.5) **× `DM_ENCOUNTER_XP_MULT` (house-rule 1.5×)** applied to every tier. This one function is the single source the build budget, the rating bands, AND the meter readouts all derive from — so the 1.5× scales the whole system together and the label stays honest (pick Medium → beefier fight that still reads Medium). To change the aggression, edit only the constant. `dmTierCeilingXp(tier)` = next tier's floor. A tier's band is `[floor, ceiling)`.
-- `dmRateEncounter(xps)` sums raw XP (no count-multiplier — see above), labels by highest band cleared. `dmUpdateDifficultyMeter()` paints the live meter from `dmCombatants`.
-- **Generator (`dmGenerateEncounter`) guarantees pick = display:** aims for mid-band, then (1) a **floor guarantee** upgrades the weakest picks to stronger monsters until sum ≥ floor (covers all shapes, incl. the part-built tactical ones), then (2) a **ceiling clamp** drops the smallest (free count) or downgrades the strongest in place (forced count) until sum < ceiling. **No-count generation** picks a sensible creature count from the shape (balanced ≈ party size, swarm ≈ 2×, elite ≈ 0.6×) and sizes each creature to `budget/count` — it does NOT greedily stack to a cap. If the theme pool is too weak to reach the tier, it lands as high as it can and shows an honest "best fit… can't reach X" status note instead of silently under-rating.
-
-#### Themes, shapes (battle types), intros & tips
-- **`DM_ENCOUNTER_THEMES`** — 36 themes across four dropdown optgroups: humanoid foes, **human factions** (keyword-only so "Pure Humans", cultists, mercenaries, pirates, etc. don't pull in goblins/orcs that share the `humanoid` type), monsters by type (incl. `nonHumanoid` = all non-humanoid types, split `demons`/`devils`, `celestials`, `swarms`, `lycanthropes`, `plants`, `monstrosities`), and combos (`casterWarband`/`mixedWarband`/`huntPack`/`beastHandlers`/`undeadHorde`/`bossMinions`). Each filters the pool by creature `type` and/or name keywords; `nonHumanoid` is a special case in `dmMonstersForTheme(themeKey)`. **Every dropdown `value` must have a matching theme key and an intro pool** (36/36 currently).
-- **`DM_ENCOUNTER_SHAPES`** — 19 shapes. Classic (balanced/swarm/elite/bossMinions/solo) + tactical (ambush/gauntlet/vanguard/twinThreat/siege/duel) + "more battle types" (gang/bodyguards/artillery/pincer/escalating/skirmishers/loneHunter/standoff). Most have real builder logic in `dmBuildShapedEncounter`: solo/duel = 1 creature; twinThreat = 2 leaders; vanguard = front(strong)+back(weak); gauntlet = 2–3 equal waves; **gang** = ~party×3 cheap varied bodies (for hideouts/rabble); **bodyguards** = fragile `role:vip` + strong `role:guard`; **artillery** = `role:artillery` back-heavy + thin `role:screen`; **pincer** = two equal groups tagged `flank:A`/`flank:B`; **escalating** = rising waves (weak→strong, leader last); **skirmishers** = low-HP/high-Dex pool, many, `role:skirmisher`; **loneHunter** = strong `role:hunter` + ≤2 `role:lure`; **standoff** falls through to the balanced budget-led path (flavor only). `dmFillToBudget(sorted, budget, bias)` fills a sub-budget ('strong'|'weak'|'mixed'). Composition tags (`wave`/`role`/`flank`) are labelled onto combatant names via the `ROLE_TAGS` map and stored on each combatant.
-- **Flavor is keyed to theme + shape:** `DM_ENCOUNTER_INTROS[theme]` (read-aloud openers, 5–6 lines each) layered with `DM_SHAPE_INTROS[shape]`; `DM_ENCOUNTER_TIPS[shape]` (multi-bullet "how to run it" tactics). **These four maps + the two `<select>`s in `pages/dm-encounters.html` must stay in sync** — every dropdown value needs a theme/shape map entry and matching flavor (a missing theme intro falls back to `random`; a missing shape tip falls back to `balanced`).
-- **Reroll Intro:** the encounter card stores `theme`/`shape` on `dmCurrentEncounterCard`; `dmRerollIntro()` redraws a fresh intro from `DM_ENCOUNTER_INTROS[theme]` (+ `DM_SHAPE_INTROS[shape]`), overwriting only the intro field. Button sits beside the Intro label, mirroring `dmRerollInitiative()`.
-
-**Nothing in the encounter system touches character data** — it only reads/writes `dndDmEncounters` and in-memory `dmCombatants`, never `dndCharacters`/`autosave`/cloud sync.
-
-**Combat-log export** (v1.16+): `dmExportCombatLog()` (dm.js, "Export Log" button on the encounter builder) builds a plain-text table of the current `dmCombatants` sorted by initiative (init / name / HP cur-max / AC + timestamp + encounter name) and copies it to the clipboard via `navigator.clipboard`; on failure it falls back to a `dmModal` so the DM can copy manually. Read-only — never mutates the encounter.
-
-### NPC Generator
-Name pools in `DM_NPC_NAMES` (male/female/surname). Traits in `DM_NPC_TRAITS`. Secrets in `DM_NPC_SECRETS`. Loot in `dmRollLoot()` — three tiers: scraps (35%), low-level gear (35%), gold+gem (30%).
-
-### Players Tab
-The DM's own typed list for the active campaign (`dmcRenderPlayers`, `dmcAddPlayer`, `dmcEditPlayer`, `dmcRemovePlayer`). Never reads sheets from Firestore.
-
----
-
-## Campaign System
-
-Campaigns are owned by the user who makes them on their DM screen (see "DM access model"). Firestore: `campaigns/{id}` holds `id, name, setting, notes, players[], ownerUid, ownerName, ownerEmail, createdAt, updatedAt` and nothing else (rules refuse other fields, including any password hash). Read/update/delete: the owner only; the owner-admin reads and writes all. There is no `members` or `joinRequests` data any more.
+The DM portal (campaigns, players, monsters, items, encounters, NPCs, loot) was removed in 2026-10 because it was not used. It is archived in Seafile (`Github/Jozz dnd campaign builder/Jozz_DnD_Campaign_Builder_2026-10-24.zip`: the removed files, tests, CSS and a full snapshot of the app before removal) and in git at the tag `pre-dm-removal`. Dialogs and `friendlyFirebaseError` moved to `assets/modules/dialogs.js`. Old `campaigns/*`, `members`, `joinRequests` and `dm_requests` data may remain in Firestore; the Admin page backs it up and Tools → "Old campaign data" scans and deletes it. The hidden `#char_campaign` input stays only so a campaign name saved on an old sheet is not erased.
 
 ---
 
 ### Firestore rules
-The ruleset lives in `firestore.rules` (deploy with `firebase deploy --only firestore:rules`; ask first). Summary: a user reads/writes only their own `userData/{uid}` and sheets; nobody else can read or list them (no DM link). `userProfiles`: single `get` for signed-in users, `list` owner-admin only. `campaigns`: owner-only plus owner-admin (see "Campaign System"). `admin_config`: owner-admin only. Collection-group `characters` read: owner-admin only. Doc writes are capped at 60 fields. `members`, `joinRequests` and `dm_requests` no longer exist in the rules. Tested with `/root/work/tests/rules_test.py` against the staging emulator.
+The ruleset lives in `firestore.rules` (deploy with `firebase deploy --only firestore:rules`; ask first). Summary: a user reads/writes only their own `userData/{uid}` and sheets; nobody else can read or list them (no DM link). `userProfiles`: single `get` for signed-in users, `list` owner-admin only. `campaigns`: owner-admin read/delete only (leftovers from the removed DM tool; nobody can write). `admin_config`: owner-admin only. Collection-group `characters` read: owner-admin only. Doc writes are capped at 60 fields. `members`, `joinRequests` and `dm_requests`: owner-admin read/delete only. Tested with `/root/work/tests/rules_test.py` against the staging emulator.
 
 ---
 
 ## Admin Portal
 
-Its own page (`pages/admin.html`, route `#admin`, opened by the owner-only **Admin** rail button via `openAdminPage()`). Owner email only; PIN-locked (`admin_config/main.portalPinHash`, set on first unlock; `sha256Hex` falls back to pure JS on plain-http pages where `crypto.subtle` is missing). Code: `assets/modules/admin.js` (unlock, users, campaigns, preview/import/export, roll logs) and `assets/modules/admin-data.js` (data cache, overview, sheets, backup, restore, tools). Tabs:
-1. **Overview** — tiles (users, sheets, deleted, campaigns, last backup), "Needs attention" list (stale/no backup, sheets near the 1 MB limit, conflict copies, restorable deletes, old password data), recent activity.
+Its own page (`pages/admin.html`, route `#admin`, opened by the owner-only **Admin** rail button via `openAdminPage()`). Owner email only; PIN-locked (`admin_config/main.portalPinHash`, set on first unlock; `sha256Hex` falls back to pure JS on plain-http pages where `crypto.subtle` is missing). Code: `assets/modules/admin.js` (unlock, users, preview/import/export, roll logs) and `assets/modules/admin-data.js` (data cache, overview, sheets, backup, restore, tools). Tabs:
+1. **Overview** — tiles (users, sheets, deleted, last backup), "Needs attention" list (stale/no backup, sheets near the 1 MB limit, conflict copies, restorable deletes, old password data), recent activity.
 2. **Users** — search, per-user detail, preview/import/export each sheet, "Download all of this user's sheets".
 3. **Sheets** — every sheet on every account (`collectionGroup('characters')`) with size, owner, flags; search/filter/sort; Preview, Export, and **Restore** for deleted sheets (the only write admin makes to a user's sheet: flips `deleted`/`deletedAt`/`rev`/`updatedAt`).
-4. **Campaigns** — every user's campaigns (view players/notes, delete, strip old password fields).
-5. **Backup** — "Download full backup" (`dnd-admin-backup` JSON: users, sheets, campaigns; never the PIN; remembers last backup time in `dndAdminLastBackup`), one-user backup, and a viewer for a saved backup file with "Import copy" (local device only).
-6. **Logs** — roll logs by user then character.
-7. **Tools** — system info + copy diagnostics, refresh, lock now, scan/delete old link data (`members`, `joinRequests`, `dm_requests`, old campaign password fields), change PIN.
+4. **Backup** — "Download full backup" (`dnd-admin-backup` JSON: users, sheets, any old campaign docs; never the PIN; remembers last backup time in `dndAdminLastBackup`), one-user backup, and a viewer for a saved backup file with "Import copy" (local device only).
+5. **Logs** — roll logs by user then character.
+6. **Tools** — system info + copy diagnostics, refresh, lock now, scan/delete old data from the removed DM tool (`campaigns`, `members`, `joinRequests`, `dm_requests`), change PIN.
 Reads cost one Firestore read per sheet each time the data loads; it is cached until Refresh. Tested by `/root/work/tests/t_admin.js` (staging owner account) and `rules_test.py`.
 
 ---
@@ -561,8 +455,8 @@ The changelog file is `assets/changelog.js`. Version lives in `CHANGELOG_LATEST_
 
 ### Home page grid layout
 - `.home-grid` uses `repeat(3, 1fr)` at base — three equal columns on desktop
-- Card order (CSS `order`, ~line 3591): `.character-manager-card` (1) → `.dm-portal-card` (2) → `.quick-start-card` (3) → `.suggestion-card` (4) → `.features-card` (5) → `.changelog-card` (6) → `.tips-card` (7)
-- **Full-width set** (`grid-column: 1 / -1`, ~line 3577): `.character-manager-card`, `.dm-portal-card`, `.features-card`, `.changelog-card`, `.tips-card`. As of v1.05 the character manager and DM portal are both full-width so the DM portal sits as its own row directly under the char list.
+- Card order (CSS `order`, ~line 3591): `.character-manager-card` (1) → `.quick-start-card` (3) → `.suggestion-card` (4) → `.features-card` (5) → `.changelog-card` (6) → `.tips-card` (7)
+- **Full-width set** (`grid-column: 1 / -1`, ~line 3577): `.character-manager-card`, `.features-card`, `.changelog-card`, `.tips-card`. As of v1.05 the character manager and DM portal are both full-width so the DM portal sits as its own row directly under the char list.
 - Only `.quick-start-card` + `.suggestion-card` remain in the 3-col flow (they pair on a row below the DM portal).
 - At 1024px: drops to 2 columns, `.suggestion-card` goes `grid-column: 1 / -1` so it sits below the pair
 - At 768px: single column, everything stacks in order

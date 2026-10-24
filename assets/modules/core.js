@@ -3431,31 +3431,10 @@ function loadData() {
     // Load spells data
     spellsData = normalizeSpellData(page3Data.spellsData);
 
-    // Migrate saved spell links:
-    //  - wikidot links → Open5e (legacy).
-    //  - BARE Open5e slugs (open5e.com/spells/shatter) → source-prefixed key.
-    //    Open5e now 302-redirects bare slugs to a "choose source" page instead of
-    //    the spell, so old imports break. Prefer the exact key from the loaded
-    //    catalogue (spellDatabase) when we have it; else fall back to srd-2024_.
-    //    5esrd links are left alone (deliberate repairs for spells Open5e 404s).
-    if (typeof open5eSpellLink === 'function') {
-      [...(spellsData.cantrips || []), ...(spellsData.spells || [])].forEach(spell => {
-        const link = spell.wikiLink || '';
-        if (link.includes('wikidot.com')) {
-          spell.wikiLink = open5eSpellLink(spell.name);
-          return;
-        }
-        // Bare Open5e link (no source prefix "_" in the slug) → repair it.
-        const m = link.match(/open5e\.com\/spells\/([^\/?#]+)/i);
-        if (m && !m[1].includes('_')) {
-          const cat = (typeof spellDatabase === 'object' && spellDatabase) ? spellDatabase[spell.name] : null;
-          if (cat && cat.wikiLink && /open5e\.com\/spells\/[^\/?#]*_/.test(cat.wikiLink)) {
-            spell.wikiLink = cat.wikiLink;
-          } else {
-            spell.wikiLink = open5eSpellLink(spell.name);
-          }
-        }
-      });
+    // Migrate saved spell links (wikidot, bare Open5e slugs, upper-case keys, keys known to be dead).
+    // Working links are left alone; 5esrd links are deliberate repairs and are left alone too.
+    if (typeof repairSpellLink === 'function') {
+      [...(spellsData.cantrips || []), ...(spellsData.spells || [])].forEach(repairSpellLink);
     }
 
     // Load favorites data
@@ -4645,10 +4624,10 @@ function escapeHtml(value) {
 }
 
 // ========== IN-APP DIALOGS ==========
-// Thin app-wide wrappers over the themed dialog primitives in dm.js (dmToast /
+// Thin app-wide wrappers over the themed dialog primitives in dialogs.js (dmToast /
 // dmModal), which render into a floating root on document.body and work anywhere —
 // not just the DM portal. They replace native alert()/confirm(), which break in
-// mobile Safari / installed-PWA mode. Each falls back to the native dialog if dm.js
+// mobile Safari / installed-PWA mode. Each falls back to the native dialog if dialogs.js
 // hasn't loaded yet, so callers are always safe.
 
 // Non-blocking notification. type: 'info' | 'success' | 'error'
@@ -4683,7 +4662,7 @@ function appConfirm(message, opts) {
 
 // Text-input dialog. Returns a Promise<string|null> — the entered text, or null if
 // cancelled. opts: { title, placeholder, value, inputType, confirmText, cancelText }.
-// Falls back to native prompt() if dm.js hasn't loaded yet.
+// Falls back to native prompt() if dialogs.js hasn't loaded yet.
 function appPrompt(message, opts) {
   const o = opts || {};
   if (typeof dmModal === 'function') {

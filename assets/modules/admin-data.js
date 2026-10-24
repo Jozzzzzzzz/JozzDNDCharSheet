@@ -77,11 +77,9 @@
     const users = window.__adminUsers || []; const sheets = AD.sheets;
     const live = sheets.filter(s => !s.deleted), deleted = sheets.filter(s => s.deleted);
     const conflicts = live.filter(s => s.conflict), big = sheets.filter(s => s.size >= BIG_KB * 1024);
-    const camps = Object.values(window._adminCampaigns || {}), campsNew = camps.filter(c => c.ownerUid);
-    const campsOld = camps.filter(c => c.passwordHash || c.dmPasswordHash || (c.dmEmails && c.dmEmails.length));
+    const camps = Object.values(window._adminCampaigns || {});
     const active = users.filter(u => typeof isActiveNow === 'function' && isActiveNow(u.lastSeenAt)).length;
     const totalBytes = sheets.reduce((n, s) => n + s.size, 0);
-    const players = campsNew.reduce((n, c) => n + (Array.isArray(c.players) ? c.players.length : 0), 0);
     const week = Date.now() - 7 * 864e5; const newUsers = users.filter(u => tsMs(u.createdAt) > week).length;
     const tile = (n, label, sub, go) => `<button type="button" class="adm-tile"${go ? ` onclick="adminGoTab('${go}')"` : ''}><span class="adm-num">${esc(n)}</span><span class="adm-lbl">${esc(label)}</span>${sub ? `<span class="adm-sub">${esc(sub)}</span>` : ''}</button>`;
     const warn = [];
@@ -92,13 +90,12 @@
     if (big.length) warn.push({ lvl: 'bad', t: `${big.length} sheet${big.length === 1 ? ' is' : 's are'} near or over the size limit: ${big.slice(0, 3).map(s => s.name).join(', ')}.`, go: 'adminTabSheets', b: 'See sheets', filter: 'big' });
     if (conflicts.length) warn.push({ lvl: 'warn', t: `${conflicts.length} conflict cop${conflicts.length === 1 ? 'y' : 'ies'} waiting for a player to sort out.`, go: 'adminTabSheets', b: 'See sheets', filter: 'conflict' });
     if (deleted.length) warn.push({ lvl: 'info', t: `${deleted.length} deleted sheet${deleted.length === 1 ? '' : 's'} can still be restored.`, go: 'adminTabSheets', b: 'See sheets', filter: 'deleted' });
-    if (campsOld.length) warn.push({ lvl: 'warn', t: `${campsOld.length} old campaign doc${campsOld.length === 1 ? ' still holds' : 's still hold'} password hashes or DM emails.`, go: 'adminTabTools', b: 'Clean up' });
+    if (camps.length) warn.push({ lvl: 'warn', t: `${camps.length} old campaign doc${camps.length === 1 ? '' : 's'} left from the removed DM tool (some hold password hashes). Back up, then clean up.`, go: 'adminTabTools', b: 'Clean up' });
     const recent = users.slice().sort((a, b) => tsMs(b.lastSeenAt) - tsMs(a.lastSeenAt)).slice(0, 8);
     el.innerHTML =
       `<div class="adm-tiles">${tile(users.length, 'Users', `${active} active now${newUsers ? ' · ' + newUsers + ' new this week' : ''}`, 'adminTabUsers')}` +
       tile(live.length, 'Sheets', `${kb(totalBytes)} stored`, 'adminTabSheets') +
       tile(deleted.length, 'Deleted sheets', 'restorable', 'adminTabSheets') +
-      tile(campsNew.length, 'Campaigns', `${players} players listed`, 'adminTabCampaigns') +
       tile(ago(bMs), 'Last backup', bMs ? new Date(bMs).toLocaleString() : 'none yet', 'adminTabBackup') + '</div>' +
       `<h4 class="adm-h">Needs attention</h4>` +
       (warn.length ? '<ul class="adm-warn">' + warn.map(w => `<li class="adm-lv-${w.lvl}"><span>${esc(w.t)}</span>${w.go ? `<button type="button" class="settings-action-btn" onclick="adminGoTab('${w.go}'${w.filter ? `,'${w.filter}'` : ''})">${esc(w.b)}</button>` : ''}</li>`).join('') + '</ul>' : '<p class="settings-note">Nothing needs attention.</p>') +
@@ -219,7 +216,7 @@
     const db = window.db; const out = $('admLegacy'); if (out) out.innerHTML = '<p class="settings-note">Scanning…</p>';
     try {
       const [dmr, mem, jr] = await Promise.all([db.collection('dm_requests').get(), db.collectionGroup('members').get(), db.collectionGroup('joinRequests').get()]);
-      const camps = Object.values(window._adminCampaigns || {}).filter(c => c.passwordHash || c.dmPasswordHash || (c.dmEmails && c.dmEmails.length) || c.active !== undefined);
+      const camps = Object.values(window._adminCampaigns || {});
       AD.legacy = { dmr, mem, jr, camps: camps.map(c => c.id) };
       adminRenderLegacy();
     } catch (e) { if (out) out.innerHTML = `<p class="settings-note">Scan failed: ${esc(err(e))}</p>`; }
@@ -227,19 +224,18 @@
   function adminRenderLegacy() {
     const out = $('admLegacy'); const L = AD.legacy; if (!out || !L) return;
     const total = L.dmr.size + L.mem.size + L.jr.size + L.camps.length;
-    out.innerHTML = `<ul class="adm-warn"><li class="adm-lv-info"><span>${L.mem.size} campaign member records, ${L.jr.size} join requests, ${L.dmr.size} DM requests</span></li><li class="adm-lv-info"><span>${L.camps.length} campaign doc${L.camps.length === 1 ? '' : 's'} with old password / DM email / active fields</span></li></ul>` +
+    out.innerHTML = `<ul class="adm-warn"><li class="adm-lv-info"><span>${L.mem.size} campaign member records, ${L.jr.size} join requests, ${L.dmr.size} DM requests</span></li><li class="adm-lv-info"><span>${L.camps.length} old campaign doc${L.camps.length === 1 ? '' : 's'} (the removed DM tool)</span></li></ul>` +
       (total ? '<div class="adm-row"><button type="button" class="settings-action-btn admin-delete-btn" onclick="adminCleanLegacy()">Delete the old link data</button></div>' : '<p class="settings-note">Nothing old left. All clean.</p>');
   }
   async function adminCleanLegacy() {
     const L = AD.legacy; if (!L) return; const db = window.db;
-    const ok = await appConfirm('Delete the old campaign link data (members, join requests, DM requests) and strip old password fields from campaigns? Player sheets are not touched. This cannot be undone.', { title: 'Clean up old data', confirmText: 'Delete', danger: true });
+    const ok = await appConfirm('Delete the old campaign data (campaigns, members, join requests, DM requests)? Player sheets are not touched. Take a backup first. This cannot be undone.', { title: 'Clean up old data', confirmText: 'Delete', danger: true });
     if (!ok) return;
     try {
       const docs = [...L.dmr.docs, ...L.mem.docs, ...L.jr.docs];
       for (let i = 0; i < docs.length; i += 400) { const batch = db.batch(); docs.slice(i, i + 400).forEach(d => batch.delete(d.ref)); await batch.commit(); }
-      const FV = firebase.firestore.FieldValue;
-      for (const id of L.camps) await db.collection('campaigns').doc(id).update({ passwordHash: FV.delete(), dmPasswordHash: FV.delete(), dmEmails: FV.delete(), active: FV.delete() });
-      toast('Old link data removed', 'success'); await adminLoadCampaigns(); await adminScanLegacy(); adminRenderOverview();
+      for (let i = 0; i < L.camps.length; i += 400) { const batch = db.batch(); L.camps.slice(i, i + 400).forEach(id => batch.delete(db.collection('campaigns').doc(id))); await batch.commit(); }
+      toast('Old campaign data removed', 'success'); await adminLoadCampaigns(); await adminScanLegacy(); adminRenderOverview();
     } catch (e) { toast('Clean up failed: ' + err(e), 'error'); }
   }
 

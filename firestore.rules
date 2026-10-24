@@ -11,11 +11,9 @@ rules_version = '2';
 //    can read or list their sheets. (There is no DM link to player sheets.)
 //  - The owner-admin (vanreejoz33) can READ every document (admin page: overview,
 //    backup, users, sheets). Beyond reading, the admin can only: restore a
-//    deleted sheet (update), manage campaigns and admin_config, and delete old
-//    link-system leftovers (members / joinRequests / dm_requests).
-//  - Campaigns are a DM's own notes (name, setting, notes, typed player list).
-//    Each one is owned by the user who made it (ownerUid) and is readable only
-//    by that user and the owner-admin.
+//    deleted sheet (update), manage admin_config, and delete old leftovers from
+//    the removed DM tool (campaigns, members, joinRequests, dm_requests).
+//  - Campaigns no longer exist as a feature: nobody can write them.
 // =====================================================================
 
 service cloud.firestore {
@@ -73,21 +71,9 @@ service cloud.firestore {
       allow read: if isOwnerAdmin();
     }
 
-    // ---- Campaigns (a DM's own notes; owner-only + admin) ----
-    function validCampaign() {
-      let d = request.resource.data;
-      return d.keys().hasOnly(['id','name','setting','notes','players','ownerUid','ownerName','ownerEmail','createdAt','updatedAt'])
-        && d.ownerUid == request.auth.uid
-        && d.name is string && d.name.size() <= 80
-        && (!('players' in d) || (d.players is list && d.players.size() <= 60));
-    }
-    match /campaigns/{campaignId} {
-      allow read, delete: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
-      allow create: if isSignedIn() && validCampaign();
-      allow update: if isSignedIn() && resource.data.ownerUid == request.auth.uid && validCampaign();
-      // The owner-admin sees and can clean up every campaign (including old ones with password fields).
-      allow read, write: if isOwnerAdmin();
-    }
+    // ---- Campaigns: the DM tool was removed. Old docs are left for the owner-admin to read, back up
+    // and delete. Nobody can create or change one any more (the admin blanket read also covers reads). ----
+    match /campaigns/{campaignId} { allow read, delete: if isOwnerAdmin(); }
 
     // ---- Old link-system leftovers: only the owner-admin can see or delete them ----
     match /campaigns/{campaignId}/members/{m} { allow read, delete: if isOwnerAdmin(); }

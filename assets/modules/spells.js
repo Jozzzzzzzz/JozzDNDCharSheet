@@ -115,11 +115,36 @@ function spellNameToOpen5eSlug(name) {
 // per-source key on every catalogue spell; this helper is the runtime fallback
 // for user-added spells / spells with no stored wikiLink.
 const OPEN5E_DEFAULT_SPELL_PREFIX = 'srd-2024';
+// Open5e only holds SRD spells. Many PHB-only spells (Hex's friends: Witch Bolt, Bigby's Hand,
+// Armor of Agathys...) have no page there, so a guessed key is a dead link. Keys checked against the
+// Open5e API (2026-10-24): VERIFIED exist for spells that are not in spells.json; DEAD returned 404.
+const OPEN5E_VERIFIED_SPELL_KEYS = new Set(["srd-2024_chromatic-orb", "srd-2024_counterspell", "srd-2024_hex", "srd-2024_phantasmal-force", "srd-2024_searing-smite"]);
+const OPEN5E_DEAD_SPELL_KEYS = new Set(["srd-2024_armor-of-agathys", "srd-2024_arms-of-hadar", "srd-2024_beast-sense", "srd-2024_bigbys-hand", "srd-2024_blade-ward", "srd-2024_cloud-of-daggers", "srd-2024_compelled-duel", "srd-2024_crown-of-madness", "srd-2024_evards-black-tentacles", "srd-2024_feign-death", "srd-2024_flame-arrows", "srd-2024_friends", "srd-2024_hunger-of-hadar", "srd-2024_leomunds-secret-chest", "srd-2024_leomunds-tiny-hut", "srd-2024_melfs-acid-arrow", "srd-2024_mordenkainens-faithful-hound", "srd-2024_mordenkainens-private-sanctum", "srd-2024_nystuls-magic-aura", "srd-2024_otilukes-resilient-sphere", "srd-2024_pyrotechnics", "srd-2024_rarys-telepathic-bond", "srd-2024_tashas-hideous-laughter", "srd-2024_tensers-floating-disk", "srd-2024_thorn-whip", "srd-2024_thunderous-smite", "srd-2024_witch-bolt", "srd-2024_wrathful-smite"]);
+function spellSearchLink(name) { return 'https://www.5esrd.com/?s=' + encodeURIComponent(String(name || '').trim()); }
 function open5eSpellLink(slugOrName) {
-  let slug = slugOrName.includes(' ') ? spellNameToOpen5eSlug(slugOrName) : slugOrName;
+  const raw = String(slugOrName || '').trim();
+  const slug = raw.includes(' ') ? spellNameToOpen5eSlug(raw) : raw.toLowerCase();   // Open5e keys are lower-case
   // Already a full source-prefixed key — use as-is.
-  if (!slug.includes('_')) slug = `${OPEN5E_DEFAULT_SPELL_PREFIX}_${slug}`;
-  return `https://open5e.com/spells/${slug}`;
+  if (slug.includes('_')) return `https://open5e.com/spells/${slug}`;
+  // In the catalogue → its stored link (the correct source prefix, or a verified 5esrd page).
+  const cat = (typeof spellDatabase === 'object' && spellDatabase) ? spellDatabase[raw] : null;
+  if (cat && cat.wikiLink) return cat.wikiLink;
+  const key = `${OPEN5E_DEFAULT_SPELL_PREFIX}_${slug}`;
+  if (OPEN5E_VERIFIED_SPELL_KEYS.has(key)) return `https://open5e.com/spells/${key}`;
+  // Not a spell Open5e is known to hold: a search page always works, a guessed key often does not.
+  return spellSearchLink(raw);
+}
+// Repair one saved spell's link (called when a sheet loads): wikidot, bare Open5e slugs, upper-case keys
+// and keys known to be dead. Working links are left alone.
+function repairSpellLink(spell) {
+  const link = (spell && spell.wikiLink) || '';
+  if (!link) return;
+  if (link.includes('wikidot.com')) { spell.wikiLink = open5eSpellLink(spell.name); return; }
+  const m = link.match(/open5e\.com\/spells\/([^\/?#]+)/i);
+  if (!m) return;
+  const key = m[1], lower = key.toLowerCase();
+  if (!key.includes('_') || OPEN5E_DEAD_SPELL_KEYS.has(lower)) { spell.wikiLink = open5eSpellLink(spell.name); return; }
+  if (key !== lower) spell.wikiLink = 'https://open5e.com/spells/' + lower;
 }
 
 async function loadSpellDatabase() {

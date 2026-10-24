@@ -131,17 +131,7 @@
 }
 
 /* ---- DM campaigns (dm-campaigns.js) ---- */
-.dmc-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
-.dmc-row select { flex: 1 1 180px; min-width: 0; }
-.dmc-grid { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
-.dmc-grid label, .dmc-wide { display: flex; flex-direction: column; gap: 3px; font-size: 0.82em; opacity: 0.95; }
-.dmc-grid label { flex: 1 1 110px; min-width: 0; }
-.dmc-grid .dmc-grow { flex: 2 1 160px; }
-.dmc-nums label { flex: 1 1 70px; }
-.dmc-wide { margin: 8px 0; }
-.dmc-grid input, .dmc-wide textarea, .dmc-row select { box-sizing: border-box; width: 100%; font-size: 1rem; }
-.dmc-wide textarea { resize: vertical; }
-.dmc-player { border: 1px solid var(--accent-border); border-radius: 10px; padding: 10px 12px; margin: 10px 0; background: rgba(255,255,255,0.03); }
+
 .gr-rail-btn[hidden] { display: none !important; }
 
 /* ---- Admin page (admin-data.js) ---- */

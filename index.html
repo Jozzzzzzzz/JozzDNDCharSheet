@@ -123,8 +123,6 @@
 <div id="chrome-root"></div>
 <div id="pages"></div>
 <div id="popups-root"></div>
-<div id="dm-chrome-root" style="display:none;"></div>
-<div id="dm-pages-root" style="display:none;"></div>
 
 <!-- Offline indicator: shown when the browser loses connectivity (sync paused). -->
 <div id="offlineIndicator" class="offline-indicator" style="display:none;" role="status" aria-live="polite">
@@ -308,8 +306,7 @@ async function bootstrapModularApp() {
   const scriptVersion = '20260719g-v1.20';
   // Expose so modules can cache-bust their own data fetches (e.g. spells.json).
   window.__SCRIPT_VERSION__ = scriptVersion;
-  const [chrome, home, settings, admin, stats, background, spells, inventory, notes, popups,
-         dmChrome, dmHome, dmLore, dmPlayers, dmMonsters, dmItems, dmEncounters, dmNpcs, dmLoot, dmNotes, dmSettings] = await Promise.all([
+  const [chrome, home, settings, admin, stats, background, spells, inventory, notes, popups] = await Promise.all([
     loadText('partials/chrome.html'),
     loadText('pages/home.html'),
     loadText('pages/settings.html'),
@@ -320,17 +317,6 @@ async function bootstrapModularApp() {
     loadText('pages/inventory.html'),
     loadText('pages/notes.html'),
     loadText('partials/popups.html'),
-    loadText('partials/dm-chrome.html'),
-    loadText('pages/dm-home.html'),
-    loadText('pages/dm-lore.html'),
-    loadText('pages/dm-players.html'),
-    loadText('pages/dm-monsters.html'),
-    loadText('pages/dm-items.html'),
-    loadText('pages/dm-encounters.html'),
-    loadText('pages/dm-npcs.html'),
-    loadText('pages/dm-loot.html'),
-    loadText('pages/dm-notes.html'),
-    loadText('pages/dm-settings.html')
   ]);
 
   document.getElementById('chrome-root').innerHTML = chrome;
@@ -338,16 +324,13 @@ async function bootstrapModularApp() {
   pagesRoot.innerHTML = [home, settings, admin, stats, background, spells, inventory, notes].join('\n');
   document.getElementById('popups-root').innerHTML = popups;
 
-  // DM portal roots (hidden until DM enters portal)
-  document.getElementById('dm-chrome-root').innerHTML = dmChrome;
-  document.getElementById('dm-pages-root').innerHTML = [dmHome, dmLore, dmPlayers, dmMonsters, dmItems, dmEncounters, dmNpcs, dmLoot, dmNotes, dmSettings].join('\n');
-
   const scriptOrder = [
     'assets/banner-messages.js',
     'assets/modules/stats.js',
     'assets/modules/safety.js',
     'assets/modules/cloud-skills.js',
     'assets/modules/core.js',
+    'assets/modules/dialogs.js',
     'assets/modules/browser-engine.js',
     'assets/modules/layout.js',
     'assets/modules/characters.js',
@@ -358,9 +341,6 @@ async function bootstrapModularApp() {
     'assets/modules/spells.js',
     'assets/modules/admin.js',
     'assets/modules/admin-data.js',
-    'assets/modules/loot.js',
-    'assets/modules/dm.js',
-    'assets/modules/dm-campaigns.js',
     'assets/modules/motion.js',
     'assets/modules/rail.js',
     'assets/changelog.js',
